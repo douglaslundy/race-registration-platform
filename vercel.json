@@ -1,5 +1,4 @@
 {
-  "regions": ["gru1"],
   "functions": {
     "app/**": {
       "maxDuration": 30

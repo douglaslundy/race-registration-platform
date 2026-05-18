@@ -6,8 +6,10 @@ const db = new PrismaClient();
 async function main() {
   console.log("🌱 Iniciando seed...");
 
+  const defaultHash = await bcrypt.hash("12345678", 12);
+
   // Admin
-  const adminHash = await bcrypt.hash("Admin@123456", 12);
+  const adminHash = defaultHash;
   const admin = await db.user.upsert({
     where: { email: "admin@corridasapp.com.br" },
     update: {},
@@ -21,7 +23,7 @@ async function main() {
   console.log("✅ Admin criado:", admin.email);
 
   // Organizador
-  const orgHash = await bcrypt.hash("Org@123456", 12);
+  const orgHash = defaultHash;
   const orgUser = await db.user.upsert({
     where: { email: "organizador@exemplo.com.br" },
     update: {},
@@ -158,7 +160,7 @@ async function main() {
   console.log("✅ Evento criado:", event.title);
 
   // Atleta de exemplo
-  const athleteHash = await bcrypt.hash("Atleta@123456", 12);
+  const athleteHash = defaultHash;
   const athlete = await db.user.upsert({
     where: { email: "atleta@exemplo.com.br" },
     update: {},
@@ -185,11 +187,25 @@ async function main() {
   });
   console.log("✅ Atleta criado:", athlete.email);
 
+  // Usuários adicionais
+  await db.user.upsert({
+    where: { email: "douglaslundy@gmail.com" },
+    update: {},
+    create: { name: "Douglas Lundy", email: "douglaslundy@gmail.com", passwordHash: defaultHash, role: "ATHLETE" },
+  });
+  await db.user.upsert({
+    where: { email: "dlsistemas100@gmail.com" },
+    update: {},
+    create: { name: "Douglas Lundy", email: "dlsistemas100@gmail.com", passwordHash: defaultHash, role: "ORGANIZER" },
+  });
+
   console.log("\n🎉 Seed concluído!");
-  console.log("\nCredenciais:");
-  console.log("  Admin:       admin@corridasapp.com.br     / Admin@123456");
-  console.log("  Organizador: organizador@exemplo.com.br   / Org@123456");
-  console.log("  Atleta:      atleta@exemplo.com.br        / Atleta@123456");
+  console.log("\nTodos os usuários usam senha: 12345678");
+  console.log("  Admin:       admin@corridasapp.com.br");
+  console.log("  Organizador: organizador@exemplo.com.br");
+  console.log("  Atleta:      atleta@exemplo.com.br");
+  console.log("  Douglas:     douglaslundy@gmail.com");
+  console.log("  Douglas:     dlsistemas100@gmail.com");
   console.log("\nCupom de desconto: BEMVINDO10 (10% off)");
 }
 
