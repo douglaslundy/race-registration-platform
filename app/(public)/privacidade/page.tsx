@@ -1,0 +1,53 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Política de Privacidade" };
+
+export default function PrivacidadePage() {
+  return (
+    <main className="max-w-3xl mx-auto px-4 py-12">
+      <h1 className="text-3xl font-bold mb-2">Política de Privacidade</h1>
+      <p className="text-sm text-gray-500 mb-8">Última atualização: maio de 2025</p>
+
+      <div className="prose prose-gray max-w-none space-y-6 text-gray-700">
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">1. Dados coletados</h2>
+          <p>Coletamos os seguintes dados para prestação do serviço: nome, e-mail, CPF, data de nascimento, telefone, endereço e dados de saúde quando necessário para a inscrição no evento.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">2. Finalidade do tratamento</h2>
+          <p>Os dados são utilizados exclusivamente para: processamento de inscrições, comunicações relacionadas aos eventos, cumprimento de obrigações legais e melhoria dos nossos serviços.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">3. Compartilhamento de dados</h2>
+          <p>Seus dados são compartilhados com o organizador do evento no qual você se inscreveu e com provedores de pagamento para processamento da transação. Não vendemos seus dados a terceiros.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">4. Seus direitos (LGPD)</h2>
+          <p>Você tem direito a: acessar seus dados, corrigi-los, solicitar a exclusão, revogar consentimento e solicitar portabilidade. Entre em contato conosco para exercer esses direitos.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">5. Retenção de dados</h2>
+          <p>Mantemos seus dados pelo período necessário para a prestação do serviço e cumprimento de obrigações legais (mínimo 5 anos para registros financeiros).</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">6. Segurança</h2>
+          <p>Adotamos medidas técnicas e organizacionais para proteger seus dados, incluindo criptografia, controle de acesso e backups regulares.</p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">7. Contato</h2>
+          <p>Para questões sobre privacidade, entre em contato: privacidade@corridasapp.com.br</p>
+        </section>
+
+        <p className="text-sm text-gray-500 mt-8 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+          <strong>Nota:</strong> Este é um conteúdo placeholder. O texto final deve ser elaborado com assessoria jurídica especializada em LGPD.
+        </p>
+      </div>
+    </main>
+  );
+}

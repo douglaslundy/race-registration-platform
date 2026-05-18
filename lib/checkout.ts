@@ -1,0 +1,111 @@
+import { db } from "./db";
+import { calculatePlatformFee } from "./format";
+import type { ShirtSize } from "@prisma/client";
+
+export interface CheckoutInput {
+  eventId: string;
+  ticketBatchId: string;
+  routeId?: string;
+  categoryId?: string;
+  buyerUserId: string;
+  athleteUserId: string;
+  shirtSize?: ShirtSize;
+  teamName?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  medicalNotes?: string;
+  couponCode?: string;
+}
+
+export interface CheckoutResult {
+  orderId: string;
+  registrationId: string;
+  totalAmount: number;
+  platformFeeAmount: number;
+}
+
+export async function createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.ticketBatch.findUnique({ where: { id: input.ticketBatchId } });
+    if (!batch || !batch.active) throw new Error("Lote não disponível");
+    if (batch.soldCount >= batch.capacity) throw new Error("Lote esgotado");
+
+    const event = await tx.event.findUnique({ where: { id: input.eventId } });
+    if (!event || event.status !== "REGISTRATIONS_OPEN") throw new Error("Inscrições não abertas");
+
+    let discountAmount = 0;
+    let couponId: string | undefined;
+
+    if (input.couponCode) {
+      const coupon = await tx.coupon.findFirst({
+        where: {
+          eventId: input.eventId,
+          code: input.couponCode,
+          active: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+        },
+      });
+      if (coupon) {
+        if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+          // coupon exhausted, skip silently
+        } else {
+          couponId = coupon.id;
+          if (coupon.discountType === "PERCENT") {
+            discountAmount = Math.round((batch.priceAmount * coupon.discountValue) / 100);
+          } else {
+            discountAmount = Math.min(coupon.discountValue, batch.priceAmount);
+          }
+          await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
+        }
+      }
+    }
+
+    const subtotal = batch.priceAmount - discountAmount;
+    const platformFee = calculatePlatformFee(subtotal, event.platformFeePercent);
+    const paymentFee = 0;
+    const total = subtotal + paymentFee;
+
+    const order = await tx.order.create({
+      data: {
+        buyerUserId: input.buyerUserId,
+        eventId: input.eventId,
+        subtotalAmount: subtotal,
+        platformFeeAmount: platformFee,
+        paymentFeeAmount: paymentFee,
+        totalAmount: total,
+        discountAmount,
+        couponId,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      },
+    });
+
+    const registration = await tx.registration.create({
+      data: {
+        eventId: input.eventId,
+        athleteUserId: input.athleteUserId,
+        routeId: input.routeId,
+        categoryId: input.categoryId,
+        ticketBatchId: input.ticketBatchId,
+        orderId: order.id,
+        shirtSize: input.shirtSize,
+        teamName: input.teamName,
+        emergencyContactName: input.emergencyContactName,
+        emergencyContactPhone: input.emergencyContactPhone,
+        medicalNotes: input.medicalNotes,
+        acceptedTermsAt: new Date(),
+      },
+    });
+
+    await tx.ticketBatch.update({
+      where: { id: input.ticketBatchId },
+      data: { soldCount: { increment: 1 } },
+    });
+
+    return {
+      orderId: order.id,
+      registrationId: registration.id,
+      totalAmount: total,
+      platformFeeAmount: platformFee,
+    };
+  });
+}

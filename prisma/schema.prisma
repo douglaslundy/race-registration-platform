@@ -1,0 +1,502 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ATHLETE
+  ORGANIZER
+  ADMIN
+  SUPPORT
+  PARTNER
+}
+
+enum EventStatus {
+  DRAFT
+  UNDER_REVIEW
+  PUBLISHED
+  REGISTRATIONS_OPEN
+  SOLD_OUT
+  REGISTRATIONS_CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+enum EventModality {
+  ROAD_RACE
+  TRAIL_RUN
+  MTB
+  CYCLING
+  WALK
+  TRIATHLON
+  OTHER
+}
+
+enum RegistrationStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  TRANSFERRED
+  WAITLISTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+  BOLETO
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  CHARGEBACK
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ShirtSize {
+  PP
+  P
+  M
+  G
+  GG
+  XGG
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String
+  role          UserRole  @default(ATHLETE)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  athleteProfile   AthleteProfile?
+  organizerProfile OrganizerProfile?
+  orders           Order[]
+  registrations    Registration[]
+  auditLogs        AuditLog[]
+  sessions         Session[]
+  accounts         Account[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model AthleteProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  cpf                String?
+  birthDate          DateTime?
+  phone              String?
+  gender             String?
+  city               String?
+  state              String?
+  emergencyName      String?
+  emergencyPhone     String?
+  medicalNotes       String?
+  preferredShirtSize ShirtSize?
+  teamName           String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("athlete_profiles")
+}
+
+model OrganizerProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  companyName String?
+  cnpj        String?
+  phone       String?
+  website     String?
+  bio         String?
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events  Event[]
+  payouts TransferPayout[]
+
+  @@map("organizer_profiles")
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+
+model Event {
+  id                 String        @id @default(cuid())
+  organizerId        String
+  title              String
+  slug               String        @unique
+  description        String?       @db.Text
+  modality           EventModality
+  status             EventStatus   @default(DRAFT)
+  startAt            DateTime
+  kitPickupAt        DateTime?
+  venueName          String?
+  addressLine        String?
+  city               String
+  state              String
+  country            String        @default("BR")
+  latitude           Float?
+  longitude          Float?
+  bannerUrl          String?
+  regulationUrl      String?
+  organizerContact   String?
+  maxParticipants    Int?
+  platformFeePercent Int           @default(1100) // basis points
+  publishedAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  organizer     OrganizerProfile @relation(fields: [organizerId], references: [id])
+  routes        EventRoute[]
+  categories    EventCategory[]
+  ticketBatches TicketBatch[]
+  registrations Registration[]
+  orders        Order[]
+  coupons       Coupon[]
+  resultImports ResultImport[]
+  fileAssets    FileAsset[]
+  payouts       TransferPayout[]
+
+  @@index([status, startAt])
+  @@index([city, modality])
+  @@map("events")
+}
+
+model EventRoute {
+  id          String @id @default(cuid())
+  eventId     String
+  name        String
+  distanceKm  Float
+  description String?
+
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+
+  @@map("event_routes")
+}
+
+model EventCategory {
+  id          String  @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  minAge      Int?
+  maxAge      Int?
+  gender      String?
+
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+
+  @@map("event_categories")
+}
+
+model TicketBatch {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  priceAmount Int      // centavos
+  capacity    Int
+  soldCount   Int      @default(0)
+  startAt     DateTime
+  endAt       DateTime
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+
+  @@map("ticket_batches")
+}
+
+// ─── Registrations ────────────────────────────────────────────────────────────
+
+model Registration {
+  id                   String             @id @default(cuid())
+  eventId              String
+  athleteUserId        String
+  routeId              String?
+  categoryId           String?
+  ticketBatchId        String
+  orderId              String
+  bibNumber            String?
+  shirtSize            ShirtSize?
+  teamName             String?
+  emergencyContactName String?
+  emergencyContactPhone String?
+  medicalNotes         String?
+  status               RegistrationStatus @default(PENDING_PAYMENT)
+  acceptedTermsAt      DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  event        Event          @relation(fields: [eventId], references: [id])
+  athlete      User           @relation(fields: [athleteUserId], references: [id])
+  route        EventRoute?    @relation(fields: [routeId], references: [id])
+  category     EventCategory? @relation(fields: [categoryId], references: [id])
+  ticketBatch  TicketBatch    @relation(fields: [ticketBatchId], references: [id])
+  order        Order          @relation(fields: [orderId], references: [id])
+
+  @@index([eventId, status])
+  @@index([athleteUserId])
+  @@map("registrations")
+}
+
+// ─── Orders & Payments ────────────────────────────────────────────────────────
+
+model Order {
+  id                String      @id @default(cuid())
+  buyerUserId       String
+  eventId           String
+  subtotalAmount    Int         // centavos
+  platformFeeAmount Int         // centavos
+  paymentFeeAmount  Int         // centavos
+  totalAmount       Int         // centavos
+  currency          String      @default("BRL")
+  couponId          String?
+  discountAmount    Int         @default(0)
+  status            OrderStatus @default(PENDING)
+  expiresAt         DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  buyer         User           @relation(fields: [buyerUserId], references: [id])
+  event         Event          @relation(fields: [eventId], references: [id])
+  coupon        Coupon?        @relation(fields: [couponId], references: [id])
+  payments      Payment[]
+  registrations Registration[]
+
+  @@index([buyerUserId])
+  @@index([eventId, status])
+  @@map("orders")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  provider          String
+  providerPaymentId String?       @unique
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  amount            Int           // centavos
+  pixQrCodeText     String?       @db.Text
+  boletoUrl         String?
+  expiresAt         DateTime?
+  paidAt            DateTime?
+  refundedAt        DateTime?
+  rawPayload        Json?
+  idempotencyKey    String        @unique
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id])
+  refunds Refund[]
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Refund {
+  id            String   @id @default(cuid())
+  paymentId     String
+  amount        Int      // centavos
+  reason        String?
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@map("refunds")
+}
+
+// ─── Coupons ──────────────────────────────────────────────────────────────────
+
+model Coupon {
+  id             String   @id @default(cuid())
+  eventId        String
+  code           String
+  discountType   String   @default("PERCENT") // PERCENT | FIXED
+  discountValue  Int                          // percent: integer (10 = 10%), fixed: centavos
+  maxUses        Int?
+  usedCount      Int      @default(0)
+  expiresAt      DateTime?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([eventId, code])
+  @@map("coupons")
+}
+
+// ─── Payouts ──────────────────────────────────────────────────────────────────
+
+model TransferPayout {
+  id           String       @id @default(cuid())
+  eventId      String
+  organizerId  String
+  grossAmount  Int          // centavos
+  platformFee  Int          // centavos
+  netAmount    Int          // centavos
+  status       PayoutStatus @default(PENDING)
+  processedAt  DateTime?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  event     Event            @relation(fields: [eventId], references: [id])
+  organizer OrganizerProfile @relation(fields: [organizerId], references: [id])
+
+  @@map("transfer_payouts")
+}
+
+// ─── Results ──────────────────────────────────────────────────────────────────
+
+model ResultImport {
+  id          String   @id @default(cuid())
+  eventId     String
+  importedBy  String
+  fileName    String
+  rowCount    Int
+  errorCount  Int      @default(0)
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  event   Event        @relation(fields: [eventId], references: [id])
+  results RaceResult[]
+
+  @@map("result_imports")
+}
+
+model RaceResult {
+  id                  String @id @default(cuid())
+  importId            String
+  eventId             String
+  bibNumber           String
+  athleteName         String
+  route               String?
+  category            String?
+  gender              String?
+  grossTime           String?
+  netTime             String?
+  placementGeneral    Int?
+  placementCategory   Int?
+  placementGender     Int?
+
+  import ResultImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, bibNumber])
+  @@index([eventId, athleteName])
+  @@map("race_results")
+}
+
+// ─── Audit & Files ────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model FileAsset {
+  id          String   @id @default(cuid())
+  eventId     String?
+  uploadedBy  String
+  fileName    String
+  fileKey     String   @unique
+  fileUrl     String
+  mimeType    String
+  sizeBytes   Int
+  purpose     String   // "banner", "regulation", "kit_info"
+  createdAt   DateTime @default(now())
+
+  event Event? @relation(fields: [eventId], references: [id])
+
+  @@map("file_assets")
+}
