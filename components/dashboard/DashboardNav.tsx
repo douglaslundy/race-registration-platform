@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Início", exact: true },
   { href: "/dashboard/inscricoes", label: "Inscrições" },
   { href: "/dashboard/pagamentos", label: "Pagamentos" },
-  { href: "/dashboard/perfil", label: "Perfil" },
+  { href: "/dashboard/perfil", label: "Meus Dados" },
 ];
 
 export default function DashboardNav({ userName, userRole }: { userName: string; userRole: string }) {

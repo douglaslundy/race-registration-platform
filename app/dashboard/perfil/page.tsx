@@ -31,6 +31,11 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
+
   useEffect(() => {
     fetch("/api/athlete/profile")
       .then((r) => r.json())
@@ -58,15 +63,43 @@ export default function PerfilPage() {
     setTimeout(() => setSaved(false), 3000);
   }
 
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError(null);
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError("A nova senha e a confirmação não coincidem.");
+      return;
+    }
+    if (pwForm.next.length < 8) {
+      setPwError("A nova senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    setPwSaving(true);
+    const res = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
+    });
+    const data = await res.json();
+    setPwSaving(false);
+    if (!res.ok) {
+      setPwError(data.error ?? "Erro ao alterar senha.");
+    } else {
+      setPwSuccess(true);
+      setPwForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => setPwSuccess(false), 4000);
+    }
+  }
+
   function set(field: keyof ProfileData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value || null }));
   }
 
-  if (loading) return <div className="text-sm text-gray-500">Carregando perfil...</div>;
+  if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Meu Perfil</h1>
+      <h1 className="text-2xl font-bold">Meus Dados</h1>
 
       <div className="card">
         <h2 className="font-semibold text-gray-900 mb-1">Dados da conta</h2>
@@ -156,7 +189,54 @@ export default function PerfilPage() {
         </div>
 
         <button type="submit" disabled={saving} className="btn-primary w-full">
-          {saving ? "Salvando..." : saved ? "Salvo com sucesso!" : "Salvar perfil"}
+          {saving ? "Salvando..." : saved ? "Salvo com sucesso!" : "Salvar dados"}
+        </button>
+      </form>
+
+      <form onSubmit={handlePasswordChange} className="card space-y-4">
+        <h2 className="font-semibold text-gray-900">Alterar senha</h2>
+        {pwError && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{pwError}</div>
+        )}
+        {pwSuccess && (
+          <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Senha alterada com sucesso!</div>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+          <input
+            type="password"
+            value={pwForm.current}
+            onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))}
+            className="input w-full"
+            required
+            autoComplete="current-password"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+          <input
+            type="password"
+            value={pwForm.next}
+            onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))}
+            className="input w-full"
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+          <input
+            type="password"
+            value={pwForm.confirm}
+            onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))}
+            className="input w-full"
+            required
+            autoComplete="new-password"
+          />
+        </div>
+        <button type="submit" disabled={pwSaving} className="btn-primary w-full">
+          {pwSaving ? "Alterando..." : "Alterar senha"}
         </button>
       </form>
     </div>
