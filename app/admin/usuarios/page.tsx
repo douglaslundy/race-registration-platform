@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import type { UserRole } from "@prisma/client";
 import type { Metadata } from "next";
+import { BADGE } from "@/lib/badge-colors";
 
 export const metadata: Metadata = { title: "Usuários — Admin" };
 
@@ -15,11 +16,11 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const ROLE_COLOR: Record<UserRole, string> = {
-  ATHLETE: "bg-gray-100 text-gray-700",
-  ORGANIZER: "bg-blue-100 text-blue-700",
-  ADMIN: "bg-red-100 text-red-700",
-  SUPPORT: "bg-yellow-100 text-yellow-700",
-  PARTNER: "bg-purple-100 text-purple-700",
+  ATHLETE:   BADGE.gray,
+  ORGANIZER: BADGE.blue,
+  ADMIN:     BADGE.red,
+  SUPPORT:   BADGE.yellow,
+  PARTNER:   BADGE.purple,
 };
 
 export default async function AdminUsuariosPage() {

@@ -2,13 +2,14 @@ import { requireAuth } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { BADGE } from "@/lib/badge-colors";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: "Aguardando pagamento", color: "bg-yellow-100 text-yellow-700" },
-  CONFIRMED:       { label: "Confirmada", color: "bg-green-100 text-green-700" },
-  CANCELLED:       { label: "Cancelada", color: "bg-red-100 text-red-700" },
-  TRANSFERRED:     { label: "Transferida", color: "bg-blue-100 text-blue-700" },
-  WAITLISTED:      { label: "Lista de espera", color: "bg-gray-100 text-gray-600" },
+  PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
+  CONFIRMED:       { label: "Confirmada", color: BADGE.green },
+  CANCELLED:       { label: "Cancelada", color: BADGE.red },
+  TRANSFERRED:     { label: "Transferida", color: BADGE.blue },
+  WAITLISTED:      { label: "Lista de espera", color: BADGE.gray },
 };
 
 export default async function DashboardHome() {
@@ -68,7 +69,7 @@ export default async function DashboardHome() {
                 <Link
                   key={r.id}
                   href={`/dashboard/inscricoes/${r.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                 >
                   <div>
                     <p className="font-medium text-gray-900 text-sm">{r.event.title}</p>
@@ -91,11 +92,11 @@ export default async function DashboardHome() {
         )}
       </div>
 
-      <div className="card bg-primary-50 border-primary-200">
+      <div className="card bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-primary-900">Próximos eventos</p>
-            <p className="text-sm text-primary-700 mt-1">Encontre sua próxima corrida</p>
+            <p className="font-semibold text-primary-900 dark:text-primary-300">Próximos eventos</p>
+            <p className="text-sm text-primary-700 dark:text-primary-400 mt-1">Encontre sua próxima corrida</p>
           </div>
           <Link href="/eventos" className="btn-primary text-sm">Ver eventos</Link>
         </div>

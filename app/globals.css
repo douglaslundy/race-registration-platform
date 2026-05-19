@@ -11,6 +11,32 @@
   body {
     @apply bg-white text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
   }
+
+  /* Dark mode: force light text on elements that hardcode dark grays */
+  .dark label {
+    @apply text-gray-300;
+  }
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4 {
+    @apply text-gray-100;
+  }
+  .dark p {
+    @apply text-gray-300;
+  }
+  .dark table thead th {
+    @apply text-gray-300 bg-gray-800;
+  }
+  .dark table tbody tr {
+    @apply border-gray-700;
+  }
+  .dark table tbody td {
+    @apply text-gray-300;
+  }
+  .dark table tbody tr:hover {
+    @apply bg-gray-800/50;
+  }
 }
 
 @layer components {

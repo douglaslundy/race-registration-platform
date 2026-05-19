@@ -5,15 +5,17 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Auditoria — Admin" };
 
+import { BADGE } from "@/lib/badge-colors";
+
 const ACTION_COLOR: Record<string, string> = {
-  EVENT_CREATED: "bg-blue-100 text-blue-700",
-  EVENT_UPDATED: "bg-yellow-100 text-yellow-700",
-  EVENT_CANCELLED: "bg-red-100 text-red-600",
-  REGISTRATION_CANCELLED: "bg-red-100 text-red-600",
-  USER_ROLE_CHANGED: "bg-purple-100 text-purple-700",
-  USER_DEACTIVATED: "bg-red-100 text-red-600",
-  USER_ACTIVATED: "bg-green-100 text-green-700",
-  CHECKOUT_COMPLETED: "bg-green-100 text-green-700",
+  EVENT_CREATED:          BADGE.blue,
+  EVENT_UPDATED:          BADGE.yellow,
+  EVENT_CANCELLED:        BADGE.red,
+  REGISTRATION_CANCELLED: BADGE.red,
+  USER_ROLE_CHANGED:      BADGE.purple,
+  USER_DEACTIVATED:       BADGE.red,
+  USER_ACTIVATED:         BADGE.green,
+  CHECKOUT_COMPLETED:     BADGE.green,
 };
 
 export default async function AuditoriaPage({
@@ -130,7 +132,7 @@ export default async function AuditoriaPage({
                     )}
                   </td>
                   <td className="py-2 pr-4">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ACTION_COLOR[log.action] ?? "bg-gray-100 text-gray-600"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ACTION_COLOR[log.action] ?? BADGE.gray}`}>
                       {log.action}
                     </span>
                   </td>

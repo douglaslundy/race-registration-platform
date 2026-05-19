@@ -10,15 +10,17 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
 
+import { BADGE } from "@/lib/badge-colors";
+
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  DRAFT:                { label: "Rascunho", color: "bg-gray-100 text-gray-600" },
-  UNDER_REVIEW:         { label: "Em análise", color: "bg-yellow-100 text-yellow-700" },
-  PUBLISHED:            { label: "Publicado", color: "bg-blue-100 text-blue-700" },
-  REGISTRATIONS_OPEN:   { label: "Inscrições abertas", color: "bg-green-100 text-green-700" },
-  SOLD_OUT:             { label: "Esgotado", color: "bg-orange-100 text-orange-700" },
-  REGISTRATIONS_CLOSED: { label: "Inscrições encerradas", color: "bg-gray-100 text-gray-600" },
-  COMPLETED:            { label: "Concluído", color: "bg-green-100 text-green-800" },
-  CANCELLED:            { label: "Cancelado", color: "bg-red-100 text-red-600" },
+  DRAFT:                { label: "Rascunho", color: BADGE.gray },
+  UNDER_REVIEW:         { label: "Em análise", color: BADGE.yellow },
+  PUBLISHED:            { label: "Publicado", color: BADGE.blue },
+  REGISTRATIONS_OPEN:   { label: "Inscrições abertas", color: BADGE.green },
+  SOLD_OUT:             { label: "Esgotado", color: BADGE.orange },
+  REGISTRATIONS_CLOSED: { label: "Inscrições encerradas", color: BADGE.gray },
+  COMPLETED:            { label: "Concluído", color: BADGE.green },
+  CANCELLED:            { label: "Cancelado", color: BADGE.red },
 };
 
 export default async function OrganizerEventPage({ params }: { params: Promise<{ id: string }> }) {

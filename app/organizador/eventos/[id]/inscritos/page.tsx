@@ -7,12 +7,14 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
+import { BADGE } from "@/lib/badge-colors";
+
 const STATUS_COLOR: Record<string, string> = {
-  PENDING_PAYMENT: "bg-yellow-100 text-yellow-700",
-  CONFIRMED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-600",
-  TRANSFERRED: "bg-blue-100 text-blue-700",
-  WAITLISTED: "bg-gray-100 text-gray-600",
+  PENDING_PAYMENT: BADGE.yellow,
+  CONFIRMED:       BADGE.green,
+  CANCELLED:       BADGE.red,
+  TRANSFERRED:     BADGE.blue,
+  WAITLISTED:      BADGE.gray,
 };
 
 export default async function InscritosPage({ params }: { params: Promise<{ id: string }> }) {

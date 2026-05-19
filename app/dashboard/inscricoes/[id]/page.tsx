@@ -9,12 +9,14 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe da Inscrição" };
 
+import { BADGE } from "@/lib/badge-colors";
+
 const STATUS_INFO: Record<string, { label: string; color: string; icon: string }> = {
-  PENDING_PAYMENT: { label: "Aguardando pagamento", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: "⏳" },
-  CONFIRMED:       { label: "Inscrição confirmada", color: "bg-green-100 text-green-800 border-green-200", icon: "✅" },
-  CANCELLED:       { label: "Inscrição cancelada", color: "bg-red-100 text-red-800 border-red-200", icon: "❌" },
-  TRANSFERRED:     { label: "Inscrição transferida", color: "bg-blue-100 text-blue-800 border-blue-200", icon: "🔄" },
-  WAITLISTED:      { label: "Lista de espera", color: "bg-gray-100 text-gray-800 border-gray-200", icon: "🕐" },
+  PENDING_PAYMENT: { label: "Aguardando pagamento", color: `${BADGE.yellow} border border-yellow-200 dark:border-yellow-800`, icon: "⏳" },
+  CONFIRMED:       { label: "Inscrição confirmada", color: `${BADGE.green} border border-green-200 dark:border-green-800`, icon: "✅" },
+  CANCELLED:       { label: "Inscrição cancelada", color: `${BADGE.red} border border-red-200 dark:border-red-800`, icon: "❌" },
+  TRANSFERRED:     { label: "Inscrição transferida", color: `${BADGE.blue} border border-blue-200 dark:border-blue-800`, icon: "🔄" },
+  WAITLISTED:      { label: "Lista de espera", color: `${BADGE.gray} border border-gray-200 dark:border-gray-600`, icon: "🕐" },
 };
 
 export default async function InscricaoDetalhePage({ params }: { params: Promise<{ id: string }> }) {

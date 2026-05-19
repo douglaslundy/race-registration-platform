@@ -3,13 +3,14 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { RegistrationStatus } from "@prisma/client";
+import { BADGE } from "@/lib/badge-colors";
 
 const STATUS_LABEL: Record<RegistrationStatus, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: "Aguardando pagamento", color: "bg-yellow-100 text-yellow-700" },
-  CONFIRMED:       { label: "Confirmada", color: "bg-green-100 text-green-700" },
-  CANCELLED:       { label: "Cancelada", color: "bg-red-100 text-red-600" },
-  TRANSFERRED:     { label: "Transferida", color: "bg-blue-100 text-blue-700" },
-  WAITLISTED:      { label: "Lista de espera", color: "bg-gray-100 text-gray-600" },
+  PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
+  CONFIRMED:       { label: "Confirmada", color: BADGE.green },
+  CANCELLED:       { label: "Cancelada", color: BADGE.red },
+  TRANSFERRED:     { label: "Transferida", color: BADGE.blue },
+  WAITLISTED:      { label: "Lista de espera", color: BADGE.gray },
 };
 
 export default async function InscricoesPage() {

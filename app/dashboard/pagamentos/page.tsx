@@ -13,13 +13,15 @@ const METHOD_LABEL: Record<string, string> = {
   BOLETO: "Boleto",
 };
 
+import { BADGE } from "@/lib/badge-colors";
+
 const STATUS_INFO: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "Aguardando", color: "bg-yellow-100 text-yellow-700" },
-  PAID:    { label: "Pago", color: "bg-green-100 text-green-700" },
-  EXPIRED: { label: "Expirado", color: "bg-gray-100 text-gray-600" },
-  CANCELLED: { label: "Cancelado", color: "bg-red-100 text-red-600" },
-  REFUNDED: { label: "Reembolsado", color: "bg-blue-100 text-blue-700" },
-  CHARGEBACK: { label: "Chargeback", color: "bg-purple-100 text-purple-700" },
+  PENDING:    { label: "Aguardando", color: BADGE.yellow },
+  PAID:       { label: "Pago", color: BADGE.green },
+  EXPIRED:    { label: "Expirado", color: BADGE.gray },
+  CANCELLED:  { label: "Cancelado", color: BADGE.red },
+  REFUNDED:   { label: "Reembolsado", color: BADGE.blue },
+  CHARGEBACK: { label: "Chargeback", color: BADGE.purple },
 };
 
 export default async function PagamentosPage() {

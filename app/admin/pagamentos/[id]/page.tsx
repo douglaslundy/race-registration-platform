@@ -7,13 +7,15 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe do Pagamento — Admin" };
 
+import { BADGE } from "@/lib/badge-colors";
+
 const STATUS_COLOR: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-700",
-  PAID: "bg-green-100 text-green-700",
-  EXPIRED: "bg-gray-100 text-gray-500",
-  CANCELLED: "bg-red-100 text-red-600",
-  REFUNDED: "bg-blue-100 text-blue-700",
-  CHARGEBACK: "bg-purple-100 text-purple-700",
+  PENDING:    BADGE.yellow,
+  PAID:       BADGE.green,
+  EXPIRED:    BADGE.gray,
+  CANCELLED:  BADGE.red,
+  REFUNDED:   BADGE.blue,
+  CHARGEBACK: BADGE.purple,
 };
 
 const METHOD_LABEL: Record<string, string> = {

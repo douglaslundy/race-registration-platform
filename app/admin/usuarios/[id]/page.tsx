@@ -58,8 +58,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           </div>
         </div>
         <div className="flex gap-3 text-sm">
-          <span className="bg-gray-100 px-2 py-1 rounded">Role: <strong>{ROLE_LABELS[user.role]}</strong></span>
-          <span className={`px-2 py-1 rounded ${user.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+          <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded">Role: <strong>{ROLE_LABELS[user.role]}</strong></span>
+          <span className={`px-2 py-1 rounded ${user.active ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"}`}>
             {user.active ? "Ativo" : "Bloqueado"}
           </span>
         </div>
