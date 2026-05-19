@@ -28,7 +28,7 @@ export default function AppNameForm({ currentName }: { currentName: string }) {
         return;
       }
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => setSaved(false), 4000);
       router.refresh();
     } finally {
       setSaving(false);
@@ -37,6 +37,11 @@ export default function AppNameForm({ currentName }: { currentName: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {saved && (
+        <div className="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded px-3 py-2">
+          Nome do portal atualizado com sucesso!
+        </div>
+      )}
       {error && (
         <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded px-3 py-2 font-mono break-all">
           {error}
