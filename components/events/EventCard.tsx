@@ -29,10 +29,10 @@ const MODALITY_LABELS: Record<EventModality, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  REGISTRATIONS_OPEN: { label: "Inscrições abertas", color: "bg-green-100 text-green-700" },
-  SOLD_OUT: { label: "Esgotado", color: "bg-red-100 text-red-700" },
-  PUBLISHED: { label: "Em breve", color: "bg-yellow-100 text-yellow-700" },
-  REGISTRATIONS_CLOSED: { label: "Encerrado", color: "bg-gray-100 text-gray-600" },
+  REGISTRATIONS_OPEN: { label: "Inscrições abertas", color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  SOLD_OUT: { label: "Esgotado", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  PUBLISHED: { label: "Em breve", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  REGISTRATIONS_CLOSED: { label: "Encerrado", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
 };
 
 export default function EventCard({ event }: EventCardProps) {
@@ -41,8 +41,8 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <Link href={`/eventos/${event.slug}`} className="block group">
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-        <div className="relative h-40 bg-gradient-to-br from-primary-100 to-primary-200">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+        <div className="relative h-40 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30">
           {event.bannerUrl ? (
             <Image src={event.bannerUrl} alt={event.title} fill className="object-cover" />
           ) : (
@@ -54,7 +54,7 @@ export default function EventCard({ event }: EventCardProps) {
 
         <div className="p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <span className="text-xs text-primary-600 font-medium">
+            <span className="text-xs text-primary-600 dark:text-primary-400 font-medium">
               {MODALITY_LABELS[event.modality]}
             </span>
             {badge && (
@@ -64,18 +64,18 @@ export default function EventCard({ event }: EventCardProps) {
             )}
           </div>
 
-          <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors line-clamp-2">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary-700 dark:group-hover:text-primary-400 transition-colors line-clamp-2">
             {event.title}
           </h3>
 
-          <div className="mt-2 space-y-1 text-xs text-gray-500">
+          <div className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
             <p>📅 {formatDate(event.startAt)}</p>
             <p>📍 {event.city}/{event.state}</p>
           </div>
 
           {lowestBatch && (
-            <div className="mt-3 pt-3 border-t">
-              <span className="text-primary-600 font-bold">
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <span className="text-primary-600 dark:text-primary-400 font-bold">
                 A partir de {formatCurrency(lowestBatch.priceAmount)}
               </span>
             </div>

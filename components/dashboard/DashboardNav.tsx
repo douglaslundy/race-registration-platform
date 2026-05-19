@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Início", exact: true },
@@ -15,11 +16,11 @@ export default function DashboardNav({ userName, userRole }: { userName: string;
   const pathname = usePathname();
 
   return (
-    <nav className="bg-white border-b">
+    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-1">
-            <Link href="/" className="font-bold text-primary-700 mr-4 text-sm">🏃 Corridas App</Link>
+            <Link href="/" className="font-bold text-primary-700 dark:text-primary-400 mr-4 text-sm">🏃 Corridas App</Link>
             {NAV_LINKS.map((l) => {
               const active = l.exact ? pathname === l.href : pathname.startsWith(l.href);
               return (
@@ -27,7 +28,9 @@ export default function DashboardNav({ userName, userRole }: { userName: string;
                   key={l.href}
                   href={l.href}
                   className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                    active ? "bg-primary-50 text-primary-700" : "text-gray-600 hover:text-gray-900"
+                    active
+                      ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                      : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
                   }`}
                 >
                   {l.label}
@@ -35,16 +38,17 @@ export default function DashboardNav({ userName, userRole }: { userName: string;
               );
             })}
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-gray-500 hidden sm:block">{userName}</span>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500 dark:text-gray-400 hidden sm:block">{userName}</span>
             {(userRole === "ADMIN" || userRole === "ORGANIZER") && (
               <Link
                 href={userRole === "ADMIN" ? "/admin" : "/organizador"}
-                className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-medium"
+                className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded font-medium"
               >
                 {userRole === "ADMIN" ? "Admin" : "Organizador"}
               </Link>
             )}
+            <ThemeToggle />
             <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-secondary text-xs px-3 py-1">
               Sair
             </button>

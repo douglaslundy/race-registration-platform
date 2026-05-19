@@ -38,19 +38,19 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail</label>
         <input type="email" {...register("email")} className="input-field" placeholder="seu@email.com" />
         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha</label>
         <input type="password" {...register("password")} className="input-field" placeholder="••••••••" />
         {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
           {error}
         </div>
       )}
@@ -59,13 +59,13 @@ export default function LoginForm() {
         {isSubmitting ? "Entrando..." : "Entrar"}
       </button>
 
-      <p className="text-center text-sm text-gray-600">
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400">
         <Link href="/auth/recuperar-senha" className="text-gray-500 hover:underline">
           Esqueceu sua senha?
         </Link>
       </p>
 
-      <p className="text-center text-sm text-gray-600">
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400">
         Não tem conta?{" "}
         <Link href="/auth/cadastro" className="text-primary-600 hover:underline font-medium">
           Cadastre-se

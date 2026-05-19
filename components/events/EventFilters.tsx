@@ -37,10 +37,10 @@ export default function EventFilters({ cities }: EventFiltersProps) {
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-gray-900">Filtros</h3>
+      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Filtros</h3>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Modalidade</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Modalidade</label>
         <select
           className="input-field"
           value={searchParams.get("modalidade") || ""}
@@ -53,7 +53,7 @@ export default function EventFilters({ cities }: EventFiltersProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade</label>
         <select
           className="input-field"
           value={searchParams.get("cidade") || ""}
@@ -67,7 +67,7 @@ export default function EventFilters({ cities }: EventFiltersProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">A partir de</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">A partir de</label>
         <input
           type="date"
           className="input-field"

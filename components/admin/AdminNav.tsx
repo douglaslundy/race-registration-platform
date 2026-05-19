@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 
 export default function AdminNav() {
   return (
-    <nav className="bg-gray-900 text-white px-4 py-3">
+    <nav className="bg-gray-900 dark:bg-gray-950 text-white px-4 py-3 border-b border-gray-800">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6 text-sm">
           <Link href="/admin" className="font-bold text-yellow-400">Admin</Link>
@@ -17,9 +18,12 @@ export default function AdminNav() {
           <Link href="/admin/auditoria" className="hover:text-gray-300">Auditoria</Link>
           <Link href="/admin/configuracoes" className="hover:text-gray-300">Config.</Link>
         </div>
-        <button onClick={() => signOut({ callbackUrl: "/" })} className="text-sm text-gray-400 hover:text-white">
-          Sair
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle className="text-gray-400 hover:text-white hover:bg-gray-800" />
+          <button onClick={() => signOut({ callbackUrl: "/" })} className="text-sm text-gray-400 hover:text-white">
+            Sair
+          </button>
+        </div>
       </div>
     </nav>
   );
