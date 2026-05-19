@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import LoginForm from "@/components/auth/LoginForm";
 import { getAppName } from "@/lib/settings";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Entrar" };
 
 export default async function LoginPage() {

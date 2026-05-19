@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import RegisterForm from "@/components/auth/RegisterForm";
 import { getAppName } from "@/lib/settings";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Criar Conta" };
 
 export default async function CadastroPage() {
