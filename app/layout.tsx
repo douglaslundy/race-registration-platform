@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/components/layout/Providers";
+import { getAppName } from "@/lib/settings";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Corridas App — Inscrições Esportivas",
-    template: "%s | Corridas App",
-  },
-  description: "Plataforma de inscrições para corridas de rua, trail run, ciclismo e mais.",
-  keywords: ["corridas", "inscrições", "corrida de rua", "trail run", "esportes"],
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const appName = await getAppName();
+  return {
+    title: {
+      default: `${appName} — Inscrições Esportivas`,
+      template: `%s | ${appName}`,
+    },
+    description: "Plataforma de inscrições para corridas de rua, trail run, ciclismo e mais.",
+    keywords: ["corridas", "inscrições", "corrida de rua", "trail run", "esportes"],
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

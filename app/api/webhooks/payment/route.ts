@@ -123,6 +123,8 @@ export async function POST(req: NextRequest) {
     const buyer = payment.order.buyer;
     const regId = payment.order.registrations[0]?.id;
     if (buyer && regId) {
+      const { getAppName } = await import("@/lib/settings");
+      const appName = await getAppName();
       const nodemailer = await import("nodemailer");
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
@@ -134,7 +136,7 @@ export async function POST(req: NextRequest) {
         .sendMail({
           from: process.env.EMAIL_FROM ?? "noreply@example.com",
           to: buyer.email,
-          subject: "Inscrição confirmada! — Corridas App",
+          subject: `Inscrição confirmada! — ${appName}`,
           html: `<p>Olá ${buyer.name},</p><p>Pagamento confirmado! Sua inscrição está garantida 🏅</p><p><a href="${url}">Ver detalhes</a></p>`,
         })
         .catch(() => {});

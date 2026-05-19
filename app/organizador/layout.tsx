@@ -1,12 +1,12 @@
 import { requireOrganizer } from "@/lib/auth/rbac";
+import { getAppName } from "@/lib/settings";
 import OrganizerNav from "@/components/organizer/OrganizerNav";
 
 export default async function OrganizerLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireOrganizer();
-
+  const [session, appName] = await Promise.all([requireOrganizer(), getAppName()]);
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <OrganizerNav userName={session.user.name} />
+      <OrganizerNav userName={session.user.name} appName={appName} />
       <div className="max-w-7xl mx-auto px-4 py-8">{children}</div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getAppName } from "@/lib/settings";
 import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -21,9 +22,8 @@ export async function POST(req: NextRequest) {
   });
 
   const resetUrl = `${process.env.NEXTAUTH_URL}/auth/nova-senha?token=${token}&email=${encodeURIComponent(email)}`;
+  const appName = await getAppName();
 
-  // In production, send email via nodemailer
-  // For now, log to console (dev) or skip silently
   if (process.env.NODE_ENV === "development") {
     console.log(`[PASSWORD RESET] ${email} → ${resetUrl}`);
   } else if (process.env.SMTP_HOST) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM ?? "noreply@example.com",
       to: email,
-      subject: "Recuperação de senha — Corridas App",
+      subject: `Recuperação de senha — ${appName}`,
       html: `<p>Clique no link para redefinir sua senha (válido por 1 hora):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
     });
   }

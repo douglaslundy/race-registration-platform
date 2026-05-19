@@ -4,12 +4,12 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
-export default function OrganizerNav({ userName }: { userName: string }) {
+export default function OrganizerNav({ userName, appName }: { userName: string; appName: string }) {
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="font-bold text-primary-700 dark:text-primary-400">Corridas App</Link>
+          <Link href="/" className="font-bold text-primary-700 dark:text-primary-400">{appName}</Link>
           <div className="hidden md:flex items-center gap-4 text-sm">
             <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
             <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>

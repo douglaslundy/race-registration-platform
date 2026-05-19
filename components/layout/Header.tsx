@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 
-export default function Header() {
+export default function Header({ appName }: { appName: string }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -20,7 +20,7 @@ export default function Header() {
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="font-bold text-xl text-primary-700 dark:text-primary-400 flex items-center gap-2">
-          🏃 Corridas App
+          🏃 {appName}
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-300">

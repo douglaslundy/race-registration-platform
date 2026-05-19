@@ -8,6 +8,8 @@ import type { ShirtSize, PaymentMethod } from "@prisma/client";
 
 async function sendConfirmationEmail(email: string, name: string, registrationId: string) {
   if (!process.env.SMTP_HOST) return;
+  const { getAppName } = await import("@/lib/settings");
+  const appName = await getAppName();
   const nodemailer = await import("nodemailer");
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -18,7 +20,7 @@ async function sendConfirmationEmail(email: string, name: string, registrationId
   await transporter.sendMail({
     from: process.env.EMAIL_FROM ?? "noreply@example.com",
     to: email,
-    subject: "Inscrição confirmada! — Corridas App",
+    subject: `Inscrição confirmada! — ${appName}`,
     html: `<p>Olá ${name},</p><p>Sua inscrição foi confirmada com sucesso! 🏅</p><p><a href="${url}">Ver detalhes da inscrição</a></p>`,
   });
 }

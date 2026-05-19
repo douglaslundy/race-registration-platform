@@ -12,7 +12,15 @@ const NAV_LINKS = [
   { href: "/dashboard/perfil", label: "Meus Dados" },
 ];
 
-export default function DashboardNav({ userName, userRole }: { userName: string; userRole: string }) {
+export default function DashboardNav({
+  userName,
+  userRole,
+  appName,
+}: {
+  userName: string;
+  userRole: string;
+  appName: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -20,7 +28,7 @@ export default function DashboardNav({ userName, userRole }: { userName: string;
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-1">
-            <Link href="/" className="font-bold text-primary-700 dark:text-primary-400 mr-4 text-sm">🏃 Corridas App</Link>
+            <Link href="/" className="font-bold text-primary-700 dark:text-primary-400 mr-4 text-sm">🏃 {appName}</Link>
             {NAV_LINKS.map((l) => {
               const active = l.exact ? pathname === l.href : pathname.startsWith(l.href);
               return (
