@@ -20,9 +20,14 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  await upsertSetting(parsed.data.key, parsed.data.value);
+  try {
+    await upsertSetting(parsed.data.key, parsed.data.value);
+  } catch (err) {
+    console.error("[settings] upsertSetting failed:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 
-  // Invalidate all cached pages so the new name renders immediately
   revalidatePath("/", "layout");
 
   return NextResponse.json({ ok: true });

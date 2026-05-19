@@ -9,23 +9,40 @@ export default function AppNameForm({ currentName }: { currentName: string }) {
   const [saved, setSaved] = useState(false);
   const router = useRouter();
 
+  const [error, setError] = useState<string | null>(null);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!value.trim()) return;
     setSaving(true);
-    await fetch("/api/admin/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "app_name", value: value.trim() }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    router.refresh();
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "app_name", value: value.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? `Erro ${res.status}`);
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-3">
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {error && (
+        <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded px-3 py-2 font-mono break-all">
+          {error}
+        </div>
+      )}
+      <div className="flex items-center gap-3">
       <input
         type="text"
         value={value}
@@ -38,6 +55,7 @@ export default function AppNameForm({ currentName }: { currentName: string }) {
       <button type="submit" disabled={saving} className="btn-primary px-6">
         {saving ? "Salvando..." : saved ? "Salvo!" : "Salvar"}
       </button>
+      </div>
     </form>
   );
 }
