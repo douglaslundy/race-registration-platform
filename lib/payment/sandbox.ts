@@ -17,7 +17,7 @@ export class SandboxPaymentProvider implements PaymentProvider {
     return { providerPaymentId: id, status: "PAID" };
   }
 
-  verifyWebhookSignature(_payload: string, signature: string): boolean {
+  async verifyWebhookSignature(_payload: string, signature: string): Promise<boolean> {
     return signature === (process.env.PAYMENT_WEBHOOK_SECRET ?? "sandbox-secret");
   }
 

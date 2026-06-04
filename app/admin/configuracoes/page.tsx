@@ -4,7 +4,9 @@ import { getAppName, getSetting } from "@/lib/settings";
 import SetPlatformFeeForm from "@/components/admin/SetPlatformFeeForm";
 import AppNameForm from "@/components/admin/AppNameForm";
 import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
+import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
+import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -14,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, recentLogs] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, recentLogs] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -22,6 +24,9 @@ export default async function ConfiguracoesPage() {
     }),
     getAppName(),
     getSetting("enabled_payment_methods"),
+    getPaymentProviderSetting(),
+    getSetting("mp_access_token"),
+    getSetting("mp_webhook_secret"),
     db.auditLog.findMany({
       where: {
         OR: [
@@ -53,6 +58,18 @@ export default async function ConfiguracoesPage() {
           Selecione quais opções aparecem no checkout e podem ser usadas pelos atletas.
         </p>
         <PaymentMethodsForm currentMethods={parseEnabledPaymentMethods(enabledPaymentMethods)} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Gateway de pagamento</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Configure o provedor e as credenciais usadas para criar cobranças e validar webhooks.
+        </p>
+        <PaymentGatewayForm
+          currentProvider={paymentProvider}
+          accessTokenConfigured={Boolean(accessToken)}
+          webhookSecretConfigured={Boolean(webhookSecret)}
+        />
       </div>
 
       <div className="card space-y-4">

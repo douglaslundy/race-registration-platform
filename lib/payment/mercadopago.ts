@@ -1,5 +1,6 @@
 import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
 import crypto from "crypto";
+import { getMercadoPagoAccessToken, getMercadoPagoWebhookSecret } from "@/lib/payment-settings";
 import type {
   PaymentProvider,
   CreatePaymentInput,
@@ -7,15 +8,15 @@ import type {
   PaymentWebhookPayload,
 } from "./types";
 
-function getClient() {
-  const token = process.env.MP_ACCESS_TOKEN;
+async function getClient() {
+  const token = await getMercadoPagoAccessToken();
   if (!token) throw new Error("MP_ACCESS_TOKEN não configurado");
   return new MercadoPagoConfig({ accessToken: token, options: { timeout: 10000 } });
 }
 
 export class MercadoPagoProvider implements PaymentProvider {
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
-    const client = getClient();
+    const client = await getClient();
     const amountBRL = input.amount / 100;
     const [firstName, ...rest] = input.buyer.name.split(" ");
     const lastName = rest.join(" ") || firstName;
@@ -122,8 +123,8 @@ export class MercadoPagoProvider implements PaymentProvider {
     };
   }
 
-  verifyWebhookSignature(payload: string, signature: string): boolean {
-    const secret = process.env.MP_WEBHOOK_SECRET;
+  async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {
+    const secret = await getMercadoPagoWebhookSecret();
     if (!secret) return true; // skip verification if not configured
 
     // MP signature format: ts=<timestamp>,v1=<hash>

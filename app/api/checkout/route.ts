@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   const idempotencyKey = `${checkout.orderId}_${paymentMethod}_${Date.now()}`;
-  const provider = getPaymentProvider();
+  const provider = await getPaymentProvider();
   const [buyer, athleteProfile] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },

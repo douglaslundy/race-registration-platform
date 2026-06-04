@@ -32,6 +32,6 @@ export interface PaymentWebhookPayload {
 
 export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
-  verifyWebhookSignature(payload: string, signature: string): boolean;
+  verifyWebhookSignature(payload: string, signature: string): Promise<boolean>;
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload;
 }

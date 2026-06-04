@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
+import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 
 async function fetchMPPaymentStatus(
   paymentId: string
 ): Promise<{ status: string; paidAt?: string } | null> {
-  const token = process.env.MP_ACCESS_TOKEN;
+  const token = await getMercadoPagoAccessToken();
   if (!token) return null;
   try {
     const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -32,9 +33,9 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-signature") ?? req.headers.get("x-webhook-signature") ?? "";
 
-  const provider = getPaymentProvider();
+  const provider = await getPaymentProvider();
 
-  if (!provider.verifyWebhookSignature(rawBody, signature)) {
+  if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
 

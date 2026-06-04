@@ -1,9 +1,10 @@
 import type { PaymentProvider } from "./types";
 import { SandboxPaymentProvider } from "./sandbox";
 import { MercadoPagoProvider } from "./mercadopago";
+import { getPaymentProviderSetting } from "@/lib/payment-settings";
 
-export function getPaymentProvider(): PaymentProvider {
-  const provider = process.env.PAYMENT_PROVIDER ?? "sandbox";
+export async function getPaymentProvider(): Promise<PaymentProvider> {
+  const provider = await getPaymentProviderSetting();
   if (provider === "sandbox") return new SandboxPaymentProvider();
   if (provider === "mercadopago") return new MercadoPagoProvider();
   throw new Error(`Payment provider "${provider}" not implemented`);

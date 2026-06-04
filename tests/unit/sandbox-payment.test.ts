@@ -33,9 +33,9 @@ describe("SandboxPaymentProvider", () => {
     expect(result.status).toBe("PAID");
   });
 
-  it("verifies webhook signature", () => {
-    expect(provider.verifyWebhookSignature("payload", "sandbox-secret")).toBe(true);
-    expect(provider.verifyWebhookSignature("payload", "wrong-secret")).toBe(false);
+  it("verifies webhook signature", async () => {
+    expect(await provider.verifyWebhookSignature("payload", "sandbox-secret")).toBe(true);
+    expect(await provider.verifyWebhookSignature("payload", "wrong-secret")).toBe(false);
   });
 
   it("parses webhook payload", () => {
