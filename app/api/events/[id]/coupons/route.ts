@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const couponSchema = z.object({
-  code: z.string().min(3).toUpperCase(),
+  code: z.string().trim().min(3).toUpperCase(),
   discountType: z.enum(["PERCENT", "FIXED"]),
   discountValue: z.number().positive(),
   maxUses: z.number().int().positive().optional().nullable(),

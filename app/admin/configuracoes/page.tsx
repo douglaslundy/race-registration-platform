@@ -1,22 +1,38 @@
 import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { getAppName } from "@/lib/settings";
+import { getAppName, getSetting } from "@/lib/settings";
 import SetPlatformFeeForm from "@/components/admin/SetPlatformFeeForm";
 import AppNameForm from "@/components/admin/AppNameForm";
+import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
+import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Configurações — Admin" };
+export const dynamic = "force-dynamic";
 
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, recentLogs] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
       orderBy: { title: "asc" },
     }),
     getAppName(),
+    getSetting("enabled_payment_methods"),
+    db.auditLog.findMany({
+      where: {
+        OR: [
+          { action: "SETTING_UPDATED", entityType: "PlatformSetting" },
+          { action: "EVENT_FEE_UPDATED", entityType: "Event" },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      include: { user: { select: { name: true } } },
+    }),
   ]);
 
   return (
@@ -32,6 +48,14 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Meios de pagamento</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Selecione quais opções aparecem no checkout e podem ser usadas pelos atletas.
+        </p>
+        <PaymentMethodsForm currentMethods={parseEnabledPaymentMethods(enabledPaymentMethods)} />
+      </div>
+
+      <div className="card space-y-4">
         <h2 className="font-semibold text-lg dark:text-gray-100">Taxa da plataforma por evento</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           A taxa é configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
@@ -42,6 +66,36 @@ export default async function ConfiguracoesPage() {
           <div className="space-y-2">
             {events.map((event) => (
               <SetPlatformFeeForm key={event.id} event={event} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Últimas alterações</h2>
+        {recentLogs.length === 0 ? (
+          <p className="text-sm text-gray-500">Nenhuma alteração registrada ainda.</p>
+        ) : (
+          <div className="space-y-2 text-sm">
+            {recentLogs.map((log) => (
+              <div key={log.id} className="flex flex-col gap-1 border-b last:border-0 pb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium">{log.action}</span>
+                  <span className="text-gray-600">
+                    {log.entityType}
+                    {log.entityId ? `:${log.entityId.slice(0, 8)}` : ""}
+                  </span>
+                  <span className="text-gray-400 text-xs ml-auto">{log.createdAt.toLocaleString("pt-BR")}</span>
+                </div>
+                <div className="text-xs text-gray-500 flex items-center justify-between gap-2">
+                  <span>{log.user?.name ?? "Sistema"}</span>
+                  {log.entityType === "PlatformSetting" ? (
+                    <Link href="/admin/configuracoes" className="text-primary-700 hover:underline">
+                      Ajuste de configuração
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         )}

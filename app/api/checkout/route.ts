@@ -4,7 +4,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
+import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
+import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
 
 async function sendConfirmationEmail(email: string, name: string, registrationId: string) {
   if (!process.env.SMTP_HOST) return;
@@ -26,11 +28,11 @@ async function sendConfirmationEmail(email: string, name: string, registrationId
 }
 
 const checkoutSchema = z.object({
-  eventId: z.string().cuid(),
-  ticketBatchId: z.string().cuid(),
-  routeId: z.string().cuid().optional(),
-  categoryId: z.string().cuid().optional(),
-  shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XGG"]).optional(),
+  eventId: opaqueIdField(),
+  ticketBatchId: opaqueIdField(),
+  routeId: optionalOpaqueIdField(),
+  categoryId: optionalOpaqueIdField(),
+  shirtSize: optionalEnumField(["PP", "P", "M", "G", "GG", "XGG"] as const),
   teamName: z.string().max(100).optional(),
   emergencyContactName: z.string().max(100).optional(),
   emergencyContactPhone: z.string().max(20).optional(),
@@ -52,13 +54,25 @@ export async function POST(req: NextRequest) {
   }
 
   const { paymentMethod, ...checkoutData } = parsed.data;
+  const enabledPaymentMethods = await getEnabledPaymentMethods();
+  if (!enabledPaymentMethods.includes(paymentMethod)) {
+    return NextResponse.json({ error: "Meio de pagamento indisponível" }, { status: 400 });
+  }
 
-  const checkout = await createCheckout({
-    ...checkoutData,
-    shirtSize: checkoutData.shirtSize as ShirtSize | undefined,
-    buyerUserId: session.user.id,
-    athleteUserId: session.user.id,
-  });
+  let checkout;
+  try {
+    checkout = await createCheckout({
+      ...checkoutData,
+      routeId: emptyStringToUndefined(checkoutData.routeId) as string | undefined,
+      categoryId: emptyStringToUndefined(checkoutData.categoryId) as string | undefined,
+      shirtSize: checkoutData.shirtSize as ShirtSize | undefined,
+      buyerUserId: session.user.id,
+      athleteUserId: session.user.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao processar inscrição";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const idempotencyKey = `${checkout.orderId}_${paymentMethod}_${Date.now()}`;
   const provider = getPaymentProvider();
@@ -124,6 +138,8 @@ export async function POST(req: NextRequest) {
     registrationId: checkout.registrationId,
     paymentId: payment.id,
     totalAmount: checkout.totalAmount,
+    subtotalAmount: checkout.subtotalAmount,
+    discountAmount: checkout.discountAmount,
     status: paymentResult.status,
     pixQrCodeText: paymentResult.pixQrCodeText,
     boletoUrl: paymentResult.boletoUrl,

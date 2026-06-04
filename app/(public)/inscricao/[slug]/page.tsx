@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getEventBySlug } from "@/lib/events";
+import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
 interface Props {
@@ -45,6 +46,7 @@ export default async function InscricaoPage({ params }: Props) {
     where: { userId: session.user.id },
     select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true },
   });
+  const paymentMethods = await getEnabledPaymentMethods();
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
@@ -53,6 +55,7 @@ export default async function InscricaoPage({ params }: Props) {
       <CheckoutForm
         event={event}
         batches={availableBatches}
+        paymentMethods={paymentMethods}
         userId={session.user.id}
         athleteProfile={athleteProfile ?? undefined}
       />

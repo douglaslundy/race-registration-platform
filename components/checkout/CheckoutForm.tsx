@@ -3,15 +3,17 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
+import { emptyStringToUndefined, extractApiErrorMessage, optionalEnumField, opaqueIdField, optionalOpaqueIdField } from "@/lib/checkout-validation";
+import { PAYMENT_METHOD_LABELS, type CheckoutPaymentMethod } from "@/lib/payment-methods";
 
 const schema = z.object({
-  ticketBatchId: z.string().cuid(),
-  routeId: z.string().cuid().optional(),
-  categoryId: z.string().cuid().optional(),
-  shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XGG"]).optional(),
+  ticketBatchId: opaqueIdField(),
+  routeId: optionalOpaqueIdField(),
+  categoryId: optionalOpaqueIdField(),
+  shirtSize: optionalEnumField(["PP", "P", "M", "G", "GG", "XGG"] as const),
   teamName: z.string().max(100).optional(),
   emergencyContactName: z.string().min(2, "Informe o contato de emergência"),
   emergencyContactPhone: z.string().min(8, "Telefone inválido"),
@@ -47,31 +49,51 @@ interface AthleteProfile {
   medicalNotes?: string | null;
 }
 
+interface CouponPreview {
+  code: string;
+  discountAmount: number;
+  subtotalAmount: number;
+}
+
 export default function CheckoutForm({
   event,
   batches,
+  paymentMethods,
   userId: _userId,
   athleteProfile,
 }: {
   event: EventData;
   batches: Batch[];
+  paymentMethods: CheckoutPaymentMethod[];
   userId: string;
   athleteProfile?: AthleteProfile;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ pixQrCodeText?: string; boletoUrl?: string; checkoutUrl?: string; status: string } | null>(null);
+  const [result, setResult] = useState<{
+    pixQrCodeText?: string;
+    boletoUrl?: string;
+    checkoutUrl?: string;
+    status: string;
+    totalAmount?: number;
+    subtotalAmount?: number;
+    discountAmount?: number;
+  } | null>(null);
+  const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       ticketBatchId: batches[0]?.id,
-      paymentMethod: "PIX",
+      paymentMethod: paymentMethods[0] ?? "PIX",
       shirtSize: (athleteProfile?.preferredShirtSize as FormData["shirtSize"]) ?? undefined,
       teamName: athleteProfile?.teamName ?? "",
       emergencyContactName: athleteProfile?.emergencyName ?? "",
@@ -81,34 +103,122 @@ export default function CheckoutForm({
   });
 
   const selectedBatchId = watch("ticketBatchId");
+  const couponCode = watch("couponCode");
+  const selectedPaymentMethod = watch("paymentMethod");
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? batches[0];
+  const selectedCouponCode = (couponCode ?? "").trim().toUpperCase();
+
+  useEffect(() => {
+    const normalizedCode = selectedCouponCode;
+    if (!normalizedCode) {
+      setCouponPreview(null);
+      setCouponError(null);
+      setCouponLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setCouponLoading(true);
+      try {
+        const res = await fetch(`/api/events/${event.id}/coupons/preview?code=${encodeURIComponent(normalizedCode)}&ticketBatchId=${encodeURIComponent(selectedBatchId)}`, {
+          method: "GET",
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setCouponPreview(null);
+          setCouponError(data.error ?? "Cupom inválido");
+          return;
+        }
+
+        setCouponError(null);
+        setCouponPreview({
+          code: data.code,
+          discountAmount: data.discountAmount,
+          subtotalAmount: data.subtotalAmount,
+        });
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setCouponPreview(null);
+          setCouponError(err instanceof Error ? err.message : "Não foi possível validar o cupom");
+        }
+      } finally {
+        if (!controller.signal.aborted) setCouponLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [event.id, selectedBatchId, selectedCouponCode]);
+
+  function getFirstValidationError(messageMap: Record<string, unknown>): string {
+    const orderedKeys = [
+      "ticketBatchId",
+      "paymentMethod",
+      "acceptTerms",
+      "emergencyContactName",
+      "emergencyContactPhone",
+      "routeId",
+      "categoryId",
+      "shirtSize",
+      "couponCode",
+      "teamName",
+      "medicalNotes",
+    ];
+
+    for (const key of orderedKeys) {
+      const value = messageMap[key];
+      if (value && typeof value === "object" && "message" in value && typeof (value as { message?: unknown }).message === "string") {
+        return (value as { message: string }).message;
+      }
+    }
+
+    return "Revise os campos destacados.";
+  }
 
   async function onSubmit(data: FormData) {
     setError(null);
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, eventId: event.id }),
-    });
+    try {
+      const payload = {
+        ...data,
+        routeId: emptyStringToUndefined(data.routeId),
+        categoryId: emptyStringToUndefined(data.categoryId),
+        shirtSize: emptyStringToUndefined(data.shirtSize),
+        couponCode: emptyStringToUndefined(data.couponCode)?.toString().trim().toUpperCase(),
+      };
 
-    const body = await res.json();
-    if (!res.ok) {
-      setError(body.error || "Erro ao processar inscrição");
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, eventId: event.id }),
+      });
+
+      const raw = await res.text();
+      const body = raw ? JSON.parse(raw) : {};
+      if (!res.ok) {
+        setError(extractApiErrorMessage(body.error) ?? extractApiErrorMessage(body) ?? "Erro ao processar inscrição");
+        return;
+      }
+
+      if (body.status === "PAID") {
+        router.push(`/dashboard/inscricoes/${body.registrationId}?confirmed=1`);
+        return;
+      }
+
+      // Checkout Pro redirect (cartão de crédito via Mercado Pago)
+      if (body.checkoutUrl) {
+        window.location.href = body.checkoutUrl;
+        return;
+      }
+
+      setResult(body);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
       return;
     }
-
-    if (body.status === "PAID") {
-      router.push(`/dashboard/inscricoes/${body.registrationId}?confirmed=1`);
-      return;
-    }
-
-    // Checkout Pro redirect (cartão de crédito via Mercado Pago)
-    if (body.checkoutUrl) {
-      window.location.href = body.checkoutUrl;
-      return;
-    }
-
-    setResult(body);
   }
 
   if (result) {
@@ -126,25 +236,57 @@ export default function CheckoutForm({
             Ver Boleto
           </a>
         )}
+        {typeof result.discountAmount === "number" && result.discountAmount > 0 && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            <p>Desconto aplicado: -{formatCurrency(result.discountAmount)}</p>
+            {typeof result.subtotalAmount === "number" && (
+              <p>Total da inscrição: {formatCurrency(result.subtotalAmount)}</p>
+            )}
+          </div>
+        )}
         <p className="text-sm text-gray-600">Aguardando confirmação do pagamento.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form
+      onSubmit={handleSubmit(onSubmit, (formErrors) => {
+        setError(getFirstValidationError(formErrors as Record<string, unknown>));
+      })}
+      className="space-y-5"
+    >
+      <input type="hidden" {...register("ticketBatchId")} />
+      <input type="hidden" {...register("paymentMethod")} />
+      {error && (
+        <div className="card border border-red-200 bg-red-50 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
       <div className="card">
         <h3 className="font-semibold mb-3">Lote de inscrição</h3>
         <div className="space-y-2">
           {batches.map((b) => (
-            <label key={b.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input type="radio" value={b.id} {...register("ticketBatchId")} />
+            <label
+              key={b.id}
+              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+              onClick={() => setValue("ticketBatchId", b.id, { shouldValidate: true, shouldDirty: true })}
+            >
+              <input
+                type="radio"
+                value={b.id}
+                checked={selectedBatchId === b.id}
+                onChange={() => setValue("ticketBatchId", b.id, { shouldValidate: true, shouldDirty: true })}
+                name="ticketBatchId"
+                className="accent-primary-600"
+              />
               <div className="flex-1 flex justify-between">
                 <span className="font-medium">{b.name}</span>
                 <span className="text-primary-600 font-bold">{formatCurrency(b.priceAmount)}</span>
               </div>
             </label>
           ))}
+          {errors.ticketBatchId && <p className="text-red-500 text-xs mt-1">{errors.ticketBatchId.message}</p>}
         </div>
       </div>
 
@@ -215,17 +357,25 @@ export default function CheckoutForm({
       <div className="card">
         <h3 className="font-semibold mb-3">Pagamento</h3>
         <div className="space-y-2">
-          {[
-            { value: "PIX", label: "Pix" },
-            { value: "CREDIT_CARD", label: "Cartão de crédito" },
-            { value: "BOLETO", label: "Boleto" },
-          ].map((m) => (
-            <label key={m.value} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input type="radio" value={m.value} {...register("paymentMethod")} />
-              <span>{m.label}</span>
+          {paymentMethods.map((method) => (
+            <label
+              key={method}
+              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+              onClick={() => setValue("paymentMethod", method, { shouldValidate: true, shouldDirty: true })}
+            >
+              <input
+                type="radio"
+                value={method}
+                checked={selectedPaymentMethod === method}
+                onChange={() => setValue("paymentMethod", method, { shouldValidate: true, shouldDirty: true })}
+                name="paymentMethod"
+                className="accent-primary-600"
+              />
+              <span>{PAYMENT_METHOD_LABELS[method]}</span>
             </label>
           ))}
         </div>
+        {errors.paymentMethod && <p className="text-red-500 text-xs mt-2">{errors.paymentMethod.message}</p>}
       </div>
 
       <div className="card">
@@ -245,8 +395,23 @@ export default function CheckoutForm({
       <div className="card">
         <div className="flex justify-between items-center text-lg font-bold mb-4">
           <span>Total</span>
-          <span className="text-primary-600">{selectedBatch ? formatCurrency(selectedBatch.priceAmount) : "—"}</span>
+          <span className="text-primary-600">
+            {selectedBatch ? formatCurrency(couponPreview?.subtotalAmount ?? selectedBatch.priceAmount) : "—"}
+          </span>
         </div>
+
+        {couponLoading && (
+          <p className="text-xs text-gray-500 mb-3">Validando cupom...</p>
+        )}
+        {couponPreview && couponPreview.discountAmount > 0 && (
+          <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            <p>Cupom {couponPreview.code} aplicado.</p>
+            <p>Desconto: -{formatCurrency(couponPreview.discountAmount)}</p>
+          </div>
+        )}
+        {couponError && (
+          <p className="mb-3 text-xs text-red-600">{couponError}</p>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>

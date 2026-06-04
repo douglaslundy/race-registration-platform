@@ -20,7 +20,9 @@ export interface CheckoutInput {
 export interface CheckoutResult {
   orderId: string;
   registrationId: string;
+  subtotalAmount: number;
   totalAmount: number;
+  discountAmount: number;
   platformFeeAmount: number;
 }
 
@@ -36,28 +38,31 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     let discountAmount = 0;
     let couponId: string | undefined;
 
-    if (input.couponCode) {
+    const couponCode = input.couponCode?.trim().toUpperCase();
+
+    if (couponCode) {
       const coupon = await tx.coupon.findFirst({
         where: {
           eventId: input.eventId,
-          code: input.couponCode,
+          code: couponCode,
           active: true,
           OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
         },
       });
-      if (coupon) {
-        if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
-          // coupon exhausted, skip silently
-        } else {
-          couponId = coupon.id;
-          if (coupon.discountType === "PERCENT") {
-            discountAmount = Math.round((batch.priceAmount * coupon.discountValue) / 100);
-          } else {
-            discountAmount = Math.min(coupon.discountValue, batch.priceAmount);
-          }
-          await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
-        }
+      if (!coupon) {
+        throw new Error("Cupom inválido");
       }
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+        throw new Error("Cupom esgotado");
+      }
+
+      couponId = coupon.id;
+      if (coupon.discountType === "PERCENT") {
+        discountAmount = Math.round((batch.priceAmount * coupon.discountValue) / 100);
+      } else {
+        discountAmount = Math.min(coupon.discountValue, batch.priceAmount);
+      }
+      await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
     }
 
     const subtotal = batch.priceAmount - discountAmount;
@@ -104,7 +109,9 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     return {
       orderId: order.id,
       registrationId: registration.id,
+      subtotalAmount: subtotal,
       totalAmount: total,
+      discountAmount,
       platformFeeAmount: platformFee,
     };
   });

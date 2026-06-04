@@ -1,0 +1,12 @@
+.git
+.next
+.vercel
+node_modules
+npm-debug.log
+Dockerfile
+docker-compose.yml
+.env
+.env.*
+coverage
+playwright-report
+test-results
