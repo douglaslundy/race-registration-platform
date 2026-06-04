@@ -1,9 +1,12 @@
 import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { parseDateInput } from "@/lib/admin/audit";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Relatório Financeiro — Admin" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminRelatorioPage({
   searchParams,
@@ -13,8 +16,8 @@ export default async function AdminRelatorioPage({
   await requireAdmin();
   const { de, ate } = await searchParams;
 
-  const from = de ? new Date(de) : new Date(new Date().getFullYear(), 0, 1);
-  const to = ate ? new Date(ate) : new Date();
+  const from = parseDateInput(de, false) ?? new Date(new Date().getFullYear(), 0, 1);
+  const to = parseDateInput(ate, true) ?? new Date();
   to.setHours(23, 59, 59, 999);
 
   const [paymentsAgg, ordersAgg, refundsAgg, eventCount, registrationCount] = await Promise.all([
@@ -76,23 +79,31 @@ export default async function AdminRelatorioPage({
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">Relatório Financeiro</h1>
-        <form method="GET" className="flex items-center gap-2 text-sm">
-          <label className="text-gray-600">De</label>
-          <input
-            type="date"
-            name="de"
-            defaultValue={de ?? from.toISOString().slice(0, 10)}
-            className="input-field py-1 text-sm"
-          />
-          <label className="text-gray-600">Até</label>
-          <input
-            type="date"
-            name="ate"
-            defaultValue={ate ?? to.toISOString().slice(0, 10)}
-            className="input-field py-1 text-sm"
-          />
-          <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <form method="GET" className="flex items-center gap-2 text-sm">
+            <label className="text-gray-600">De</label>
+            <input
+              type="date"
+              name="de"
+              defaultValue={de ?? from.toISOString().slice(0, 10)}
+              className="input-field py-1 text-sm"
+            />
+            <label className="text-gray-600">Até</label>
+            <input
+              type="date"
+              name="ate"
+              defaultValue={ate ?? to.toISOString().slice(0, 10)}
+              className="input-field py-1 text-sm"
+            />
+            <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
+          </form>
+          <Link
+            href={`/api/admin/report/export?de=${from.toISOString().slice(0, 10)}&ate=${to.toISOString().slice(0, 10)}`}
+            className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Exportar CSV
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe do Pagamento — Admin" };
+export const dynamic = "force-dynamic";
 
 import { BADGE } from "@/lib/badge-colors";
 
@@ -62,6 +63,12 @@ export default async function AdminPaymentDetailPage({
       <div className="flex items-center gap-3">
         <Link href="/admin/pagamentos" className="text-sm text-gray-500 hover:text-primary-600">
           ← Pagamentos
+        </Link>
+        <Link
+          href={`/api/admin/payments/${payment.id}/export`}
+          className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+        >
+          Exportar CSV
         </Link>
       </div>
 

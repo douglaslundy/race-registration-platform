@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+const roleSchema = z.enum(["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"]);
+
 const patchSchema = z.object({
-  role: z.enum(["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"]).optional(),
+  name: z.string().min(2).max(100).optional(),
+  email: z.string().email().optional(),
+  role: roleSchema.optional(),
   active: z.boolean().optional(),
+  password: z.string().min(8).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,21 +25,96 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const existing = await db.user.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+  const incomingEmail = parsed.data.email?.toLowerCase();
+  if (incomingEmail && incomingEmail !== existing.email) {
+    const emailExists = await db.user.findUnique({ where: { email: incomingEmail } });
+    if (emailExists && emailExists.id !== id) {
+      return NextResponse.json({ error: "E-mail já cadastrado" }, { status: 409 });
+    }
+  }
+
+  const data: Record<string, unknown> = {};
+  if (parsed.data.name) data.name = parsed.data.name.trim();
+  if (incomingEmail) data.email = incomingEmail;
+  if (parsed.data.role) data.role = parsed.data.role;
+  if (typeof parsed.data.active === "boolean") data.active = parsed.data.active;
+  if (parsed.data.password) data.passwordHash = await bcrypt.hash(parsed.data.password, 12);
+
   const user = await db.user.update({
     where: { id },
-    data: parsed.data,
-    select: { id: true, role: true, active: true },
+    data,
+    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
   });
 
   await db.auditLog.create({
     data: {
       userId: session.user.id,
-      action: parsed.data.role ? "USER_ROLE_CHANGED" : "USER_ACTIVE_TOGGLED",
+      action: "USER_UPDATED",
       entityType: "User",
       entityId: id,
-      metadata: parsed.data,
+      metadata: {
+        ...data,
+        passwordHash: parsed.data.password ? "[redacted]" : undefined,
+      },
     },
   });
 
   return NextResponse.json({ user });
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  if (session.user.id === id) {
+    return NextResponse.json({ error: "Você não pode excluir a sua própria conta" }, { status: 400 });
+  }
+
+  const user = await db.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, email: true },
+  });
+  if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+  const [orders, registrations] = await Promise.all([
+    db.order.count({ where: { buyerUserId: id } }),
+    db.registration.count({ where: { athleteUserId: id } }),
+  ]);
+
+  if (orders > 0 || registrations > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Usuários com pedidos ou inscrições vinculados não podem ser excluídos. Desative a conta em vez disso.",
+      },
+      { status: 409 },
+    );
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.auditLog.updateMany({
+      where: { userId: id },
+      data: { userId: null },
+    });
+
+    await tx.user.delete({ where: { id } });
+  });
+
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "USER_DELETED",
+      entityType: "User",
+      entityId: id,
+      metadata: { id, email: user.email, name: user.name },
+    },
+  });
+
+  return NextResponse.json({ ok: true });
 }

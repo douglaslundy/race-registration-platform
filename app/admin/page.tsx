@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const [totalUsers, totalEvents, totalOrders, pendingEvents, recentAuditLogs] = await Promise.all([
     db.user.count(),
