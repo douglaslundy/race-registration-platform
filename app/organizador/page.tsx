@@ -60,8 +60,11 @@ export default async function OrganizerDashboard() {
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="text-lg font-semibold mb-4">Meus Eventos</h2>
+      <div className="card" id="meus-eventos">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold">Meus Eventos</h2>
+          <p className="text-xs text-gray-500">Abra um evento para editar, criar lotes e cupons.</p>
+        </div>
         {organizer.events.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Nenhum evento criado ainda</p>
         ) : (

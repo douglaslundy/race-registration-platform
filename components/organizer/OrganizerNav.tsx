@@ -12,6 +12,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
           <Link href="/" className="font-bold text-primary-700 dark:text-primary-400">{appName}</Link>
           <div className="hidden md:flex items-center gap-4 text-sm">
             <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
+            <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
             <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
             <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Perfil</Link>
           </div>
@@ -22,6 +23,14 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
           <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-secondary text-xs px-3 py-1">
             Sair
           </button>
+        </div>
+      </div>
+      <div className="md:hidden border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+        <div className="max-w-7xl mx-auto flex flex-wrap gap-4 text-sm">
+          <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
+          <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
+          <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
+          <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Perfil</Link>
         </div>
       </div>
     </nav>
