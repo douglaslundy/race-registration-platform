@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import Link from "next/link";
 import PaymentStatusPoller from "@/components/dashboard/PaymentStatusPoller";
 import CancelRegistrationButton from "@/components/dashboard/CancelRegistrationButton";
+import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe da Inscrição" };
@@ -76,24 +77,10 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
       )}
 
       {isPending && payment?.method === "PIX" && (payment as { pixQrCodeText?: string | null }).pixQrCodeText && (
-        <div className="card space-y-3">
-          <h3 className="font-semibold text-gray-900">Pague via Pix</h3>
-          <p className="text-sm text-gray-600">Copie o código abaixo e cole no app do seu banco:</p>
-          <div className="bg-gray-50 border rounded-lg p-3 font-mono text-xs break-all select-all">
-            {(payment as { pixQrCodeText?: string | null }).pixQrCodeText}
-          </div>
-          <button
-            onClick={() => navigator.clipboard.writeText((payment as { pixQrCodeText?: string | null }).pixQrCodeText ?? "")}
-            className="btn-secondary w-full text-sm"
-          >
-            Copiar código Pix
-          </button>
-          {(payment as { expiresAt?: Date | null }).expiresAt && (
-            <p className="text-xs text-gray-500 text-center">
-              Expira em: {new Date((payment as { expiresAt?: Date | null }).expiresAt!).toLocaleString("pt-BR")}
-            </p>
-          )}
-        </div>
+        <PixPaymentCard
+          pixQrCodeText={(payment as { pixQrCodeText?: string | null }).pixQrCodeText ?? ""}
+          expiresAt={(payment as { expiresAt?: Date | null }).expiresAt?.toISOString() ?? null}
+        />
       )}
 
       {isPending && payment?.method === "BOLETO" && (payment as { boletoUrl?: string | null }).boletoUrl && (
