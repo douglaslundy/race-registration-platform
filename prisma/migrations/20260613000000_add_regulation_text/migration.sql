@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Event" ADD COLUMN "regulationText" TEXT;
+ALTER TABLE "events" ADD COLUMN "regulationText" TEXT;

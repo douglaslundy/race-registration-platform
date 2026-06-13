@@ -22,8 +22,6 @@ services:
     env_file:
       - .env.production
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-corridas}:${POSTGRES_PASSWORD:-corridas-db-password}@db:5432/${POSTGRES_DB:-corridas}?schema=public
-      DIRECT_URL: postgresql://${POSTGRES_USER:-corridas}:${POSTGRES_PASSWORD:-corridas-db-password}@db:5432/${POSTGRES_DB:-corridas}?schema=public
       NODE_ENV: production
       PORT: 3000
     ports:
