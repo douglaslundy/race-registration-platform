@@ -91,7 +91,13 @@ export class MercadoPagoProvider implements PaymentProvider {
 
     // ── Cartão de crédito — Checkout Pro ───────────────────────────────────────
     const preference = new Preference(client);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    // Prefer server-side APP_URL (set in docker/server env); fall back to public var.
+    // auto_return requires a public HTTPS URL — skip it on localhost.
+    const appUrl =
+      process.env.APP_URL ??
+      process.env.NEXT_PUBLIC_APP_URL ??
+      "http://localhost:3000";
+    const isPublicUrl = appUrl.startsWith("https://") && !appUrl.includes("localhost");
 
     const res = await preference.create({
       body: {
@@ -111,8 +117,8 @@ export class MercadoPagoProvider implements PaymentProvider {
           failure: `${appUrl}/api/payments/mp-return?status=failure&order=${input.orderId}`,
           pending: `${appUrl}/api/payments/mp-return?status=pending&order=${input.orderId}`,
         },
-        notification_url: `${appUrl}/api/webhooks/payment`,
-        auto_return: "approved",
+        ...(isPublicUrl ? { notification_url: `${appUrl}/api/webhooks/payment` } : {}),
+        ...(isPublicUrl ? { auto_return: "approved" as const } : {}),
         external_reference: input.orderId,
         expires: false,
         statement_descriptor: "CORRIDAS APP",
