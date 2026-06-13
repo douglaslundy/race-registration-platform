@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { BADGE } from "@/lib/badge-colors";
 import { buildAdminPaymentOrderBy, buildAdminPaymentWhere } from "@/lib/admin/payments";
+import { PAYMENT_STATUS_LABEL } from "@/lib/admin/labels";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
 
 export const metadata: Metadata = { title: "Pagamentos — Admin" };
@@ -178,7 +179,7 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
             <option value="">Todos</option>
             {distinctStatuses.map((row) => (
               <option key={row.status} value={row.status}>
-                {row.status}
+                {PAYMENT_STATUS_LABEL[row.status] ?? row.status}
               </option>
             ))}
           </select>
@@ -236,7 +237,7 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
                 <td className={cellPadding + " text-gray-600"}>{METHOD_LABEL[p.method] ?? p.method}</td>
                 <td className={cellPadding + " font-medium"}>{formatCurrency(p.amount)}</td>
                 <td className={cellPadding}>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status] ?? ""}`}>{p.status}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status] ?? ""}`}>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</span>
                 </td>
                 <td className={cellPadding + " text-gray-600"}>
                   <div className="flex flex-col">

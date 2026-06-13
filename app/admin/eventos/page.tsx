@@ -6,6 +6,7 @@ import type { EventModality, EventStatus } from "@prisma/client";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
 import { buildAdminEventOrderBy, buildAdminEventWhere } from "@/lib/admin/events";
+import { EVENT_STATUS_LABEL } from "@/lib/admin/labels";
 
 export const metadata: Metadata = { title: "Eventos — Admin" };
 
@@ -248,7 +249,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
                     </div>
                   </td>
                   <td className={cellPadding}>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200">{event.status}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200">{EVENT_STATUS_LABEL[event.status] ?? event.status}</span>
                   </td>
                   <td className={cellPadding + " text-center"}>{event._count.registrations}</td>
                   <td className={cellPadding + " text-gray-500"}>{event.city}/{event.state}</td>

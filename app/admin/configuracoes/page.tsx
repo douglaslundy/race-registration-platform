@@ -8,6 +8,7 @@ import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
 import StorageSettingsForm from "@/components/admin/StorageSettingsForm";
 import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
+import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
 import { getDefaultPlatformFee } from "@/lib/settings";
@@ -123,9 +124,9 @@ export default async function ConfiguracoesPage() {
             {recentLogs.map((log) => (
               <div key={log.id} className="flex flex-col gap-1 border-b last:border-0 pb-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium">{log.action}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium">{ACTION_LABEL[log.action] ?? log.action}</span>
                   <span className="text-gray-600">
-                    {log.entityType}
+                    {ENTITY_LABEL[log.entityType] ?? log.entityType}
                     {log.entityId ? `:${log.entityId.slice(0, 8)}` : ""}
                   </span>
                   <span className="text-gray-400 text-xs ml-auto">{log.createdAt.toLocaleString("pt-BR")}</span>

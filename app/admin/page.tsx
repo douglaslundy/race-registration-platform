@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -67,12 +68,12 @@ export default async function AdminDashboard() {
       )}
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-4">Audit Log (recente)</h2>
+        <h2 className="text-lg font-semibold mb-4">Atividade recente</h2>
         <div className="space-y-2 text-sm">
           {recentAuditLogs.map((log) => (
             <div key={log.id} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-              <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded font-mono text-xs">{log.action}</span>
-              <span className="text-gray-500 dark:text-gray-400">{log.entityType}:{log.entityId?.substring(0, 8)}</span>
+              <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded text-xs">{ACTION_LABEL[log.action] ?? log.action}</span>
+              <span className="text-gray-500 dark:text-gray-400">{ENTITY_LABEL[log.entityType] ?? log.entityType}{log.entityId ? `:${log.entityId.substring(0, 8)}` : ""}</span>
               <span className="text-gray-400 dark:text-gray-500 ml-auto text-xs">{log.createdAt.toLocaleString("pt-BR")}</span>
             </div>
           ))}

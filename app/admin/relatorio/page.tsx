@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
+import { ORDER_STATUS_LABEL } from "@/lib/admin/labels";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -172,7 +173,7 @@ export default async function AdminRelatorioPage({
           <div className="space-y-2">
             {ordersAgg.map((row) => (
               <div key={row.status} className="flex justify-between text-sm border-b pb-1 last:border-0">
-                <span>{row.status}</span>
+                <span>{ORDER_STATUS_LABEL[row.status] ?? row.status}</span>
                 <span>
                   {row._count.id} pedidos · {formatCurrency(row._sum.totalAmount ?? 0)}
                 </span>

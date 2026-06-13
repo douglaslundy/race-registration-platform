@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { BADGE } from "@/lib/badge-colors";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
 import { buildAdminAuditOrderBy, buildAdminAuditWhere } from "@/lib/admin/audit";
+import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 
 export const metadata: Metadata = { title: "Auditoria — Admin" };
 export const dynamic = "force-dynamic";
@@ -162,7 +163,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
           <select name="action" defaultValue={action} className="input-field text-sm py-1.5">
             <option value="">Todas</option>
             {distinctActions.map((a) => (
-              <option key={a.action} value={a.action}>{a.action}</option>
+              <option key={a.action} value={a.action}>{ACTION_LABEL[a.action] ?? a.action}</option>
             ))}
           </select>
         </div>
@@ -171,7 +172,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
           <select name="entity" defaultValue={entity} className="input-field text-sm py-1.5">
             <option value="">Todas</option>
             {["Event", "Registration", "User", "Order", "Payment"].map((e) => (
-              <option key={e} value={e}>{e}</option>
+              <option key={e} value={e}>{ENTITY_LABEL[e] ?? e}</option>
             ))}
           </select>
         </div>
@@ -232,10 +233,10 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
                   </td>
                   <td className={cellPadding}>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ACTION_COLOR[log.action] ?? BADGE.gray}`}>
-                      {log.action}
+                      {ACTION_LABEL[log.action] ?? log.action}
                     </span>
                   </td>
-                  <td className={cellPadding + " text-gray-600"}>{log.entityType}</td>
+                  <td className={cellPadding + " text-gray-600"}>{ENTITY_LABEL[log.entityType] ?? log.entityType}</td>
                   <td className={cellPadding + " font-mono text-gray-500 truncate max-w-[12rem]"}>{log.entityId ?? "—"}</td>
                 </tr>
               ))
