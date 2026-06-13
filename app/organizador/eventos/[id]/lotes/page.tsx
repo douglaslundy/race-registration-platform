@@ -13,7 +13,7 @@ type Batch = {
   soldCount: number;
   startAt: string;
   endAt: string;
-  isActive: boolean;
+  active: boolean;
 };
 
 export default function LotesPage() {
@@ -118,12 +118,12 @@ export default function LotesPage() {
                 <p className="text-sm text-gray-500">{b.soldCount}/{b.capacity} inscrições · {formatCurrency(b.priceAmount)}</p>
               </div>
               <button
-                onClick={() => toggleActive(b.id, b.isActive)}
+                onClick={() => toggleActive(b.id, b.active)}
                 className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
-                  b.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-500 border-gray-200"
+                  b.active ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-500 border-gray-200"
                 }`}
               >
-                {b.isActive ? "Ativo" : "Inativo"}
+                {b.active ? "Ativo" : "Inativo"}
               </button>
             </div>
           ))}
