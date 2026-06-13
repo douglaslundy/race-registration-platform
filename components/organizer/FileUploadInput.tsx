@@ -23,29 +23,20 @@ export default function FileUploadInput({ purpose, accept, label, currentUrl, on
     setUploading(true);
 
     try {
-      const presignRes = await fetch("/api/upload/presign", {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("purpose", purpose);
+
+      const res = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ purpose, mimeType: file.type, size: file.size }),
+        body: formData,
       });
 
-      if (!presignRes.ok) {
-        const data = await presignRes.json();
-        throw new Error(data.error ?? "Erro ao obter URL de upload");
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro ao enviar arquivo");
 
-      const { url, fileUrl } = await presignRes.json();
-
-      const uploadRes = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      if (!uploadRes.ok) throw new Error("Falha ao enviar arquivo");
-
-      setPreviewUrl(fileUrl);
-      onUploaded(fileUrl);
+      setPreviewUrl(data.fileUrl);
+      onUploaded(data.fileUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
