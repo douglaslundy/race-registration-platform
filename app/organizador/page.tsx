@@ -51,6 +51,12 @@ export default async function OrganizerDashboard() {
   );
   const totalRegistrations = organizer.events.reduce((sum, e) => sum + e._count.registrations, 0);
 
+  const [confirmedRegistrations, pendingRegistrations, cancelledRegistrations] = await Promise.all([
+    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED" } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT" } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CANCELLED" } }),
+  ]);
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -65,11 +71,26 @@ export default async function OrganizerDashboard() {
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-green-600">{totalRegistrations}</p>
-          <p className="text-gray-600 mt-1">Inscrições</p>
+          <p className="text-gray-600 mt-1">Total de inscrições</p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-blue-600">{formatCurrency(totalRevenue)}</p>
           <p className="text-gray-600 mt-1">Receita total</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-green-600">{confirmedRegistrations}</p>
+          <p className="text-gray-600 mt-1 text-sm">Inscrições efetivadas</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-yellow-600">{pendingRegistrations}</p>
+          <p className="text-gray-600 mt-1 text-sm">Inscrições pendentes</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-red-600">{cancelledRegistrations}</p>
+          <p className="text-gray-600 mt-1 text-sm">Inscrições canceladas</p>
         </div>
       </div>
 
