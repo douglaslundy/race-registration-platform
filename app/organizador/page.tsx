@@ -104,7 +104,7 @@ export default async function OrganizerDashboard() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
+              <tr className="text-left text-gray-500 border-b dark:border-gray-700">
                 <th className="pb-2">Evento</th>
                 <th className="pb-2">Status</th>
                 <th className="pb-2">Inscrições</th>
@@ -114,10 +114,10 @@ export default async function OrganizerDashboard() {
             </thead>
             <tbody>
               {organizer.events.map((event) => (
-                <tr key={event.id} className="border-b last:border-0 hover:bg-gray-50">
+                <tr key={event.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                   <td className="py-3 font-medium">{event.title}</td>
                   <td className="py-3">
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                    <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded">
                       {EVENT_STATUS_LABEL[event.status] ?? event.status}
                     </span>
                   </td>

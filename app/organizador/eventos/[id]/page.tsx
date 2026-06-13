@@ -102,7 +102,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           ) : (
             <div className="space-y-2">
               {event.ticketBatches.map((b) => (
-                <div key={b.id} className="flex justify-between text-sm border-b pb-2 last:border-0">
+                <div key={b.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-2 last:border-0">
                   <span className="font-medium">{b.name}</span>
                   <span className="text-gray-500">{b.soldCount}/{b.capacity} · {formatCurrency(b.priceAmount)}</span>
                 </div>
@@ -124,7 +124,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           ) : (
             <div className="space-y-1">
               {event.routes.map((r) => (
-                <div key={r.id} className="flex justify-between text-sm border-b pb-1 last:border-0">
+                <div key={r.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
                   <span>{r.name}</span>
                   <span className="text-gray-500">{r.distanceKm}km</span>
                 </div>
@@ -146,7 +146,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           ) : (
             <div className="flex flex-wrap gap-2">
               {event.categories.map((c) => (
-                <span key={c.id} className="text-xs bg-gray-100 px-2 py-1 rounded">{c.name}</span>
+                <span key={c.id} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded">{c.name}</span>
               ))}
             </div>
           )}
@@ -165,7 +165,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           ) : (
             <div className="space-y-1">
               {event.coupons.map((c) => (
-                <div key={c.id} className="flex justify-between text-sm border-b pb-1 last:border-0">
+                <div key={c.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
                   <span className="font-mono font-medium">{c.code}</span>
                   <span className="text-gray-500">
                     {c.discountType === "PERCENT" ? `${c.discountValue}%` : formatCurrency(c.discountValue)}
