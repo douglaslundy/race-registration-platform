@@ -56,18 +56,27 @@ interface CouponPreview {
   subtotalAmount: number;
 }
 
+function calcPlatformFee(subtotal: number, feePercent: number, defaultFee: number): number {
+  if (subtotal === 0) return defaultFee;
+  return Math.round((subtotal * feePercent) / 10000);
+}
+
 export default function CheckoutForm({
   event,
   batches,
   paymentMethods,
   userId: _userId,
   athleteProfile,
+  platformFeePercent,
+  defaultPlatformFee,
 }: {
   event: EventData;
   batches: Batch[];
   paymentMethods: CheckoutPaymentMethod[];
   userId: string;
   athleteProfile?: AthleteProfile;
+  platformFeePercent: number;
+  defaultPlatformFee: number;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +221,12 @@ export default function CheckoutForm({
       // Checkout Pro redirect (cartão de crédito via Mercado Pago)
       if (body.checkoutUrl) {
         window.location.href = body.checkoutUrl;
+        return;
+      }
+
+      // PIX: redireciona para a página de inscrição que já tem o QR code e o poller de status
+      if (body.pixQrCodeText && body.registrationId) {
+        router.push(`/dashboard/inscricoes/${body.registrationId}`);
         return;
       }
 
@@ -400,21 +415,36 @@ export default function CheckoutForm({
       </div>
 
       <div className="card">
-        <div className="flex justify-between items-center text-lg font-bold mb-4">
-          <span>Total</span>
-          <span className="text-primary-600">
-            {selectedBatch ? formatCurrency(couponPreview?.subtotalAmount ?? selectedBatch.priceAmount) : "—"}
-          </span>
-        </div>
+        {(() => {
+          const effectiveSubtotal = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
+          const fee = calcPlatformFee(effectiveSubtotal, platformFeePercent, defaultPlatformFee);
+          const effectiveTotal = effectiveSubtotal + fee;
+          return (
+            <div className="space-y-1 text-sm mb-4">
+              <div className="flex justify-between text-gray-600">
+                <span>Inscrição</span>
+                <span>{formatCurrency(selectedBatch?.priceAmount ?? 0)}</span>
+              </div>
+              {couponPreview && couponPreview.discountAmount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Desconto ({couponPreview.code})</span>
+                  <span>-{formatCurrency(couponPreview.discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-600">
+                <span>Taxa da plataforma</span>
+                <span>{formatCurrency(fee)}</span>
+              </div>
+              <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-1">
+                <span>Total</span>
+                <span className="text-primary-600">{formatCurrency(effectiveTotal)}</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {couponLoading && (
           <p className="text-xs text-gray-500 mb-3">Validando cupom...</p>
-        )}
-        {couponPreview && couponPreview.discountAmount > 0 && (
-          <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-            <p>Cupom {couponPreview.code} aplicado.</p>
-            <p>Desconto: -{formatCurrency(couponPreview.discountAmount)}</p>
-          </div>
         )}
         {couponError && (
           <p className="mb-3 text-xs text-red-600">{couponError}</p>

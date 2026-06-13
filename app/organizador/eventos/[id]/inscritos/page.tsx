@@ -3,18 +3,26 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ExportCsvButton from "@/components/organizer/ExportCsvButton";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
 import { BADGE } from "@/lib/badge-colors";
 
-const STATUS_COLOR: Record<string, string> = {
-  PENDING_PAYMENT: BADGE.yellow,
-  CONFIRMED:       BADGE.green,
-  CANCELLED:       BADGE.red,
-  TRANSFERRED:     BADGE.blue,
-  WAITLISTED:      BADGE.gray,
+const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
+  PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
+  CONFIRMED:       { label: "Confirmada", color: BADGE.green },
+  CANCELLED:       { label: "Cancelada", color: BADGE.red },
+  TRANSFERRED:     { label: "Transferida", color: BADGE.blue },
+  WAITLISTED:      { label: "Lista de espera", color: BADGE.gray },
+};
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  PIX: "PIX",
+  CREDIT_CARD: "Cartão de crédito",
+  DEBIT_CARD: "Cartão de débito",
+  BOLETO: "Boleto",
 };
 
 export default async function InscritosPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +42,16 @@ export default async function InscritosPage({ params }: { params: Promise<{ id: 
       route: { select: { name: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true } },
+      order: {
+        select: {
+          totalAmount: true,
+          payments: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { method: true, paidAt: true, status: true },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -61,27 +79,43 @@ export default async function InscritosPage({ params }: { params: Promise<{ id: 
                 <th className="pb-2 pr-4">Categoria</th>
                 <th className="pb-2 pr-4">Lote</th>
                 <th className="pb-2 pr-4">Camiseta</th>
+                <th className="pb-2 pr-4">Pagamento</th>
+                <th className="pb-2 pr-4">Valor</th>
+                <th className="pb-2 pr-4">Data pag.</th>
                 <th className="pb-2">Status</th>
               </tr>
             </thead>
             <tbody>
-              {registrations.map((r) => (
-                <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="py-2 pr-4">
-                    <p className="font-medium">{r.athlete.name}</p>
-                    <p className="text-xs text-gray-500">{r.athlete.email}</p>
-                  </td>
-                  <td className="py-2 pr-4 text-gray-700">{r.route?.name ?? "—"}</td>
-                  <td className="py-2 pr-4 text-gray-700">{r.category?.name ?? "—"}</td>
-                  <td className="py-2 pr-4 text-gray-700">{r.ticketBatch.name}</td>
-                  <td className="py-2 pr-4 text-gray-700">{r.shirtSize ?? "—"}</td>
-                  <td className="py-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[r.status] ?? ""}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {registrations.map((r) => {
+                const payment = r.order.payments[0];
+                const statusInfo = REGISTRATION_STATUS[r.status];
+                return (
+                  <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-2 pr-4">
+                      <p className="font-medium">{r.athlete.name}</p>
+                      <p className="text-xs text-gray-500">{r.athlete.email}</p>
+                    </td>
+                    <td className="py-2 pr-4 text-gray-700">{r.route?.name ?? "—"}</td>
+                    <td className="py-2 pr-4 text-gray-700">{r.category?.name ?? "—"}</td>
+                    <td className="py-2 pr-4 text-gray-700">{r.ticketBatch.name}</td>
+                    <td className="py-2 pr-4 text-gray-700">{r.shirtSize ?? "—"}</td>
+                    <td className="py-2 pr-4 text-gray-700">
+                      {payment ? PAYMENT_METHOD_LABEL[payment.method] ?? payment.method : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-gray-700">
+                      {formatCurrency(r.order.totalAmount)}
+                    </td>
+                    <td className="py-2 pr-4 text-gray-700">
+                      {payment?.paidAt ? formatDate(payment.paidAt) : "—"}
+                    </td>
+                    <td className="py-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
+                        {statusInfo?.label ?? r.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

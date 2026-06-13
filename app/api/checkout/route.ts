@@ -48,6 +48,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Autenticação necessária" }, { status: 401 });
   }
 
+  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
+    return NextResponse.json({ error: "Administradores e organizadores não podem realizar inscrições" }, { status: 403 });
+  }
+
   const body = await req.json();
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
@@ -112,7 +116,20 @@ export async function POST(req: NextRequest) {
       cpf: athleteProfile?.cpf ?? undefined,
     });
   } catch (payErr) {
-    const msg = payErr instanceof Error ? payErr.message : "Erro no gateway de pagamento";
+    let msg = "Erro no gateway de pagamento";
+    if (payErr instanceof Error) {
+      msg = payErr.message;
+    } else if (payErr && typeof payErr === "object") {
+      const obj = payErr as Record<string, unknown>;
+      if (typeof obj.message === "string" && obj.message) {
+        msg = obj.message;
+      } else if (typeof obj.error === "string" && obj.error) {
+        msg = obj.error;
+      } else {
+        try { msg = JSON.stringify(obj).slice(0, 300); } catch { /* keep default */ }
+      }
+    }
+    console.error("[checkout] payment gateway error:", payErr);
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 

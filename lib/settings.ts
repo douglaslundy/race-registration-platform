@@ -35,6 +35,11 @@ export const getAppName = cache(async (): Promise<string> => {
   return (await getSetting("app_name")) ?? DEFAULT_APP_NAME;
 });
 
+export const getDefaultPlatformFee = cache(async (): Promise<number> => {
+  const val = await getSetting("default_platform_fee");
+  return val ? parseInt(val, 10) : 500; // padrão R$5,00
+});
+
 export async function upsertSetting(key: string, value: string) {
   try {
     await db.platformSetting.upsert({

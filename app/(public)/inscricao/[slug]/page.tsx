@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getEventBySlug } from "@/lib/events";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
+import { getDefaultPlatformFee } from "@/lib/settings";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
 interface Props {
@@ -19,6 +20,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function InscricaoPage({ params }: Props) {
   const session = await auth();
   if (!session?.user) redirect(`/auth/login?callbackUrl=/inscricao/${(await params).slug}`);
+
+  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">Acesso não permitido</h1>
+        <p className="text-gray-600">Administradores e organizadores não podem realizar inscrições em eventos.</p>
+      </div>
+    );
+  }
 
   const { slug } = await params;
   const event = await getEventBySlug(slug);
@@ -42,11 +52,14 @@ export default async function InscricaoPage({ params }: Props) {
     );
   }
 
-  const athleteProfile = await db.athleteProfile.findUnique({
-    where: { userId: session.user.id },
-    select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true },
-  });
-  const paymentMethods = await getEnabledPaymentMethods();
+  const [athleteProfile, paymentMethods, defaultPlatformFee] = await Promise.all([
+    db.athleteProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true },
+    }),
+    getEnabledPaymentMethods(),
+    getDefaultPlatformFee(),
+  ]);
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
@@ -58,6 +71,8 @@ export default async function InscricaoPage({ params }: Props) {
         paymentMethods={paymentMethods}
         userId={session.user.id}
         athleteProfile={athleteProfile ?? undefined}
+        platformFeePercent={event.platformFeePercent}
+        defaultPlatformFee={defaultPlatformFee}
       />
     </main>
   );

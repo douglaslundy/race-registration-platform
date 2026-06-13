@@ -6,9 +6,11 @@ import AppNameForm from "@/components/admin/AppNameForm";
 import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
 import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
 import StorageSettingsForm from "@/components/admin/StorageSettingsForm";
+import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
+import { getDefaultPlatformFee } from "@/lib/settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -18,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, recentLogs, storageConfig] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, recentLogs, storageConfig, defaultPlatformFee] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -41,6 +43,7 @@ export default async function ConfiguracoesPage() {
       include: { user: { select: { name: true } } },
     }),
     getStorageConfig(),
+    getDefaultPlatformFee(),
   ]);
 
   return (
@@ -76,9 +79,17 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa padrão para inscrições gratuitas</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Valor fixo em R$ cobrado do inscrito quando o evento é gratuito (lote com preço R$0,00). Esta taxa é paga pelo inscrito, não pelo organizador.
+        </p>
+        <DefaultPlatformFeeForm currentFee={defaultPlatformFee} />
+      </div>
+
+      <div className="card space-y-4">
         <h2 className="font-semibold text-lg dark:text-gray-100">Taxa da plataforma por evento</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          A taxa é configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
+          A taxa percentual é adicionada ao valor da inscrição e paga pelo inscrito. Configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
         </p>
         {events.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum evento ativo.</p>

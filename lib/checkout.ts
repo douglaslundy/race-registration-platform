@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { calculatePlatformFee } from "./format";
+import { getSetting } from "./settings";
 import type { ShirtSize } from "@prisma/client";
 
 export interface CheckoutInput {
@@ -27,6 +28,9 @@ export interface CheckoutResult {
 }
 
 export async function createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
+  const defaultFeeStr = await getSetting("default_platform_fee");
+  const defaultPlatformFee = defaultFeeStr ? parseInt(defaultFeeStr, 10) : 500;
+
   return db.$transaction(async (tx) => {
     const batch = await tx.ticketBatch.findUnique({ where: { id: input.ticketBatchId } });
     if (!batch || !batch.active) throw new Error("Lote não disponível");
@@ -66,9 +70,11 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     }
 
     const subtotal = batch.priceAmount - discountAmount;
-    const platformFee = calculatePlatformFee(subtotal, event.platformFeePercent);
+    const platformFee = subtotal === 0
+      ? defaultPlatformFee
+      : calculatePlatformFee(subtotal, event.platformFeePercent);
     const paymentFee = 0;
-    const total = subtotal + paymentFee;
+    const total = subtotal + platformFee + paymentFee;
 
     const order = await tx.order.create({
       data: {
