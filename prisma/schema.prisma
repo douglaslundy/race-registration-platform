@@ -276,8 +276,9 @@ model TicketBatch {
   soldCount   Int      @default(0)
   startAt     DateTime
   endAt       DateTime
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  active         Boolean  @default(true)
+  activationMode String   @default("MANUAL") // MANUAL | DATE | AFTER_PREVIOUS
+  createdAt      DateTime @default(now())
 
   event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   registrations Registration[]

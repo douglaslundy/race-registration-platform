@@ -9,6 +9,7 @@ const patchSchema = z.object({
   capacity: z.number().int().positive().optional(),
   active: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  activationMode: z.enum(["MANUAL", "DATE", "AFTER_PREVIOUS"]).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; batchId: string }> }) {
@@ -34,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(isActive !== undefined ? { active: isActive } : {}),
     },
   });
+
 
   return NextResponse.json({ batch });
 }

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getEventBySlug } from "@/lib/events";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
+import { isBatchAvailable } from "@/lib/batch-status";
 import { getDefaultPlatformFee } from "@/lib/settings";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
@@ -42,7 +43,7 @@ export default async function InscricaoPage({ params }: Props) {
     );
   }
 
-  const availableBatches = event.ticketBatches.filter((b) => b.soldCount < b.capacity);
+  const availableBatches = event.ticketBatches.filter((b) => isBatchAvailable(b, event.ticketBatches));
   if (availableBatches.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">

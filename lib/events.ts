@@ -64,8 +64,7 @@ export async function getEventBySlug(slug: string) {
       routes: true,
       categories: true,
       ticketBatches: {
-        where: { active: true },
-        orderBy: { priceAmount: "asc" },
+        orderBy: { startAt: "asc" },
       },
       organizer: {
         select: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getBatchStatus } from "@/lib/batch-status";
 
 const batchSchema = z.object({
   name: z.string().min(2),
@@ -10,6 +11,7 @@ const batchSchema = z.object({
   capacity: z.number().int().positive(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
+  activationMode: z.enum(["MANUAL", "DATE", "AFTER_PREVIOUS"]).optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -37,17 +39,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       eventId,
       startAt: new Date(parsed.data.startAt),
       endAt: new Date(parsed.data.endAt),
+      activationMode: parsed.data.activationMode ?? "MANUAL",
     },
   });
 
   return NextResponse.json({ batch }, { status: 201 });
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = await params;
   const batches = await db.ticketBatch.findMany({
     where: { eventId },
     orderBy: { startAt: "asc" },
   });
-  return NextResponse.json({ batches });
+  const batchesWithStatus = batches.map((batch) => ({
+    ...batch,
+    status: getBatchStatus(batch, batches),
+  }));
+  return NextResponse.json({ batches: batchesWithStatus });
 }

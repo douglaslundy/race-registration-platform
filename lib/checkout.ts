@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { calculatePlatformFee } from "./format";
 import { getSetting } from "./settings";
+import { isBatchAvailable } from "./batch-status";
 import type { ShirtSize } from "@prisma/client";
 
 export interface CheckoutInput {
@@ -32,9 +33,12 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   const defaultPlatformFee = defaultFeeStr ? parseInt(defaultFeeStr, 10) : 500;
 
   return db.$transaction(async (tx) => {
-    const batch = await tx.ticketBatch.findUnique({ where: { id: input.ticketBatchId } });
-    if (!batch || !batch.active) throw new Error("Lote não disponível");
-    if (batch.soldCount >= batch.capacity) throw new Error("Lote esgotado");
+    const [batch, allBatches] = await Promise.all([
+      tx.ticketBatch.findUnique({ where: { id: input.ticketBatchId } }),
+      tx.ticketBatch.findMany({ where: { eventId: input.eventId }, orderBy: { startAt: "asc" } }),
+    ]);
+    if (!batch) throw new Error("Lote não encontrado");
+    if (!isBatchAvailable(batch, allBatches)) throw new Error("Lote não disponível");
 
     const event = await tx.event.findUnique({ where: { id: input.eventId } });
     if (!event || event.status !== "REGISTRATIONS_OPEN") throw new Error("Inscrições não abertas");
