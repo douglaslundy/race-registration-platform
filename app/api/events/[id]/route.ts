@@ -17,6 +17,7 @@ const updateEventSchema = z.object({
   organizerContact: z.string().optional().nullable(),
   bannerUrl: z.string().url().optional().nullable(),
   regulationUrl: z.string().url().optional().nullable(),
+  regulationText: z.string().optional().nullable(),
   status: z.enum(["DRAFT", "UNDER_REVIEW"]).optional(),
 });
 

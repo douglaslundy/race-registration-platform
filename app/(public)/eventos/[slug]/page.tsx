@@ -73,6 +73,27 @@ export default async function EventoPage({ params }: Props) {
               </div>
             </div>
           )}
+
+          {(event.regulationText || event.regulationUrl) && (
+            <div>
+              <h2 className="text-lg font-semibold mb-3">Regulamento</h2>
+              {event.regulationUrl && (
+                <a
+                  href={event.regulationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline mb-3"
+                >
+                  📄 Baixar PDF do regulamento
+                </a>
+              )}
+              {event.regulationText && (
+                <div className="text-gray-700 bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
+                  {event.regulationText}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <aside className="space-y-4">
@@ -107,12 +128,6 @@ export default async function EventoPage({ params }: Props) {
               </button>
             )}
 
-            {event.regulationUrl && (
-              <a href={event.regulationUrl} target="_blank" rel="noreferrer"
-                className="block text-center text-sm text-primary-600 hover:underline mt-3">
-                Ver regulamento
-              </a>
-            )}
           </div>
         </aside>
       </div>

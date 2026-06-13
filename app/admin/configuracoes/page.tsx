@@ -5,8 +5,10 @@ import SetPlatformFeeForm from "@/components/admin/SetPlatformFeeForm";
 import AppNameForm from "@/components/admin/AppNameForm";
 import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
 import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
+import StorageSettingsForm from "@/components/admin/StorageSettingsForm";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
+import { getStorageConfig } from "@/lib/storage-settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -16,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, recentLogs] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, recentLogs, storageConfig] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -38,6 +40,7 @@ export default async function ConfiguracoesPage() {
       take: 10,
       include: { user: { select: { name: true } } },
     }),
+    getStorageConfig(),
   ]);
 
   return (
@@ -86,6 +89,18 @@ export default async function ConfiguracoesPage() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Storage de arquivos</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Configure onde banners e regulamentos são armazenados. Supabase Storage (recomendado) ou qualquer bucket S3-compatible.
+        </p>
+        <StorageSettingsForm
+          bucketConfigured={Boolean(storageConfig.bucket)}
+          accessKeyConfigured={Boolean(storageConfig.accessKey)}
+          endpointConfigured={storageConfig.endpoint ?? null}
+        />
       </div>
 
       <div className="card space-y-4">

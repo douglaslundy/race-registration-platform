@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  if (!isS3Configured()) {
+  if (!await isS3Configured()) {
     return NextResponse.json({ error: "Storage não configurado" }, { status: 503 });
   }
 

@@ -147,7 +147,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
         </div>
         <div className="flex flex-wrap gap-2">
           <UserDensityToggle currentDensity={compact ? "compact" : "comfortable"} />
-          <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+          <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">
             Exportar CSV
           </Link>
         </div>
@@ -195,7 +195,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
             Filtrar
           </button>
           {hasFilters ? (
-            <Link href="/admin/eventos" className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+            <Link href="/admin/eventos" className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">
               Limpar
             </Link>
           ) : null}
@@ -248,7 +248,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
                     </div>
                   </td>
                   <td className={cellPadding}>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100">{event.status}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200">{event.status}</span>
                   </td>
                   <td className={cellPadding + " text-center"}>{event._count.registrations}</td>
                   <td className={cellPadding + " text-gray-500"}>{event.city}/{event.state}</td>
@@ -274,7 +274,9 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
             href={buildPageUrl(Math.max(1, page - 1))}
             aria-disabled={page === 1}
             className={`text-sm px-3 py-1.5 rounded-lg border ${
-              page === 1 ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 hover:border-primary-400"
+              page === 1
+                ? "pointer-events-none border-gray-200 text-gray-300 dark:border-gray-700 dark:text-gray-600"
+                : "border-gray-300 hover:border-primary-400 dark:border-gray-600 dark:text-gray-200 dark:hover:border-primary-500"
             }`}
           >
             Anterior
@@ -284,7 +286,9 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
               key={p}
               href={buildPageUrl(p)}
               className={`text-sm px-3 py-1.5 rounded-lg border ${
-                p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 hover:border-primary-400"
+                p === page
+                  ? "bg-primary-600 text-white border-primary-600"
+                  : "border-gray-300 hover:border-primary-400 dark:border-gray-600 dark:text-gray-200 dark:hover:border-primary-500"
               }`}
             >
               {p}
@@ -294,7 +298,9 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
             href={buildPageUrl(Math.min(totalPages, page + 1))}
             aria-disabled={page === totalPages}
             className={`text-sm px-3 py-1.5 rounded-lg border ${
-              page === totalPages ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 hover:border-primary-400"
+              page === totalPages
+                ? "pointer-events-none border-gray-200 text-gray-300 dark:border-gray-700 dark:text-gray-600"
+                : "border-gray-300 hover:border-primary-400 dark:border-gray-600 dark:text-gray-200 dark:hover:border-primary-500"
             }`}
           >
             Próxima

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
+import { getPaymentProviderSetting, getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
 import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
@@ -75,6 +76,18 @@ export async function POST(req: NextRequest) {
   }
 
   const idempotencyKey = `${checkout.orderId}_${paymentMethod}_${Date.now()}`;
+
+  const providerKey = await getPaymentProviderSetting();
+  if (providerKey === "mercadopago") {
+    const token = await getMercadoPagoAccessToken();
+    if (!token) {
+      return NextResponse.json(
+        { error: "Gateway de pagamento não configurado. Acesse Admin → Configurações para configurar o Mercado Pago." },
+        { status: 503 }
+      );
+    }
+  }
+
   const provider = await getPaymentProvider();
   const [buyer, athleteProfile] = await Promise.all([
     db.user.findUnique({
@@ -87,15 +100,21 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
-  const paymentResult = await provider.createPayment({
-    orderId: checkout.orderId,
-    amount: checkout.totalAmount,
-    method: paymentMethod,
-    idempotencyKey,
-    buyer: { name: buyer!.name, email: buyer!.email },
-    description: `Inscrição #${checkout.registrationId}`,
-    cpf: athleteProfile?.cpf ?? undefined,
-  });
+  let paymentResult: Awaited<ReturnType<typeof provider.createPayment>>;
+  try {
+    paymentResult = await provider.createPayment({
+      orderId: checkout.orderId,
+      amount: checkout.totalAmount,
+      method: paymentMethod,
+      idempotencyKey,
+      buyer: { name: buyer!.name, email: buyer!.email },
+      description: `Inscrição #${checkout.registrationId}`,
+      cpf: athleteProfile?.cpf ?? undefined,
+    });
+  } catch (payErr) {
+    const msg = payErr instanceof Error ? payErr.message : "Erro no gateway de pagamento";
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
 
   const payment = await db.payment.create({
     data: {

@@ -214,6 +214,7 @@ model Event {
   longitude          Float?
   bannerUrl          String?
   regulationUrl      String?
+  regulationText     String?       @db.Text
   organizerContact   String?
   maxParticipants    Int?
   platformFeePercent Int           @default(1100) // basis points

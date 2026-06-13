@@ -99,6 +99,7 @@ export class MercadoPagoProvider implements PaymentProvider {
           {
             id: input.orderId,
             title: input.description,
+            description: input.description,
             unit_price: amountBRL,
             quantity: 1,
             currency_id: "BRL",
@@ -110,9 +111,11 @@ export class MercadoPagoProvider implements PaymentProvider {
           failure: `${appUrl}/api/payments/mp-return?status=failure&order=${input.orderId}`,
           pending: `${appUrl}/api/payments/mp-return?status=pending&order=${input.orderId}`,
         },
+        notification_url: `${appUrl}/api/webhooks/payment`,
         auto_return: "approved",
         external_reference: input.orderId,
         expires: false,
+        statement_descriptor: "CORRIDAS APP",
       },
     });
 

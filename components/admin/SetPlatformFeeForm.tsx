@@ -27,10 +27,10 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
   }
 
   return (
-    <div className="flex items-center gap-4 border rounded-lg p-3">
+    <div className="flex items-center gap-4 border rounded-lg p-3 dark:border-gray-700">
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{event.title}</p>
-        <p className="text-xs text-gray-400">{event.status}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">{event.status}</p>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -42,7 +42,7 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
           step={100}
           className="input-field w-24 text-sm py-1"
         />
-        <span className="text-xs text-gray-500">{(value / 100).toFixed(1)}%</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{(value / 100).toFixed(1)}%</span>
         <button
           onClick={handleSave}
           disabled={saving}

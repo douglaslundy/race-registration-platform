@@ -1,5 +1,6 @@
 "use client";
 
+import { QRCodeSVG } from "react-qr-code";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -226,9 +227,15 @@ export default function CheckoutForm({
       <div className="card space-y-4">
         <h2 className="text-xl font-bold text-green-700">Inscrição criada!</h2>
         {result.pixQrCodeText && (
-          <div>
-            <p className="font-medium mb-2">Pague via Pix:</p>
-            <div className="bg-gray-50 border rounded-lg p-4 font-mono text-xs break-all">{result.pixQrCodeText}</div>
+          <div className="space-y-3">
+            <p className="font-medium">Pague via Pix:</p>
+            <div className="flex justify-center p-4 bg-white rounded-lg border">
+              <QRCodeSVG value={result.pixQrCodeText} size={200} />
+            </div>
+            <p className="text-xs text-gray-500 text-center">Ou copie o código abaixo:</p>
+            <div className="bg-gray-50 border rounded-lg p-4 font-mono text-xs break-all select-all">
+              {result.pixQrCodeText}
+            </div>
           </div>
         )}
         {result.boletoUrl && (

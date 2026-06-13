@@ -19,6 +19,7 @@ const schema = z.object({
   state: z.string().length(2, "UF com 2 letras"),
   maxParticipants: z.number().int().positive().optional().nullable(),
   organizerContact: z.string().optional(),
+  regulationText: z.string().optional().nullable(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -53,6 +54,7 @@ type EventData = {
   organizerContact?: string | null;
   bannerUrl?: string | null;
   regulationUrl?: string | null;
+  regulationText?: string | null;
 };
 
 export default function EditEventForm({ event }: { event: EventData }) {
@@ -75,6 +77,7 @@ export default function EditEventForm({ event }: { event: EventData }) {
       state: event.state,
       maxParticipants: event.maxParticipants ?? undefined,
       organizerContact: event.organizerContact ?? "",
+      regulationText: event.regulationText ?? "",
     },
   });
 
@@ -89,6 +92,7 @@ export default function EditEventForm({ event }: { event: EventData }) {
         kitPickupAt: data.kitPickupAt ? new Date(data.kitPickupAt).toISOString() : null,
         bannerUrl,
         regulationUrl,
+        regulationText: data.regulationText || null,
       }),
     });
 
@@ -182,6 +186,19 @@ export default function EditEventForm({ event }: { event: EventData }) {
           label="Regulamento (PDF)"
           currentUrl={regulationUrl}
           onUploaded={setRegulationUrl}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Regulamento (texto)</label>
+        <p className="text-xs text-gray-500 mb-2">
+          Escreva o regulamento diretamente. Pode ser usado junto com ou em vez do PDF.
+        </p>
+        <textarea
+          {...register("regulationText")}
+          className="input w-full"
+          rows={8}
+          placeholder="Descreva as regras, categorias, premiação e demais informações do regulamento..."
         />
       </div>
 
