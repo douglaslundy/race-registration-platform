@@ -74,16 +74,29 @@ export default function PaymentMethodsForm({ currentMethods }: PaymentMethodsFor
           <label
             key={method}
             className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-sm cursor-pointer transition ${
-              selectedSet.has(method) ? "border-primary-500 bg-primary-50" : "border-gray-200 hover:bg-gray-50"
+              selectedSet.has(method)
+                ? "border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-900/40"
+                : "border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700/50"
             }`}
           >
             <input
               type="checkbox"
               checked={selectedSet.has(method)}
               onChange={() => toggleMethod(method)}
-              className="accent-primary-600"
+              className="sr-only"
             />
-            <span className="font-medium">{PAYMENT_METHOD_LABELS[method]}</span>
+            <div className={`w-4 h-4 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
+              selectedSet.has(method)
+                ? "bg-primary-600 border-primary-600 dark:bg-primary-500 dark:border-primary-500"
+                : "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-500"
+            }`}>
+              {selectedSet.has(method) && (
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span className="font-medium text-gray-800 dark:text-gray-100">{PAYMENT_METHOD_LABELS[method]}</span>
           </label>
         ))}
       </div>
