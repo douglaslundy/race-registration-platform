@@ -6,11 +6,13 @@ interface Props {
   purpose: "banner" | "regulation" | "kit_info";
   accept: string;
   label: string;
+  hint?: string;
   currentUrl?: string | null;
   onUploaded: (url: string) => void;
+  onRemoved?: () => void;
 }
 
-export default function FileUploadInput({ purpose, accept, label, currentUrl, onUploaded }: Props) {
+export default function FileUploadInput({ purpose, accept, label, hint, currentUrl, onUploaded, onRemoved }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,14 +46,29 @@ export default function FileUploadInput({ purpose, accept, label, currentUrl, on
     }
   }
 
+  function handleRemove() {
+    setPreviewUrl(null);
+    onRemoved?.();
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">{label}</label>
+      {hint && <p className="text-xs text-gray-500">{hint}</p>}
 
       {previewUrl && purpose === "banner" && (
-        <div className="relative w-full h-32 rounded-lg overflow-hidden border">
+        <div className="relative w-full h-32 rounded-lg overflow-hidden border group">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewUrl} alt="Banner" className="w-full h-full object-cover" />
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow transition-opacity opacity-0 group-hover:opacity-100"
+            title="Remover banner"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -70,7 +87,16 @@ export default function FileUploadInput({ purpose, accept, label, currentUrl, on
         >
           {uploading ? "Enviando…" : previewUrl ? "Substituir" : "Selecionar arquivo"}
         </button>
-        {previewUrl && (
+        {previewUrl && purpose === "banner" && onRemoved && (
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="text-xs text-red-600 hover:text-red-700 font-medium"
+          >
+            Remover banner
+          </button>
+        )}
+        {previewUrl && purpose !== "banner" && (
           <span className="text-xs text-green-600 font-medium">Arquivo carregado</span>
         )}
       </div>

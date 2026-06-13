@@ -177,8 +177,10 @@ export default function EditEventForm({ event }: { event: EventData }) {
           purpose="banner"
           accept="image/jpeg,image/png,image/webp"
           label="Banner do evento"
+          hint="Dimensões recomendadas: 1200 × 400 px (proporção 3:1). Formatos: JPG, PNG ou WebP."
           currentUrl={bannerUrl}
           onUploaded={setBannerUrl}
+          onRemoved={() => setBannerUrl(null)}
         />
         <FileUploadInput
           purpose="regulation"
