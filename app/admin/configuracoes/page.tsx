@@ -79,9 +79,9 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
-        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa padrão para inscrições gratuitas</h2>
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa mínima da plataforma</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Valor fixo em R$ cobrado do inscrito quando o evento é gratuito (lote com preço R$0,00). Esta taxa é paga pelo inscrito, não pelo organizador.
+          Valor mínimo cobrado do inscrito por inscrição. Aplica-se automaticamente quando o evento é gratuito ou quando a taxa percentual configurada resultar em valor inferior a este mínimo.
         </p>
         <DefaultPlatformFeeForm currentFee={defaultPlatformFee} />
       </div>

@@ -70,9 +70,8 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     }
 
     const subtotal = batch.priceAmount - discountAmount;
-    const platformFee = subtotal === 0
-      ? defaultPlatformFee
-      : calculatePlatformFee(subtotal, event.platformFeePercent);
+    const percentFee = calculatePlatformFee(subtotal, event.platformFeePercent);
+    const platformFee = Math.max(percentFee, defaultPlatformFee);
     const paymentFee = 0;
     const total = subtotal + platformFee + paymentFee;
 

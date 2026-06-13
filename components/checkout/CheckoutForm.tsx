@@ -56,9 +56,9 @@ interface CouponPreview {
   subtotalAmount: number;
 }
 
-function calcPlatformFee(subtotal: number, feePercent: number, defaultFee: number): number {
-  if (subtotal === 0) return defaultFee;
-  return Math.round((subtotal * feePercent) / 10000);
+function calcPlatformFee(subtotal: number, feePercent: number, minFee: number): number {
+  const percentFee = Math.round((subtotal * feePercent) / 10000);
+  return Math.max(percentFee, minFee);
 }
 
 export default function CheckoutForm({
