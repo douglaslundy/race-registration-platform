@@ -11,6 +11,7 @@ import { emptyStringToUndefined, extractApiErrorMessage, optionalEnumField, opaq
 import { PAYMENT_METHOD_LABELS, type CheckoutPaymentMethod } from "@/lib/payment-methods";
 import type { MPCardFormHandle } from "./MPCardForm";
 import type { PagarMeCardFormHandle } from "./PagarMeCardForm";
+import EventDisclaimer from "@/components/events/EventDisclaimer";
 import dynamic from "next/dynamic";
 
 const MPCardForm = dynamic(() => import("./MPCardForm"), { ssr: false });
@@ -488,6 +489,8 @@ export default function CheckoutForm({
           )}
         </div>
       )}
+
+      {appName && <EventDisclaimer appName={appName} />}
 
       <div className="card">
         <div className="flex items-start gap-3">
