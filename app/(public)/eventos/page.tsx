@@ -3,7 +3,8 @@ import { listPublicEvents, listDistinctCities } from "@/lib/events";
 import EventCard from "@/components/events/EventCard";
 import EventFilters from "@/components/events/EventFilters";
 import EventsBanner from "@/components/events/EventsBanner";
-import { getBannerInterval } from "@/lib/settings";
+import OrganizerCTA from "@/components/events/OrganizerCTA";
+import { getBannerInterval, getAppName } from "@/lib/settings";
 import type { EventModality } from "@prisma/client";
 
 export const metadata: Metadata = { title: "Eventos" };
@@ -20,7 +21,7 @@ interface SearchParams {
 export default async function EventosPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
 
-  const [{ events, total, totalPages, page }, cities, bannerInterval] = await Promise.all([
+  const [{ events, total, totalPages, page }, cities, bannerInterval, appName] = await Promise.all([
     listPublicEvents({
       city: params.cidade,
       modality: params.modalidade as EventModality | undefined,
@@ -30,9 +31,11 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
     }),
     listDistinctCities(),
     getBannerInterval(),
+    getAppName(),
   ]);
 
   return (
+    <>
     <main className="max-w-7xl mx-auto px-4 py-8">
       <EventsBanner intervalSeconds={bannerInterval} />
 
@@ -78,5 +81,7 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
     </main>
+    <OrganizerCTA appName={appName} />
+    </>
   );
 }
