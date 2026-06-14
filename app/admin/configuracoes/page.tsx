@@ -13,7 +13,7 @@ import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
-import { getDefaultPlatformFee, getServiceFee, getBannerInterval } from "@/lib/settings";
+import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getBannerInterval } from "@/lib/settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFee, bannerInterval] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -51,7 +51,8 @@ export default async function ConfiguracoesPage() {
     }),
     getStorageConfig(),
     getDefaultPlatformFee(),
-    getServiceFee(),
+    getServiceFeePercent(),
+    getServiceFeeMin(),
     getBannerInterval(),
   ]);
 
@@ -68,19 +69,43 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
-        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa de serviço de ingresso</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Valor fixo cobrado por inscrição como taxa de serviço, exibido no checkout e somado ao valor total. Use 0 para não cobrar.
-        </p>
-        <ServiceFeeForm currentFee={serviceFee} />
-      </div>
-
-      <div className="card space-y-4">
         <h2 className="font-semibold text-lg dark:text-gray-100">Intervalo do carrossel de banners</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Tempo em segundos entre a troca automática de banners na página de eventos. Padrão: 3 segundos.
         </p>
         <BannerIntervalForm currentInterval={bannerInterval} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa da plataforma por evento</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Taxa percentual adicionada ao valor da inscrição e paga pelo inscrito. Configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
+        </p>
+        {events.length === 0 ? (
+          <p className="text-sm text-gray-500">Nenhum evento ativo.</p>
+        ) : (
+          <div className="space-y-2">
+            {events.map((event) => (
+              <SetPlatformFeeForm key={event.id} event={event} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa mínima da plataforma</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Valor mínimo cobrado do inscrito por inscrição. Aplica-se quando o evento é gratuito ou quando a taxa percentual resultar em valor inferior a este mínimo.
+        </p>
+        <DefaultPlatformFeeForm currentFee={defaultPlatformFee} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa de serviço de ingresso</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Taxa percentual global adicionada ao valor da inscrição como taxa de serviço. O valor mínimo é aplicado quando o percentual resultar em valor inferior. Use 0 para não cobrar.
+        </p>
+        <ServiceFeeForm currentPercent={serviceFeePercent} currentMin={serviceFeeMin} />
       </div>
 
       <div className="card space-y-4">
@@ -105,30 +130,6 @@ export default async function ConfiguracoesPage() {
           pagarmePublicKeyConfigured={Boolean(pagarmePublicKey)}
           pagarmeWebhookPasswordConfigured={Boolean(pagarmeWebhookPassword)}
         />
-      </div>
-
-      <div className="card space-y-4">
-        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa mínima da plataforma</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Valor mínimo cobrado do inscrito por inscrição. Aplica-se automaticamente quando o evento é gratuito ou quando a taxa percentual configurada resultar em valor inferior a este mínimo.
-        </p>
-        <DefaultPlatformFeeForm currentFee={defaultPlatformFee} />
-      </div>
-
-      <div className="card space-y-4">
-        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa da plataforma por evento</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          A taxa percentual é adicionada ao valor da inscrição e paga pelo inscrito. Configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
-        </p>
-        {events.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhum evento ativo.</p>
-        ) : (
-          <div className="space-y-2">
-            {events.map((event) => (
-              <SetPlatformFeeForm key={event.id} event={event} />
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="card space-y-4">

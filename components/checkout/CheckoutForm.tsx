@@ -74,6 +74,12 @@ function calcPlatformFee(subtotal: number, feePercent: number, minFee: number): 
   return Math.max(percentFee, minFee);
 }
 
+function calcServiceFee(subtotal: number, feePercent: number, minFee: number): number {
+  if (feePercent === 0 && minFee === 0) return 0;
+  const percentFee = Math.round((subtotal * feePercent) / 10000);
+  return Math.max(percentFee, minFee);
+}
+
 export default function CheckoutForm({
   event,
   batches,
@@ -82,7 +88,8 @@ export default function CheckoutForm({
   athleteProfile,
   platformFeePercent,
   defaultPlatformFee,
-  serviceFee = 0,
+  serviceFeePercent = 0,
+  serviceFeeMin = 0,
   appName,
 }: {
   event: EventData;
@@ -92,7 +99,8 @@ export default function CheckoutForm({
   athleteProfile?: AthleteProfile;
   platformFeePercent: number;
   defaultPlatformFee: number;
-  serviceFee?: number;
+  serviceFeePercent?: number;
+  serviceFeeMin?: number;
   appName?: string;
 }) {
   const router = useRouter();
@@ -357,10 +365,11 @@ export default function CheckoutForm({
                 <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   {(() => {
                     const fee = calcPlatformFee(b.priceAmount, platformFeePercent, defaultPlatformFee);
+                    const sfee = calcServiceFee(b.priceAmount, serviceFeePercent, serviceFeeMin);
                     return (
                       <span>
                         +{formatCurrency(fee)} taxa da plataforma
-                        {serviceFee > 0 && <> · +{formatCurrency(serviceFee)} taxa de serviço</>}
+                        {sfee > 0 && <> · +{formatCurrency(sfee)} taxa de serviço</>}
                       </span>
                     );
                   })()}
@@ -482,7 +491,7 @@ export default function CheckoutForm({
                 <MPCardForm ref={mpCardRef} publicKey={cardConfig.publicKey} amount={
                   (() => {
                     const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + serviceFee;
+                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + calcServiceFee(sub, serviceFeePercent, serviceFeeMin);
                   })()
                 } />
               )}
@@ -490,7 +499,7 @@ export default function CheckoutForm({
                 <PagarMeCardForm ref={pagarmeCardRef} publicKey={cardConfig.publicKey} amount={
                   (() => {
                     const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + serviceFee;
+                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + calcServiceFee(sub, serviceFeePercent, serviceFeeMin);
                   })()
                 } />
               )}
@@ -523,7 +532,8 @@ export default function CheckoutForm({
         {(() => {
           const effectiveSubtotal = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
           const fee = calcPlatformFee(effectiveSubtotal, platformFeePercent, defaultPlatformFee);
-          const effectiveTotal = effectiveSubtotal + fee + serviceFee;
+          const sfee = calcServiceFee(effectiveSubtotal, serviceFeePercent, serviceFeeMin);
+          const effectiveTotal = effectiveSubtotal + fee + sfee;
           return (
             <div className="space-y-1 text-sm mb-4">
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
@@ -540,10 +550,10 @@ export default function CheckoutForm({
                 <span>+Taxa da plataforma</span>
                 <span>{formatCurrency(fee)}</span>
               </div>
-              {serviceFee > 0 && (
+              {sfee > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>+Taxa de serviço de ingresso</span>
-                  <span>{formatCurrency(serviceFee)}</span>
+                  <span>{formatCurrency(sfee)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-lg font-bold border-t dark:border-gray-700 pt-2 mt-1">
