@@ -349,9 +349,22 @@ export default function CheckoutForm({
                 name="ticketBatchId"
                 className="accent-primary-600"
               />
-              <div className="flex-1 flex justify-between">
-                <span className="font-medium">{b.name}</span>
-                <span className="text-primary-600 font-bold">{formatCurrency(b.priceAmount)}</span>
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">{b.name}</span>
+                  <span className="text-primary-600 font-bold">{formatCurrency(b.priceAmount)}</span>
+                </div>
+                <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  {(() => {
+                    const fee = calcPlatformFee(b.priceAmount, platformFeePercent, defaultPlatformFee);
+                    return (
+                      <span>
+                        +{formatCurrency(fee)} taxa da plataforma
+                        {serviceFee > 0 && <> · +{formatCurrency(serviceFee)} taxa de serviço</>}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
             </label>
           ))}
