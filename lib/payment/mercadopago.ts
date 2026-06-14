@@ -92,6 +92,20 @@ export class MercadoPagoProvider implements PaymentProvider {
     // ── Cartão de crédito — Checkout transparente ─────────────────────────────
     if (!input.cardToken) throw new Error("Token do cartão não fornecido");
 
+    // Resolve payment_method_id: prefer what the frontend sent; fallback to card token lookup
+    let paymentMethodId = input.cardBrand;
+    if (!paymentMethodId) {
+      const token = await getMercadoPagoAccessToken();
+      const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens/${input.cardToken}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json() as { payment_method_id?: string };
+        paymentMethodId = tokenData.payment_method_id ?? undefined;
+      }
+    }
+    if (!paymentMethodId) throw new Error("Não foi possível identificar a bandeira do cartão");
+
     const paymentApiCC = new Payment(client);
     const payerCC: Record<string, unknown> = {
       email: input.buyer.email,
@@ -106,7 +120,7 @@ export class MercadoPagoProvider implements PaymentProvider {
       body: {
         transaction_amount: amountBRL,
         token: input.cardToken,
-        payment_method_id: input.cardBrand,
+        payment_method_id: paymentMethodId,
         installments: input.installments ?? 1,
         description: input.description,
         payer: payerCC,

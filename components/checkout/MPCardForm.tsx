@@ -23,6 +23,7 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
   const mpRef = useRef<any>(null);
   const holderNameRef = useRef<HTMLInputElement>(null);
   const installmentsRef = useRef<HTMLSelectElement>(null);
+  const paymentMethodIdRef = useRef<string>("");
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
 
@@ -42,7 +43,9 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
 
       return {
         token: result.id as string,
-        paymentMethodId: (result.payment_method_id ?? "") as string,
+        // payment_method_id may not be in the token result with individual fields;
+        // use what was captured from binChange event instead
+        paymentMethodId: (result.payment_method_id || paymentMethodIdRef.current) as string,
         installments,
       };
     },
@@ -63,6 +66,10 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
 
         const cardNumber = mp.fields.create("cardNumber", { placeholder: "0000 0000 0000 0000" });
         cardNumber.mount("mp-card-number");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cardNumber.on("binChange", (data: any) => {
+          paymentMethodIdRef.current = data?.paymentMethodId ?? "";
+        });
         fields.push(cardNumber);
 
         const expirationDate = mp.fields.create("expirationDate", { placeholder: "MM/AA" });
