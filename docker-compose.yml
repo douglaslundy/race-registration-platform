@@ -29,6 +29,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.corridas.rule=Host(`corridas.srv1716304.hstgr.cloud`)"
+      - "traefik.http.routers.corridas.entrypoints=websecure"
+      - "traefik.http.routers.corridas.tls=true"
+      - "traefik.http.routers.corridas.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.corridas.loadbalancer.server.port=3000"
+      - "traefik.docker.network=n8n_default"
+    networks:
+      - default
+      - traefik
+
+networks:
+  traefik:
+    external: true
+    name: n8n_default
 
 volumes:
   postgres_data:
