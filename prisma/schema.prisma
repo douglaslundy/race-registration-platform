@@ -213,6 +213,7 @@ model Event {
   latitude           Float?
   longitude          Float?
   bannerUrl          String?
+  listBannerUrl      String?
   regulationUrl      String?
   regulationText     String?       @db.Text
   organizerContact   String?

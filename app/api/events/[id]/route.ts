@@ -16,6 +16,7 @@ const updateEventSchema = z.object({
   maxParticipants: z.number().int().positive().optional().nullable(),
   organizerContact: z.string().optional().nullable(),
   bannerUrl: z.string().url().optional().nullable(),
+  listBannerUrl: z.string().url().optional().nullable(),
   regulationUrl: z.string().url().optional().nullable(),
   regulationText: z.string().optional().nullable(),
   status: z.enum(["DRAFT", "UNDER_REVIEW"]).optional(),

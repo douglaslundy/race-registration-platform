@@ -53,6 +53,7 @@ type EventData = {
   maxParticipants?: number | null;
   organizerContact?: string | null;
   bannerUrl?: string | null;
+  listBannerUrl?: string | null;
   regulationUrl?: string | null;
   regulationText?: string | null;
 };
@@ -61,6 +62,7 @@ export default function EditEventForm({ event }: { event: EventData }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(event.bannerUrl ?? null);
+  const [listBannerUrl, setListBannerUrl] = useState<string | null>(event.listBannerUrl ?? null);
   const [regulationUrl, setRegulationUrl] = useState<string | null>(event.regulationUrl ?? null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -91,6 +93,7 @@ export default function EditEventForm({ event }: { event: EventData }) {
         startAt: new Date(data.startAt).toISOString(),
         kitPickupAt: data.kitPickupAt ? new Date(data.kitPickupAt).toISOString() : null,
         bannerUrl,
+        listBannerUrl,
         regulationUrl,
         regulationText: data.regulationText || null,
       }),
@@ -181,6 +184,15 @@ export default function EditEventForm({ event }: { event: EventData }) {
           currentUrl={bannerUrl}
           onUploaded={setBannerUrl}
           onRemoved={() => setBannerUrl(null)}
+        />
+        <FileUploadInput
+          purpose="list_banner"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          label="Banner da listagem (formato quadrado)"
+          hint="Proporção recomendada 1:1 (ex.: 600 × 600 px) — exibido no card do evento na página de listagem. Formatos: JPG, PNG, WebP ou GIF."
+          currentUrl={listBannerUrl}
+          onUploaded={setListBannerUrl}
+          onRemoved={() => setListBannerUrl(null)}
         />
         <FileUploadInput
           purpose="regulation"

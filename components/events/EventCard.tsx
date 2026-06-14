@@ -14,6 +14,7 @@ interface EventCardProps {
     city: string;
     state: string;
     bannerUrl: string | null;
+    listBannerUrl?: string | null;
     ticketBatches: { priceAmount: number; soldCount: number; capacity: number }[];
   };
 }
@@ -42,9 +43,9 @@ export default function EventCard({ event }: EventCardProps) {
   return (
     <Link href={`/eventos/${event.slug}`} className="block group">
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-        <div className="relative h-40 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30">
-          {event.bannerUrl ? (
-            <Image src={event.bannerUrl} alt={event.title} fill className="object-cover" />
+        <div className={`relative bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 ${event.listBannerUrl ? "aspect-square" : "h-40"}`}>
+          {(event.listBannerUrl ?? event.bannerUrl) ? (
+            <Image src={event.listBannerUrl ?? event.bannerUrl!} alt={event.title} fill className="object-cover" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-4xl">🏃</span>

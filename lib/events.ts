@@ -43,6 +43,7 @@ export async function listPublicEvents(filters: EventFilters = {}) {
         city: true,
         state: true,
         bannerUrl: true,
+        listBannerUrl: true,
         ticketBatches: {
           where: { active: true },
           orderBy: { priceAmount: "asc" },
