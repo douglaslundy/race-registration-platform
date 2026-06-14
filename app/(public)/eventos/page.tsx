@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { listPublicEvents, listDistinctCities } from "@/lib/events";
 import EventCard from "@/components/events/EventCard";
 import EventFilters from "@/components/events/EventFilters";
+import EventsBanner from "@/components/events/EventsBanner";
+import { getBannerInterval } from "@/lib/settings";
 import type { EventModality } from "@prisma/client";
 
 export const metadata: Metadata = { title: "Eventos" };
@@ -18,18 +20,22 @@ interface SearchParams {
 export default async function EventosPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
 
-  const { events, total, totalPages, page } = await listPublicEvents({
-    city: params.cidade,
-    modality: params.modalidade as EventModality | undefined,
-    from: params.de ? new Date(params.de) : undefined,
-    to: params.ate ? new Date(params.ate) : undefined,
-    page: params.pagina ? Number(params.pagina) : 1,
-  });
-
-  const cities = await listDistinctCities();
+  const [{ events, total, totalPages, page }, cities, bannerInterval] = await Promise.all([
+    listPublicEvents({
+      city: params.cidade,
+      modality: params.modalidade as EventModality | undefined,
+      from: params.de ? new Date(params.de) : undefined,
+      to: params.ate ? new Date(params.ate) : undefined,
+      page: params.pagina ? Number(params.pagina) : 1,
+    }),
+    listDistinctCities(),
+    getBannerInterval(),
+  ]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-8">
+      <EventsBanner intervalSeconds={bannerInterval} />
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Eventos</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">{total} evento{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""}</p>

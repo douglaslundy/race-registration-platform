@@ -7,11 +7,13 @@ import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
 import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
 import StorageSettingsForm from "@/components/admin/StorageSettingsForm";
 import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
+import ServiceFeeForm from "@/components/admin/ServiceFeeForm";
+import BannerIntervalForm from "@/components/admin/BannerIntervalForm";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
-import { getDefaultPlatformFee } from "@/lib/settings";
+import { getDefaultPlatformFee, getServiceFee, getBannerInterval } from "@/lib/settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -21,7 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFee, bannerInterval] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -49,6 +51,8 @@ export default async function ConfiguracoesPage() {
     }),
     getStorageConfig(),
     getDefaultPlatformFee(),
+    getServiceFee(),
+    getBannerInterval(),
   ]);
 
   return (
@@ -61,6 +65,22 @@ export default async function ConfiguracoesPage() {
           Nome exibido no cabeçalho, rodapé, e-mails e título das páginas.
         </p>
         <AppNameForm currentName={appName} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa de serviço de ingresso</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Valor fixo cobrado por inscrição como taxa de serviço, exibido no checkout e somado ao valor total. Use 0 para não cobrar.
+        </p>
+        <ServiceFeeForm currentFee={serviceFee} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Intervalo do carrossel de banners</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Tempo em segundos entre a troca automática de banners na página de eventos. Padrão: 3 segundos.
+        </p>
+        <BannerIntervalForm currentInterval={bannerInterval} />
       </div>
 
       <div className="card space-y-4">

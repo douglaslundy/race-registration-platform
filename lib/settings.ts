@@ -40,6 +40,16 @@ export const getDefaultPlatformFee = cache(async (): Promise<number> => {
   return val ? parseInt(val, 10) : 500; // padrão R$5,00
 });
 
+export const getBannerInterval = cache(async (): Promise<number> => {
+  const val = await getSetting("banner_interval_seconds");
+  return val ? parseInt(val, 10) : 3;
+});
+
+export const getServiceFee = cache(async (): Promise<number> => {
+  const val = await getSetting("service_fee");
+  return val ? parseInt(val, 10) : 0;
+});
+
 export async function upsertSetting(key: string, value: string) {
   try {
     await db.platformSetting.upsert({
