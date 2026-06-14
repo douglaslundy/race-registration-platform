@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { getEventBySlug } from "@/lib/events";
 import { formatCurrency } from "@/lib/format";
 import { format } from "date-fns";
@@ -23,9 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventoPage({ params }: Props) {
   const { slug } = await params;
-  const event = await getEventBySlug(slug);
+  const [event, session] = await Promise.all([getEventBySlug(slug), auth()]);
   if (!event) notFound();
 
+  const isLoggedIn = Boolean(session?.user);
   const canRegister = event.status === "REGISTRATIONS_OPEN";
   const availableBatches = event.ticketBatches.filter(
     (b) => b.soldCount < b.capacity
@@ -119,7 +121,10 @@ export default async function EventoPage({ params }: Props) {
             )}
 
             {canRegister && availableBatches.length > 0 ? (
-              <Link href={`/inscricao/${event.slug}`} className="btn-primary w-full text-center block">
+              <Link
+                href={isLoggedIn ? `/inscricao/${event.slug}` : `/auth/login?callbackUrl=/inscricao/${event.slug}`}
+                className="btn-primary w-full text-center block"
+              >
                 Inscrever-se
               </Link>
             ) : (
