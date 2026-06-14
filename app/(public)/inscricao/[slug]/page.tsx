@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { getEventBySlug } from "@/lib/events";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import { isBatchAvailable } from "@/lib/batch-status";
-import { getDefaultPlatformFee } from "@/lib/settings";
+import { getDefaultPlatformFee, getServiceFee, getAppName } from "@/lib/settings";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
 interface Props {
@@ -53,13 +53,15 @@ export default async function InscricaoPage({ params }: Props) {
     );
   }
 
-  const [athleteProfile, paymentMethods, defaultPlatformFee] = await Promise.all([
+  const [athleteProfile, paymentMethods, defaultPlatformFee, serviceFee, appName] = await Promise.all([
     db.athleteProfile.findUnique({
       where: { userId: session.user.id },
       select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true, cpf: true },
     }),
     getEnabledPaymentMethods(),
     getDefaultPlatformFee(),
+    getServiceFee(),
+    getAppName(),
   ]);
 
   return (
@@ -74,6 +76,8 @@ export default async function InscricaoPage({ params }: Props) {
         athleteProfile={athleteProfile ?? undefined}
         platformFeePercent={event.platformFeePercent}
         defaultPlatformFee={defaultPlatformFee}
+        serviceFee={serviceFee}
+        appName={appName}
       />
     </main>
   );

@@ -31,6 +31,8 @@ export interface CheckoutResult {
 export async function createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
   const defaultFeeStr = await getSetting("default_platform_fee");
   const defaultPlatformFee = defaultFeeStr ? parseInt(defaultFeeStr, 10) : 500;
+  const serviceFeeStr = await getSetting("service_fee");
+  const serviceFee = serviceFeeStr ? parseInt(serviceFeeStr, 10) : 0;
 
   return db.$transaction(async (tx) => {
     const [batch, allBatches] = await Promise.all([
@@ -76,7 +78,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     const subtotal = batch.priceAmount - discountAmount;
     const percentFee = calculatePlatformFee(subtotal, event.platformFeePercent);
     const platformFee = Math.max(percentFee, defaultPlatformFee);
-    const paymentFee = 0;
+    const paymentFee = serviceFee;
     const total = subtotal + platformFee + paymentFee;
 
     const order = await tx.order.create({

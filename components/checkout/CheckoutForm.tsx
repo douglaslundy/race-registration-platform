@@ -81,6 +81,8 @@ export default function CheckoutForm({
   athleteProfile,
   platformFeePercent,
   defaultPlatformFee,
+  serviceFee = 0,
+  appName,
 }: {
   event: EventData;
   batches: Batch[];
@@ -89,6 +91,8 @@ export default function CheckoutForm({
   athleteProfile?: AthleteProfile;
   platformFeePercent: number;
   defaultPlatformFee: number;
+  serviceFee?: number;
+  appName?: string;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -464,7 +468,7 @@ export default function CheckoutForm({
                 <MPCardForm ref={mpCardRef} publicKey={cardConfig.publicKey} amount={
                   (() => {
                     const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee);
+                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + serviceFee;
                   })()
                 } />
               )}
@@ -472,7 +476,7 @@ export default function CheckoutForm({
                 <PagarMeCardForm ref={pagarmeCardRef} publicKey={cardConfig.publicKey} amount={
                   (() => {
                     const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee);
+                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + serviceFee;
                   })()
                 } />
               )}
@@ -503,7 +507,7 @@ export default function CheckoutForm({
         {(() => {
           const effectiveSubtotal = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
           const fee = calcPlatformFee(effectiveSubtotal, platformFeePercent, defaultPlatformFee);
-          const effectiveTotal = effectiveSubtotal + fee;
+          const effectiveTotal = effectiveSubtotal + fee + serviceFee;
           return (
             <div className="space-y-1 text-sm mb-4">
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
@@ -517,9 +521,15 @@ export default function CheckoutForm({
                 </div>
               )}
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                <span>Taxa da plataforma</span>
+                <span>+Taxa da plataforma</span>
                 <span>{formatCurrency(fee)}</span>
               </div>
+              {serviceFee > 0 && (
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>+Taxa de serviço de ingresso</span>
+                  <span>{formatCurrency(serviceFee)}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-lg font-bold border-t dark:border-gray-700 pt-2 mt-1">
                 <span>Total</span>
                 <span className="text-primary-600">{formatCurrency(effectiveTotal)}</span>
