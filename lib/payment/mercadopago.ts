@@ -93,16 +93,15 @@ export class MercadoPagoProvider implements PaymentProvider {
     if (!input.cardToken) throw new Error("Token do cartão não fornecido");
 
     // Resolve payment_method_id: prefer what the frontend sent; fallback to card token lookup
-    let paymentMethodId = input.cardBrand;
+    let paymentMethodId = input.cardBrand || undefined;
     if (!paymentMethodId) {
-      const token = await getMercadoPagoAccessToken();
+      const accessToken = await getMercadoPagoAccessToken();
       const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens/${input.cardToken}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (tokenRes.ok) {
-        const tokenData = await tokenRes.json() as { payment_method_id?: string };
-        paymentMethodId = tokenData.payment_method_id ?? undefined;
-      }
+      const tokenData = await tokenRes.json() as { payment_method_id?: string; luhn_validation?: boolean };
+      console.log("[mp] card_token lookup:", JSON.stringify(tokenData));
+      paymentMethodId = tokenData.payment_method_id || undefined;
     }
     if (!paymentMethodId) throw new Error("Não foi possível identificar a bandeira do cartão");
 

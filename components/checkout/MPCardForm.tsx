@@ -68,7 +68,8 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
         cardNumber.mount("mp-card-number");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cardNumber.on("binChange", (data: any) => {
-          paymentMethodIdRef.current = data?.paymentMethodId ?? "";
+          // MP emits snake_case: payment_method_id
+          paymentMethodIdRef.current = data?.payment_method_id ?? data?.paymentMethodId ?? "";
         });
         fields.push(cardNumber);
 
