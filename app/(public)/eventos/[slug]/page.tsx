@@ -9,7 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import OrganizerInfo from "@/components/events/OrganizerInfo";
 import EventDisclaimer from "@/components/events/EventDisclaimer";
-import { getAppName } from "@/lib/settings";
+import { getAppName, getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin } from "@/lib/settings";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -27,7 +27,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventoPage({ params }: Props) {
   const { slug } = await params;
-  const [event, session, appName] = await Promise.all([getEventBySlug(slug), auth(), getAppName()]);
+  const [event, session, appName, defaultPlatformFee, serviceFeePercent, serviceFeeMin] = await Promise.all([
+    getEventBySlug(slug), auth(), getAppName(),
+    getDefaultPlatformFee(), getServiceFeePercent(), getServiceFeeMin(),
+  ]);
   if (!event) notFound();
 
   const isLoggedIn = Boolean(session?.user);
@@ -123,7 +126,7 @@ export default async function EventoPage({ params }: Props) {
                       <span className="text-primary-600 font-bold">{formatCurrency(batch.priceAmount)}</span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {batch.capacity - batch.soldCount} vagas restantes
+                      Vendas até: {format(new Date(batch.endAt), "dd/MM/yyyy HH:mm")}
                     </p>
                   </div>
                 ))}
@@ -131,6 +134,20 @@ export default async function EventoPage({ params }: Props) {
             ) : (
               <p className="text-gray-500 text-sm mb-4">Sem lotes disponíveis</p>
             )}
+
+            <div className="mb-4 pt-3 border-t dark:border-gray-700 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="font-medium text-gray-600 dark:text-gray-400">Taxas aplicadas:</p>
+              <p>
+                Taxa da plataforma: {(event.platformFeePercent / 100).toFixed(1)}%
+                {defaultPlatformFee > 0 && ` (mín. ${formatCurrency(defaultPlatformFee)})`}
+              </p>
+              {(serviceFeePercent > 0 || serviceFeeMin > 0) && (
+                <p>
+                  Taxa de serviço:{serviceFeePercent > 0 ? ` ${(serviceFeePercent / 100).toFixed(1)}%` : ""}
+                  {serviceFeeMin > 0 && ` (mín. ${formatCurrency(serviceFeeMin)})`}
+                </p>
+              )}
+            </div>
 
             {canRegister && availableBatches.length > 0 ? (
               <Link
