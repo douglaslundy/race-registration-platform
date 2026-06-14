@@ -17,7 +17,8 @@ async function getClient() {
 export class MercadoPagoProvider implements PaymentProvider {
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const client = await getClient();
-    const amountBRL = input.amount / 100;
+    const amountBRL = parseFloat((input.amount / 100).toFixed(2));
+    console.log("[mp] createPayment method=%s amount_cents=%d amount_brl=%s", input.method, input.amount, amountBRL);
     const [firstName, ...rest] = input.buyer.name.split(" ");
     const lastName = rest.join(" ") || firstName;
 
