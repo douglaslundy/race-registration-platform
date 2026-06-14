@@ -7,6 +7,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import Image from "next/image";
+import OrganizerInfo from "@/components/events/OrganizerInfo";
+import EventDisclaimer from "@/components/events/EventDisclaimer";
+import { getAppName } from "@/lib/settings";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -24,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventoPage({ params }: Props) {
   const { slug } = await params;
-  const [event, session] = await Promise.all([getEventBySlug(slug), auth()]);
+  const [event, session, appName] = await Promise.all([getEventBySlug(slug), auth(), getAppName()]);
   if (!event) notFound();
 
   const isLoggedIn = Boolean(session?.user);
@@ -62,6 +65,13 @@ export default async function EventoPage({ params }: Props) {
             </div>
           )}
 
+          <OrganizerInfo
+            name={event.organizer.user.name}
+            email={event.organizer.user.email}
+            phone={event.organizer.phone}
+            companyName={event.organizer.companyName}
+          />
+
           {event.routes.length > 0 && (
             <div>
               <h2 className="text-lg font-semibold mb-3">Percursos</h2>
@@ -96,6 +106,8 @@ export default async function EventoPage({ params }: Props) {
               )}
             </div>
           )}
+
+          <EventDisclaimer appName={appName} />
         </div>
 
         <aside className="space-y-4">
