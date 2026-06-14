@@ -92,6 +92,7 @@ export class MercadoPagoProvider implements PaymentProvider {
 
     // ── Cartão de crédito — Checkout transparente ─────────────────────────────
     if (!input.cardToken) throw new Error("Token do cartão não fornecido");
+    if (amountBRL < 1) throw new Error("Valor mínimo para pagamento com cartão é R$1,00");
 
     // Resolve payment_method_id: prefer what the frontend sent; fallback to card token lookup
     let paymentMethodId = input.cardBrand || undefined;
