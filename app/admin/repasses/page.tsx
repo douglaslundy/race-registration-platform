@@ -128,7 +128,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
     return buildPageUrl(1, { sort: column, dir: nextDir });
   };
 
-  const rowClass = compact ? "border-b last:border-0 hover:bg-gray-50 text-xs" : "border-b last:border-0 hover:bg-gray-50";
+  const rowClass = compact ? "border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40 text-xs" : "border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40";
   const cellPadding = compact ? "py-2 pr-3" : "py-2 pr-4";
   const STATUS_COLOR: Record<string, string> = {
     PENDING: BADGE.yellow,
@@ -146,7 +146,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
         </div>
         <div className="flex flex-wrap gap-2">
           <UserDensityToggle currentDensity={compact ? "compact" : "comfortable"} />
-          <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+          <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
             Exportar CSV
           </Link>
         </div>
@@ -211,7 +211,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
         <div className="card overflow-x-auto">
           <table className={`w-full ${compact ? "text-xs" : "text-sm"}`}>
             <thead>
-              <tr className={`text-left text-gray-500 border-b ${compact ? "text-[10px] uppercase" : "text-xs uppercase"}`}>
+              <tr className={`text-left text-gray-500 border-b dark:border-gray-700 ${compact ? "text-[10px] uppercase" : "text-xs uppercase"}`}>
                 <th className="pb-2 pr-4">
                   <SortLink label="Evento" column="event" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("event")} />
                 </th>
@@ -237,7 +237,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
               {payouts.map((p) => (
                 <tr key={p.id} className={rowClass}>
                   <td className={cellPadding + " truncate max-w-xs"}>{p.event.title}</td>
-                  <td className={cellPadding + " text-gray-600"}>{p.organizer.user.name}</td>
+                  <td className={cellPadding + " text-gray-600 dark:text-gray-400"}>{p.organizer.user.name}</td>
                   <td className={cellPadding + " font-medium"}>{formatCurrency(p.grossAmount)}</td>
                   <td className={cellPadding + " text-red-500"}>-{formatCurrency(p.platformFee)}</td>
                   <td className={cellPadding + " font-bold text-green-700"}>{formatCurrency(p.netAmount)}</td>
@@ -258,7 +258,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
             href={buildPageUrl(Math.max(1, page - 1))}
             aria-disabled={page === 1}
             className={`text-sm px-3 py-1.5 rounded-lg border ${
-              page === 1 ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 hover:border-primary-400"
+              page === 1 ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
             }`}
           >
             Anterior
@@ -268,7 +268,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
               key={p}
               href={buildPageUrl(p)}
               className={`text-sm px-3 py-1.5 rounded-lg border ${
-                p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 hover:border-primary-400"
+                p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
               }`}
             >
               {p}
@@ -278,7 +278,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
             href={buildPageUrl(Math.min(totalPages, page + 1))}
             aria-disabled={page === totalPages}
             className={`text-sm px-3 py-1.5 rounded-lg border ${
-              page === totalPages ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 hover:border-primary-400"
+              page === totalPages ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
             }`}
           >
             Próxima

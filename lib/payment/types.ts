@@ -10,7 +10,11 @@ export interface CreatePaymentInput {
     email: string;
   };
   description: string;
-  cpf?: string; // required for boleto
+  cpf?: string;
+  // Transparent credit card fields
+  cardToken?: string;
+  cardBrand?: string;
+  installments?: number;
 }
 
 export interface CreatePaymentResult {

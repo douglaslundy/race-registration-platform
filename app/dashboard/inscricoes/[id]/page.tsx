@@ -93,22 +93,22 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
       )}
 
       <div className="card space-y-4">
-        <h3 className="font-semibold text-gray-900">Dados do evento</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Dados do evento</h3>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between py-1 border-b">
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
             <span className="text-gray-500">Evento</span>
             <span className="font-medium text-right">{registration.event.title}</span>
           </div>
-          <div className="flex justify-between py-1 border-b">
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
             <span className="text-gray-500">Data</span>
             <span>{formatDate(registration.event.startAt)}</span>
           </div>
-          <div className="flex justify-between py-1 border-b">
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
             <span className="text-gray-500">Local</span>
             <span className="text-right">{registration.event.venueName}, {registration.event.city}/{registration.event.state}</span>
           </div>
           {registration.event.kitPickupAt && (
-            <div className="flex justify-between py-1 border-b">
+            <div className="flex justify-between py-1 border-b dark:border-gray-700">
               <span className="text-gray-500">Retirada de kit</span>
               <span>{formatDate(registration.event.kitPickupAt)}</span>
             </div>
@@ -117,33 +117,33 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
       </div>
 
       <div className="card space-y-4">
-        <h3 className="font-semibold text-gray-900">Dados da inscrição</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Dados da inscrição</h3>
         <div className="space-y-2 text-sm">
           {registration.route && (
-            <div className="flex justify-between py-1 border-b">
+            <div className="flex justify-between py-1 border-b dark:border-gray-700">
               <span className="text-gray-500">Percurso</span>
               <span>{registration.route.name} ({registration.route.distanceKm}km)</span>
             </div>
           )}
           {registration.category && (
-            <div className="flex justify-between py-1 border-b">
+            <div className="flex justify-between py-1 border-b dark:border-gray-700">
               <span className="text-gray-500">Categoria</span>
               <span>{registration.category.name}</span>
             </div>
           )}
           {registration.shirtSize && (
-            <div className="flex justify-between py-1 border-b">
+            <div className="flex justify-between py-1 border-b dark:border-gray-700">
               <span className="text-gray-500">Camiseta</span>
               <span>{registration.shirtSize}</span>
             </div>
           )}
           {registration.teamName && (
-            <div className="flex justify-between py-1 border-b">
+            <div className="flex justify-between py-1 border-b dark:border-gray-700">
               <span className="text-gray-500">Equipe</span>
               <span>{registration.teamName}</span>
             </div>
           )}
-          <div className="flex justify-between py-1 border-b">
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
             <span className="text-gray-500">Lote</span>
             <span>{registration.ticketBatch.name}</span>
           </div>
@@ -151,9 +151,9 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
       </div>
 
       <div className="card space-y-3">
-        <h3 className="font-semibold text-gray-900">Resumo financeiro</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Resumo financeiro</h3>
         <div className="space-y-1 text-sm">
-          <div className="flex justify-between text-gray-600">
+          <div className="flex justify-between text-gray-600 dark:text-gray-400">
             <span>Subtotal</span>
             <span>{formatCurrency(registration.ticketBatch.priceAmount)}</span>
           </div>
@@ -163,7 +163,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
               <span>- {formatCurrency(registration.order.discountAmount)}</span>
             </div>
           )}
-          <div className="flex justify-between font-bold text-gray-900 pt-2 border-t">
+          <div className="flex justify-between font-bold text-gray-900 dark:text-gray-100 pt-2 border-t dark:border-gray-700">
             <span>Total pago</span>
             <span>{formatCurrency(registration.order.totalAmount)}</span>
           </div>

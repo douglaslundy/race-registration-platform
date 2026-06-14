@@ -26,7 +26,7 @@ export default async function InscricaoPage({ params }: Props) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Acesso não permitido</h1>
-        <p className="text-gray-600">Administradores e organizadores não podem realizar inscrições em eventos.</p>
+        <p className="text-gray-600 dark:text-gray-400">Administradores e organizadores não podem realizar inscrições em eventos.</p>
       </div>
     );
   }
@@ -38,7 +38,7 @@ export default async function InscricaoPage({ params }: Props) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Inscrições não disponíveis</h1>
-        <p className="text-gray-600">As inscrições para este evento não estão abertas.</p>
+        <p className="text-gray-600 dark:text-gray-400">As inscrições para este evento não estão abertas.</p>
       </div>
     );
   }
@@ -48,7 +48,7 @@ export default async function InscricaoPage({ params }: Props) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Evento Esgotado</h1>
-        <p className="text-gray-600">Todos os lotes disponíveis foram preenchidos.</p>
+        <p className="text-gray-600 dark:text-gray-400">Todos os lotes disponíveis foram preenchidos.</p>
       </div>
     );
   }
@@ -56,7 +56,7 @@ export default async function InscricaoPage({ params }: Props) {
   const [athleteProfile, paymentMethods, defaultPlatformFee] = await Promise.all([
     db.athleteProfile.findUnique({
       where: { userId: session.user.id },
-      select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true },
+      select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true, cpf: true },
     }),
     getEnabledPaymentMethods(),
     getDefaultPlatformFee(),

@@ -38,15 +38,15 @@ export default async function DashboardHome() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card text-center">
           <p className="text-3xl font-bold text-green-600">{confirmed}</p>
-          <p className="text-gray-600 text-sm mt-1">Inscrições confirmadas</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Inscrições confirmadas</p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-yellow-600">{pendingPayments}</p>
-          <p className="text-gray-600 text-sm mt-1">Pagamentos pendentes</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Pagamentos pendentes</p>
         </div>
         <div className="card text-center col-span-2 md:col-span-1">
           <p className="text-3xl font-bold text-primary-600">{registrations.length}</p>
-          <p className="text-gray-600 text-sm mt-1">Total de inscrições</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Total de inscrições</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export default async function DashboardHome() {
                   className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                 >
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">{r.event.title}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{r.event.title}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {formatDate(r.event.startAt)} · {r.event.city}/{r.event.state}
                     </p>

@@ -31,19 +31,26 @@ const MP_STATUS_MAP: Record<string, "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
-  const signature = req.headers.get("x-signature") ?? req.headers.get("x-webhook-signature") ?? "";
+
+  // Select the correct signature header based on payload structure
+  const mpSignature = req.headers.get("x-signature") ?? req.headers.get("x-webhook-signature") ?? "";
+  const pagarmeSignature = req.headers.get("authorization") ?? req.headers.get("x-hub-signature") ?? "";
 
   const provider = await getPaymentProvider();
-
-  if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
-    return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
-  }
 
   let payload: Record<string, unknown>;
   try {
     payload = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
+  }
+
+  // Auto-detect provider from payload structure to pick right signature
+  const isPagarMe = typeof payload.type === "string" && (payload.type as string).includes(".");
+  const signature = isPagarMe ? pagarmeSignature : mpSignature;
+
+  if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
+    return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
 
   // Mercado Pago notifica com action + data.id — busca o status real
@@ -53,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   let parsedStatus: ReturnType<typeof provider.parseWebhookPayload> | null = null;
 
-  if ((action === "payment.updated" || action === "payment.created") && mpPaymentId) {
+  if (!isPagarMe && (action === "payment.updated" || action === "payment.created") && mpPaymentId) {
     const real = await fetchMPPaymentStatus(mpPaymentId);
     if (real) {
       parsedStatus = {

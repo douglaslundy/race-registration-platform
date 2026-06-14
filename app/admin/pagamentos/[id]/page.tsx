@@ -66,7 +66,7 @@ export default async function AdminPaymentDetailPage({
         </Link>
         <Link
           href={`/api/admin/payments/${payment.id}/export`}
-          className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           Exportar CSV
         </Link>
@@ -93,11 +93,11 @@ export default async function AdminPaymentDetailPage({
           <p className="text-gray-500 text-xs mt-1">Método</p>
         </div>
         <div className="card text-center">
-          <p className="text-sm font-mono text-gray-700 truncate">{payment.provider}</p>
+          <p className="text-sm font-mono text-gray-700 dark:text-gray-300 truncate">{payment.provider}</p>
           <p className="text-gray-500 text-xs mt-1">Provedor</p>
         </div>
         <div className="card text-center">
-          <p className="text-sm text-gray-700">{payment.paidAt ? formatDate(payment.paidAt) : "—"}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{payment.paidAt ? formatDate(payment.paidAt) : "—"}</p>
           <p className="text-gray-500 text-xs mt-1">Pago em</p>
         </div>
       </div>
@@ -142,7 +142,7 @@ export default async function AdminPaymentDetailPage({
               </div>
             )}
           </div>
-          <div className="border-t pt-3 space-y-1 text-sm">
+          <div className="border-t dark:border-gray-700 pt-3 space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Subtotal</span>
               <span>{formatCurrency(order.subtotalAmount)}</span>
@@ -168,7 +168,7 @@ export default async function AdminPaymentDetailPage({
       {/* IDs técnicos */}
       <div className="card space-y-2 text-sm">
         <h2 className="font-semibold">Referências técnicas</h2>
-        <div className="grid grid-cols-1 gap-1 font-mono text-xs text-gray-600">
+        <div className="grid grid-cols-1 gap-1 font-mono text-xs text-gray-600 dark:text-gray-400">
           <div className="flex gap-2">
             <span className="text-gray-400 w-40 shrink-0">Payment ID</span>
             <span className="truncate">{payment.id}</span>
@@ -199,7 +199,7 @@ export default async function AdminPaymentDetailPage({
         <div className="card space-y-3">
           <h2 className="font-semibold">Estornos</h2>
           {payment.refunds.map((r) => (
-            <div key={r.id} className="flex justify-between text-sm border-b pb-2 last:border-0">
+            <div key={r.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-2 last:border-0">
               <span className="text-gray-600">{r.reason ?? "—"}</span>
               <span className="font-medium text-red-600">-{formatCurrency(r.amount)}</span>
               <span className="text-gray-400 text-xs">{r.processedAt ? formatDate(r.processedAt) : "Pendente"}</span>
@@ -212,7 +212,7 @@ export default async function AdminPaymentDetailPage({
       {payment.rawPayload && (
         <details className="card">
           <summary className="font-semibold cursor-pointer">Raw payload do gateway</summary>
-          <pre className="mt-3 text-xs overflow-auto bg-gray-50 p-3 rounded-lg max-h-64">
+          <pre className="mt-3 text-xs overflow-auto bg-gray-50 dark:bg-gray-800 p-3 rounded-lg max-h-64">
             {JSON.stringify(payment.rawPayload, null, 2)}
           </pre>
         </details>
@@ -222,7 +222,7 @@ export default async function AdminPaymentDetailPage({
       {payment.pixQrCodeText && (
         <div className="card space-y-2">
           <h2 className="font-semibold">Código Pix</h2>
-          <div className="bg-gray-50 border rounded-lg p-3 font-mono text-xs break-all">
+          <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 font-mono text-xs break-all">
             {payment.pixQrCodeText}
           </div>
         </div>

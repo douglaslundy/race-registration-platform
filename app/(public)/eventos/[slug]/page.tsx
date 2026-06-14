@@ -45,10 +45,10 @@ export default async function EventoPage({ params }: Props) {
             <span className="text-sm text-primary-600 font-medium uppercase tracking-wide">
               {event.modality.replace("_", " ")}
             </span>
-            <h1 className="text-3xl font-bold text-gray-900 mt-1">{event.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{event.title}</h1>
           </div>
 
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span>📅 {format(new Date(event.startAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
             <span>📍 {event.venueName}, {event.city}/{event.state}</span>
           </div>
@@ -56,7 +56,7 @@ export default async function EventoPage({ params }: Props) {
           {event.description && (
             <div>
               <h2 className="text-lg font-semibold mb-2">Sobre o evento</h2>
-              <p className="text-gray-700 leading-relaxed">{event.description}</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{event.description}</p>
             </div>
           )}
 
@@ -65,9 +65,9 @@ export default async function EventoPage({ params }: Props) {
               <h2 className="text-lg font-semibold mb-3">Percursos</h2>
               <div className="space-y-2">
                 {event.routes.map((route) => (
-                  <div key={route.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div key={route.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <span className="font-medium">{route.name}</span>
-                    <span className="text-gray-600">{route.distanceKm} km</span>
+                    <span className="text-gray-600 dark:text-gray-400">{route.distanceKm} km</span>
                   </div>
                 ))}
               </div>
@@ -88,7 +88,7 @@ export default async function EventoPage({ params }: Props) {
                 </a>
               )}
               {event.regulationText && (
-                <div className="text-gray-700 bg-gray-50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
+                <div className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
                   {event.regulationText}
                 </div>
               )}
@@ -108,7 +108,7 @@ export default async function EventoPage({ params }: Props) {
                       <span className="font-medium text-sm">{batch.name}</span>
                       <span className="text-primary-600 font-bold">{formatCurrency(batch.priceAmount)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {batch.capacity - batch.soldCount} vagas restantes
                     </p>
                   </div>

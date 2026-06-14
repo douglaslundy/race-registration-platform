@@ -8,6 +8,7 @@ const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "image/gif": "gif",
   "application/pdf": "pdf",
 };
 

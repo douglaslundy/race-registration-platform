@@ -139,7 +139,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
     return buildPageUrl(1, { sort: column, dir: nextDir });
   };
 
-  const rowClass = compact ? "border-b last:border-0 hover:bg-gray-50 text-xs" : "border-b last:border-0 hover:bg-gray-50";
+  const rowClass = compact ? "border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40 text-xs" : "border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40";
   const cellPadding = compact ? "py-2 pr-3" : "py-2 pr-4";
 
   return (
@@ -151,7 +151,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
         </div>
         <div className="flex flex-wrap gap-2">
           <UserDensityToggle currentDensity={compact ? "compact" : "comfortable"} />
-          <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+          <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
             Exportar CSV
           </Link>
         </div>
@@ -197,7 +197,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
       <div className="card overflow-x-auto">
         <table className={`w-full ${compact ? "text-xs" : "text-sm"}`}>
           <thead>
-            <tr className={`text-left text-gray-500 border-b ${compact ? "text-[10px] uppercase" : "text-xs uppercase"}`}>
+            <tr className={`text-left text-gray-500 border-b dark:border-gray-700 ${compact ? "text-[10px] uppercase" : "text-xs uppercase"}`}>
               <th className="pb-2 pr-4">
                 <SortLink label="Data" column="createdAt" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("createdAt")} />
               </th>
@@ -236,7 +236,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
                       {ACTION_LABEL[log.action] ?? log.action}
                     </span>
                   </td>
-                  <td className={cellPadding + " text-gray-600"}>{ENTITY_LABEL[log.entityType] ?? log.entityType}</td>
+                  <td className={cellPadding + " text-gray-600 dark:text-gray-400"}>{ENTITY_LABEL[log.entityType] ?? log.entityType}</td>
                   <td className={cellPadding + " font-mono text-gray-500 truncate max-w-[12rem]"}>{log.entityId ?? "—"}</td>
                 </tr>
               ))
@@ -251,7 +251,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
             href={buildPageUrl(Math.max(1, page - 1))}
             aria-disabled={page === 1}
             className={`text-sm px-3 py-1.5 rounded-lg border ${
-              page === 1 ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 hover:border-primary-400"
+              page === 1 ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
             }`}
           >
             Anterior
@@ -261,7 +261,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
               key={p}
               href={buildPageUrl(p)}
               className={`text-sm px-3 py-1.5 rounded-lg border ${
-                p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 hover:border-primary-400"
+                p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
               }`}
             >
               {p}
@@ -271,7 +271,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
             href={buildPageUrl(Math.min(totalPages, page + 1))}
             aria-disabled={page === totalPages}
             className={`text-sm px-3 py-1.5 rounded-lg border ${
-              page === totalPages ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 hover:border-primary-400"
+              page === totalPages ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
             }`}
           >
             Próxima

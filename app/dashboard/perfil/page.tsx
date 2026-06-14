@@ -102,49 +102,49 @@ export default function PerfilPage() {
       <h1 className="text-2xl font-bold">Meus Dados</h1>
 
       <div className="card">
-        <h2 className="font-semibold text-gray-900 mb-1">Dados da conta</h2>
-        <p className="text-sm text-gray-600">{session?.user?.name} · {session?.user?.email}</p>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Dados da conta</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{session?.user?.name} · {session?.user?.email}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="card space-y-4">
-          <h2 className="font-semibold text-gray-900">Dados pessoais</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados pessoais</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de nascimento</label>
               <input type="date" value={form.birthDate ?? ""} onChange={(e) => set("birthDate", e.target.value)}
                 className="input w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gênero</label>
               <select value={form.gender ?? ""} onChange={(e) => set("gender", e.target.value)} className="input w-full">
                 <option value="">Selecione</option>
                 {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone / WhatsApp</label>
               <input type="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)}
                 placeholder="(11) 99999-9999" className="input w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade</label>
               <input type="text" value={form.city ?? ""} onChange={(e) => set("city", e.target.value)}
                 className="input w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado (UF)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado (UF)</label>
               <input type="text" maxLength={2} value={form.state ?? ""} onChange={(e) => set("state", e.target.value.toUpperCase())}
                 placeholder="SP" className="input w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Equipe / Clube</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipe / Clube</label>
               <input type="text" value={form.teamName ?? ""} onChange={(e) => set("teamName", e.target.value)}
                 className="input w-full" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tamanho de camiseta preferido</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tamanho de camiseta preferido</label>
             <div className="flex gap-2 flex-wrap">
               {SHIRT_SIZES.map((s) => (
                 <button key={s} type="button"
@@ -152,7 +152,7 @@ export default function PerfilPage() {
                   className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                     form.preferredShirtSize === s
                       ? "bg-primary-600 text-white border-primary-600"
-                      : "border-gray-300 hover:border-primary-400"
+                      : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
                   }`}
                 >
                   {s}
@@ -163,15 +163,15 @@ export default function PerfilPage() {
         </div>
 
         <div className="card space-y-4">
-          <h2 className="font-semibold text-gray-900">Contato de emergência</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Contato de emergência</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
               <input type="text" value={form.emergencyName ?? ""} onChange={(e) => set("emergencyName", e.target.value)}
                 className="input w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
               <input type="tel" value={form.emergencyPhone ?? ""} onChange={(e) => set("emergencyPhone", e.target.value)}
                 placeholder="(11) 99999-9999" className="input w-full" />
             </div>
@@ -179,10 +179,10 @@ export default function PerfilPage() {
         </div>
 
         <div className="card space-y-4">
-          <h2 className="font-semibold text-gray-900">Informações médicas</h2>
-          <p className="text-xs text-gray-500">Estas informações são confidenciais e visíveis apenas para você e organizadores do evento em caso de emergência.</p>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Informações médicas</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Estas informações são confidenciais e visíveis apenas para você e organizadores do evento em caso de emergência.</p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Condições médicas, alergias, medicamentos</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Condições médicas, alergias, medicamentos</label>
             <textarea rows={4} value={form.medicalNotes ?? ""} onChange={(e) => set("medicalNotes", e.target.value)}
               placeholder="Ex: hipertensão controlada, alergia a dipirona..." className="input w-full resize-none" />
           </div>
@@ -194,7 +194,7 @@ export default function PerfilPage() {
       </form>
 
       <form onSubmit={handlePasswordChange} className="card space-y-4">
-        <h2 className="font-semibold text-gray-900">Alterar senha</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Alterar senha</h2>
         {pwError && (
           <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{pwError}</div>
         )}
@@ -202,7 +202,7 @@ export default function PerfilPage() {
           <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Senha alterada com sucesso!</div>
         )}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha atual</label>
           <input
             type="password"
             value={pwForm.current}
@@ -213,7 +213,7 @@ export default function PerfilPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nova senha</label>
           <input
             type="password"
             value={pwForm.next}
@@ -225,7 +225,7 @@ export default function PerfilPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar nova senha</label>
           <input
             type="password"
             value={pwForm.confirm}

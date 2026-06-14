@@ -90,7 +90,7 @@ export default async function InscritosPage({ params }: { params: Promise<{ id: 
                 const payment = r.order.payments[0];
                 const statusInfo = REGISTRATION_STATUS[r.status];
                 return (
-                  <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <td className="py-2 pr-4">
                       <p className="font-medium">{r.athlete.name}</p>
                       <p className="text-xs text-gray-500">{r.athlete.email}</p>

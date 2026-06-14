@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, recentLogs, storageConfig, defaultPlatformFee] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -32,6 +32,10 @@ export default async function ConfiguracoesPage() {
     getPaymentProviderSetting(),
     getSetting("mp_access_token"),
     getSetting("mp_webhook_secret"),
+    getSetting("mp_public_key"),
+    getSetting("pagarme_api_key"),
+    getSetting("pagarme_public_key"),
+    getSetting("pagarme_webhook_password"),
     db.auditLog.findMany({
       where: {
         OR: [
@@ -76,6 +80,10 @@ export default async function ConfiguracoesPage() {
           currentProvider={paymentProvider}
           accessTokenConfigured={Boolean(accessToken)}
           webhookSecretConfigured={Boolean(webhookSecret)}
+          mpPublicKeyConfigured={Boolean(mpPublicKey)}
+          pagarmeApiKeyConfigured={Boolean(pagarmeApiKey)}
+          pagarmePublicKeyConfigured={Boolean(pagarmePublicKey)}
+          pagarmeWebhookPasswordConfigured={Boolean(pagarmeWebhookPassword)}
         />
       </div>
 

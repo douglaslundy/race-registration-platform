@@ -83,7 +83,7 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
                 </thead>
                 <tbody>
                   {results.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                       <td className="py-2 font-bold text-primary-600">{r.placementGeneral ?? "—"}</td>
                       <td className="py-2">{r.bibNumber}</td>
                       <td className="py-2 font-medium">{r.athleteName}</td>

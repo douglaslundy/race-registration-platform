@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
-import { getPaymentProviderSetting, getMercadoPagoAccessToken } from "@/lib/payment-settings";
+import { getPaymentProviderSetting, getMercadoPagoAccessToken, getPagarMeApiKey } from "@/lib/payment-settings";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
 import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
@@ -40,6 +40,10 @@ const checkoutSchema = z.object({
   medicalNotes: z.string().max(500).optional(),
   couponCode: z.string().max(50).optional(),
   paymentMethod: z.enum(["PIX", "CREDIT_CARD", "BOLETO"]),
+  cpf: z.string().max(14).optional(),
+  cardToken: z.string().max(200).optional(),
+  cardBrand: z.string().max(50).optional(),
+  installments: z.number().int().min(1).max(12).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -58,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { paymentMethod, ...checkoutData } = parsed.data;
+  const { paymentMethod, cpf, cardToken, cardBrand, installments, ...checkoutData } = parsed.data;
   const enabledPaymentMethods = await getEnabledPaymentMethods();
   if (!enabledPaymentMethods.includes(paymentMethod)) {
     return NextResponse.json({ error: "Meio de pagamento indisponível" }, { status: 400 });
@@ -91,6 +95,15 @@ export async function POST(req: NextRequest) {
       );
     }
   }
+  if (providerKey === "pagarme") {
+    const apiKey = await getPagarMeApiKey();
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Gateway de pagamento não configurado. Acesse Admin → Configurações para configurar o Pagar.me." },
+        { status: 503 }
+      );
+    }
+  }
 
   const provider = await getPaymentProvider();
   const [buyer, athleteProfile] = await Promise.all([
@@ -104,6 +117,8 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
+  const effectiveCpf = cpf ?? athleteProfile?.cpf ?? undefined;
+
   let paymentResult: Awaited<ReturnType<typeof provider.createPayment>>;
   try {
     paymentResult = await provider.createPayment({
@@ -113,7 +128,10 @@ export async function POST(req: NextRequest) {
       idempotencyKey,
       buyer: { name: buyer!.name, email: buyer!.email },
       description: `Inscrição #${checkout.registrationId}`,
-      cpf: athleteProfile?.cpf ?? undefined,
+      cpf: effectiveCpf,
+      cardToken,
+      cardBrand,
+      installments,
     });
   } catch (payErr) {
     let msg = "Erro no gateway de pagamento";

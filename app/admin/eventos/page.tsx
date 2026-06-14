@@ -136,7 +136,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
     return buildPageUrl(1, { sort: column, dir: nextDir });
   };
 
-  const rowClass = compact ? "border-b last:border-0 hover:bg-gray-50 align-top text-xs" : "border-b last:border-0 hover:bg-gray-50 align-top";
+  const rowClass = compact ? "border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40 align-top text-xs" : "border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40 align-top";
   const cellPadding = compact ? "py-2 pr-3" : "py-3 pr-4";
 
   return (

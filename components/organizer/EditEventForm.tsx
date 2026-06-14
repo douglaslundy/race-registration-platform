@@ -109,13 +109,13 @@ export default function EditEventForm({ event }: { event: EventData }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="card space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nome do evento *</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome do evento *</label>
         <input {...register("title")} className="input w-full" />
         {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Modalidade *</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Modalidade *</label>
         <select {...register("modality")} className="input w-full">
           {MODALITIES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
@@ -123,61 +123,61 @@ export default function EditEventForm({ event }: { event: EventData }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data do evento *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data do evento *</label>
           <input type="datetime-local" {...register("startAt")} className="input w-full" />
           {errors.startAt && <p className="text-red-500 text-xs mt-1">{errors.startAt.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Retirada de kit</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Retirada de kit</label>
           <input type="datetime-local" {...register("kitPickupAt")} className="input w-full" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Vagas máximas</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vagas máximas</label>
           <input type="number" {...register("maxParticipants", { valueAsNumber: true })} className="input w-full" placeholder="0 = ilimitado" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contato do organizador</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contato do organizador</label>
           <input {...register("organizerContact")} className="input w-full" placeholder="email ou WhatsApp" />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Local / Venue</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Local / Venue</label>
         <input {...register("venueName")} className="input w-full" placeholder="Nome do local" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Endereço</label>
         <input {...register("addressLine")} className="input w-full" placeholder="Rua, número, bairro" />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cidade *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade *</label>
           <input {...register("city")} className="input w-full" />
           {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">UF *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">UF *</label>
           <input {...register("state")} className="input w-full" maxLength={2} />
           {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state.message}</p>}
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
         <textarea {...register("description")} className="input w-full" rows={4} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FileUploadInput
           purpose="banner"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/gif"
           label="Banner do evento"
-          hint="Dimensões recomendadas: 1200 × 400 px (proporção 3:1). Formatos: JPG, PNG ou WebP."
+          hint="Dimensões recomendadas: 1200 × 400 px (proporção 3:1). Formatos: JPG, PNG, WebP ou GIF."
           currentUrl={bannerUrl}
           onUploaded={setBannerUrl}
           onRemoved={() => setBannerUrl(null)}
@@ -192,8 +192,8 @@ export default function EditEventForm({ event }: { event: EventData }) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Regulamento (texto)</label>
-        <p className="text-xs text-gray-500 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Regulamento (texto)</label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
           Escreva o regulamento diretamente. Pode ser usado junto com ou em vez do PDF.
         </p>
         <textarea

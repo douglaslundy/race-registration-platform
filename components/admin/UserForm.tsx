@@ -81,7 +81,7 @@ export default function UserForm({
     <form onSubmit={handleSubmit} className="card space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Nome</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
           <input
             className="input-field"
             value={name}
@@ -94,7 +94,7 @@ export default function UserForm({
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">E-mail</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">E-mail</label>
           <input
             type="email"
             className="input-field"
@@ -108,7 +108,7 @@ export default function UserForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Perfil</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Perfil</label>
           <select className="input-field" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
@@ -119,21 +119,21 @@ export default function UserForm({
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Status</label>
-          <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+          <label className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-3">
             <input
               type="checkbox"
               checked={active}
               onChange={(e) => setActive(e.target.checked)}
               className="h-4 w-4"
             />
-            <span className="text-sm text-gray-700">{active ? "Usuário ativo" : "Usuário bloqueado"}</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">{active ? "Usuário ativo" : "Usuário bloqueado"}</span>
           </label>
         </div>
       </div>
 
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {isEdit ? "Nova senha" : "Senha inicial"}
         </label>
         <input
@@ -145,7 +145,7 @@ export default function UserForm({
           minLength={isEdit ? 0 : 8}
           placeholder={isEdit ? "Deixe em branco para manter a atual" : "Mínimo 8 caracteres"}
         />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           {isEdit ? "Preencha apenas se quiser redefinir a senha." : "A senha é obrigatória para criar o acesso."}
         </p>
       </div>
@@ -162,7 +162,7 @@ export default function UserForm({
         </button>
         <button
           type="button"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           onClick={() => router.back()}
         >
           Cancelar

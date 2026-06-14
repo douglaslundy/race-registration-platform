@@ -58,7 +58,7 @@ export default async function InscricoesPage() {
                         {badge.label}
                       </span>
                     </div>
-                    <p className="font-semibold text-gray-900 truncate">{r.event.title}</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{r.event.title}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
                       <span>📅 {formatDate(r.event.startAt)}</span>
                       <span>📍 {r.event.city}/{r.event.state}</span>

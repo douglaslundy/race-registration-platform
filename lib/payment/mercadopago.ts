@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
+import { MercadoPagoConfig, Payment } from "mercadopago";
 import crypto from "crypto";
 import { getMercadoPagoAccessToken, getMercadoPagoWebhookSecret } from "@/lib/payment-settings";
 import type {
@@ -89,46 +89,36 @@ export class MercadoPagoProvider implements PaymentProvider {
       };
     }
 
-    // ── Cartão de crédito — Checkout Pro ───────────────────────────────────────
-    const preference = new Preference(client);
-    // Prefer server-side APP_URL (set in docker/server env); fall back to public var.
-    // auto_return requires a public HTTPS URL — skip it on localhost.
-    const appUrl =
-      process.env.APP_URL ??
-      process.env.NEXT_PUBLIC_APP_URL ??
-      "http://localhost:3000";
-    const isPublicUrl = appUrl.startsWith("https://") && !appUrl.includes("localhost");
+    // ── Cartão de crédito — Checkout transparente ─────────────────────────────
+    if (!input.cardToken) throw new Error("Token do cartão não fornecido");
 
-    const res = await preference.create({
+    const paymentApiCC = new Payment(client);
+    const payerCC: Record<string, unknown> = {
+      email: input.buyer.email,
+      first_name: firstName,
+      last_name: lastName,
+    };
+    if (input.cpf) {
+      payerCC.identification = { type: "CPF", number: input.cpf.replace(/\D/g, "") };
+    }
+
+    const resCC = await paymentApiCC.create({
       body: {
-        items: [
-          {
-            id: input.orderId,
-            title: input.description,
-            description: input.description,
-            unit_price: amountBRL,
-            quantity: 1,
-            currency_id: "BRL",
-          },
-        ],
-        payer: { email: input.buyer.email, name: input.buyer.name },
-        back_urls: {
-          success: `${appUrl}/api/payments/mp-return?status=approved&order=${input.orderId}`,
-          failure: `${appUrl}/api/payments/mp-return?status=failure&order=${input.orderId}`,
-          pending: `${appUrl}/api/payments/mp-return?status=pending&order=${input.orderId}`,
-        },
-        ...(isPublicUrl ? { notification_url: `${appUrl}/api/webhooks/payment` } : {}),
-        ...(isPublicUrl ? { auto_return: "approved" as const } : {}),
+        transaction_amount: amountBRL,
+        token: input.cardToken,
+        payment_method_id: input.cardBrand,
+        installments: input.installments ?? 1,
+        description: input.description,
+        payer: payerCC,
         external_reference: input.orderId,
-        expires: false,
         statement_descriptor: "CORRIDAS APP",
       },
+      requestOptions: { idempotencyKey: input.idempotencyKey },
     });
 
     return {
-      providerPaymentId: `pref_${res.id}`,
-      status: "PENDING",
-      checkoutUrl: res.init_point ?? undefined,
+      providerPaymentId: String(resCC.id),
+      status: resCC.status === "approved" ? "PAID" : "PENDING",
     };
   }
 

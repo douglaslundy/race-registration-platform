@@ -93,7 +93,7 @@ export default async function PagamentosPage() {
                         <span className="text-xs text-gray-500">{METHOD_LABEL[payment.method] ?? payment.method}</span>
                       )}
                     </div>
-                    <p className="font-semibold text-gray-900 truncate">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                       {reg?.event.title ?? "Evento não encontrado"}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
@@ -104,7 +104,7 @@ export default async function PagamentosPage() {
                     )}
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+                    <p className="font-bold text-gray-900 dark:text-gray-100">{formatCurrency(order.totalAmount)}</p>
                     {order.discountAmount > 0 && (
                       <p className="text-xs text-green-600">Desconto: -{formatCurrency(order.discountAmount)}</p>
                     )}

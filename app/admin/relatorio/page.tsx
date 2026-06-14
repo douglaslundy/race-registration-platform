@@ -100,7 +100,7 @@ export default async function AdminRelatorioPage({
           </form>
           <Link
             href={`/api/admin/report/export?de=${from.toISOString().slice(0, 10)}&ate=${to.toISOString().slice(0, 10)}`}
-            className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Exportar CSV
           </Link>
@@ -158,7 +158,7 @@ export default async function AdminRelatorioPage({
                         {formatCurrency(m._sum.amount ?? 0)} <span className="text-gray-400">({pct}%)</span>
                       </span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div className="h-full bg-primary-500 rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -172,7 +172,7 @@ export default async function AdminRelatorioPage({
           <h2 className="font-semibold">Pedidos por status</h2>
           <div className="space-y-2">
             {ordersAgg.map((row) => (
-              <div key={row.status} className="flex justify-between text-sm border-b pb-1 last:border-0">
+              <div key={row.status} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
                 <span>{ORDER_STATUS_LABEL[row.status] ?? row.status}</span>
                 <span>
                   {row._count.id} pedidos · {formatCurrency(row._sum.totalAmount ?? 0)}
@@ -189,15 +189,15 @@ export default async function AdminRelatorioPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b">
+                <tr className="text-left text-gray-500 border-b dark:border-gray-700">
                   <th className="pb-2 pr-4">Mês</th>
                   <th className="pb-2 pr-4 text-right">Receita</th>
                 </tr>
               </thead>
               <tbody>
                 {monthly.map(([month, amount]) => (
-                  <tr key={month} className="border-b last:border-0">
-                    <td className="py-1.5 pr-4 text-gray-700">{month}</td>
+                  <tr key={month} className="border-b dark:border-gray-700 last:border-0">
+                    <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300">{month}</td>
                     <td className="py-1.5 pr-4 text-right font-medium">{formatCurrency(amount)}</td>
                   </tr>
                 ))}

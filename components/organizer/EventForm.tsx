@@ -67,13 +67,13 @@ export default function EventForm({ eventId }: { eventId?: string }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="card space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nome do evento *</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome do evento *</label>
         <input {...register("title")} className="input-field" placeholder="Ex: Corrida das Pedras 2025" />
         {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Modalidade *</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Modalidade *</label>
         <select {...register("modality")} className="input-field">
           {MODALITIES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
@@ -81,41 +81,41 @@ export default function EventForm({ eventId }: { eventId?: string }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data/Hora *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data/Hora *</label>
           <input type="datetime-local" {...register("startAt")} className="input-field" />
           {errors.startAt && <p className="text-red-500 text-xs mt-1">{errors.startAt.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Vagas máx.</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vagas máx.</label>
           <input type="number" {...register("maxParticipants", { valueAsNumber: true })} className="input-field" placeholder="0 = ilimitado" />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Local / Venue</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Local / Venue</label>
         <input {...register("venueName")} className="input-field" placeholder="Nome do local" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Endereço</label>
         <input {...register("addressLine")} className="input-field" placeholder="Rua, número, bairro" />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cidade *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade *</label>
           <input {...register("city")} className="input-field" placeholder="São Paulo" />
           {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">UF *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">UF *</label>
           <input {...register("state")} className="input-field" placeholder="SP" maxLength={2} />
           {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state.message}</p>}
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
         <textarea {...register("description")} className="input-field" rows={4} placeholder="Descreva seu evento..." />
       </div>
 

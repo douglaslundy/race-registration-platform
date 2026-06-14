@@ -4,11 +4,17 @@ import QRCode from "react-qr-code";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
 import { emptyStringToUndefined, extractApiErrorMessage, optionalEnumField, opaqueIdField, optionalOpaqueIdField } from "@/lib/checkout-validation";
 import { PAYMENT_METHOD_LABELS, type CheckoutPaymentMethod } from "@/lib/payment-methods";
+import type { MPCardFormHandle } from "./MPCardForm";
+import type { PagarMeCardFormHandle } from "./PagarMeCardForm";
+import dynamic from "next/dynamic";
+
+const MPCardForm = dynamic(() => import("./MPCardForm"), { ssr: false });
+const PagarMeCardForm = dynamic(() => import("./PagarMeCardForm"), { ssr: false });
 
 const schema = z.object({
   ticketBatchId: opaqueIdField(),
@@ -48,6 +54,12 @@ interface AthleteProfile {
   emergencyName?: string | null;
   emergencyPhone?: string | null;
   medicalNotes?: string | null;
+  cpf?: string | null;
+}
+
+interface CardConfig {
+  provider: "sandbox" | "mercadopago" | "pagarme";
+  publicKey: string | null;
 }
 
 interface CouponPreview {
@@ -80,6 +92,10 @@ export default function CheckoutForm({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [cpf, setCpf] = useState(athleteProfile?.cpf ?? "");
+  const [cardConfig, setCardConfig] = useState<CardConfig | null>(null);
+  const mpCardRef = useRef<MPCardFormHandle>(null);
+  const pagarmeCardRef = useRef<PagarMeCardFormHandle>(null);
   const [result, setResult] = useState<{
     pixQrCodeText?: string;
     boletoUrl?: string;
@@ -117,6 +133,13 @@ export default function CheckoutForm({
   const selectedPaymentMethod = watch("paymentMethod");
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? batches[0];
   const selectedCouponCode = (couponCode ?? "").trim().toUpperCase();
+
+  useEffect(() => {
+    fetch("/api/checkout/card-config")
+      .then((r) => r.json())
+      .then((data) => setCardConfig(data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const normalizedCode = selectedCouponCode;
@@ -192,12 +215,37 @@ export default function CheckoutForm({
   async function onSubmit(data: FormData) {
     setError(null);
     try {
+      let cardToken: string | undefined;
+      let cardBrand: string | undefined;
+      let installments: number | undefined;
+
+      if (data.paymentMethod === "CREDIT_CARD" && cardConfig?.provider !== "sandbox") {
+        if (cardConfig?.provider === "mercadopago" && mpCardRef.current) {
+          if (!cpf.replace(/\D/g, "")) {
+            setError("Informe o CPF para pagamento com cartão");
+            return;
+          }
+          const result = await mpCardRef.current.getToken(cpf);
+          cardToken = result.token;
+          cardBrand = result.paymentMethodId;
+          installments = result.installments;
+        } else if (cardConfig?.provider === "pagarme" && pagarmeCardRef.current) {
+          const result = await pagarmeCardRef.current.getToken();
+          cardToken = result.token;
+          installments = result.installments;
+        }
+      }
+
       const payload = {
         ...data,
         routeId: emptyStringToUndefined(data.routeId),
         categoryId: emptyStringToUndefined(data.categoryId),
         shirtSize: emptyStringToUndefined(data.shirtSize),
         couponCode: emptyStringToUndefined(data.couponCode)?.toString().trim().toUpperCase(),
+        cpf: cpf || undefined,
+        cardToken,
+        cardBrand,
+        installments,
       };
 
       const res = await fetch("/api/checkout", {
@@ -215,12 +263,6 @@ export default function CheckoutForm({
 
       if (body.status === "PAID") {
         router.push(`/dashboard/inscricoes/${body.registrationId}?confirmed=1`);
-        return;
-      }
-
-      // Checkout Pro redirect (cartão de crédito via Mercado Pago)
-      if (body.checkoutUrl) {
-        window.location.href = body.checkoutUrl;
         return;
       }
 
@@ -248,7 +290,7 @@ export default function CheckoutForm({
               <QRCode value={result.pixQrCodeText} size={200} />
             </div>
             <p className="text-xs text-gray-500 text-center">Ou copie o código abaixo:</p>
-            <div className="bg-gray-50 border rounded-lg p-4 font-mono text-xs break-all select-all">
+            <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 font-mono text-xs break-all select-all">
               {result.pixQrCodeText}
             </div>
           </div>
@@ -266,7 +308,7 @@ export default function CheckoutForm({
             )}
           </div>
         )}
-        <p className="text-sm text-gray-600">Aguardando confirmação do pagamento.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Aguardando confirmação do pagamento.</p>
       </div>
     );
   }
@@ -291,7 +333,7 @@ export default function CheckoutForm({
           {batches.map((b) => (
             <label
               key={b.id}
-              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 dark:border-gray-600"
               onClick={() => setValue("ticketBatchId", b.id, { shouldValidate: true, shouldDirty: true })}
             >
               <input
@@ -340,38 +382,38 @@ export default function CheckoutForm({
         <h3 className="font-semibold">Dados complementares</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Camiseta</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta</label>
             <select {...register("shirtSize")} className="input-field">
               <option value="">Selecione</option>
               {["PP","P","M","G","GG","XGG"].map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Equipe / Assessoria</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipe / Assessoria</label>
             <input {...register("teamName")} className="input-field" placeholder="Opcional" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contato emergência *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contato emergência *</label>
             <input {...register("emergencyContactName")} className="input-field" placeholder="Nome" />
             {errors.emergencyContactName && <p className="text-red-500 text-xs mt-1">{errors.emergencyContactName.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone emergência *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone emergência *</label>
             <input {...register("emergencyContactPhone")} className="input-field" placeholder="(11) 99999-9999" />
             {errors.emergencyContactPhone && <p className="text-red-500 text-xs mt-1">{errors.emergencyContactPhone.message}</p>}
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Informações médicas</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Informações médicas</label>
           <textarea {...register("medicalNotes")} className="input-field" rows={2} placeholder="Alergias, condições médicas..." />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cupom de desconto</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cupom de desconto</label>
           <input {...register("couponCode")} className="input-field" placeholder="Código do cupom" />
         </div>
       </div>
@@ -382,7 +424,7 @@ export default function CheckoutForm({
           {paymentMethods.map((method) => (
             <label
               key={method}
-              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+              className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 dark:border-gray-600"
               onClick={() => setValue("paymentMethod", method, { shouldValidate: true, shouldDirty: true })}
             >
               <input
@@ -400,10 +442,53 @@ export default function CheckoutForm({
         {errors.paymentMethod && <p className="text-red-500 text-xs mt-2">{errors.paymentMethod.message}</p>}
       </div>
 
+      {selectedPaymentMethod === "CREDIT_CARD" && cardConfig && cardConfig.provider !== "sandbox" && (
+        <div className="card space-y-4">
+          <h3 className="font-semibold">Dados do cartão</h3>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF do titular *</label>
+            <input
+              type="text"
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              className="input-field w-full"
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+          </div>
+
+          {cardConfig.publicKey ? (
+            <>
+              {cardConfig.provider === "mercadopago" && (
+                <MPCardForm ref={mpCardRef} publicKey={cardConfig.publicKey} amount={
+                  (() => {
+                    const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
+                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee);
+                  })()
+                } />
+              )}
+              {cardConfig.provider === "pagarme" && (
+                <PagarMeCardForm ref={pagarmeCardRef} publicKey={cardConfig.publicKey} amount={
+                  (() => {
+                    const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
+                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee);
+                  })()
+                } />
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              Chave pública do gateway não configurada. Acesse Admin → Configurações.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="card">
         <div className="flex items-start gap-3">
           <input type="checkbox" id="terms" {...register("acceptTerms")} className="mt-1" />
-          <label htmlFor="terms" className="text-sm text-gray-700">
+          <label htmlFor="terms" className="text-sm text-gray-700 dark:text-gray-300">
             Li e aceito os{" "}
             <a href="/termos" target="_blank" className="text-primary-600 underline">Termos de Uso</a>{" "}
             e a{" "}
@@ -421,7 +506,7 @@ export default function CheckoutForm({
           const effectiveTotal = effectiveSubtotal + fee;
           return (
             <div className="space-y-1 text-sm mb-4">
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>Inscrição</span>
                 <span>{formatCurrency(selectedBatch?.priceAmount ?? 0)}</span>
               </div>
@@ -431,11 +516,11 @@ export default function CheckoutForm({
                   <span>-{formatCurrency(couponPreview.discountAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>Taxa da plataforma</span>
                 <span>{formatCurrency(fee)}</span>
               </div>
-              <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-1">
+              <div className="flex justify-between items-center text-lg font-bold border-t dark:border-gray-700 pt-2 mt-1">
                 <span>Total</span>
                 <span className="text-primary-600">{formatCurrency(effectiveTotal)}</span>
               </div>
