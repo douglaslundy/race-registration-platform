@@ -99,9 +99,42 @@ export class MercadoPagoProvider implements PaymentProvider {
       const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens/${input.cardToken}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const tokenData = await tokenRes.json() as { payment_method_id?: string; luhn_validation?: boolean };
-      console.log("[mp] card_token lookup:", JSON.stringify(tokenData));
-      paymentMethodId = tokenData.payment_method_id || undefined;
+      const tokenData = await tokenRes.json() as {
+        payment_method_id?: string;
+        first_six_digits?: string;
+        bin_attributes?: { brand?: { code?: string } };
+      };
+
+      // Newer token responses put brand info in bin_attributes instead of payment_method_id
+      const brandCode = tokenData.payment_method_id
+        || tokenData.bin_attributes?.brand?.code;
+
+      const brandMap: Record<string, string> = {
+        mastercard: "master",
+        visa: "visa",
+        amex: "amex",
+        american_express: "amex",
+        elo: "elo",
+        hipercard: "hipercard",
+        diners: "diners",
+        discover: "discover",
+        aura: "aura",
+      };
+      paymentMethodId = brandCode
+        ? (brandMap[brandCode.toLowerCase()] ?? brandCode.toLowerCase())
+        : undefined;
+
+      // Last resort: search by BIN
+      if (!paymentMethodId && tokenData.first_six_digits) {
+        const pmRes = await fetch(
+          `https://api.mercadopago.com/v1/payment_methods/search?bin=${tokenData.first_six_digits}&site_id=MLB`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (pmRes.ok) {
+          const pmData = await pmRes.json() as { results?: Array<{ id: string; payment_type_id: string }> };
+          paymentMethodId = pmData.results?.find((r) => r.payment_type_id === "credit_card")?.id;
+        }
+      }
     }
     if (!paymentMethodId) throw new Error("Não foi possível identificar a bandeira do cartão");
 
