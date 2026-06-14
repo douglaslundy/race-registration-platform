@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { getAppName } from "@/lib/settings";
 
 export const metadata: Metadata = { title: "Termos de Uso" };
+export const dynamic = "force-dynamic";
 
-export default function TermosPage() {
+export default async function TermosPage() {
+  const appName = await getAppName();
+
   return (
     <main className="max-w-3xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-bold mb-2">Termos de Uso</h1>
@@ -11,12 +15,12 @@ export default function TermosPage() {
       <div className="prose prose-gray max-w-none space-y-6 text-gray-700 dark:text-gray-300">
         <section>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">1. Aceitação dos termos</h2>
-          <p>Ao utilizar a plataforma Corridas App, você concorda com estes Termos de Uso. Se não concordar, não utilize nossos serviços.</p>
+          <p>Ao utilizar a plataforma <strong>{appName}</strong>, você concorda com estes Termos de Uso. Se não concordar, não utilize nossos serviços.</p>
         </section>
 
         <section>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">2. Descrição do serviço</h2>
-          <p>A Corridas App é uma plataforma intermediadora de inscrições para eventos esportivos. Não somos organizadores dos eventos listados e não nos responsabilizamos pela realização, cancelamento ou alteração dos eventos pelos organizadores.</p>
+          <p>A <strong>{appName}</strong> é uma plataforma intermediadora de inscrições para eventos esportivos. Não somos organizadores dos eventos listados e não nos responsabilizamos pela realização, cancelamento ou alteração dos eventos pelos organizadores.</p>
         </section>
 
         <section>
@@ -31,7 +35,7 @@ export default function TermosPage() {
 
         <section>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">5. Taxas da plataforma</h2>
-          <p>A Corridas App cobra uma taxa de serviço sobre o valor da inscrição, conforme exibido no momento do checkout.</p>
+          <p>A <strong>{appName}</strong> cobra uma taxa de serviço sobre o valor da inscrição, conforme exibido no momento do checkout.</p>
         </section>
 
         <section>
