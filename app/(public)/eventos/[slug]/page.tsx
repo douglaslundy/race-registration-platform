@@ -34,8 +34,8 @@ export default async function EventoPage({ params }: Props) {
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
       {event.bannerUrl && (
-        <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden mb-8">
-          <Image src={event.bannerUrl} alt={event.title} fill className="object-cover" />
+        <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden mb-8 bg-gray-100 dark:bg-gray-800">
+          <Image src={event.bannerUrl} alt={event.title} fill className="object-contain" />
         </div>
       )}
 

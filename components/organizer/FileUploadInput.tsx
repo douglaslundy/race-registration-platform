@@ -58,9 +58,9 @@ export default function FileUploadInput({ purpose, accept, label, hint, currentU
       {hint && <p className="text-xs text-gray-500">{hint}</p>}
 
       {previewUrl && purpose === "banner" && (
-        <div className="relative w-full h-32 rounded-lg overflow-hidden border group">
+        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden border bg-gray-50 dark:bg-gray-800 group">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrl} alt="Banner" className="w-full h-full object-cover" />
+          <img src={previewUrl} alt="Banner" className="w-full h-full object-contain" />
           <button
             type="button"
             onClick={handleRemove}
