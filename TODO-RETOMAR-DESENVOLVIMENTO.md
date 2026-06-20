@@ -13,7 +13,10 @@
 ### Fase 2 — Cupons (migração)
 - [x] **T9** Página `/admin/cupons` com rastreamento: desconto concedido por código (pedidos pagos), criador, e em quais eventos foi aplicado (detalhe por evento para cupons globais).
 - [x] **T10** Admin cria cupom global (`eventId` nulo) ou por evento. API `/api/admin/coupons` + checkout/preview reconhecem cupom global.
-- ⚠️ **Migração** `20260620000000_coupons_global_and_creator` criada mas NÃO aplicada (banco Supabase inacessível). Aplicar com `prisma migrate deploy` quando o banco voltar.
+- ✅ **Migração** `20260620000000_coupons_global_and_creator` APLICADA na produção em 2026-06-20 via `prisma db push` no deploy (banco self-hosted `corridas-db`).
+
+### Deploy (2026-06-20)
+- [x] Push para `origin/main` (`1ba3f4b`) e deploy na VPS `144.91.92.70` concluído. Site `https://circuitodascorridas.com.br` no ar com o novo código (HTTP 200 home/eventos/login). DB sincronizado via `prisma db push`.
 
 ### Fase 3 — E-mail / SMTP
 - [x] **T3** `lib/email.ts` + `lib/smtp-settings.ts` + `lib/notifications.ts`; card SMTP em `/admin/configuracoes` com botão de teste; confirmação enviada no checkout, webhook e polling de status.
@@ -26,6 +29,10 @@
 - [ ] **T12** Login Google: relatório de viabilidade entregue (ver resumo da sessão). Viável e de baixo esforço (NextAuth v5 + PrismaAdapter + modelos Account/Session já prontos). Requisitos: projeto Google Cloud, OAuth Client ID, tela de consentimento, redirect URI `…/api/auth/callback/google`, envs `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`. Deixado para depois.
 
 > ⚙️ **Preferência:** SEMPRE perguntar se o usuário quer implementar antes de codar tarefas/etapas — não implementar sem confirmação explícita.
+
+### Pendências pós-deploy
+- [ ] Configurar SMTP em **Admin → Configurações → E-mail (SMTP)** e validar com o botão "Enviar teste" (sem isso, T3/T5 não enviam e-mail).
+- [ ] Trocar a senha root da VPS (foi compartilhada no chat). Opcional: autorizar chave SSH para deploys sem senha.
 
 ## Regras mantidas
 - Não reintroduzir seed de eventos automáticos sem aprovação explícita.
