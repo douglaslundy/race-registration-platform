@@ -33,6 +33,10 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 
+# Next's standalone server reads HOSTNAME from the environment by default.
+# Force the bind address so Docker's own HOSTNAME variable cannot hijack it.
+RUN node -e "const fs = require('fs'); const p = '/app/server.js'; const old = \"const hostname = process.env.HOSTNAME || '0.0.0.0'\"; const next = \"const hostname = '0.0.0.0'\"; const s = fs.readFileSync(p, 'utf8'); if (!s.includes(old)) throw new Error('server.js pattern not found'); fs.writeFileSync(p, s.replace(old, next));"
+
 USER nextjs
 EXPOSE 3000
 
