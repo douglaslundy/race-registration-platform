@@ -42,29 +42,34 @@ export default function LotesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "", priceAmount: "", capacity: "", startAt: "", endAt: "",
     activationMode: "MANUAL",
   });
 
-  async function load() {
-    const res = await fetch(`/api/events/${id}/batches`);
-    const data = await res.json();
-    setBatches(data.batches ?? []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch(`/api/events/${id}/batches`);
+      const data = await res.json();
+      setBatches(data.batches ?? []);
+      setLoading(false);
+    };
 
-  useEffect(() => { load(); }, [id]);
+    void load();
+  }, [id]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/events/${id}/batches`, {
+    setError(null);
+    const priceReais = parseFloat(form.priceAmount);
+    const res = await fetch(`/api/events/${id}/batches`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: form.name,
-        priceAmount: Math.round(parseFloat(form.priceAmount) * 100),
+        priceAmount: Number.isFinite(priceReais) ? Math.round(priceReais * 100) : 0,
         capacity: parseInt(form.capacity),
         startAt: new Date(form.startAt).toISOString(),
         endAt: new Date(form.endAt).toISOString(),
@@ -72,9 +77,15 @@ export default function LotesPage() {
       }),
     });
     setSaving(false);
+    if (!res.ok) {
+      setError("Não foi possível criar o lote. Verifique os campos e tente novamente.");
+      return;
+    }
     setShowForm(false);
     setForm({ name: "", priceAmount: "", capacity: "", startAt: "", endAt: "", activationMode: "MANUAL" });
-    load();
+    const reload = await fetch(`/api/events/${id}/batches`);
+    const data = await reload.json();
+    setBatches(data.batches ?? []);
   }
 
   async function toggleActive(batchId: string, current: boolean) {
@@ -83,13 +94,17 @@ export default function LotesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !current }),
     });
-    load();
+    const reload = await fetch(`/api/events/${id}/batches`);
+    const data = await reload.json();
+    setBatches(data.batches ?? []);
   }
 
   async function deleteBatch(batchId: string) {
     if (!confirm("Excluir este lote? Esta ação não pode ser desfeita.")) return;
     await fetch(`/api/events/${id}/batches/${batchId}`, { method: "DELETE" });
-    load();
+    const reload = await fetch(`/api/events/${id}/batches`);
+    const data = await reload.json();
+    setBatches(data.batches ?? []);
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
@@ -108,6 +123,10 @@ export default function LotesPage() {
         <form onSubmit={handleCreate} className="card space-y-4">
           <h2 className="font-semibold">Novo lote</h2>
 
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-300 rounded px-3 py-2">{error}</p>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
             <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input w-full" placeholder="Ex: 1º Lote" />
@@ -115,8 +134,8 @@ export default function LotesPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
-              <input required type="number" step="0.01" min="0" value={form.priceAmount} onChange={(e) => setForm({ ...form, priceAmount: e.target.value })} className="input w-full" placeholder="99.90" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$) — use 0 para lote grátis</label>
+              <input required type="number" step="0.01" min="0" value={form.priceAmount} onChange={(e) => setForm({ ...form, priceAmount: e.target.value })} className="input w-full" placeholder="99.90 (ou 0)" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Vagas</label>
@@ -197,7 +216,7 @@ export default function LotesPage() {
                   </div>
                 </div>
                 {b.status === "SOLD_OUT" && (
-                  <p className="text-xs text-orange-600 bg-orange-50 rounded px-2 py-1">Lote esgotado — todas as vagas preenchidas.</p>
+                  <p className="text-xs text-orange-700 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-300 rounded px-2 py-1">Lote esgotado — todas as vagas preenchidas.</p>
                 )}
               </div>
             );

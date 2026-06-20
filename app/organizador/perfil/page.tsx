@@ -45,7 +45,7 @@ export default function OrganizerPerfilPage() {
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6 mx-auto">
       <h1 className="text-2xl font-bold">Perfil do Organizador</h1>
 
       <div className="card">

@@ -38,6 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       eventId: id,
       ...parsed.data,
+      createdById: session.user.id,
       expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
     },
   });

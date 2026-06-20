@@ -15,7 +15,7 @@ const schema = z.object({
   addressLine: z.string().optional(),
   city: z.string().min(2, "Informe a cidade"),
   state: z.string().length(2, "UF com 2 letras"),
-  maxParticipants: z.number().int().positive().optional(),
+  maxParticipants: z.number().int().nonnegative().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -47,11 +47,16 @@ export default function EventForm({ eventId }: { eventId?: string }) {
     setError(null);
     const url = eventId ? `/api/events/${eventId}` : "/api/events";
     const method = eventId ? "PATCH" : "POST";
+    const maxParticipants = data.maxParticipants === 0 ? null : data.maxParticipants;
 
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, startAt: new Date(data.startAt).toISOString() }),
+      body: JSON.stringify({
+        ...data,
+        maxParticipants,
+        startAt: new Date(data.startAt).toISOString(),
+      }),
     });
 
     if (!res.ok) {

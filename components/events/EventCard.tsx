@@ -54,15 +54,24 @@ export default function EventCard({ event }: EventCardProps) {
   const badge = STATUS_BADGE[event.status];
   const lowestBatch = event.ticketBatches[0];
   const days = daysUntilEvent(event.startAt);
+  const bannerSrc = event.listBannerUrl ?? event.bannerUrl;
 
   return (
     <div className="relative group bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       {/* Overlay link — makes whole card click to event page */}
       <Link href={`/eventos/${event.slug}`} className="absolute inset-0 z-0" aria-label={`Ver evento ${event.title}`} />
 
-      <div className={`relative bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 ${event.listBannerUrl ? "aspect-square" : "h-40"}`}>
-        {(event.listBannerUrl ?? event.bannerUrl) ? (
-          <Image src={event.listBannerUrl ?? event.bannerUrl!} alt={event.title} fill className="object-cover" />
+      <div className={`relative bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 ${bannerSrc ? "aspect-square" : "h-40"}`}>
+        {bannerSrc ? (
+          <div className="absolute inset-2">
+            <Image
+              src={bannerSrc}
+              alt={event.title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+              className="object-contain"
+            />
+          </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-4xl">🏃</span>

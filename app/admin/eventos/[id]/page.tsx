@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
+import { EVENT_STATUS_LABEL, MODALITY_LABEL } from "@/lib/admin/labels";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe do Evento — Admin" };
@@ -37,8 +38,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{event.title}</h1>
-          <p className="text-sm text-gray-500 mt-1">{formatDate(event.startAt)} · {event.city}/{event.state}</p>
-          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded mt-1 inline-block">{event.status}</span>
+          <p className="text-sm text-gray-500 mt-1">{MODALITY_LABEL[event.modality] ?? event.modality} · {formatDate(event.startAt)} · {event.city}/{event.state}</p>
+          <span className="text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded mt-1 inline-block">{EVENT_STATUS_LABEL[event.status] ?? event.status}</span>
         </div>
         {event.status === "UNDER_REVIEW" && (
           <ApproveEventButton eventId={event.id} />

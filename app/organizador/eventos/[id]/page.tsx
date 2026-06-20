@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import PublishEventButton from "@/components/organizer/PublishEventButton";
 import DuplicateEventButton from "@/components/organizer/DuplicateEventButton";
 import ArchiveEventButton from "@/components/organizer/ArchiveEventButton";
+import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
@@ -44,6 +45,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
   const revenue = event.orders.reduce((s, o) => s + o.totalAmount, 0);
   const statusInfo = STATUS_LABEL[event.status] ?? STATUS_LABEL.DRAFT;
   const canPublish = event.status === "DRAFT";
+  const canDelete = ["DRAFT", "CANCELLED"].includes(event.status);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -67,6 +69,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           {canPublish && <PublishEventButton eventId={id} />}
           <DuplicateEventButton eventId={id} />
           {!["COMPLETED", "CANCELLED"].includes(event.status) && <ArchiveEventButton eventId={id} />}
+          {canDelete && <DeleteEventButton eventId={id} />}
           <Link href={`/eventos/${event.slug}`} target="_blank" className="btn-secondary text-sm">
             Ver página →
           </Link>

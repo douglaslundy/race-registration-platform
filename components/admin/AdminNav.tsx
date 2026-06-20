@@ -13,6 +13,7 @@ export default function AdminNav() {
           <Link href="/admin/eventos" className="hover:text-gray-300">Eventos</Link>
           <Link href="/admin/usuarios" className="hover:text-gray-300">Usuários</Link>
           <Link href="/admin/pagamentos" className="hover:text-gray-300">Pagamentos</Link>
+          <Link href="/admin/cupons" className="hover:text-gray-300">Cupons</Link>
           <Link href="/admin/repasses" className="hover:text-gray-300">Repasses</Link>
           <Link href="/admin/relatorio" className="hover:text-gray-300">Relatório</Link>
           <Link href="/admin/auditoria" className="hover:text-gray-300">Auditoria</Link>

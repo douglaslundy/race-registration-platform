@@ -2,6 +2,7 @@ export const ACTION_LABEL: Record<string, string> = {
   EVENT_CREATED: "Evento criado",
   EVENT_UPDATED: "Evento atualizado",
   EVENT_CANCELLED: "Evento cancelado",
+  EVENT_DELETED: "Evento excluído",
   EVENT_APPROVED: "Evento aprovado",
   EVENT_REJECTED: "Evento rejeitado",
   EVENT_FEE_UPDATED: "Taxa de evento atualizada",
@@ -33,11 +34,24 @@ export const EVENT_STATUS_LABEL: Record<string, string> = {
   DRAFT: "Rascunho",
   UNDER_REVIEW: "Em análise",
   PUBLISHED: "Publicado",
+  REGISTRATIONS_OPEN: "Inscrições abertas",
+  SOLD_OUT: "Esgotado",
+  REGISTRATIONS_CLOSED: "Inscrições encerradas",
   ACTIVE: "Ativo",
   COMPLETED: "Concluído",
   CANCELLED: "Cancelado",
   SUSPENDED: "Suspenso",
   REJECTED: "Rejeitado",
+};
+
+export const MODALITY_LABEL: Record<string, string> = {
+  ROAD_RACE: "Corrida de rua",
+  TRAIL_RUN: "Trail run",
+  MTB: "MTB",
+  CYCLING: "Ciclismo",
+  WALK: "Caminhada",
+  TRIATHLON: "Triatlo",
+  OTHER: "Outros",
 };
 
 export const PAYMENT_STATUS_LABEL: Record<string, string> = {

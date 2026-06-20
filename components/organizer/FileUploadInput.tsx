@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { uploadFileViaPresign } from "@/lib/upload-client";
 
 interface Props {
   purpose: "banner" | "list_banner" | "regulation" | "kit_info";
@@ -25,20 +26,9 @@ export default function FileUploadInput({ purpose, accept, label, hint, currentU
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("purpose", purpose);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Erro ao enviar arquivo");
-
-      setPreviewUrl(data.fileUrl);
-      onUploaded(data.fileUrl);
+      const fileUrl = await uploadFileViaPresign(file, purpose);
+      setPreviewUrl(fileUrl);
+      onUploaded(fileUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {

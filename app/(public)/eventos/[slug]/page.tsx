@@ -10,6 +10,7 @@ import Image from "next/image";
 import OrganizerInfo from "@/components/events/OrganizerInfo";
 import EventDisclaimer from "@/components/events/EventDisclaimer";
 import { getAppName, getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin } from "@/lib/settings";
+import { MODALITY_LABEL } from "@/lib/admin/labels";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -44,7 +45,16 @@ export default async function EventoPage({ params }: Props) {
     <main className="max-w-4xl mx-auto px-4 py-8">
       {heroBannerUrl && (
         <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden mb-8 bg-gray-100 dark:bg-gray-800">
-          <Image src={heroBannerUrl} alt={event.title} fill className="object-contain" />
+          <div className="absolute inset-2">
+            <Image
+              src={heroBannerUrl}
+              alt={event.title}
+              fill
+              sizes="100vw"
+              className="object-contain"
+              priority
+            />
+          </div>
         </div>
       )}
 
@@ -52,7 +62,7 @@ export default async function EventoPage({ params }: Props) {
         <div className="md:col-span-2 space-y-6">
           <div>
             <span className="text-sm text-primary-600 font-medium uppercase tracking-wide">
-              {event.modality.replace("_", " ")}
+              {MODALITY_LABEL[event.modality] ?? event.modality}
             </span>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{event.title}</h1>
           </div>

@@ -47,20 +47,45 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     const event = await tx.event.findUnique({ where: { id: input.eventId } });
     if (!event || event.status !== "REGISTRATIONS_OPEN") throw new Error("Inscrições não abertas");
 
+    // Percurso e categoria são obrigatórios quando o evento os oferece.
+    const [routeCount, categoryCount] = await Promise.all([
+      tx.eventRoute.count({ where: { eventId: input.eventId } }),
+      tx.eventCategory.count({ where: { eventId: input.eventId } }),
+    ]);
+
+    if (routeCount > 0) {
+      if (!input.routeId) throw new Error("Selecione um percurso para concluir a inscrição");
+      const route = await tx.eventRoute.findFirst({
+        where: { id: input.routeId, eventId: input.eventId },
+        select: { id: true },
+      });
+      if (!route) throw new Error("Percurso inválido para este evento");
+    }
+
+    if (categoryCount > 0) {
+      if (!input.categoryId) throw new Error("Selecione uma categoria para concluir a inscrição");
+      const category = await tx.eventCategory.findFirst({
+        where: { id: input.categoryId, eventId: input.eventId },
+        select: { id: true },
+      });
+      if (!category) throw new Error("Categoria inválida para este evento");
+    }
+
     let discountAmount = 0;
     let couponId: string | undefined;
 
     const couponCode = input.couponCode?.trim().toUpperCase();
 
     if (couponCode) {
-      const coupon = await tx.coupon.findFirst({
-        where: {
-          eventId: input.eventId,
-          code: couponCode,
-          active: true,
-          OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
-        },
-      });
+      const expiryFilter = { OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] };
+      // Cupom específico do evento tem prioridade sobre o cupom global.
+      const coupon =
+        (await tx.coupon.findFirst({
+          where: { eventId: input.eventId, code: couponCode, active: true, ...expiryFilter },
+        })) ??
+        (await tx.coupon.findFirst({
+          where: { eventId: null, code: couponCode, active: true, ...expiryFilter },
+        }));
       if (!coupon) {
         throw new Error("Cupom inválido");
       }

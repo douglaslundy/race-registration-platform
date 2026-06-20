@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 param(
-  [string]$Server = "root@2.25.150.248",
+  [string]$Server = "root@144.91.92.70",
   [string]$RemoteDir = "/opt/sistema-inscricoes-corridas"
 )
 

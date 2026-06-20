@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPaymentProviderSetting, getMercadoPagoAccessToken } from "@/lib/payment-settings";
+import { notifyOrderConfirmed } from "@/lib/notifications";
 
 async function checkMPPaymentStatus(providerPaymentId: string): Promise<"PAID" | "CANCELLED" | null> {
   const token = await getMercadoPagoAccessToken();
@@ -58,6 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               db.registration.update({ where: { id: r.id }, data: { status: "CONFIRMED" } })
             ),
           ]);
+          void notifyOrderConfirmed(order.id);
           return NextResponse.json({ status: "PAID", totalAmount: order.totalAmount });
         }
         if (mpStatus === "CANCELLED" && payment.status !== "CANCELLED") {

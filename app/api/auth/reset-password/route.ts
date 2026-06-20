@@ -14,18 +14,17 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { email, token, password } = parsed.data;
+  const { token, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
 
-  const record = await db.verificationToken.findUnique({
-    where: { identifier_token: { identifier: email, token: "reset" } },
-  });
+  const record = await db.verificationToken.findUnique({ where: { token } });
 
-  if (!record || record.token !== token) {
+  if (!record || record.identifier !== email) {
     return NextResponse.json({ error: "Token inválido" }, { status: 400 });
   }
 
   if (record.expires < new Date()) {
-    await db.verificationToken.delete({ where: { identifier_token: { identifier: email, token: "reset" } } });
+    await db.verificationToken.delete({ where: { token } });
     return NextResponse.json({ error: "Token expirado. Solicite uma nova recuperação." }, { status: 400 });
   }
 
@@ -33,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   await db.$transaction([
     db.user.update({ where: { email }, data: { passwordHash: hash } }),
-    db.verificationToken.delete({ where: { identifier_token: { identifier: email, token: "reset" } } }),
+    db.verificationToken.delete({ where: { token } }),
   ]);
 
   return NextResponse.json({ ok: true });

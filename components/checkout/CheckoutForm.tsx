@@ -227,6 +227,14 @@ export default function CheckoutForm({
 
   async function onSubmit(data: FormData) {
     setError(null);
+    if (event.routes.length > 0 && !emptyStringToUndefined(data.routeId)) {
+      setError("Selecione um percurso para concluir a inscrição.");
+      return;
+    }
+    if (event.categories.length > 0 && !emptyStringToUndefined(data.categoryId)) {
+      setError("Selecione uma categoria para concluir a inscrição.");
+      return;
+    }
     try {
       let cardToken: string | undefined;
       let cardBrand: string | undefined;
@@ -383,7 +391,7 @@ export default function CheckoutForm({
 
       {event.routes.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold mb-3">Percurso</h3>
+          <h3 className="font-semibold mb-3">Percurso <span className="text-red-500">*</span></h3>
           <select {...register("routeId")} className="input-field">
             <option value="">Selecione um percurso</option>
             {event.routes.map((r) => (
@@ -395,7 +403,7 @@ export default function CheckoutForm({
 
       {event.categories.length > 0 && (
         <div className="card">
-          <h3 className="font-semibold mb-3">Categoria</h3>
+          <h3 className="font-semibold mb-3">Categoria <span className="text-red-500">*</span></h3>
           <select {...register("categoryId")} className="input-field">
             <option value="">Selecione uma categoria</option>
             {event.categories.map((c) => (

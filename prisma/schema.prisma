@@ -110,6 +110,7 @@ model User {
   auditLogs        AuditLog[]
   sessions         Session[]
   accounts         Account[]
+  createdCoupons   Coupon[]          @relation("CouponCreator")
 
   @@map("users")
 }
@@ -391,7 +392,7 @@ model Refund {
 
 model Coupon {
   id             String   @id @default(cuid())
-  eventId        String
+  eventId        String?                       // null = cupom global (vale para todos os eventos)
   code           String
   discountType   String   @default("PERCENT") // PERCENT | FIXED
   discountValue  Int                          // percent: integer (10 = 10%), fixed: centavos
@@ -399,12 +400,15 @@ model Coupon {
   usedCount      Int      @default(0)
   expiresAt      DateTime?
   active         Boolean  @default(true)
+  createdById    String?                       // quem criou o cupom (admin/organizador)
   createdAt      DateTime @default(now())
 
-  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  orders Order[]
+  event     Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("CouponCreator", fields: [createdById], references: [id])
+  orders    Order[]
 
   @@unique([eventId, code])
+  @@index([code])
   @@map("coupons")
 }
 

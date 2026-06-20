@@ -34,17 +34,21 @@ export default function EventsBanner({ intervalSeconds }: { intervalSeconds: num
   if (events.length === 0) return null;
 
   const event = events[current];
+  const bannerSrc = event.bannerUrl || event.listBannerUrl || "";
 
   return (
     <div className="relative w-full aspect-[16/5] rounded-2xl overflow-hidden mb-8 bg-gray-100 dark:bg-gray-800 group">
       <Link href={`/eventos/${event.slug}`} className="block w-full h-full">
-        <Image
-          src={event.bannerUrl || event.listBannerUrl || ""}
-          alt={event.title}
-          fill
-          className="object-cover transition-opacity duration-700"
-          priority
-        />
+        <div className="absolute inset-2">
+          <Image
+            src={bannerSrc}
+            alt={event.title}
+            fill
+            sizes="100vw"
+            className="object-contain transition-opacity duration-700"
+            priority
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-4 left-4 right-12">
           <p className="text-white font-bold text-lg drop-shadow line-clamp-1">{event.title}</p>

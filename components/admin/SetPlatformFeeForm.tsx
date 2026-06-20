@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EVENT_STATUS_LABEL } from "@/lib/admin/labels";
 
 interface EventFee {
   id: string;
@@ -30,7 +31,7 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
     <div className="flex items-center gap-4 border rounded-lg p-3 dark:border-gray-700">
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{event.title}</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">{event.status}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{EVENT_STATUS_LABEL[event.status] ?? event.status}</p>
       </div>
       <div className="flex items-center gap-2">
         <input

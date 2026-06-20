@@ -1,3 +1,5 @@
+import { format as formatDateFns } from "date-fns";
+
 export function formatCurrency(amountCents: number, currency = "BRL"): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -7,7 +9,7 @@ export function formatCurrency(amountCents: number, currency = "BRL"): string {
 
 export function formatDate(date: Date | string, pattern = "dd/MM/yyyy"): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("pt-BR").format(d);
+  return formatDateFns(d, pattern);
 }
 
 export function slugify(text: string): string {

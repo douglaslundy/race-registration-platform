@@ -2,6 +2,7 @@ import { requireOrganizer } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
+import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 
 export const dynamic = "force-dynamic";
 
@@ -124,9 +125,14 @@ export default async function OrganizerDashboard() {
                   <td className="py-3">{event._count.registrations}</td>
                   <td className="py-3">{formatCurrency(event.orders.reduce((s, o) => s + o.totalAmount, 0))}</td>
                   <td className="py-3">
-                    <Link href={`/organizador/eventos/${event.id}`} className="text-primary-600 hover:underline">
-                      Gerenciar
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link href={`/organizador/eventos/${event.id}`} className="text-primary-600 hover:underline">
+                        Gerenciar
+                      </Link>
+                      {["DRAFT", "CANCELLED"].includes(event.status) && (
+                        <DeleteEventButton eventId={event.id} />
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

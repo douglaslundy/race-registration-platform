@@ -14,14 +14,16 @@ export default function CategoriasPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", minAge: "", maxAge: "", gender: "" });
 
-  async function load() {
-    const res = await fetch(`/api/events/${id}/categories`);
-    const data = await res.json();
-    setCategories(data.categories ?? []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch(`/api/events/${id}/categories`);
+      const data = await res.json();
+      setCategories(data.categories ?? []);
+      setLoading(false);
+    };
 
-  useEffect(() => { load(); }, [id]);
+    void load();
+  }, [id]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -40,13 +42,17 @@ export default function CategoriasPage() {
     setSaving(false);
     setShowForm(false);
     setForm({ name: "", description: "", minAge: "", maxAge: "", gender: "" });
-    load();
+    const res = await fetch(`/api/events/${id}/categories`);
+    const data = await res.json();
+    setCategories(data.categories ?? []);
   }
 
   async function handleDelete(catId: string) {
     if (!confirm("Remover esta categoria?")) return;
     await fetch(`/api/events/${id}/categories/${catId}`, { method: "DELETE" });
-    load();
+    const res = await fetch(`/api/events/${id}/categories`);
+    const data = await res.json();
+    setCategories(data.categories ?? []);
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;

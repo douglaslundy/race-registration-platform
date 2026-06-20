@@ -37,14 +37,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Evento ou lote não encontrado" }, { status: 404 });
   }
 
-  const coupon = await db.coupon.findFirst({
-    where: {
-      eventId: id,
-      code,
-      active: true,
-      OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
-    },
-  });
+  const expiryFilter = { OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] };
+  // Cupom específico do evento tem prioridade sobre o cupom global.
+  const coupon =
+    (await db.coupon.findFirst({
+      where: { eventId: id, code, active: true, ...expiryFilter },
+    })) ??
+    (await db.coupon.findFirst({
+      where: { eventId: null, code, active: true, ...expiryFilter },
+    }));
 
   if (!coupon) {
     return NextResponse.json({ error: "Cupom inválido" }, { status: 404 });

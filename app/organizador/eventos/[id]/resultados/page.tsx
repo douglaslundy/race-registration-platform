@@ -80,7 +80,7 @@ export default function ResultadosPage() {
         <div className="card space-y-4 text-center">
           <p className="text-4xl">✅</p>
           <p className="font-semibold">{result.rowCount} resultados importados com sucesso!</p>
-          <p className="text-sm text-gray-500">Os resultados ainda não estão visíveis ao público. Clique em "Publicar" para torná-los visíveis.</p>
+          <p className="text-sm text-gray-500">Os resultados ainda não estão visíveis ao público. Clique em &quot;Publicar&quot; para torná-los visíveis.</p>
           <div className="flex gap-3">
             <button onClick={handlePublish} className="btn-primary flex-1">Publicar resultados</button>
             <button onClick={() => setResult(null)} className="btn-secondary flex-1">Importar outro arquivo</button>

@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const REQUIRED_COLUMNS = ["bib_number", "athlete_name"];
-const OPTIONAL_COLUMNS = ["route", "category", "gender", "gross_time", "net_time", "placement_general", "placement_category", "placement_gender"];
 
 function parseCSV(text: string): Record<string, string>[] {
   const lines = text.trim().split("\n");

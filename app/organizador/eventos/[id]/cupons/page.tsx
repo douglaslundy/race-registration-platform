@@ -15,14 +15,16 @@ export default function CuponsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ code: "", discountType: "PERCENT", discountValue: "", maxUses: "", expiresAt: "" });
 
-  async function load() {
-    const res = await fetch(`/api/events/${id}/coupons`);
-    const data = await res.json();
-    setCoupons(data.coupons ?? []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch(`/api/events/${id}/coupons`);
+      const data = await res.json();
+      setCoupons(data.coupons ?? []);
+      setLoading(false);
+    };
 
-  useEffect(() => { load(); }, [id]);
+    void load();
+  }, [id]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +46,9 @@ export default function CuponsPage() {
     } else {
       setShowForm(false);
       setForm({ code: "", discountType: "PERCENT", discountValue: "", maxUses: "", expiresAt: "" });
-      load();
+      const reload = await fetch(`/api/events/${id}/coupons`);
+      const data = await reload.json();
+      setCoupons(data.coupons ?? []);
     }
     setSaving(false);
   }
@@ -52,7 +56,9 @@ export default function CuponsPage() {
   async function handleDelete(couponId: string) {
     if (!confirm("Remover este cupom?")) return;
     await fetch(`/api/events/${id}/coupons/${couponId}`, { method: "DELETE" });
-    load();
+    const reload = await fetch(`/api/events/${id}/coupons`);
+    const data = await reload.json();
+    setCoupons(data.coupons ?? []);
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;

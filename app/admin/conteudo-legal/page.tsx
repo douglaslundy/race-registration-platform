@@ -17,7 +17,7 @@ export default async function ConteudoLegalPage() {
   const privacyUpdatedAt = privacy.updatedAt || LEGAL_CONTENT_UPDATED_AT;
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold dark:text-gray-100">Conteúdo Legal</h1>
       <p className="text-sm text-gray-600 dark:text-gray-400">
         Edite os textos exibidos nas páginas públicas de Termos de Uso e Política de Privacidade.

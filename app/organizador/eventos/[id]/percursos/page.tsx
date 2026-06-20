@@ -14,14 +14,16 @@ export default function PercursosPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", distanceKm: "", description: "" });
 
-  async function load() {
-    const res = await fetch(`/api/events/${id}/routes`);
-    const data = await res.json();
-    setRoutes(data.routes ?? []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetch(`/api/events/${id}/routes`);
+      const data = await res.json();
+      setRoutes(data.routes ?? []);
+      setLoading(false);
+    };
 
-  useEffect(() => { load(); }, [id]);
+    void load();
+  }, [id]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -34,13 +36,17 @@ export default function PercursosPage() {
     setSaving(false);
     setShowForm(false);
     setForm({ name: "", distanceKm: "", description: "" });
-    load();
+    const reload = await fetch(`/api/events/${id}/routes`);
+    const data = await reload.json();
+    setRoutes(data.routes ?? []);
   }
 
   async function handleDelete(routeId: string) {
     if (!confirm("Remover este percurso?")) return;
     await fetch(`/api/events/${id}/routes/${routeId}`, { method: "DELETE" });
-    load();
+    const reload = await fetch(`/api/events/${id}/routes`);
+    const data = await reload.json();
+    setRoutes(data.routes ?? []);
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;

@@ -1,44 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAppName } from "@/lib/settings";
 import { randomBytes } from "crypto";
+import { sendPasswordResetEmail } from "@/lib/email";
+import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();
-  if (!email) return NextResponse.json({ error: "Email obrigatório" }, { status: 400 });
+  if (!email || typeof email !== "string") {
+    return NextResponse.json({ error: "Email obrigatório" }, { status: 400 });
+  }
 
-  const user = await db.user.findUnique({ where: { email } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await db.user.findUnique({ where: { email: normalizedEmail } });
 
-  // Always return success to avoid email enumeration
+  // Sempre retorna sucesso para evitar enumeração de e-mails.
   if (!user) return NextResponse.json({ ok: true });
 
   const token = randomBytes(32).toString("hex");
-  const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+  const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
 
-  await db.verificationToken.upsert({
-    where: { identifier_token: { identifier: email, token: "reset" } },
-    update: { token, expires },
-    create: { identifier: email, token, expires },
+  // Remove tokens anteriores deste usuário e cria um novo.
+  await db.verificationToken.deleteMany({ where: { identifier: normalizedEmail } });
+  await db.verificationToken.create({
+    data: { identifier: normalizedEmail, token, expires },
   });
 
-  const resetUrl = `${process.env.NEXTAUTH_URL}/auth/nova-senha?token=${token}&email=${encodeURIComponent(email)}`;
-  const appName = await getAppName();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const resetUrl = `${baseUrl}/auth/nova-senha?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
 
   if (process.env.NODE_ENV === "development") {
-    console.log(`[PASSWORD RESET] ${email} → ${resetUrl}`);
-  } else if (process.env.SMTP_HOST) {
-    const nodemailer = await import("nodemailer");
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT ?? "587"),
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM ?? "noreply@example.com",
-      to: email,
-      subject: `Recuperação de senha — ${appName}`,
-      html: `<p>Clique no link para redefinir sua senha (válido por 1 hora):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-    });
+    console.log(`[PASSWORD RESET] ${normalizedEmail} → ${resetUrl}`);
+  }
+
+  const cfg = await getSmtpConfig();
+  if (isSmtpReady(cfg)) {
+    try {
+      await sendPasswordResetEmail({ to: normalizedEmail, name: user.name, resetUrl });
+    } catch (err) {
+      console.error("[forgot-password] email send failed:", err);
+      // Não revela o erro ao cliente (evita enumeração / vazamento de config).
+    }
   }
 
   return NextResponse.json({ ok: true });

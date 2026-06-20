@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
+import { notifyOrderConfirmed } from "@/lib/notifications";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -126,29 +127,9 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
-  // Send confirmation email on payment approval
-  if (newPaymentStatus === "PAID" && process.env.SMTP_HOST) {
-    const buyer = payment.order.buyer;
-    const regId = payment.order.registrations[0]?.id;
-    if (buyer && regId) {
-      const { getAppName } = await import("@/lib/settings");
-      const appName = await getAppName();
-      const nodemailer = await import("nodemailer");
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT ?? "587"),
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      });
-      const url = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/inscricoes/${regId}`;
-      transporter
-        .sendMail({
-          from: process.env.EMAIL_FROM ?? "noreply@example.com",
-          to: buyer.email,
-          subject: `Inscrição confirmada! — ${appName}`,
-          html: `<p>Olá ${buyer.name},</p><p>Pagamento confirmado! Sua inscrição está garantida 🏅</p><p><a href="${url}">Ver detalhes</a></p>`,
-        })
-        .catch(() => {});
-    }
+  // Envia a confirmação de inscrição por e-mail quando o pagamento é aprovado
+  if (newPaymentStatus === "PAID") {
+    void notifyOrderConfirmed(payment.orderId);
   }
 
   return NextResponse.json({ ok: true });

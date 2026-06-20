@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   images: {
     remotePatterns: [
+      { protocol: "https", hostname: "supabase.circuitodascorridas.com.br" },
       { protocol: "https", hostname: "*.supabase.co" },
       { protocol: "https", hostname: "*.amazonaws.com" },
       ...buildSupabasePattern(),

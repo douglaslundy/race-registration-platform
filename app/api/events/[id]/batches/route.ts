@@ -7,7 +7,7 @@ import { getBatchStatus } from "@/lib/batch-status";
 const batchSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  priceAmount: z.number().int().positive(),
+  priceAmount: z.number().int().nonnegative(),
   capacity: z.number().int().positive(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),

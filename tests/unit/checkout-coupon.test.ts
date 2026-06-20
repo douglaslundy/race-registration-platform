@@ -32,6 +32,14 @@ describe("createCheckout coupon handling", () => {
     event: {
       findUnique: vi.fn().mockResolvedValue(event),
     },
+    eventRoute: {
+      count: vi.fn().mockResolvedValue(0),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    eventCategory: {
+      count: vi.fn().mockResolvedValue(0),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     coupon: {
       findFirst: vi.fn().mockResolvedValue(coupon),
       update: vi.fn().mockResolvedValue({}),
@@ -71,6 +79,39 @@ describe("createCheckout coupon handling", () => {
     expect(result.subtotalAmount).toBe(18000);
     expect(result.platformFeeAmount).toBe(1980);
     expect(result.totalAmount).toBe(19980);
+  });
+
+  it("requires a route when the event has routes", async () => {
+    const tx = createTx(null);
+    tx.eventRoute.count.mockResolvedValue(1);
+
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+      }),
+    ).rejects.toThrow("Selecione um percurso");
+  });
+
+  it("requires a category when the event has categories", async () => {
+    const tx = createTx(null);
+    tx.eventCategory.count.mockResolvedValue(1);
+
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        routeId: "route-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+      }),
+    ).rejects.toThrow("Selecione uma categoria");
   });
 
   it("rejects an invalid coupon", async () => {

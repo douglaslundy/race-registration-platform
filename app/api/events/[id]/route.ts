@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { deleteObject } from "@/lib/s3";
 
 const updateEventSchema = z.object({
   title: z.string().min(3).max(200).optional(),
@@ -13,7 +14,7 @@ const updateEventSchema = z.object({
   addressLine: z.string().optional(),
   city: z.string().min(2).optional(),
   state: z.string().length(2).optional(),
-  maxParticipants: z.number().int().positive().optional().nullable(),
+  maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional().nullable(),
   bannerUrl: z.string().url().optional().nullable(),
   listBannerUrl: z.string().url().optional().nullable(),
@@ -53,6 +54,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     data: {
       ...parsed.data,
+      maxParticipants: parsed.data.maxParticipants === 0 ? null : parsed.data.maxParticipants,
       ...(parsed.data.startAt ? { startAt: new Date(parsed.data.startAt) } : {}),
       ...(parsed.data.kitPickupAt !== undefined ? { kitPickupAt: parsed.data.kitPickupAt ? new Date(parsed.data.kitPickupAt) : null } : {}),
     },
@@ -83,10 +85,41 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
   if (!["DRAFT", "CANCELLED"].includes(event.status)) {
-    return NextResponse.json({ error: "Só é possível arquivar eventos em rascunho ou cancelados" }, { status: 409 });
+    return NextResponse.json({ error: "Só é possível excluir eventos em rascunho ou cancelados" }, { status: 409 });
   }
 
-  await db.event.update({ where: { id }, data: { status: "CANCELLED" } });
+  const [registrationsCount, ordersCount, payoutsCount, importsCount] = await Promise.all([
+    db.registration.count({ where: { eventId: id } }),
+    db.order.count({ where: { eventId: id } }),
+    db.transferPayout.count({ where: { eventId: id } }),
+    db.resultImport.count({ where: { eventId: id } }),
+  ]);
+
+  if (registrationsCount > 0 || ordersCount > 0 || payoutsCount > 0 || importsCount > 0) {
+    return NextResponse.json({
+      error: "Não é possível excluir um evento com inscrições, pedidos, repasses ou importações vinculadas.",
+    }, { status: 409 });
+  }
+
+  const fileAssets = await db.fileAsset.findMany({
+    where: { eventId: id },
+    select: { fileKey: true },
+  });
+
+  await db.$transaction(async (tx) => {
+    await tx.fileAsset.deleteMany({ where: { eventId: id } });
+    await tx.event.delete({ where: { id } });
+    await tx.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: "EVENT_DELETED",
+        entityType: "Event",
+        entityId: id,
+      },
+    });
+  });
+
+  await Promise.allSettled(fileAssets.map((asset) => deleteObject(asset.fileKey)));
 
   return NextResponse.json({ ok: true });
 }

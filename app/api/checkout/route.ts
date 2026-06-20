@@ -8,25 +8,7 @@ import { getPaymentProviderSetting, getMercadoPagoAccessToken, getPagarMeApiKey 
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
 import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
-
-async function sendConfirmationEmail(email: string, name: string, registrationId: string) {
-  if (!process.env.SMTP_HOST) return;
-  const { getAppName } = await import("@/lib/settings");
-  const appName = await getAppName();
-  const nodemailer = await import("nodemailer");
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT ?? "587"),
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  });
-  const url = `${process.env.NEXTAUTH_URL}/dashboard/inscricoes/${registrationId}`;
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM ?? "noreply@example.com",
-    to: email,
-    subject: `Inscrição confirmada! — ${appName}`,
-    html: `<p>Olá ${name},</p><p>Sua inscrição foi confirmada com sucesso! 🏅</p><p><a href="${url}">Ver detalhes da inscrição</a></p>`,
-  });
-}
+import { notifyOrderConfirmed } from "@/lib/notifications";
 
 const checkoutSchema = z.object({
   eventId: opaqueIdField(),
@@ -173,8 +155,8 @@ export async function POST(req: NextRequest) {
       where: { id: checkout.registrationId },
       data: { status: "CONFIRMED" },
     });
-    // Send confirmation email (fire-and-forget)
-    sendConfirmationEmail(buyer!.email, buyer!.name, checkout.registrationId).catch(() => {});
+    // Envia a confirmação de inscrição por e-mail (fire-and-forget)
+    void notifyOrderConfirmed(checkout.orderId);
   }
 
   await db.auditLog.create({

@@ -6,6 +6,7 @@ import AppNameForm from "@/components/admin/AppNameForm";
 import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
 import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
 import StorageSettingsForm from "@/components/admin/StorageSettingsForm";
+import SmtpSettingsForm from "@/components/admin/SmtpSettingsForm";
 import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
 import ServiceFeeForm from "@/components/admin/ServiceFeeForm";
 import BannerIntervalForm from "@/components/admin/BannerIntervalForm";
@@ -13,6 +14,7 @@ import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
+import { getSmtpConfig } from "@/lib/smtp-settings";
 import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getBannerInterval } from "@/lib/settings";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -23,7 +25,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -54,10 +56,11 @@ export default async function ConfiguracoesPage() {
     getServiceFeePercent(),
     getServiceFeeMin(),
     getBannerInterval(),
+    getSmtpConfig(),
   ]);
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-8 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold dark:text-gray-100">Configurações</h1>
 
       <div className="card space-y-4">
@@ -141,6 +144,23 @@ export default async function ConfiguracoesPage() {
           bucketConfigured={Boolean(storageConfig.bucket)}
           accessKeyConfigured={Boolean(storageConfig.accessKey)}
           endpointConfigured={storageConfig.endpoint ?? null}
+        />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">E-mail (SMTP)</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Configure o servidor SMTP usado para enviar a confirmação de inscrição e a recuperação de senha.
+          Para Gmail use <code>smtp.gmail.com</code> com uma senha de app. Salve e use o botão de teste para validar.
+        </p>
+        <SmtpSettingsForm
+          hostConfigured={Boolean(smtpConfig.host)}
+          fromConfigured={Boolean(smtpConfig.from)}
+          currentHost={smtpConfig.host}
+          currentPort={String(smtpConfig.port)}
+          currentUser={smtpConfig.user}
+          currentFrom={smtpConfig.from}
+          currentSecure={smtpConfig.secure}
         />
       </div>
 

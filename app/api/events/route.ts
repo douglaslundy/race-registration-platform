@@ -14,7 +14,7 @@ const createEventSchema = z.object({
   addressLine: z.string().optional(),
   city: z.string().min(2),
   state: z.string().length(2),
-  maxParticipants: z.number().int().positive().optional(),
+  maxParticipants: z.number().int().nonnegative().optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
   const event = await db.event.create({
     data: {
       ...parsed.data,
+      maxParticipants: parsed.data.maxParticipants === 0 ? null : parsed.data.maxParticipants ?? null,
       slug,
       organizerId: organizer.id,
       startAt: new Date(parsed.data.startAt),

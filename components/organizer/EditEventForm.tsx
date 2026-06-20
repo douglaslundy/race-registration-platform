@@ -17,7 +17,7 @@ const schema = z.object({
   addressLine: z.string().optional(),
   city: z.string().min(2, "Informe a cidade"),
   state: z.string().length(2, "UF com 2 letras"),
-  maxParticipants: z.number().int().positive().optional().nullable(),
+  maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional(),
   regulationText: z.string().optional().nullable(),
 });
@@ -85,11 +85,13 @@ export default function EditEventForm({ event }: { event: EventData }) {
 
   async function onSubmit(data: FormData) {
     setError(null);
+    const maxParticipants = data.maxParticipants === 0 ? null : data.maxParticipants;
     const res = await fetch(`/api/events/${event.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...data,
+        maxParticipants,
         startAt: new Date(data.startAt).toISOString(),
         kitPickupAt: data.kitPickupAt ? new Date(data.kitPickupAt).toISOString() : null,
         bannerUrl,

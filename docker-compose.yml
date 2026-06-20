@@ -1,50 +1,36 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-corridas}
-      POSTGRES_USER: ${POSTGRES_USER:-corridas}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-corridas-db-password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-corridas} -d ${POSTGRES_DB:-corridas}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - .env.production
+      - .env.prod.local
     environment:
       NODE_ENV: production
       PORT: 3000
     ports:
       - "${APP_PORT:-3000}:3000"
-    depends_on:
-      db:
-        condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.corridas.rule=Host(`corridas.srv1716304.hstgr.cloud`)"
+      - "traefik.http.routers.corridas.rule=Host(`circuitodascorridas.com.br`)"
       - "traefik.http.routers.corridas.entrypoints=websecure"
       - "traefik.http.routers.corridas.tls=true"
       - "traefik.http.routers.corridas.tls.certresolver=mytlschallenge"
       - "traefik.http.services.corridas.loadbalancer.server.port=3000"
-      - "traefik.docker.network=n8n_default"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.corridas-http.rule=Host(`circuitodascorridas.com.br`)"
+      - "traefik.http.routers.corridas-http.entrypoints=web"
+      - "traefik.http.routers.corridas-http.middlewares=corridas-https-redirect"
+      - "traefik.http.middlewares.corridas-https-redirect.redirectscheme.scheme=https"
     networks:
-      - default
-      - traefik
+      - proxy
+      - corridas_internal
 
 networks:
-  traefik:
+  proxy:
     external: true
-    name: n8n_default
-
-volumes:
-  postgres_data:
+    name: proxy
+  corridas_internal:
+    external: true
+    name: corridas_internal
