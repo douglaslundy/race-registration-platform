@@ -9,32 +9,49 @@ describe("createCheckout coupon handling", () => {
     vi.clearAllMocks();
   });
 
+  const ticketBatch = {
+    id: "batch-1",
+    active: true,
+    soldCount: 0,
+    capacity: 10,
+    priceAmount: 20000,
+  };
+
+  const event = {
+    id: "event-1",
+    status: "REGISTRATIONS_OPEN",
+    platformFeePercent: 1100,
+  };
+
+  const createTx = (coupon: Record<string, unknown> | null) => ({
+    ticketBatch: {
+      findUnique: vi.fn().mockResolvedValue(ticketBatch),
+      findMany: vi.fn().mockResolvedValue([ticketBatch]),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    event: {
+      findUnique: vi.fn().mockResolvedValue(event),
+    },
+    coupon: {
+      findFirst: vi.fn().mockResolvedValue(coupon),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    order: {
+      create: vi.fn().mockResolvedValue({ id: "order-1" }),
+    },
+    registration: {
+      create: vi.fn().mockResolvedValue({ id: "reg-1" }),
+    },
+  });
+
   it("applies coupon discount after trimming and uppercasing the code", async () => {
-    const tx = {
-      ticketBatch: {
-        findUnique: vi.fn().mockResolvedValue({ id: "batch-1", active: true, soldCount: 0, capacity: 10, priceAmount: 20000 }),
-        update: vi.fn().mockResolvedValue({}),
-      },
-      event: {
-        findUnique: vi.fn().mockResolvedValue({ id: "event-1", status: "REGISTRATIONS_OPEN", platformFeePercent: 1100 }),
-      },
-      coupon: {
-        findFirst: vi.fn().mockResolvedValue({
-          id: "coupon-1",
-          discountType: "PERCENT",
-          discountValue: 10,
-          maxUses: null,
-          usedCount: 0,
-        }),
-        update: vi.fn().mockResolvedValue({}),
-      },
-      order: {
-        create: vi.fn().mockResolvedValue({ id: "order-1" }),
-      },
-      registration: {
-        create: vi.fn().mockResolvedValue({ id: "reg-1" }),
-      },
-    };
+    const tx = createTx({
+      id: "coupon-1",
+      discountType: "PERCENT",
+      discountValue: 10,
+      maxUses: null,
+      usedCount: 0,
+    });
 
     dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
 
@@ -52,29 +69,12 @@ describe("createCheckout coupon handling", () => {
     expect(tx.coupon.update).toHaveBeenCalledTimes(1);
     expect(result.discountAmount).toBe(2000);
     expect(result.subtotalAmount).toBe(18000);
-    expect(result.totalAmount).toBe(18000);
+    expect(result.platformFeeAmount).toBe(1980);
+    expect(result.totalAmount).toBe(19980);
   });
 
   it("rejects an invalid coupon", async () => {
-    const tx = {
-      ticketBatch: {
-        findUnique: vi.fn().mockResolvedValue({ id: "batch-1", active: true, soldCount: 0, capacity: 10, priceAmount: 20000 }),
-        update: vi.fn().mockResolvedValue({}),
-      },
-      event: {
-        findUnique: vi.fn().mockResolvedValue({ id: "event-1", status: "REGISTRATIONS_OPEN", platformFeePercent: 1100 }),
-      },
-      coupon: {
-        findFirst: vi.fn().mockResolvedValue(null),
-        update: vi.fn(),
-      },
-      order: {
-        create: vi.fn(),
-      },
-      registration: {
-        create: vi.fn(),
-      },
-    };
+    const tx = createTx(null);
 
     dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
 

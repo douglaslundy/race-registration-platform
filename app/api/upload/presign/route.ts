@@ -3,7 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { isS3Configured, createPresignedUploadUrl } from "@/lib/s3";
 
-const ALLOWED_PURPOSES = ["banner", "regulation", "kit_info"] as const;
+const ALLOWED_PURPOSES = ["banner", "list_banner", "regulation", "kit_info"] as const;
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",

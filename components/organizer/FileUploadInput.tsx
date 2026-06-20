@@ -47,18 +47,21 @@ export default function FileUploadInput({ purpose, accept, label, hint, currentU
   }
 
   function handleRemove() {
+    setError(null);
     setPreviewUrl(null);
     onRemoved?.();
     if (inputRef.current) inputRef.current.value = "";
   }
+
+  const isImageUpload = accept.includes("image/");
 
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">{label}</label>
       {hint && <p className="text-xs text-gray-500">{hint}</p>}
 
-      {previewUrl && purpose === "banner" && (
-        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden border bg-gray-50 dark:bg-gray-800 group">
+      {previewUrl && isImageUpload && (
+        <div className={`relative w-full ${purpose === "list_banner" ? "aspect-square" : "aspect-[3/1]"} rounded-lg overflow-hidden border bg-gray-50 dark:bg-gray-800 group`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewUrl} alt="Banner" className="w-full h-full object-contain" />
           <button
@@ -87,7 +90,7 @@ export default function FileUploadInput({ purpose, accept, label, hint, currentU
         >
           {uploading ? "Enviando…" : previewUrl ? "Substituir" : "Selecionar arquivo"}
         </button>
-        {previewUrl && purpose === "banner" && onRemoved && (
+        {previewUrl && isImageUpload && onRemoved && (
           <button
             type="button"
             onClick={handleRemove}
@@ -96,7 +99,7 @@ export default function FileUploadInput({ purpose, accept, label, hint, currentU
             Remover banner
           </button>
         )}
-        {previewUrl && purpose !== "banner" && (
+        {previewUrl && !isImageUpload && (
           <span className="text-xs text-green-600 font-medium">Arquivo carregado</span>
         )}
       </div>

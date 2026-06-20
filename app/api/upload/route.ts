@@ -10,7 +10,7 @@ const ALLOWED_MIME: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
-const ALLOWED_PURPOSES = new Set(["banner", "regulation", "kit_info"]);
+const ALLOWED_PURPOSES = new Set(["banner", "list_banner", "regulation", "kit_info"]);
 const MAX_SIZE = 10 * 1024 * 1024;
 
 function getSupabaseConfig() {

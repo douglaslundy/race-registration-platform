@@ -9,6 +9,7 @@ interface BannerEvent {
   title: string;
   slug: string;
   bannerUrl: string;
+  listBannerUrl?: string | null;
 }
 
 export default function EventsBanner({ intervalSeconds }: { intervalSeconds: number }) {
@@ -38,7 +39,7 @@ export default function EventsBanner({ intervalSeconds }: { intervalSeconds: num
     <div className="relative w-full aspect-[16/5] rounded-2xl overflow-hidden mb-8 bg-gray-100 dark:bg-gray-800 group">
       <Link href={`/eventos/${event.slug}`} className="block w-full h-full">
         <Image
-          src={event.bannerUrl}
+          src={event.bannerUrl || event.listBannerUrl || ""}
           alt={event.title}
           fill
           className="object-cover transition-opacity duration-700"

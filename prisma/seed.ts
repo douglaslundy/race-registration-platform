@@ -1,7 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { DEFAULT_LEGAL_PRIVACY, DEFAULT_LEGAL_TERMS, LEGAL_CONTENT_UPDATED_AT } from "../lib/legal-content";
 
 const db = new PrismaClient();
+
+async function ensurePlatformSetting(key: string, value: string) {
+  const existing = await db.platformSetting.findUnique({ where: { key } });
+  if (!existing || !existing.value.trim()) {
+    await db.platformSetting.upsert({
+      where: { key },
+      create: { key, value },
+      update: { value },
+    });
+  }
+}
 
 async function main() {
   console.log("🌱 Iniciando seed...");
@@ -198,6 +210,13 @@ async function main() {
     update: {},
     create: { name: "Douglas Lundy", email: "dlsistemas100@gmail.com", passwordHash: defaultHash, role: "ORGANIZER" },
   });
+
+  await Promise.all([
+    ensurePlatformSetting("legal.terms_content", DEFAULT_LEGAL_TERMS),
+    ensurePlatformSetting("legal.terms_updated", LEGAL_CONTENT_UPDATED_AT),
+    ensurePlatformSetting("legal.privacy_content", DEFAULT_LEGAL_PRIVACY),
+    ensurePlatformSetting("legal.privacy_updated", LEGAL_CONTENT_UPDATED_AT),
+  ]);
 
   console.log("\n🎉 Seed concluído!");
   console.log("\nTodos os usuários usam senha: 12345678");

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { db } from "./db";
+import { DEFAULT_LEGAL_PRIVACY, DEFAULT_LEGAL_TERMS, LEGAL_CONTENT_UPDATED_AT } from "./legal-content";
 
 const DEFAULT_APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Corridas App";
 
@@ -53,6 +54,39 @@ export const getServiceFeePercent = cache(async (): Promise<number> => {
 export const getServiceFeeMin = cache(async (): Promise<number> => {
   const val = await getSetting("service_fee_min");
   return val ? parseInt(val, 10) : 0; // centavos, e.g. 97 = R$0,97
+});
+
+async function readLegalSetting(key: string): Promise<string | null> {
+  noStore();
+  try {
+    const row = await db.platformSetting.findUnique({ where: { key } });
+    return row?.value ?? null;
+  } catch (err) {
+    if (isMissingTable(err)) return null;
+    return null;
+  }
+}
+
+export const getLegalTerms = cache(async (): Promise<{ content: string; updatedAt: string }> => {
+  const [content, updatedAt] = await Promise.all([
+    readLegalSetting("legal.terms_content"),
+    readLegalSetting("legal.terms_updated"),
+  ]);
+  return {
+    content: content && content.trim() ? content : DEFAULT_LEGAL_TERMS,
+    updatedAt: updatedAt && updatedAt.trim() ? updatedAt : LEGAL_CONTENT_UPDATED_AT,
+  };
+});
+
+export const getLegalPrivacy = cache(async (): Promise<{ content: string; updatedAt: string }> => {
+  const [content, updatedAt] = await Promise.all([
+    readLegalSetting("legal.privacy_content"),
+    readLegalSetting("legal.privacy_updated"),
+  ]);
+  return {
+    content: content && content.trim() ? content : DEFAULT_LEGAL_PRIVACY,
+    updatedAt: updatedAt && updatedAt.trim() ? updatedAt : LEGAL_CONTENT_UPDATED_AT,
+  };
 });
 
 export async function upsertSetting(key: string, value: string) {

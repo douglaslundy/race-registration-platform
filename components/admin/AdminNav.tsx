@@ -16,6 +16,7 @@ export default function AdminNav() {
           <Link href="/admin/repasses" className="hover:text-gray-300">Repasses</Link>
           <Link href="/admin/relatorio" className="hover:text-gray-300">Relatório</Link>
           <Link href="/admin/auditoria" className="hover:text-gray-300">Auditoria</Link>
+          <Link href="/admin/conteudo-legal" className="hover:text-gray-300">Legal</Link>
           <Link href="/admin/configuracoes" className="hover:text-gray-300">Config.</Link>
         </div>
         <div className="flex items-center gap-2">

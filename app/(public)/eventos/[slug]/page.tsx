@@ -38,12 +38,13 @@ export default async function EventoPage({ params }: Props) {
   const availableBatches = event.ticketBatches.filter(
     (b) => b.soldCount < b.capacity
   );
+  const heroBannerUrl = event.bannerUrl ?? event.listBannerUrl;
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
-      {event.bannerUrl && (
+      {heroBannerUrl && (
         <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden mb-8 bg-gray-100 dark:bg-gray-800">
-          <Image src={event.bannerUrl} alt={event.title} fill className="object-contain" />
+          <Image src={heroBannerUrl} alt={event.title} fill className="object-contain" />
         </div>
       )}
 
