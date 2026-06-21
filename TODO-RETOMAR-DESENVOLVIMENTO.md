@@ -18,6 +18,12 @@
 ### Deploy (2026-06-20)
 - [x] Push para `origin/main` (`1ba3f4b`) e deploy na VPS `144.91.92.70` concluído. Site `https://circuitodascorridas.com.br` no ar com o novo código (HTTP 200 home/eventos/login). DB sincronizado via `prisma db push`.
 
+### Correções e infra (2026-06-21)
+- [x] **Fix upload:** revertido `FileUploadInput` para POST `/api/upload` (Supabase direto). Removidos `lib/upload-client.ts`, `app/api/upload/presign/route.ts` e testes — código S3/presign introduzido sem pedido que quebrou o upload em produção. (commit `da2561c`)
+- [x] **Fix 404 pós-deploy:** removido container `src-app-1` que conflitava com `corridas-app` no Traefik (labels duplicadas). Causa: `docker-compose.yml` do repo sendo extraído para `/opt/corridas/src/` em cada deploy.
+- [x] **Remove docker-compose.yml do repo:** arquivo legado removido da raiz do projeto e do GitHub. (commit `d90e1f0`)
+- [x] **Deploy via git pull:** `/opt/corridas/src` inicializado como repo git com SSH deploy key no GitHub. Script `/opt/corridas/deploy.sh` criado. Arquivos órfãos de deploys anteriores removidos da VPS. Deploy testado com sucesso.
+
 ### Fase 3 — E-mail / SMTP
 - [x] **T3** `lib/email.ts` + `lib/smtp-settings.ts` + `lib/notifications.ts`; card SMTP em `/admin/configuracoes` com botão de teste; confirmação enviada no checkout, webhook e polling de status.
 - [x] **T5** `forgot-password`/`reset-password` reescritos (bug do token literal "reset" corrigido) usando o SMTP configurado.
