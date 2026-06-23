@@ -20,9 +20,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) return { title: "Evento não encontrado" };
+
+  const ogImage = event.listBannerUrl ?? event.bannerUrl;
+  const description = event.description?.substring(0, 160) ?? `Inscreva-se em ${event.title}`;
+
   return {
     title: event.title,
-    description: event.description?.substring(0, 160),
+    description,
+    openGraph: {
+      title: event.title,
+      description,
+      url: `/eventos/${slug}`,
+      type: "website",
+      ...(ogImage ? { images: [{ url: ogImage, alt: event.title }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: event.title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   };
 }
 

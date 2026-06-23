@@ -5,7 +5,9 @@ import { getAppName } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   const appName = await getAppName();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   return {
+    metadataBase: new URL(appUrl),
     title: {
       default: `${appName} — Inscrições Esportivas`,
       template: `%s | ${appName}`,

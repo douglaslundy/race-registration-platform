@@ -15,7 +15,28 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
-  return { title: event ? `Inscrição — ${event.title}` : "Evento não encontrado" };
+  if (!event) return { title: "Evento não encontrado" };
+
+  const ogImage = event.listBannerUrl ?? event.bannerUrl;
+  const description = event.description?.substring(0, 160) ?? `Inscreva-se em ${event.title}`;
+
+  return {
+    title: `Inscrição — ${event.title}`,
+    description,
+    openGraph: {
+      title: `Inscrição — ${event.title}`,
+      description,
+      url: `/inscricao/${slug}`,
+      type: "website",
+      ...(ogImage ? { images: [{ url: ogImage, alt: event.title }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Inscrição — ${event.title}`,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  };
 }
 
 export default async function InscricaoPage({ params }: Props) {
