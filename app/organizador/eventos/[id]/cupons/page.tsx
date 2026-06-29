@@ -137,7 +137,10 @@ export default function CuponsPage() {
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
           <h1 className="text-xl font-bold mt-1">Cupons de desconto</h1>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary text-sm">+ Novo cupom</button>
+        <div className="flex gap-2">
+          <Link href={`/organizador/eventos/${id}/cupons/relatorio`} className="btn-secondary text-sm">Relatório</Link>
+          <button onClick={() => setShowForm(true)} className="btn-primary text-sm">+ Novo cupom</button>
+        </div>
       </div>
 
       {showForm && (
