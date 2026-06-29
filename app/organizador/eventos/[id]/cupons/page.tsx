@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type Coupon = { id: string; code: string; discountType: string; discountValue: number; maxUses?: number | null; usedCount: number; expiresAt?: string | null };
 
@@ -13,6 +14,8 @@ export default function CuponsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [form, setForm] = useState({ code: "", discountType: "PERCENT", discountValue: "", maxUses: "", expiresAt: "" });
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function CuponsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
     setSaving(true);
     const res = await fetch(`/api/events/${id}/coupons`, {
       method: "POST",
@@ -42,7 +46,7 @@ export default function CuponsPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      alert(data.error || "Erro ao criar cupom");
+      setFormError(data.error || "Erro ao criar cupom");
     } else {
       setShowForm(false);
       setForm({ code: "", discountType: "PERCENT", discountValue: "", maxUses: "", expiresAt: "" });
@@ -53,8 +57,12 @@ export default function CuponsPage() {
     setSaving(false);
   }
 
-  async function handleDelete(couponId: string) {
-    if (!confirm("Remover este cupom?")) return;
+  function handleDelete(couponId: string) {
+    setConfirmDelete(couponId);
+  }
+
+  async function doDelete(couponId: string) {
+    setConfirmDelete(null);
     await fetch(`/api/events/${id}/coupons/${couponId}`, { method: "DELETE" });
     const reload = await fetch(`/api/events/${id}/coupons`);
     const data = await reload.json();
@@ -65,6 +73,15 @@ export default function CuponsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Remover cupom"
+        description="Deseja remover este cupom de desconto?"
+        confirmLabel="Remover"
+        danger
+        onConfirm={() => confirmDelete && doDelete(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
@@ -76,6 +93,9 @@ export default function CuponsPage() {
       {showForm && (
         <form onSubmit={handleCreate} className="card space-y-4">
           <h2 className="font-semibold">Novo cupom</h2>
+          {formError && (
+            <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-300 rounded px-3 py-2">{formError}</p>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Código *</label>

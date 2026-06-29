@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type Batch = {
   id: string;
@@ -43,6 +44,7 @@ export default function LotesPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "", priceAmount: "", capacity: "", startAt: "", endAt: "",
     activationMode: "MANUAL",
@@ -100,7 +102,11 @@ export default function LotesPage() {
   }
 
   async function deleteBatch(batchId: string) {
-    if (!confirm("Excluir este lote? Esta ação não pode ser desfeita.")) return;
+    setConfirmDelete(batchId);
+  }
+
+  async function doDelete(batchId: string) {
+    setConfirmDelete(null);
     await fetch(`/api/events/${id}/batches/${batchId}`, { method: "DELETE" });
     const reload = await fetch(`/api/events/${id}/batches`);
     const data = await reload.json();
@@ -111,6 +117,15 @@ export default function LotesPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Excluir lote"
+        description="Esta ação não pode ser desfeita. Deseja continuar?"
+        confirmLabel="Excluir"
+        danger
+        onConfirm={() => confirmDelete && doDelete(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>

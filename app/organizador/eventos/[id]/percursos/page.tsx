@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type Route = { id: string; name: string; distanceKm: number; description?: string | null };
 
@@ -12,6 +13,7 @@ export default function PercursosPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", distanceKm: "", description: "" });
 
   useEffect(() => {
@@ -41,8 +43,12 @@ export default function PercursosPage() {
     setRoutes(data.routes ?? []);
   }
 
-  async function handleDelete(routeId: string) {
-    if (!confirm("Remover este percurso?")) return;
+  function handleDelete(routeId: string) {
+    setConfirmDelete(routeId);
+  }
+
+  async function doDelete(routeId: string) {
+    setConfirmDelete(null);
     await fetch(`/api/events/${id}/routes/${routeId}`, { method: "DELETE" });
     const reload = await fetch(`/api/events/${id}/routes`);
     const data = await reload.json();
@@ -53,6 +59,15 @@ export default function PercursosPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Remover percurso"
+        description="Deseja remover este percurso do evento?"
+        confirmLabel="Remover"
+        danger
+        onConfirm={() => confirmDelete && doDelete(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export type CouponRow = {
   id: string;
@@ -32,6 +33,8 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [form, setForm] = useState({
     code: "",
     scope: "GLOBAL" as "GLOBAL" | "EVENT",
@@ -92,12 +95,12 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
     router.refresh();
   }
 
-  async function deleteCoupon(id: string) {
-    if (!confirm("Excluir este cupom?")) return;
+  async function doDeleteCoupon(id: string) {
+    setConfirmDelete(null);
     const res = await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      alert(typeof data.error === "string" ? data.error : "Não foi possível excluir.");
+      setDeleteError(typeof data.error === "string" ? data.error : "Não foi possível excluir.");
       return;
     }
     router.refresh();
@@ -107,6 +110,21 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Excluir cupom"
+        description="Cupons não utilizados em pedidos serão removidos permanentemente."
+        confirmLabel="Excluir"
+        danger
+        onConfirm={() => confirmDelete && doDeleteCoupon(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
+      {deleteError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg px-4 py-3 text-sm flex justify-between items-center">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="ml-4 text-red-400 hover:text-red-600">✕</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-500">
           Total de desconto concedido (pedidos pagos): <span className="font-semibold text-gray-700 dark:text-gray-200">{formatCurrency(totalGranted)}</span>
@@ -273,7 +291,7 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
                         {r.active ? "Desativar" : "Ativar"}
                       </button>
                       <button
-                        onClick={() => deleteCoupon(r.id)}
+                        onClick={() => setConfirmDelete(r.id)}
                         className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
                         Excluir

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type Category = { id: string; name: string; description?: string | null; minAge?: number | null; maxAge?: number | null; gender?: string | null };
 
@@ -12,6 +13,7 @@ export default function CategoriasPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", minAge: "", maxAge: "", gender: "" });
 
   useEffect(() => {
@@ -47,8 +49,12 @@ export default function CategoriasPage() {
     setCategories(data.categories ?? []);
   }
 
-  async function handleDelete(catId: string) {
-    if (!confirm("Remover esta categoria?")) return;
+  function handleDelete(catId: string) {
+    setConfirmDelete(catId);
+  }
+
+  async function doDelete(catId: string) {
+    setConfirmDelete(null);
     await fetch(`/api/events/${id}/categories/${catId}`, { method: "DELETE" });
     const res = await fetch(`/api/events/${id}/categories`);
     const data = await res.json();
@@ -59,6 +65,15 @@ export default function CategoriasPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Remover categoria"
+        description="Deseja remover esta categoria do evento?"
+        confirmLabel="Remover"
+        danger
+        onConfirm={() => confirmDelete && doDelete(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
