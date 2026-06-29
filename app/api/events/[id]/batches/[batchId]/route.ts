@@ -10,6 +10,8 @@ const patchSchema = z.object({
   active: z.boolean().optional(),
   isActive: z.boolean().optional(),
   activationMode: z.enum(["MANUAL", "DATE", "AFTER_PREVIOUS"]).optional(),
+  startAt: z.string().optional(),
+  endAt: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; batchId: string }> }) {
@@ -27,12 +29,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { isActive, ...rest } = parsed.data;
+  const { isActive, startAt, endAt, ...rest } = parsed.data;
   const batch = await db.ticketBatch.update({
     where: { id: batchId },
     data: {
       ...rest,
       ...(isActive !== undefined ? { active: isActive } : {}),
+      ...(startAt ? { startAt: new Date(startAt) } : {}),
+      ...(endAt ? { endAt: new Date(endAt) } : {}),
     },
   });
 

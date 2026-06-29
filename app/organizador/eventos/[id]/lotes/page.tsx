@@ -45,6 +45,9 @@ export default function LotesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", priceAmount: "", capacity: "", startAt: "", endAt: "" });
+  const [editSaving, setEditSaving] = useState(false);
   const [form, setForm] = useState({
     name: "", priceAmount: "", capacity: "", startAt: "", endAt: "",
     activationMode: "MANUAL",
@@ -101,6 +104,40 @@ export default function LotesPage() {
     setBatches(data.batches ?? []);
   }
 
+  function openEdit(b: Batch) {
+    setEditId(b.id);
+    setEditForm({
+      name: b.name,
+      priceAmount: String(b.priceAmount / 100),
+      capacity: String(b.capacity),
+      startAt: b.startAt.slice(0, 16),
+      endAt: b.endAt.slice(0, 16),
+    });
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    setEditSaving(true);
+    const priceReais = parseFloat(editForm.priceAmount);
+    await fetch(`/api/events/${id}/batches/${editId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name,
+        priceAmount: Number.isFinite(priceReais) ? Math.round(priceReais * 100) : 0,
+        capacity: parseInt(editForm.capacity),
+        startAt: new Date(editForm.startAt).toISOString(),
+        endAt: new Date(editForm.endAt).toISOString(),
+      }),
+    });
+    setEditSaving(false);
+    setEditId(null);
+    const reload = await fetch(`/api/events/${id}/batches`);
+    const data = await reload.json();
+    setBatches(data.batches ?? []);
+  }
+
   async function deleteBatch(batchId: string) {
     setConfirmDelete(batchId);
   }
@@ -126,6 +163,42 @@ export default function LotesPage() {
         onConfirm={() => confirmDelete && doDelete(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      {editId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setEditId(null)}>
+          <form onSubmit={saveEdit} className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar lote</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+              <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input w-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço (R$)</label>
+                <input required type="number" step="0.01" min="0" value={editForm.priceAmount} onChange={(e) => setEditForm({ ...editForm, priceAmount: e.target.value })} className="input w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vagas</label>
+                <input required type="number" min="1" value={editForm.capacity} onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })} className="input w-full" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Início</label>
+                <input required type="datetime-local" value={editForm.startAt} onChange={(e) => setEditForm({ ...editForm, startAt: e.target.value })} className="input w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fim</label>
+                <input required type="datetime-local" value={editForm.endAt} onChange={(e) => setEditForm({ ...editForm, endAt: e.target.value })} className="input w-full" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setEditId(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancelar</button>
+              <button type="submit" disabled={editSaving} className="px-4 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">{editSaving ? "Salvando…" : "Salvar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
@@ -222,6 +295,12 @@ export default function LotesPage() {
                         {b.active ? "Ativo" : "Inativo"}
                       </button>
                     )}
+                    <button
+                      onClick={() => openEdit(b)}
+                      className="text-xs px-2 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                      Editar
+                    </button>
                     <button
                       onClick={() => deleteBatch(b.id)}
                       className="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"

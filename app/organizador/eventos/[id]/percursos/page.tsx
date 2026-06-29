@@ -14,6 +14,9 @@ export default function PercursosPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", distanceKm: "", description: "" });
+  const [editSaving, setEditSaving] = useState(false);
   const [form, setForm] = useState({ name: "", distanceKm: "", description: "" });
 
   useEffect(() => {
@@ -38,6 +41,31 @@ export default function PercursosPage() {
     setSaving(false);
     setShowForm(false);
     setForm({ name: "", distanceKm: "", description: "" });
+    const reload = await fetch(`/api/events/${id}/routes`);
+    const data = await reload.json();
+    setRoutes(data.routes ?? []);
+  }
+
+  function openEdit(r: Route) {
+    setEditId(r.id);
+    setEditForm({ name: r.name, distanceKm: String(r.distanceKm), description: r.description ?? "" });
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    setEditSaving(true);
+    await fetch(`/api/events/${id}/routes/${editId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name,
+        distanceKm: parseFloat(editForm.distanceKm),
+        description: editForm.description || null,
+      }),
+    });
+    setEditSaving(false);
+    setEditId(null);
     const reload = await fetch(`/api/events/${id}/routes`);
     const data = await reload.json();
     setRoutes(data.routes ?? []);
@@ -68,6 +96,32 @@ export default function PercursosPage() {
         onConfirm={() => confirmDelete && doDelete(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      {editId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setEditId(null)}>
+          <form onSubmit={saveEdit} className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar percurso</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+                <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input w-full" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Distância (km)</label>
+                <input required type="number" step="0.1" min="0" value={editForm.distanceKm} onChange={(e) => setEditForm({ ...editForm, distanceKm: e.target.value })} className="input w-full" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição (opcional)</label>
+              <input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} className="input w-full" />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setEditId(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancelar</button>
+              <button type="submit" disabled={editSaving} className="px-4 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">{editSaving ? "Salvando…" : "Salvar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
@@ -110,7 +164,10 @@ export default function PercursosPage() {
                 <p className="font-medium">{r.name}</p>
                 <p className="text-sm text-gray-500">{r.distanceKm}km{r.description ? ` · ${r.description}` : ""}</p>
               </div>
-              <button onClick={() => handleDelete(r.id)} className="text-red-500 hover:text-red-700 text-sm">Remover</button>
+              <div className="flex gap-2">
+                <button onClick={() => openEdit(r)} className="text-blue-600 hover:text-blue-800 text-sm">Editar</button>
+                <button onClick={() => handleDelete(r.id)} className="text-red-500 hover:text-red-700 text-sm">Remover</button>
+              </div>
             </div>
           ))}
         </div>
