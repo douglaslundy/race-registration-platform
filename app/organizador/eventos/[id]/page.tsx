@@ -11,6 +11,7 @@ import PrintButton from "@/components/ui/PrintButton";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
+export const dynamic = "force-dynamic";
 
 import { BADGE } from "@/lib/badge-colors";
 
@@ -35,13 +36,35 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       routes: { orderBy: { distanceKm: "asc" } },
       categories: { orderBy: { name: "asc" } },
       ticketBatches: { orderBy: { startAt: "asc" } },
-      coupons: true,
+      coupons: { orderBy: { createdAt: "asc" } },
       _count: { select: { registrations: true } },
       orders: { where: { status: "PAID" }, select: { totalAmount: true } },
     },
   });
 
   if (!event) notFound();
+
+  // Coupon usage stats grouped by couponId
+  const couponStats =
+    event.coupons.length > 0
+      ? await db.order.groupBy({
+          by: ["couponId"],
+          where: {
+            eventId: id,
+            couponId: { in: event.coupons.map((c) => c.id) },
+            status: "PAID",
+          },
+          _count: { id: true },
+          _sum: { discountAmount: true },
+        })
+      : [];
+
+  const statsMap = new Map(
+    couponStats.map((s) => [s.couponId, { uses: s._count.id, discount: s._sum.discountAmount ?? 0 }])
+  );
+
+  const totalCouponOrders = couponStats.reduce((s, c) => s + c._count.id, 0);
+  const totalDiscount = couponStats.reduce((s, c) => s + (c._sum.discountAmount ?? 0), 0);
 
   const revenue = event.orders.reduce((s, o) => s + o.totalAmount, 0);
   const statusInfo = STATUS_LABEL[event.status] ?? STATUS_LABEL.DRAFT;
@@ -50,6 +73,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
@@ -63,7 +87,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
             <span className="text-sm text-gray-500">{formatDate(event.startAt)}</span>
           </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
           <Link href={`/organizador/eventos/${id}/editar`} className="btn-secondary text-sm">
             Editar evento
           </Link>
@@ -78,6 +102,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         </div>
       </div>
 
+      {/* Métricas gerais */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card text-center">
           <p className="text-3xl font-bold text-primary-600">{event._count.registrations}</p>
@@ -93,6 +118,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         </div>
       </div>
 
+      {/* Grade: Lotes / Percursos / Categorias / Cupons */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Lotes */}
         <div className="card space-y-3">
@@ -157,7 +183,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           )}
         </div>
 
-        {/* Cupons */}
+        {/* Cupons — card compacto */}
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Cupons de desconto</h2>
@@ -183,6 +209,94 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         </div>
       </div>
 
+      {/* Relatório de cupons — visão geral + agrupado por cupom */}
+      {event.coupons.length > 0 && (
+        <div className="card space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Uso de cupons</h2>
+            <Link
+              href={`/organizador/eventos/${id}/cupons/relatorio`}
+              className="text-xs text-primary-600 hover:underline"
+            >
+              Ver relatório completo →
+            </Link>
+          </div>
+
+          {/* Visão geral */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-primary-600">{event.coupons.length}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Cupons criados</p>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-green-600">{totalCouponOrders}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Pedidos com cupom</p>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalDiscount)}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Desconto concedido</p>
+            </div>
+          </div>
+
+          {/* Agrupado por cupom */}
+          <div className="space-y-2">
+            {event.coupons.map((c) => {
+              const stat = statsMap.get(c.id);
+              const uses = stat?.uses ?? 0;
+              const discount = stat?.discount ?? 0;
+              const maxUses = c.maxUses ?? null;
+              const pct = maxUses ? Math.min(100, Math.round((uses / maxUses) * 100)) : null;
+              const discountLabel =
+                c.discountType === "PERCENT"
+                  ? `${c.discountValue}% off`
+                  : `${formatCurrency(c.discountValue)} off`;
+
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-semibold text-sm">{c.code}</span>
+                      <span className="text-xs text-gray-500">{discountLabel}</span>
+                      {!c.active && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-500">
+                          inativo
+                        </span>
+                      )}
+                    </div>
+                    {pct !== null && (
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary-500 rounded-full"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-400 shrink-0">{pct}%</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 space-y-0.5">
+                    <p className="text-sm font-semibold">
+                      {uses} uso{uses !== 1 ? "s" : ""}
+                      {maxUses ? ` / ${maxUses}` : ""}
+                    </p>
+                    {discount > 0 && (
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        {formatCurrency(discount)} concedidos
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Ações */}
       <div className="flex gap-3">
         <Link href={`/organizador/eventos/${id}/inscritos`} className="btn-secondary flex-1 text-center">
           Ver inscritos
