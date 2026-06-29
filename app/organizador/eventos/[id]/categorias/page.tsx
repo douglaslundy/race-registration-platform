@@ -58,7 +58,7 @@ export default function CategoriasPage() {
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>

@@ -60,7 +60,7 @@ export default async function OrganizerDashboard() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Link href="/organizador/eventos/novo" className="btn-primary">+ Novo Evento</Link>

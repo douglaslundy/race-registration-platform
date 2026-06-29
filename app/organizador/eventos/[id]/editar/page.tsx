@@ -24,7 +24,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   if (!event) notFound();
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Link href={`/organizador/eventos/${id}`} className="hover:text-primary-600">← Voltar ao evento</Link>
       </div>

@@ -48,7 +48,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
   const canDelete = ["DRAFT", "CANCELLED"].includes(event.status);
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
