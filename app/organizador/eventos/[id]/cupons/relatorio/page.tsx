@@ -81,7 +81,15 @@ export default async function CuponsRelatorioPage({ params }: { params: Promise<
           <h1 className="text-xl font-bold mt-1">Relatório de cupons</h1>
           <p className="text-sm text-gray-500">{event.title}</p>
         </div>
-        <PrintButton />
+        <div className="flex gap-2 print:hidden">
+          <Link
+            href={`/api/events/${id}/coupons/report-export`}
+            className="btn-secondary text-sm"
+          >
+            Exportar CSV
+          </Link>
+          <PrintButton />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
