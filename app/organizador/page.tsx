@@ -3,18 +3,19 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
+import { BADGE } from "@/lib/badge-colors";
 
 export const dynamic = "force-dynamic";
 
-const EVENT_STATUS_LABEL: Record<string, string> = {
-  DRAFT:                 "Rascunho",
-  UNDER_REVIEW:          "Em análise",
-  PUBLISHED:             "Publicado",
-  REGISTRATIONS_OPEN:    "Inscrições abertas",
-  SOLD_OUT:              "Esgotado",
-  REGISTRATIONS_CLOSED:  "Inscrições encerradas",
-  COMPLETED:             "Concluído",
-  CANCELLED:             "Cancelado",
+const EVENT_STATUS: Record<string, { label: string; cls: string }> = {
+  DRAFT:                 { label: "Rascunho",             cls: BADGE.gray },
+  UNDER_REVIEW:          { label: "Em análise",           cls: BADGE.yellow },
+  PUBLISHED:             { label: "Publicado",            cls: BADGE.blue },
+  REGISTRATIONS_OPEN:    { label: "Inscrições abertas",   cls: BADGE.green },
+  SOLD_OUT:              { label: "Esgotado",             cls: BADGE.orange },
+  REGISTRATIONS_CLOSED:  { label: "Inscrições encerradas",cls: BADGE.gray },
+  COMPLETED:             { label: "Concluído",            cls: BADGE.green },
+  CANCELLED:             { label: "Cancelado",            cls: BADGE.red },
 };
 
 export default async function OrganizerDashboard() {
@@ -118,9 +119,9 @@ export default async function OrganizerDashboard() {
                 <tr key={event.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                   <td className="py-3 font-medium">{event.title}</td>
                   <td className="py-3">
-                    <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded">
-                      {EVENT_STATUS_LABEL[event.status] ?? event.status}
-                    </span>
+                    {(() => { const s = EVENT_STATUS[event.status] ?? { label: event.status, cls: BADGE.gray }; return (
+                      <span className={`text-xs px-2 py-1 rounded font-medium ${s.cls}`}>{s.label}</span>
+                    ); })()}
                   </td>
                   <td className="py-3">{event._count.registrations}</td>
                   <td className="py-3">{formatCurrency(event.orders.reduce((s, o) => s + o.totalAmount, 0))}</td>
