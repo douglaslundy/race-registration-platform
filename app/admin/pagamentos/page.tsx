@@ -7,6 +7,7 @@ import { BADGE } from "@/lib/badge-colors";
 import { buildAdminPaymentOrderBy, buildAdminPaymentWhere } from "@/lib/admin/payments";
 import { PAYMENT_STATUS_LABEL } from "@/lib/admin/labels";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
+import PrintButton from "@/components/ui/PrintButton";
 
 export const metadata: Metadata = { title: "Pagamentos — Admin" };
 export const dynamic = "force-dynamic";
@@ -165,6 +166,7 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
           <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
             Exportar CSV
           </Link>
+          <PrintButton />
         </div>
       </div>
 

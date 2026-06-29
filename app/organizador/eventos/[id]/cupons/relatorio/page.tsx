@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
 import type { Metadata } from "next";
+import PrintButton from "@/components/ui/PrintButton";
 
 export const metadata: Metadata = { title: "Relatório de Cupons" };
 export const dynamic = "force-dynamic";
@@ -72,12 +73,15 @@ export default async function CuponsRelatorioPage({ params }: { params: Promise<
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <Link href={`/organizador/eventos/${id}/cupons`} className="text-sm text-gray-500 hover:text-primary-600">
-          ← Voltar aos cupons
-        </Link>
-        <h1 className="text-xl font-bold mt-1">Relatório de cupons</h1>
-        <p className="text-sm text-gray-500">{event.title}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Link href={`/organizador/eventos/${id}/cupons`} className="text-sm text-gray-500 hover:text-primary-600">
+            ← Voltar aos cupons
+          </Link>
+          <h1 className="text-xl font-bold mt-1">Relatório de cupons</h1>
+          <p className="text-sm text-gray-500">{event.title}</p>
+        </div>
+        <PrintButton />
       </div>
 
       <div className="grid grid-cols-3 gap-4">

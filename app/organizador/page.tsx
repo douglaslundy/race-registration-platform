@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/format";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import { BADGE } from "@/lib/badge-colors";
+import PrintButton from "@/components/ui/PrintButton";
 
 export const dynamic = "force-dynamic";
 
@@ -98,8 +99,16 @@ export default async function OrganizerDashboard() {
 
       <div className="card" id="meus-eventos">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <h2 className="text-lg font-semibold">Meus Eventos</h2>
-          <p className="text-xs text-gray-500">Abra um evento para editar, criar lotes e cupons.</p>
+          <div>
+            <h2 className="text-lg font-semibold">Meus Eventos</h2>
+            <p className="text-xs text-gray-500">Abra um evento para editar, criar lotes e cupons.</p>
+          </div>
+          <div className="flex gap-2 print:hidden">
+            <Link href="/api/organizer/events/export" className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+              Exportar CSV
+            </Link>
+            <PrintButton label="PDF" />
+          </div>
         </div>
         {organizer.events.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Nenhum evento criado ainda</p>

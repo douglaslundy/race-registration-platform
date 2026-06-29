@@ -7,11 +7,12 @@ export interface AdminEventSearchParams {
   city?: string;
   dateFrom?: string;
   dateTo?: string;
+  organizerId?: string;
   sort?: string;
   dir?: string;
 }
 
-export function buildAdminEventWhere(params: Pick<AdminEventSearchParams, "q" | "status" | "modality" | "city" | "dateFrom" | "dateTo">): Prisma.EventWhereInput {
+export function buildAdminEventWhere(params: Pick<AdminEventSearchParams, "q" | "status" | "modality" | "city" | "dateFrom" | "dateTo" | "organizerId">): Prisma.EventWhereInput {
   const filters: Prisma.EventWhereInput[] = [];
 
   if (params.q) {
@@ -58,6 +59,10 @@ export function buildAdminEventWhere(params: Pick<AdminEventSearchParams, "q" | 
   const dateTo = parseDateInput(params.dateTo, true);
   if (dateTo) {
     filters.push({ startAt: { lte: dateTo } });
+  }
+
+  if (params.organizerId) {
+    filters.push({ organizer: { id: params.organizerId } });
   }
 
   return filters.length ? { AND: filters } : {};

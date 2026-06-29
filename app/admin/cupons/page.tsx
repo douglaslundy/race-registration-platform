@@ -2,6 +2,8 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Metadata } from "next";
 import CouponManager, { type CouponRow } from "@/components/admin/CouponManager";
+import Link from "next/link";
+import PrintButton from "@/components/ui/PrintButton";
 
 export const metadata: Metadata = { title: "Cupons — Admin" };
 export const dynamic = "force-dynamic";
@@ -84,12 +86,20 @@ export default async function AdminCuponsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-xl font-bold">Cupons de desconto</h1>
-        <p className="text-sm text-gray-500">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold">Cupons de desconto</h1>
+          <p className="text-sm text-gray-500">
           Crie cupons para um evento específico ou globais (todos os eventos) e acompanhe o desconto concedido por
           código — útil para negociar patrocínios.
         </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Link href="/api/admin/coupons/export" className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+            Exportar CSV
+          </Link>
+          <PrintButton />
+        </div>
       </div>
       <CouponManager rows={rows} events={events} />
     </div>

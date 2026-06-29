@@ -16,10 +16,11 @@ export async function GET(req: NextRequest) {
   const city = searchParams.get("city")?.trim() ?? "";
   const dateFrom = searchParams.get("dateFrom")?.trim() ?? "";
   const dateTo = searchParams.get("dateTo")?.trim() ?? "";
+  const organizerId = searchParams.get("organizerId")?.trim() ?? "";
   const sort = searchParams.get("sort")?.trim() ?? "createdAt";
   const dir = searchParams.get("dir")?.trim() ?? "desc";
 
-  const where = buildAdminEventWhere({ q, status, modality, city, dateFrom, dateTo });
+  const where = buildAdminEventWhere({ q, status, modality, city, dateFrom, dateTo, organizerId });
   const orderBy = buildAdminEventOrderBy(sort, dir).orderBy;
 
   const events = await db.event.findMany({

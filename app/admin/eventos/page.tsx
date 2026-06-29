@@ -7,6 +7,7 @@ import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
 import { buildAdminEventOrderBy, buildAdminEventWhere } from "@/lib/admin/events";
 import { EVENT_STATUS_LABEL } from "@/lib/admin/labels";
+import PrintButton from "@/components/ui/PrintButton";
 
 export const metadata: Metadata = { title: "Eventos — Admin" };
 
@@ -36,6 +37,7 @@ interface SearchParams {
   city?: string;
   dateFrom?: string;
   dateTo?: string;
+  organizerId?: string;
   page?: string;
   sort?: string;
   dir?: string;
@@ -74,6 +76,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
   const city = params.city?.trim() ?? "";
   const dateFrom = params.dateFrom?.trim() ?? "";
   const dateTo = params.dateTo?.trim() ?? "";
+  const organizerId = params.organizerId?.trim() ?? "";
   const requestedPage = Number.parseInt(params.page ?? "1", 10);
   const sortParam = params.sort?.trim() ?? "createdAt";
   const dirParam = params.dir?.trim() ?? "desc";
@@ -84,7 +87,12 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
   });
   const compact = params.compact ? params.compact === "1" : userSettings?.uiDensity === "compact";
   const pageSize = 20;
-  const where = buildAdminEventWhere({ q, status, modality, city, dateFrom, dateTo });
+  const where = buildAdminEventWhere({ q, status, modality, city, dateFrom, dateTo, organizerId });
+
+  const organizers = await db.organizerProfile.findMany({
+    select: { id: true, user: { select: { name: true, email: true } } },
+    orderBy: { user: { name: "asc" } },
+  });
 
   const total = await db.event.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -101,7 +109,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
     },
   });
 
-  const hasFilters = Boolean(q) || status !== "ALL" || modality !== "ALL" || Boolean(city) || Boolean(dateFrom) || Boolean(dateTo);
+  const hasFilters = Boolean(q) || status !== "ALL" || modality !== "ALL" || Boolean(city) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(organizerId);
 
   const buildQuery = (targetPage: number, overrides: Partial<Record<"sort" | "dir" | "compact", string>> = {}) => {
     const query = new URLSearchParams();
@@ -111,6 +119,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
     if (city) query.set("city", city);
     if (dateFrom) query.set("dateFrom", dateFrom);
     if (dateTo) query.set("dateTo", dateTo);
+    if (organizerId) query.set("organizerId", organizerId);
     if (compact) query.set("compact", "1");
     query.set("sort", overrides.sort ?? sortConfig.normalizedSort);
     query.set("dir", overrides.dir ?? sortConfig.normalizedDir);
@@ -151,6 +160,7 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
           <Link href={buildExportUrl()} className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">
             Exportar CSV
           </Link>
+          <PrintButton />
         </div>
       </div>
 
@@ -190,6 +200,17 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Até</label>
           <input type="date" name="dateTo" defaultValue={dateTo} className="input-field" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Organizador</label>
+          <select name="organizerId" defaultValue={organizerId} className="input-field">
+            <option value="">Todos</option>
+            {organizers.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.user.name} ({org.user.email})
+              </option>
+            ))}
+          </select>
         </div>
         <div className="md:col-span-6 flex flex-wrap gap-2">
           <button type="submit" className="btn-primary text-sm">

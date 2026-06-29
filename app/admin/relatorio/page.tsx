@@ -5,6 +5,7 @@ import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL } from "@/lib/admin/labels";
 import Link from "next/link";
 import type { Metadata } from "next";
+import PrintButton from "@/components/ui/PrintButton";
 
 export const metadata: Metadata = { title: "Relatório Financeiro — Admin" };
 export const dynamic = "force-dynamic";
@@ -104,6 +105,7 @@ export default async function AdminRelatorioPage({
           >
             Exportar CSV
           </Link>
+          <PrintButton />
         </div>
       </div>
 
