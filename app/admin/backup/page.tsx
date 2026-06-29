@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import type { Metadata } from "next";
 import BackupDownloadButton from "@/components/admin/BackupDownloadButton";
+import BackupImportButton from "@/components/admin/BackupImportButton";
 
 export const metadata: Metadata = { title: "Backup — Admin" };
 export const dynamic = "force-dynamic";
@@ -36,8 +37,9 @@ export default async function AdminBackupPage() {
         </p>
       </div>
 
+      {/* Resumo */}
       <div className="card space-y-4">
-        <h2 className="font-semibold">Resumo do banco</h2>
+        <h2 className="font-semibold">Resumo do banco atual</h2>
         <div className="grid grid-cols-3 gap-3">
           {stats.map((s) => (
             <div key={s.label} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
@@ -48,20 +50,34 @@ export default async function AdminBackupPage() {
         </div>
       </div>
 
+      {/* Exportar */}
       <div className="card space-y-4">
-        <h2 className="font-semibold">Gerar backup</h2>
+        <h2 className="font-semibold">Exportar backup</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           O backup inclui todas as tabelas: usuários, eventos, inscrições, pedidos, pagamentos, cupons,
           lotes, categorias, percursos, repasses e estornos. Os dados são exportados em JSON com streaming
-          — funciona mesmo com grandes volumes de dados sem timeout.
+          — funciona mesmo com grandes volumes sem timeout.
         </p>
-
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
           <strong>Atenção:</strong> o arquivo de backup contém dados sensíveis (e-mails, informações pessoais,
           dados financeiros). Armazene-o em local seguro e com acesso restrito.
         </div>
-
         <BackupDownloadButton />
+      </div>
+
+      {/* Importar */}
+      <div className="card space-y-4">
+        <h2 className="font-semibold">Importar backup</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Selecione um arquivo <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">.json</code> gerado
+          pelo exportador acima. Cada registro é processado como <strong>upsert</strong> (inserido se não existir, atualizado
+          se o mesmo ID já estiver no banco). Tabelas são processadas em ordem de dependência: usuários → eventos → inscrições…
+        </p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-sm text-red-800 dark:text-red-300">
+          <strong>Atenção:</strong> registros com o mesmo ID serão sobrescritos pelos dados do arquivo.
+          Use somente em ambiente controlado ou após ter certeza do que está restaurando.
+        </div>
+        <BackupImportButton />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ExportCsvButton from "@/components/organizer/ExportCsvButton";
+import PrintButton from "@/components/ui/PrintButton";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
 
@@ -64,7 +65,10 @@ export default async function InscritosPage({ params }: { params: Promise<{ id: 
           <h1 className="text-xl font-bold mt-1">Inscritos — {event.title}</h1>
           <p className="text-sm text-gray-500">{registrations.length} inscrições</p>
         </div>
-        <ExportCsvButton eventId={id} />
+        <div className="flex gap-2">
+          <ExportCsvButton eventId={id} />
+          <PrintButton label="Imprimir PDF" />
+        </div>
       </div>
 
       {registrations.length === 0 ? (

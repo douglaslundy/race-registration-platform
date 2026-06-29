@@ -7,6 +7,7 @@ import PublishEventButton from "@/components/organizer/PublishEventButton";
 import DuplicateEventButton from "@/components/organizer/DuplicateEventButton";
 import ArchiveEventButton from "@/components/organizer/ArchiveEventButton";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
+import PrintButton from "@/components/ui/PrintButton";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
@@ -70,6 +71,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           <DuplicateEventButton eventId={id} />
           {!["COMPLETED", "CANCELLED"].includes(event.status) && <ArchiveEventButton eventId={id} />}
           {canDelete && <DeleteEventButton eventId={id} />}
+          <PrintButton label="PDF" />
           <Link href={`/eventos/${event.slug}`} target="_blank" className="btn-secondary text-sm">
             Ver página →
           </Link>
