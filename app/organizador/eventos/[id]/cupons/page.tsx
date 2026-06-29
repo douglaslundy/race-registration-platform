@@ -16,6 +16,9 @@ export default function CuponsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ maxUses: "", expiresAt: "" });
+  const [editSaving, setEditSaving] = useState(false);
   const [form, setForm] = useState({ code: "", discountType: "PERCENT", discountValue: "", maxUses: "", expiresAt: "" });
 
   useEffect(() => {
@@ -57,6 +60,33 @@ export default function CuponsPage() {
     setSaving(false);
   }
 
+  function openEdit(c: Coupon) {
+    setEditId(c.id);
+    setEditForm({
+      maxUses: c.maxUses != null ? String(c.maxUses) : "",
+      expiresAt: c.expiresAt ? c.expiresAt.slice(0, 10) : "",
+    });
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    setEditSaving(true);
+    await fetch(`/api/events/${id}/coupons/${editId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        maxUses: editForm.maxUses ? parseInt(editForm.maxUses) : null,
+        expiresAt: editForm.expiresAt || null,
+      }),
+    });
+    setEditSaving(false);
+    setEditId(null);
+    const reload = await fetch(`/api/events/${id}/coupons`);
+    const data = await reload.json();
+    setCoupons(data.coupons ?? []);
+  }
+
   function handleDelete(couponId: string) {
     setConfirmDelete(couponId);
   }
@@ -82,6 +112,26 @@ export default function CuponsPage() {
         onConfirm={() => confirmDelete && doDelete(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      {editId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setEditId(null)}>
+          <form onSubmit={saveEdit} className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar cupom</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usos máximos (vazio = ilimitado)</label>
+              <input type="number" min="1" value={editForm.maxUses} onChange={(e) => setEditForm({ ...editForm, maxUses: e.target.value })} className="input w-full" placeholder="ilimitado" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de validade (vazio = sem expiração)</label>
+              <input type="date" value={editForm.expiresAt} onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })} className="input w-full" />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setEditId(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancelar</button>
+              <button type="submit" disabled={editSaving} className="px-4 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">{editSaving ? "Salvando…" : "Salvar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
@@ -142,7 +192,10 @@ export default function CuponsPage() {
                   {c.expiresAt && ` · expira ${new Date(c.expiresAt).toLocaleDateString("pt-BR")}`}
                 </p>
               </div>
-              <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 text-sm">Remover</button>
+              <div className="flex gap-2">
+                <button onClick={() => openEdit(c)} className="text-blue-600 hover:text-blue-800 text-sm">Editar</button>
+                <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 text-sm">Remover</button>
+              </div>
             </div>
           ))}
         </div>

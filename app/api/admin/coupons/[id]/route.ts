@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const patchSchema = z.object({
-  active: z.boolean(),
+  active: z.boolean().optional(),
+  maxUses: z.number().int().positive().nullable().optional(),
+  expiresAt: z.string().nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -18,9 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const { active, maxUses, expiresAt } = parsed.data;
   const coupon = await db.coupon.update({
     where: { id },
-    data: { active: parsed.data.active },
+    data: {
+      ...(active !== undefined ? { active } : {}),
+      ...(maxUses !== undefined ? { maxUses } : {}),
+      ...(expiresAt !== undefined ? { expiresAt: expiresAt ? new Date(expiresAt) : null } : {}),
+    },
   });
 
   return NextResponse.json({ coupon });

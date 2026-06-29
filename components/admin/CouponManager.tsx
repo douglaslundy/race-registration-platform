@@ -35,6 +35,9 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ maxUses: "", expiresAt: "" });
+  const [editSaving, setEditSaving] = useState(false);
   const [form, setForm] = useState({
     code: "",
     scope: "GLOBAL" as "GLOBAL" | "EVENT",
@@ -106,6 +109,31 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
     router.refresh();
   }
 
+  function openEdit(row: CouponRow) {
+    setEditId(row.id);
+    setEditForm({
+      maxUses: row.maxUses != null ? String(row.maxUses) : "",
+      expiresAt: row.expiresAt ? row.expiresAt.slice(0, 10) : "",
+    });
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    setEditSaving(true);
+    await fetch(`/api/admin/coupons/${editId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        maxUses: editForm.maxUses ? parseInt(editForm.maxUses) : null,
+        expiresAt: editForm.expiresAt || null,
+      }),
+    });
+    setEditSaving(false);
+    setEditId(null);
+    router.refresh();
+  }
+
   const totalGranted = rows.reduce((s, r) => s + r.paidDiscount, 0);
 
   return (
@@ -119,6 +147,38 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
         onConfirm={() => confirmDelete && doDeleteCoupon(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      {editId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setEditId(null)}>
+          <form onSubmit={saveEdit} className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar cupom</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usos máximos (vazio = ilimitado)</label>
+              <input
+                type="number"
+                min="1"
+                value={editForm.maxUses}
+                onChange={(e) => setEditForm({ ...editForm, maxUses: e.target.value })}
+                className="input w-full"
+                placeholder="ilimitado"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de validade (vazio = sem expiração)</label>
+              <input
+                type="date"
+                value={editForm.expiresAt}
+                onChange={(e) => setEditForm({ ...editForm, expiresAt: e.target.value })}
+                className="input w-full"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setEditId(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancelar</button>
+              <button type="submit" disabled={editSaving} className="px-4 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">{editSaving ? "Salvando…" : "Salvar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
       {deleteError && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg px-4 py-3 text-sm flex justify-between items-center">
           <span>{deleteError}</span>
@@ -289,6 +349,12 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
                         className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         {r.active ? "Desativar" : "Ativar"}
+                      </button>
+                      <button
+                        onClick={() => openEdit(r)}
+                        className="text-xs px-2 py-1 rounded border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                      >
+                        Editar
                       </button>
                       <button
                         onClick={() => setConfirmDelete(r.id)}
