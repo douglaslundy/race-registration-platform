@@ -77,7 +77,7 @@ export default function EditEventForm({ event }: { event: EventData }) {
       addressLine: event.addressLine ?? "",
       city: event.city,
       state: event.state,
-      maxParticipants: event.maxParticipants ?? undefined,
+      maxParticipants: event.maxParticipants ?? 0,
       organizerContact: event.organizerContact ?? "",
       regulationText: event.regulationText ?? "",
     },
