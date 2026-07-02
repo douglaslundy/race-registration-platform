@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
+import RefundPaymentButton from "@/components/admin/RefundPaymentButton";
 
 export const metadata: Metadata = { title: "Detalhe do Pagamento — Admin" };
 export const dynamic = "force-dynamic";
@@ -195,16 +196,23 @@ export default async function AdminPaymentDetailPage({
       </div>
 
       {/* Estornos */}
-      {payment.refunds.length > 0 && (
+      {(payment.status === "PAID" || payment.refunds.length > 0) && (
         <div className="card space-y-3">
-          <h2 className="font-semibold">Estornos</h2>
-          {payment.refunds.map((r) => (
-            <div key={r.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-2 last:border-0">
-              <span className="text-gray-600">{r.reason ?? "—"}</span>
-              <span className="font-medium text-red-600">-{formatCurrency(r.amount)}</span>
-              <span className="text-gray-400 text-xs">{r.processedAt ? formatDate(r.processedAt) : "Pendente"}</span>
-            </div>
-          ))}
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Estornos</h2>
+            {payment.status === "PAID" && <RefundPaymentButton paymentId={payment.id} />}
+          </div>
+          {payment.refunds.length === 0 ? (
+            <p className="text-sm text-gray-500">Nenhum estorno registrado.</p>
+          ) : (
+            payment.refunds.map((r) => (
+              <div key={r.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-2 last:border-0">
+                <span className="text-gray-600">{r.reason ?? "—"}</span>
+                <span className="font-medium text-red-600">-{formatCurrency(r.amount)}</span>
+                <span className="text-gray-400 text-xs">{r.processedAt ? formatDate(r.processedAt) : "Pendente"}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
 
