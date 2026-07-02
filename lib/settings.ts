@@ -56,6 +56,11 @@ export const getServiceFeeMin = cache(async (): Promise<number> => {
   return val ? parseInt(val, 10) : 0; // centavos, e.g. 97 = R$0,97
 });
 
+export const getCancellationPolicyEnabled = cache(async (): Promise<boolean> => {
+  const val = await getSetting("cancellation_policy_enabled");
+  return val === "true";
+});
+
 async function readLegalSetting(key: string): Promise<string | null> {
   noStore();
   try {

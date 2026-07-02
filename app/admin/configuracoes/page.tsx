@@ -10,12 +10,13 @@ import SmtpSettingsForm from "@/components/admin/SmtpSettingsForm";
 import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
 import ServiceFeeForm from "@/components/admin/ServiceFeeForm";
 import BannerIntervalForm from "@/components/admin/BannerIntervalForm";
+import CancellationPolicyToggleForm from "@/components/admin/CancellationPolicyToggleForm";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
 import { getSmtpConfig } from "@/lib/smtp-settings";
-import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getBannerInterval } from "@/lib/settings";
+import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getBannerInterval, getCancellationPolicyEnabled } from "@/lib/settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -25,7 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -57,6 +58,7 @@ export default async function ConfiguracoesPage() {
     getServiceFeeMin(),
     getBannerInterval(),
     getSmtpConfig(),
+    getCancellationPolicyEnabled(),
   ]);
 
   return (
@@ -133,6 +135,16 @@ export default async function ConfiguracoesPage() {
           pagarmePublicKeyConfigured={Boolean(pagarmePublicKey)}
           pagarmeWebhookPasswordConfigured={Boolean(pagarmeWebhookPassword)}
         />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Política de cancelamento por evento</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Quando ativado, os organizadores podem configurar prazo de cancelamento, exigência de aprovação e contato de
+          aviso em cada evento (aba de edição do evento). Quando desativado, o cancelamento do atleta funciona como hoje
+          (livre até o início do evento, sempre imediato).
+        </p>
+        <CancellationPolicyToggleForm currentEnabled={cancellationPolicyEnabled} />
       </div>
 
       <div className="card space-y-4">
