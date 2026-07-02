@@ -111,6 +111,7 @@ model User {
   sessions         Session[]
   accounts         Account[]
   createdCoupons   Coupon[]          @relation("CouponCreator")
+  refundsInitiated Refund[]
 
   @@map("users")
 }
@@ -376,14 +377,17 @@ model Payment {
 }
 
 model Refund {
-  id            String   @id @default(cuid())
-  paymentId     String
-  amount        Int      // centavos
-  reason        String?
-  processedAt   DateTime?
-  createdAt     DateTime @default(now())
+  id                String    @id @default(cuid())
+  paymentId         String
+  amount            Int       // centavos
+  reason            String?
+  providerRefundId  String?
+  initiatedByUserId String
+  processedAt       DateTime?
+  createdAt         DateTime  @default(now())
 
-  payment Payment @relation(fields: [paymentId], references: [id])
+  payment         Payment @relation(fields: [paymentId], references: [id])
+  initiatedByUser User    @relation(fields: [initiatedByUserId], references: [id])
 
   @@map("refunds")
 }

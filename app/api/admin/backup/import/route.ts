@@ -252,6 +252,7 @@ function upsertRefund(row: Row) {
     amount: n(row.amount),
     reason: sn(row.reason),
     processedAt: dn(row.processedAt),
+    initiatedByUserId: s(row.initiatedByUserId),
   };
   return db.refund.upsert({
     where: { id: s(row.id) },
