@@ -34,8 +34,17 @@ export interface PaymentWebhookPayload {
   rawPayload: Record<string, unknown>;
 }
 
+export interface RefundPaymentInput {
+  providerPaymentId: string;
+}
+
+export interface RefundPaymentResult {
+  providerRefundId?: string;
+}
+
 export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
+  refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult>;
   verifyWebhookSignature(payload: string, signature: string): Promise<boolean>;
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload;
 }

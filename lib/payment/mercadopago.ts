@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Payment } from "mercadopago";
+import { MercadoPagoConfig, Payment, PaymentRefund } from "mercadopago";
 import crypto from "crypto";
 import { getMercadoPagoAccessToken, getMercadoPagoWebhookSecret } from "@/lib/payment-settings";
 import type {
@@ -6,6 +6,8 @@ import type {
   CreatePaymentInput,
   CreatePaymentResult,
   PaymentWebhookPayload,
+  RefundPaymentInput,
+  RefundPaymentResult,
 } from "./types";
 
 async function getClient() {
@@ -168,6 +170,14 @@ export class MercadoPagoProvider implements PaymentProvider {
       providerPaymentId: String(resCC.id),
       status: resCC.status === "approved" ? "PAID" : "PENDING",
     };
+  }
+
+  async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
+    const client = await getClient();
+    const refundApi = new PaymentRefund(client);
+    console.log("[mp] refundPayment providerPaymentId=%s", input.providerPaymentId);
+    const res = await refundApi.create({ payment_id: input.providerPaymentId });
+    return { providerRefundId: res.id !== undefined ? String(res.id) : undefined };
   }
 
   async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {

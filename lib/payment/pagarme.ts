@@ -5,6 +5,8 @@ import type {
   CreatePaymentInput,
   CreatePaymentResult,
   PaymentWebhookPayload,
+  RefundPaymentInput,
+  RefundPaymentResult,
 } from "./types";
 
 const BASE_URL = "https://api.pagar.me/core/v5";
@@ -15,7 +17,12 @@ async function authHeader(): Promise<string> {
   return `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`;
 }
 
-async function request(path: string, body: Record<string, unknown>, idempotencyKey?: string) {
+async function request(
+  path: string,
+  body: Record<string, unknown>,
+  idempotencyKey?: string,
+  method: "POST" | "DELETE" = "POST",
+) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: await authHeader(),
@@ -23,7 +30,7 @@ async function request(path: string, body: Record<string, unknown>, idempotencyK
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
 
   const res = await fetch(`${BASE_URL}${path}`, {
-    method: "POST",
+    method,
     headers,
     body: JSON.stringify(body),
   });
@@ -119,6 +126,11 @@ export class PagarMeProvider implements PaymentProvider {
     }
 
     throw new Error(`Método ${input.method} não suportado pelo Pagar.me`);
+  }
+
+  async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
+    const data = await request(`/charges/${input.providerPaymentId}`, {}, undefined, "DELETE");
+    return { providerRefundId: data.id !== undefined ? String(data.id) : undefined };
   }
 
   async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {

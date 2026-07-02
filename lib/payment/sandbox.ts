@@ -3,6 +3,8 @@ import type {
   CreatePaymentInput,
   CreatePaymentResult,
   PaymentWebhookPayload,
+  RefundPaymentInput,
+  RefundPaymentResult,
 } from "./types";
 
 export class SandboxPaymentProvider implements PaymentProvider {
@@ -15,6 +17,10 @@ export class SandboxPaymentProvider implements PaymentProvider {
       return { providerPaymentId: id, status: "PENDING", boletoUrl: `https://sandbox.example/boleto/${id}`, expiresAt: new Date(Date.now() + 3 * 24 * 3600 * 1000) };
     }
     return { providerPaymentId: id, status: "PAID" };
+  }
+
+  async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
+    return { providerRefundId: `sandbox_refund_${input.providerPaymentId}` };
   }
 
   async verifyWebhookSignature(_payload: string, signature: string): Promise<boolean> {
