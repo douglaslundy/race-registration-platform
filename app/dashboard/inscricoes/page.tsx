@@ -11,7 +11,7 @@ const STATUS_LABEL: Record<RegistrationStatus, { label: string; color: string }>
   CANCELLED:       { label: "Cancelada", color: BADGE.red },
   TRANSFERRED:     { label: "Transferida", color: BADGE.blue },
   WAITLISTED:      { label: "Lista de espera", color: BADGE.gray },
-  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.yellow },
+  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
 };
 
 export default async function InscricoesPage() {
