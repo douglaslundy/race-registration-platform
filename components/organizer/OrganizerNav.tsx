@@ -13,6 +13,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
           <div className="hidden md:flex items-center gap-4 text-sm">
             <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
             <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
+            <Link href="/organizador/relatorio" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Relatório</Link>
             <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
             <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Perfil</Link>
           </div>
@@ -29,6 +30,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
         <div className="max-w-7xl mx-auto flex flex-wrap gap-4 text-sm">
           <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
           <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
+          <Link href="/organizador/relatorio" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Relatório</Link>
           <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
           <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Perfil</Link>
         </div>

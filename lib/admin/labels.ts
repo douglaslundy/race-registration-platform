@@ -70,3 +70,10 @@ export const ORDER_STATUS_LABEL: Record<string, string> = {
   REFUNDED: "Estornado",
   EXPIRED: "Expirado",
 };
+
+export const PAYOUT_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Pendente",
+  PROCESSING: "Processando",
+  COMPLETED: "Concluído",
+  FAILED: "Falhou",
+};

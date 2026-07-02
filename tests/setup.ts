@@ -9,7 +9,7 @@ vi.mock("@/lib/db", () => ({
     order: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
     payment: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
     coupon: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
-    transferPayout: { findMany: vi.fn(), count: vi.fn() },
+    transferPayout: { findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
     resultImport: { count: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn() },
     refund: { aggregate: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     fileAsset: { count: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
