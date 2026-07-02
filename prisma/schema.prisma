@@ -47,6 +47,7 @@ enum RegistrationStatus {
   CANCELLED
   TRANSFERRED
   WAITLISTED
+  CANCELLATION_REQUESTED
 }
 
 enum OrderStatus {
@@ -225,6 +226,11 @@ model Event {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
+  cancellationDeadline         DateTime?
+  cancellationRequiresApproval Boolean   @default(false)
+  cancellationContactPhone     String?
+  cancellationContactEmail     String?
+
   organizer     OrganizerProfile @relation(fields: [organizerId], references: [id])
   routes        EventRoute[]
   categories    EventCategory[]
@@ -307,6 +313,8 @@ model Registration {
   medicalNotes         String?
   status               RegistrationStatus @default(PENDING_PAYMENT)
   acceptedTermsAt      DateTime?
+  cancellationReason      String?
+  cancellationRequestedAt DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 

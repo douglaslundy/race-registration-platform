@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => ({
     user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     event: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     ticketBatch: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
-    registration: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
+    registration: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn() },
     order: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
     payment: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
     coupon: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
