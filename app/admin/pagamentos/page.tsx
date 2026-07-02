@@ -83,7 +83,7 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
   const pageSize = 50;
   const where = buildAdminPaymentWhere({ q, status, method, dateFrom, dateTo });
 
-  const [payments, total, distinctStatuses, distinctMethods] = await Promise.all([
+  const [payments, total, distinctMethods] = await Promise.all([
     db.payment.findMany({
       where,
       orderBy: sortConfig.orderBy,
@@ -101,7 +101,6 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
       },
     }),
     db.payment.count({ where }),
-    db.payment.findMany({ select: { status: true }, distinct: ["status"], orderBy: { status: "asc" } }),
     db.payment.findMany({ select: { method: true }, distinct: ["method"], orderBy: { method: "asc" } }),
   ]);
 
@@ -109,7 +108,7 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const totalAmount = await db.payment.aggregate({
     _sum: { amount: true },
-    where: { status: "PAID" },
+    where: { status: "PAID", order: { status: "PAID" } },
   });
 
   const hasFilters = Boolean(q) || Boolean(status) || Boolean(method) || Boolean(dateFrom) || Boolean(dateTo);
@@ -179,9 +178,9 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
           <label className="block text-xs text-gray-500 mb-1">Status</label>
           <select name="status" defaultValue={status} className="input-field text-sm py-1.5">
             <option value="">Todos</option>
-            {distinctStatuses.map((row) => (
-              <option key={row.status} value={row.status}>
-                {PAYMENT_STATUS_LABEL[row.status] ?? row.status}
+            {Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
               </option>
             ))}
           </select>
