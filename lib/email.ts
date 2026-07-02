@@ -80,6 +80,27 @@ export async function sendRegistrationConfirmationEmail(params: {
   });
 }
 
+/** E-mail avisando o organizador que um atleta solicitou cancelamento (requer aprovação). */
+export async function sendCancellationRequestedEmail(params: {
+  to: string;
+  athleteName: string;
+  eventTitle?: string;
+  reason: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    subject: `Solicitação de cancelamento${params.eventTitle ? ` — ${params.eventTitle}` : ""}`,
+    html: layout(
+      appName,
+      `<p>Olá,</p>
+       <p><strong>${params.athleteName}</strong> solicitou o cancelamento da inscrição${params.eventTitle ? ` em <strong>${params.eventTitle}</strong>` : ""}.</p>
+       <p><strong>Justificativa:</strong> ${params.reason}</p>
+       <p>Acesse o painel do organizador para aprovar ou rejeitar esta solicitação.</p>`
+    ),
+  });
+}
+
 /** E-mail de recuperação de senha. */
 export async function sendPasswordResetEmail(params: {
   to: string;
