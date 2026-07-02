@@ -7,6 +7,7 @@ import PrintButton from "@/components/ui/PrintButton";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
+import RefundRegistrationButton from "@/components/organizer/RefundRegistrationButton";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -155,7 +156,8 @@ export default async function InscritosPage({
                 <th className="pb-2 pr-4">Valor</th>
                 <th className="pb-2 pr-4">Data pag.</th>
                 <th className="pb-2 pr-4">Data inscrição</th>
-                <th className="pb-2">Status</th>
+                <th className="pb-2 pr-4">Status</th>
+                <th className="pb-2">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -184,10 +186,13 @@ export default async function InscritosPage({
                     <td className="py-2 pr-4 text-gray-700">
                       {formatDate(r.createdAt, "dd/MM/yyyy HH:mm")}
                     </td>
-                    <td className="py-2">
+                    <td className="py-2 pr-4">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
                         {statusInfo?.label ?? r.status}
                       </span>
+                    </td>
+                    <td className="py-2">
+                      {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
                     </td>
                   </tr>
                 );
