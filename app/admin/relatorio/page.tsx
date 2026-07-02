@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL } from "@/lib/admin/labels";
+import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere } from "@/lib/admin/report";
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
@@ -13,26 +14,46 @@ export const dynamic = "force-dynamic";
 export default async function AdminRelatorioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ de?: string; ate?: string }>;
+  searchParams: Promise<{ de?: string; ate?: string; eventId?: string }>;
 }) {
   await requireAdmin();
-  const { de, ate } = await searchParams;
+  const { de, ate, eventId } = await searchParams;
 
   const from = parseDateInput(de, false) ?? new Date(new Date().getFullYear(), 0, 1);
   const to = parseDateInput(ate, true) ?? new Date();
   to.setHours(23, 59, 59, 999);
 
-  const [paymentsAgg, ordersAgg, refundsAgg, eventCount, registrationCount] = await Promise.all([
+  const filter = { from, to, eventId: eventId || undefined };
+
+  const [
+    paymentsAgg,
+    cancelledPaymentsAgg,
+    ordersAgg,
+    platformFeeAgg,
+    refundsAgg,
+    eventCount,
+    registrationCount,
+    events,
+  ] = await Promise.all([
     db.payment.aggregate({
       _sum: { amount: true },
       _count: { id: true },
-      where: { status: "PAID", paidAt: { gte: from, lte: to } },
+      where: buildReportPaymentWhere(filter, "PAID"),
+    }),
+    db.payment.aggregate({
+      _sum: { amount: true },
+      _count: { id: true },
+      where: buildReportPaymentWhere(filter, "CANCELLED"),
     }),
     db.order.groupBy({
       by: ["status"],
       _count: { id: true },
       _sum: { totalAmount: true },
-      where: { createdAt: { gte: from, lte: to } },
+      where: buildReportOrderWhere(filter),
+    }),
+    db.order.aggregate({
+      _sum: { platformFeeAmount: true },
+      where: buildReportOrderWhere(filter, "PAID"),
     }),
     db.refund.aggregate({
       _sum: { amount: true },
@@ -40,14 +61,15 @@ export default async function AdminRelatorioPage({
       where: { createdAt: { gte: from, lte: to } },
     }),
     db.event.count({ where: { createdAt: { gte: from, lte: to } } }),
-    db.registration.count({ where: { createdAt: { gte: from, lte: to } } }),
+    db.registration.count({ where: buildReportRegistrationWhere(filter) }),
+    db.event.findMany({ select: { id: true, title: true }, orderBy: { title: "asc" } }),
   ]);
 
   const byMethod = await db.payment.groupBy({
     by: ["method"],
     _sum: { amount: true },
     _count: { id: true },
-    where: { status: "PAID", paidAt: { gte: from, lte: to } },
+    where: buildReportPaymentWhere(filter, "PAID"),
     orderBy: { _sum: { amount: "desc" } },
   });
 
@@ -55,7 +77,7 @@ export default async function AdminRelatorioPage({
     by: ["paidAt"],
     _sum: { amount: true },
     _count: { id: true },
-    where: { status: "PAID", paidAt: { gte: from, lte: to } },
+    where: buildReportPaymentWhere(filter, "PAID"),
   });
 
   const monthlyMap = new Map<string, number>();
@@ -69,9 +91,10 @@ export default async function AdminRelatorioPage({
     .slice(-12);
 
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
+  const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
   const netRevenue = grossRevenue - refunds;
-  const platformFeeEstimate = Math.round(netRevenue * 0.11);
+  const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
 
   const METHOD_LABEL: Record<string, string> = {
     PIX: "Pix", CREDIT_CARD: "Cartão de Crédito", DEBIT_CARD: "Débito", BOLETO: "Boleto",
@@ -97,10 +120,17 @@ export default async function AdminRelatorioPage({
               defaultValue={ate ?? to.toISOString().slice(0, 10)}
               className="input-field py-1 text-sm"
             />
+            <label className="text-gray-600">Evento</label>
+            <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
+              <option value="">Todos os eventos</option>
+              {events.map((e) => (
+                <option key={e.id} value={e.id}>{e.title}</option>
+              ))}
+            </select>
             <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
           </form>
           <Link
-            href={`/api/admin/report/export?de=${from.toISOString().slice(0, 10)}&ate=${to.toISOString().slice(0, 10)}`}
+            href={`/api/admin/report/export?de=${from.toISOString().slice(0, 10)}&ate=${to.toISOString().slice(0, 10)}${eventId ? `&eventId=${eventId}` : ""}`}
             className="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Exportar CSV
@@ -109,10 +139,14 @@ export default async function AdminRelatorioPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="card text-center">
           <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
           <p className="text-gray-500 text-sm mt-1">Receita bruta</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-orange-500">{formatCurrency(cancelledAmount)}</p>
+          <p className="text-gray-500 text-sm mt-1">Pagamentos cancelados ({cancelledPaymentsAgg._count.id})</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-red-500">-{formatCurrency(refunds)}</p>
@@ -123,8 +157,8 @@ export default async function AdminRelatorioPage({
           <p className="text-gray-500 text-sm mt-1">Receita líquida</p>
         </div>
         <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeEstimate)}</p>
-          <p className="text-gray-500 text-sm mt-1">Taxa plataforma (~11%)</p>
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Taxa da plataforma</p>
         </div>
       </div>
 
