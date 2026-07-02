@@ -18,6 +18,7 @@ export const ACTION_LABEL: Record<string, string> = {
   TRANSFER_CREATED: "Repasse criado",
   TRANSFER_COMPLETED: "Repasse concluído",
   TRANSFER_FAILED: "Repasse falhou",
+  PAYMENT_REFUNDED: "Pagamento estornado",
 };
 
 export const ENTITY_LABEL: Record<string, string> = {
