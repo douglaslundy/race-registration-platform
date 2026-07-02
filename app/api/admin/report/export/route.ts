@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
+import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere } from "@/lib/admin/report";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -13,42 +14,57 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const de = searchParams.get("de")?.trim() ?? "";
   const ate = searchParams.get("ate")?.trim() ?? "";
+  const eventId = searchParams.get("eventId")?.trim() || undefined;
 
   const from = parseDateInput(de, false) ?? new Date(new Date().getFullYear(), 0, 1);
   const to = parseDateInput(ate, true) ?? new Date();
 
-  const [paymentsAgg, ordersAgg, refundsAgg, eventCount, registrationCount] = await Promise.all([
-    db.payment.aggregate({
-      _sum: { amount: true },
-      _count: { id: true },
-      where: { status: "PAID", paidAt: { gte: from, lte: to } },
-    }),
-    db.order.groupBy({
-      by: ["status"],
-      _count: { id: true },
-      _sum: { totalAmount: true },
-      where: { createdAt: { gte: from, lte: to } },
-    }),
-    db.refund.aggregate({
-      _sum: { amount: true },
-      _count: { id: true },
-      where: { createdAt: { gte: from, lte: to } },
-    }),
-    db.event.count({ where: { createdAt: { gte: from, lte: to } } }),
-    db.registration.count({ where: { createdAt: { gte: from, lte: to } } }),
-  ]);
+  const filter = { from, to, eventId };
+
+  const [paymentsAgg, cancelledPaymentsAgg, ordersAgg, platformFeeAgg, refundsAgg, eventCount, registrationCount] =
+    await Promise.all([
+      db.payment.aggregate({
+        _sum: { amount: true },
+        _count: { id: true },
+        where: buildReportPaymentWhere(filter, "PAID"),
+      }),
+      db.payment.aggregate({
+        _sum: { amount: true },
+        _count: { id: true },
+        where: buildReportPaymentWhere(filter, "CANCELLED"),
+      }),
+      db.order.groupBy({
+        by: ["status"],
+        _count: { id: true },
+        _sum: { totalAmount: true },
+        where: buildReportOrderWhere(filter),
+      }),
+      db.order.aggregate({
+        _sum: { platformFeeAmount: true },
+        where: buildReportOrderWhere(filter, "PAID"),
+      }),
+      db.refund.aggregate({
+        _sum: { amount: true },
+        _count: { id: true },
+        where: { createdAt: { gte: from, lte: to } },
+      }),
+      db.event.count({ where: { createdAt: { gte: from, lte: to } } }),
+      db.registration.count({ where: buildReportRegistrationWhere(filter) }),
+    ]);
 
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
+  const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
   const netRevenue = grossRevenue - refunds;
-  const platformFeeEstimate = Math.round(netRevenue * 0.11);
+  const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
 
   const rows: Array<[string, string]> = [
     ["Período", `${from.toISOString()} - ${to.toISOString()}`],
     ["Receita bruta", formatCurrency(grossRevenue)],
+    ["Pagamentos cancelados", formatCurrency(cancelledAmount)],
     ["Estornos", formatCurrency(refunds)],
     ["Receita líquida", formatCurrency(netRevenue)],
-    ["Taxa plataforma (~11%)", formatCurrency(platformFeeEstimate)],
+    ["Taxa da plataforma", formatCurrency(platformFeeActual)],
     ["Pagamentos confirmados", String(paymentsAgg._count.id)],
     ["Inscrições no período", String(registrationCount)],
     ["Eventos criados", String(eventCount)],

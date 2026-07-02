@@ -17,13 +17,13 @@ describe("admin report export", () => {
   });
 
   it("exports the financial summary as csv", async () => {
-    dbMock.payment.aggregate.mockResolvedValueOnce({
-      _sum: { amount: 20000 },
-      _count: { id: 2 },
-    });
+    dbMock.payment.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: 20000 }, _count: { id: 2 } }) // gross (order PAID)
+      .mockResolvedValueOnce({ _sum: { amount: 3000 }, _count: { id: 1 } }); // cancelled (order CANCELLED)
     dbMock.order.groupBy.mockResolvedValueOnce([
       { status: "PAID", _count: { id: 2 }, _sum: { totalAmount: 20000 } },
     ]);
+    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { platformFeeAmount: 2200 } });
     dbMock.refund.aggregate.mockResolvedValueOnce({
       _sum: { amount: 5000 },
       _count: { id: 1 },
@@ -41,9 +41,40 @@ describe("admin report export", () => {
     const csv = await res.text();
     expect(csv).toContain('"Receita bruta"');
     expect(csv).toMatch(/R\$\s?200,00/);
+    expect(csv).toContain('"Pagamentos cancelados"');
+    expect(csv).toMatch(/R\$\s?30,00/);
     expect(csv).toContain('"Estornos"');
     expect(csv).toMatch(/R\$\s?50,00/);
+    expect(csv).toContain('"Taxa da plataforma"');
+    expect(csv).toMatch(/R\$\s?22,00/);
     expect(csv).toContain('"Eventos criados"');
     expect(csv).toContain('"3"');
+  });
+
+  it("passes the eventId filter through to the payment and order queries", async () => {
+    dbMock.payment.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } });
+    dbMock.order.groupBy.mockResolvedValueOnce([]);
+    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { platformFeeAmount: 0 } });
+    dbMock.refund.aggregate.mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } });
+    dbMock.event.count.mockResolvedValueOnce(0);
+    dbMock.registration.count.mockResolvedValueOnce(0);
+
+    await GET(
+      new Request("http://localhost/api/admin/report/export?de=2026-01-01&ate=2026-01-31&eventId=evt-1", { method: "GET" }) as any,
+    );
+
+    expect(dbMock.payment.aggregate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ order: expect.objectContaining({ status: "PAID", eventId: "evt-1" }) }),
+      }),
+    );
+    expect(dbMock.order.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "PAID", eventId: "evt-1" }),
+      }),
+    );
   });
 });
