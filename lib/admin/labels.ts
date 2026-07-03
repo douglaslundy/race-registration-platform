@@ -22,6 +22,8 @@ export const ACTION_LABEL: Record<string, string> = {
   TRANSFER_COMPLETED: "Repasse concluído",
   TRANSFER_FAILED: "Repasse falhou",
   PAYMENT_REFUNDED: "Pagamento estornado",
+  WHATSAPP_INSTANCE_CREATED: "Instância do WhatsApp criada",
+  WHATSAPP_INSTANCE_DELETED: "Instância do WhatsApp excluída",
 };
 
 export const ENTITY_LABEL: Record<string, string> = {
