@@ -9,28 +9,43 @@ export default function AdminPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/profile")
-      .then((r) => r.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao carregar perfil");
+        return res.json();
+      })
       .then(({ profile }) => { if (profile?.phone) setPhone(profile.phone); })
+      .catch(() => setError("Erro ao carregar perfil."))
       .finally(() => setLoading(false));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/admin/profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: phone.trim() || null }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim() || null }),
+      });
+      if (!res.ok) {
+        setError("Erro ao salvar perfil.");
+        setSaving(false);
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
+  if (error) return <div className="text-sm text-red-600">{error}</div>;
 
   return (
     <div className="max-w-2xl space-y-6 mx-auto">
