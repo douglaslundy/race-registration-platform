@@ -15,8 +15,8 @@ vi.mock("@/lib/alerts/alert-settings", () => ({
   getPaymentErrorAlertSettings: vi.fn(),
 }));
 vi.mock("@/lib/alerts/dedupe", () => ({
-  hasAlertBeenSent: vi.fn(),
-  markAlertSent: vi.fn(),
+  claimAlert: vi.fn(),
+  unclaimAlert: vi.fn(),
 }));
 
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
@@ -24,7 +24,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getPaymentErrorAlertSettings } from "@/lib/alerts/alert-settings";
-import { hasAlertBeenSent, markAlertSent } from "@/lib/alerts/dedupe";
+import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
 
 const dbMock = db as any;
 
@@ -41,7 +41,7 @@ describe("notifyPaymentError", () => {
     vi.clearAllMocks();
     vi.mocked(isSmtpReady).mockReturnValue(true);
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
-    vi.mocked(hasAlertBeenSent).mockResolvedValue(false);
+    vi.mocked(claimAlert).mockResolvedValue(true);
   });
 
   it("não faz nada quando os dois canais estão desligados", async () => {
@@ -61,26 +61,36 @@ describe("notifyPaymentError", () => {
     expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
   });
 
-  it("envia e-mail e grava AlertLog", async () => {
+  it("envia e-mail e reivindica o alerta", async () => {
     vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
     dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
 
     await notifyPaymentError("payment-1");
 
+    expect(claimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Payment", "payment-1", "EMAIL");
     expect(sendPaymentErrorEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),
     );
-    expect(markAlertSent).toHaveBeenCalledWith("PAYMENT_ERROR", "Payment", "payment-1", "EMAIL");
   });
 
-  it("não reenvia por e-mail quando já foi alertado", async () => {
+  it("não reenvia por e-mail quando outra execução já reivindicou o alerta", async () => {
     vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
-    vi.mocked(hasAlertBeenSent).mockResolvedValue(true);
+    vi.mocked(claimAlert).mockResolvedValue(false);
     dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
 
     await notifyPaymentError("payment-1");
 
     expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
+  });
+
+  it("libera a reivindicação quando o envio de e-mail falha, para permitir nova tentativa depois", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+    vi.mocked(sendPaymentErrorEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    await notifyPaymentError("payment-1");
+
+    expect(unclaimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "payment-1", "EMAIL");
   });
 
   it("pula o WhatsApp sem quebrar quando o atleta não tem telefone cadastrado", async () => {

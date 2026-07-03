@@ -42,6 +42,7 @@ describe("POST /api/cron/abandoned-carts", () => {
     delete process.env.CRON_SECRET;
     const res = await POST(makeRequest({ "x-cron-secret": "anything" }));
     expect(res.status).toBe(401);
+    expect(checkAbandonedCarts).not.toHaveBeenCalled();
   });
 
   it("chama checkAbandonedCarts e retorna o resultado quando o segredo bate", async () => {

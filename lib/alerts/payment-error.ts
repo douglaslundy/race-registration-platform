@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getPaymentErrorAlertSettings } from "./alert-settings";
-import { hasAlertBeenSent, markAlertSent } from "./dedupe";
+import { claimAlert, unclaimAlert } from "./dedupe";
 
 const ALERT_TYPE = "PAYMENT_ERROR";
 
@@ -27,29 +27,35 @@ export async function notifyPaymentError(paymentId: string): Promise<void> {
 
     if (!payment) return;
 
-    if (settings.emailEnabled && !(await hasAlertBeenSent(ALERT_TYPE, paymentId, "EMAIL"))) {
+    if (settings.emailEnabled) {
       const cfg = await getSmtpConfig();
-      if (isSmtpReady(cfg)) {
-        await sendPaymentErrorEmail({
-          to: payment.order.buyer.email,
-          name: payment.order.buyer.name,
-          eventTitle: payment.order.event.title,
-          orderId: payment.order.id,
-        });
-        await markAlertSent(ALERT_TYPE, "Payment", paymentId, "EMAIL");
+      if (isSmtpReady(cfg) && (await claimAlert(ALERT_TYPE, "Payment", paymentId, "EMAIL"))) {
+        try {
+          await sendPaymentErrorEmail({
+            to: payment.order.buyer.email,
+            name: payment.order.buyer.name,
+            eventTitle: payment.order.event.title,
+            orderId: payment.order.id,
+          });
+        } catch (err) {
+          await unclaimAlert(ALERT_TYPE, paymentId, "EMAIL");
+          throw err;
+        }
       }
     }
 
-    if (
-      settings.whatsappEnabled &&
-      payment.order.buyer.athleteProfile?.phone &&
-      !(await hasAlertBeenSent(ALERT_TYPE, paymentId, "WHATSAPP"))
-    ) {
-      await sendWhatsAppMessage(
-        payment.order.buyer.athleteProfile.phone,
-        `Seu pagamento para "${payment.order.event.title}" não foi concluído. Acesse o app para tentar novamente.`,
-      );
-      await markAlertSent(ALERT_TYPE, "Payment", paymentId, "WHATSAPP");
+    if (settings.whatsappEnabled && payment.order.buyer.athleteProfile?.phone) {
+      if (await claimAlert(ALERT_TYPE, "Payment", paymentId, "WHATSAPP")) {
+        try {
+          await sendWhatsAppMessage(
+            payment.order.buyer.athleteProfile.phone,
+            `Seu pagamento para "${payment.order.event.title}" não foi concluído. Acesse o app para tentar novamente.`,
+          );
+        } catch (err) {
+          await unclaimAlert(ALERT_TYPE, paymentId, "WHATSAPP");
+          throw err;
+        }
+      }
     }
   } catch (err) {
     console.error("[notifyPaymentError] failed:", err);

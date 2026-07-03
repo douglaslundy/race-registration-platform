@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "./alert-settings";
-import { hasAlertBeenSent, markAlertSent } from "./dedupe";
+import { claimAlert, unclaimAlert } from "./dedupe";
 
 const ALERT_TYPE = "ABANDONED_CART";
 
@@ -28,31 +28,37 @@ export async function checkAbandonedCarts(): Promise<{ checked: number; notified
     try {
       let sentSomething = false;
 
-      if (settings.emailEnabled && !(await hasAlertBeenSent(ALERT_TYPE, order.id, "EMAIL"))) {
+      if (settings.emailEnabled) {
         const cfg = await getSmtpConfig();
-        if (isSmtpReady(cfg)) {
-          await sendAbandonedCartEmail({
-            to: order.buyer.email,
-            name: order.buyer.name,
-            eventTitle: order.event.title,
-            orderId: order.id,
-          });
-          await markAlertSent(ALERT_TYPE, "Order", order.id, "EMAIL");
-          sentSomething = true;
+        if (isSmtpReady(cfg) && (await claimAlert(ALERT_TYPE, "Order", order.id, "EMAIL"))) {
+          try {
+            await sendAbandonedCartEmail({
+              to: order.buyer.email,
+              name: order.buyer.name,
+              eventTitle: order.event.title,
+              orderId: order.id,
+            });
+            sentSomething = true;
+          } catch (err) {
+            await unclaimAlert(ALERT_TYPE, order.id, "EMAIL");
+            throw err;
+          }
         }
       }
 
-      if (
-        settings.whatsappEnabled &&
-        order.buyer.athleteProfile?.phone &&
-        !(await hasAlertBeenSent(ALERT_TYPE, order.id, "WHATSAPP"))
-      ) {
-        await sendWhatsAppMessage(
-          order.buyer.athleteProfile.phone,
-          `Sua inscrição em "${order.event.title}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
-        );
-        await markAlertSent(ALERT_TYPE, "Order", order.id, "WHATSAPP");
-        sentSomething = true;
+      if (settings.whatsappEnabled && order.buyer.athleteProfile?.phone) {
+        if (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP")) {
+          try {
+            await sendWhatsAppMessage(
+              order.buyer.athleteProfile.phone,
+              `Sua inscrição em "${order.event.title}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+            );
+            sentSomething = true;
+          } catch (err) {
+            await unclaimAlert(ALERT_TYPE, order.id, "WHATSAPP");
+            throw err;
+          }
+        }
       }
 
       if (sentSomething) notified++;

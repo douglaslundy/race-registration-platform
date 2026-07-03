@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendLowStockEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getLowStockAlertSettings } from "./alert-settings";
-import { hasAlertBeenSent, markAlertSent } from "./dedupe";
+import { claimAlert, unclaimAlert } from "./dedupe";
 
 const ALERT_TYPE = "LOW_STOCK";
 
@@ -37,31 +37,37 @@ export async function checkLowStockAlert(ticketBatchId: string): Promise<void> {
 
     const organizer = batch.event.organizer;
 
-    if (settings.emailEnabled && !(await hasAlertBeenSent(ALERT_TYPE, ticketBatchId, "EMAIL"))) {
+    if (settings.emailEnabled) {
       const cfg = await getSmtpConfig();
-      if (isSmtpReady(cfg)) {
-        await sendLowStockEmail({
-          to: organizer.user.email,
-          organizerName: organizer.user.name,
-          eventTitle: batch.event.title,
-          batchName: batch.name,
-          soldCount: batch.soldCount,
-          capacity: batch.capacity,
-        });
-        await markAlertSent(ALERT_TYPE, "TicketBatch", ticketBatchId, "EMAIL");
+      if (isSmtpReady(cfg) && (await claimAlert(ALERT_TYPE, "TicketBatch", ticketBatchId, "EMAIL"))) {
+        try {
+          await sendLowStockEmail({
+            to: organizer.user.email,
+            organizerName: organizer.user.name,
+            eventTitle: batch.event.title,
+            batchName: batch.name,
+            soldCount: batch.soldCount,
+            capacity: batch.capacity,
+          });
+        } catch (err) {
+          await unclaimAlert(ALERT_TYPE, ticketBatchId, "EMAIL");
+          throw err;
+        }
       }
     }
 
-    if (
-      settings.whatsappEnabled &&
-      organizer.phone &&
-      !(await hasAlertBeenSent(ALERT_TYPE, ticketBatchId, "WHATSAPP"))
-    ) {
-      await sendWhatsAppMessage(
-        organizer.phone,
-        `Alerta: o lote "${batch.name}" do evento "${batch.event.title}" já vendeu ${batch.soldCount} de ${batch.capacity} vagas.`,
-      );
-      await markAlertSent(ALERT_TYPE, "TicketBatch", ticketBatchId, "WHATSAPP");
+    if (settings.whatsappEnabled && organizer.phone) {
+      if (await claimAlert(ALERT_TYPE, "TicketBatch", ticketBatchId, "WHATSAPP")) {
+        try {
+          await sendWhatsAppMessage(
+            organizer.phone,
+            `Alerta: o lote "${batch.name}" do evento "${batch.event.title}" já vendeu ${batch.soldCount} de ${batch.capacity} vagas.`,
+          );
+        } catch (err) {
+          await unclaimAlert(ALERT_TYPE, ticketBatchId, "WHATSAPP");
+          throw err;
+        }
+      }
     }
   } catch (err) {
     console.error("[checkLowStockAlert] failed:", err);

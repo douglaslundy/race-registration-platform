@@ -15,8 +15,8 @@ vi.mock("@/lib/alerts/alert-settings", () => ({
   getAbandonedCartAlertSettings: vi.fn(),
 }));
 vi.mock("@/lib/alerts/dedupe", () => ({
-  hasAlertBeenSent: vi.fn(),
-  markAlertSent: vi.fn(),
+  claimAlert: vi.fn(),
+  unclaimAlert: vi.fn(),
 }));
 
 import { checkAbandonedCarts } from "@/lib/alerts/abandoned-cart";
@@ -24,7 +24,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
-import { hasAlertBeenSent, markAlertSent } from "@/lib/alerts/dedupe";
+import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
 
 const dbMock = db as any;
 
@@ -39,7 +39,7 @@ describe("checkAbandonedCarts", () => {
     vi.clearAllMocks();
     vi.mocked(isSmtpReady).mockReturnValue(true);
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
-    vi.mocked(hasAlertBeenSent).mockResolvedValue(false);
+    vi.mocked(claimAlert).mockResolvedValue(true);
   });
 
   it("não consulta pedidos quando os dois canais estão desligados", async () => {
@@ -62,27 +62,38 @@ describe("checkAbandonedCarts", () => {
     );
   });
 
-  it("envia e-mail e grava AlertLog para um pedido pendente ainda não alertado", async () => {
+  it("envia e-mail e reivindica o alerta para um pedido pendente", async () => {
     vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 30 });
     dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
 
     const result = await checkAbandonedCarts();
 
+    expect(claimAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
     expect(sendAbandonedCartEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),
     );
-    expect(markAlertSent).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
     expect(result).toEqual({ checked: 1, notified: 1 });
   });
 
-  it("não reenvia por e-mail quando já foi alertado", async () => {
+  it("não reenvia por e-mail quando outra execução já reivindicou o alerta", async () => {
     vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 30 });
-    vi.mocked(hasAlertBeenSent).mockResolvedValue(true);
+    vi.mocked(claimAlert).mockResolvedValue(false);
     dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
 
     const result = await checkAbandonedCarts();
 
     expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ checked: 1, notified: 0 });
+  });
+
+  it("libera a reivindicação quando o envio falha, para permitir nova tentativa depois", async () => {
+    vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 30 });
+    dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
+    vi.mocked(sendAbandonedCartEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    const result = await checkAbandonedCarts();
+
+    expect(unclaimAlert).toHaveBeenCalledWith("ABANDONED_CART", "order-1", "EMAIL");
     expect(result).toEqual({ checked: 1, notified: 0 });
   });
 
