@@ -21,6 +21,10 @@ const updateEventSchema = z.object({
   regulationUrl: z.string().url().optional().nullable(),
   regulationText: z.string().optional().nullable(),
   status: z.enum(["DRAFT", "UNDER_REVIEW"]).optional(),
+  cancellationDeadline: z.string().datetime().optional().nullable(),
+  cancellationRequiresApproval: z.boolean().optional(),
+  cancellationContactPhone: z.string().optional().nullable(),
+  cancellationContactEmail: z.string().optional().nullable(),
 });
 
 async function getEventAndVerifyOwner(eventId: string, userId: string) {
@@ -57,6 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       maxParticipants: parsed.data.maxParticipants === 0 ? null : parsed.data.maxParticipants,
       ...(parsed.data.startAt ? { startAt: new Date(parsed.data.startAt) } : {}),
       ...(parsed.data.kitPickupAt !== undefined ? { kitPickupAt: parsed.data.kitPickupAt ? new Date(parsed.data.kitPickupAt) : null } : {}),
+      ...(parsed.data.cancellationDeadline !== undefined ? { cancellationDeadline: parsed.data.cancellationDeadline ? new Date(parsed.data.cancellationDeadline) : null } : {}),
     },
   });
 

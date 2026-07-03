@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import EditEventForm from "@/components/organizer/EditEventForm";
+import { getCancellationPolicyEnabled } from "@/lib/settings";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Editar Evento" };
@@ -11,15 +12,20 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   const session = await requireOrganizer();
   const { id } = await params;
 
-  const event = await db.event.findFirst({
-    where: { id, organizer: { userId: session.user.id } },
-    select: {
-      id: true, title: true, description: true, modality: true,
-      startAt: true, kitPickupAt: true, venueName: true, addressLine: true,
-      city: true, state: true, maxParticipants: true, organizerContact: true,
-      bannerUrl: true, listBannerUrl: true, regulationUrl: true, regulationText: true,
-    },
-  });
+  const [event, cancellationPolicyEnabled] = await Promise.all([
+    db.event.findFirst({
+      where: { id, organizer: { userId: session.user.id } },
+      select: {
+        id: true, title: true, description: true, modality: true,
+        startAt: true, kitPickupAt: true, venueName: true, addressLine: true,
+        city: true, state: true, maxParticipants: true, organizerContact: true,
+        bannerUrl: true, listBannerUrl: true, regulationUrl: true, regulationText: true,
+        cancellationDeadline: true, cancellationRequiresApproval: true,
+        cancellationContactPhone: true, cancellationContactEmail: true,
+      },
+    }),
+    getCancellationPolicyEnabled(),
+  ]);
 
   if (!event) notFound();
 
@@ -29,7 +35,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
         <Link href={`/organizador/eventos/${id}`} className="hover:text-primary-600">← Voltar ao evento</Link>
       </div>
       <h1 className="text-2xl font-bold">Editar evento</h1>
-      <EditEventForm event={event} />
+      <EditEventForm event={event} cancellationPolicyEnabled={cancellationPolicyEnabled} />
     </div>
   );
 }

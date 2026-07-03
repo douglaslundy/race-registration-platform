@@ -20,6 +20,10 @@ const schema = z.object({
   maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional(),
   regulationText: z.string().optional().nullable(),
+  cancellationDeadline: z.string().optional(),
+  cancellationRequiresApproval: z.boolean().optional(),
+  cancellationContactPhone: z.string().optional(),
+  cancellationContactEmail: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -56,9 +60,19 @@ type EventData = {
   listBannerUrl?: string | null;
   regulationUrl?: string | null;
   regulationText?: string | null;
+  cancellationDeadline?: Date | string | null;
+  cancellationRequiresApproval?: boolean;
+  cancellationContactPhone?: string | null;
+  cancellationContactEmail?: string | null;
 };
 
-export default function EditEventForm({ event }: { event: EventData }) {
+export default function EditEventForm({
+  event,
+  cancellationPolicyEnabled = false,
+}: {
+  event: EventData;
+  cancellationPolicyEnabled?: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(event.bannerUrl ?? null);
@@ -80,6 +94,10 @@ export default function EditEventForm({ event }: { event: EventData }) {
       maxParticipants: event.maxParticipants ?? 0,
       organizerContact: event.organizerContact ?? "",
       regulationText: event.regulationText ?? "",
+      cancellationDeadline: event.cancellationDeadline ? toDatetimeLocal(event.cancellationDeadline) : "",
+      cancellationRequiresApproval: event.cancellationRequiresApproval ?? false,
+      cancellationContactPhone: event.cancellationContactPhone ?? "",
+      cancellationContactEmail: event.cancellationContactEmail ?? "",
     },
   });
 
@@ -98,6 +116,10 @@ export default function EditEventForm({ event }: { event: EventData }) {
         listBannerUrl,
         regulationUrl,
         regulationText: data.regulationText || null,
+        cancellationDeadline: data.cancellationDeadline ? new Date(data.cancellationDeadline).toISOString() : null,
+        cancellationRequiresApproval: data.cancellationRequiresApproval ?? false,
+        cancellationContactPhone: data.cancellationContactPhone || null,
+        cancellationContactEmail: data.cancellationContactEmail || null,
       }),
     });
 
@@ -217,6 +239,37 @@ export default function EditEventForm({ event }: { event: EventData }) {
           placeholder="Descreva as regras, categorias, premiação e demais informações do regulamento..."
         />
       </div>
+
+      {cancellationPolicyEnabled && (
+        <div className="border-t pt-5 dark:border-gray-700 space-y-4">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Política de cancelamento</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Deixe o prazo em branco para permitir cancelamento livre até o início do evento (padrão).
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prazo final para cancelamento</label>
+              <input type="datetime-local" {...register("cancellationDeadline")} className="input w-full" />
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" {...register("cancellationRequiresApproval")} className="h-4 w-4" />
+                Cancelamento requer aprovação do organizador
+              </label>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone de contato (WhatsApp)</label>
+              <input {...register("cancellationContactPhone")} className="input w-full" placeholder="+55 11 91234-5678" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail de contato</label>
+              <input {...register("cancellationContactEmail")} className="input w-full" placeholder="cancelamentos@organizador.com" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
