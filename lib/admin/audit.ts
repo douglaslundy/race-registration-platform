@@ -6,11 +6,14 @@ export interface AdminAuditSearchParams {
   userId?: string;
   dateFrom?: string;
   dateTo?: string;
+  environment?: "ADMIN" | "ORGANIZER" | "ATHLETE" | "SYSTEM";
   sort?: string;
   dir?: string;
 }
 
-export function buildAdminAuditWhere(params: Pick<AdminAuditSearchParams, "action" | "entity" | "userId" | "dateFrom" | "dateTo">): Prisma.AuditLogWhereInput {
+export function buildAdminAuditWhere(
+  params: Pick<AdminAuditSearchParams, "action" | "entity" | "userId" | "dateFrom" | "dateTo" | "environment">,
+): Prisma.AuditLogWhereInput {
   const filters: Prisma.AuditLogWhereInput[] = [];
 
   if (params.action) {
@@ -33,6 +36,12 @@ export function buildAdminAuditWhere(params: Pick<AdminAuditSearchParams, "actio
   const to = parseDateInput(params.dateTo, true);
   if (to) {
     filters.push({ createdAt: { lte: to } });
+  }
+
+  if (params.environment === "SYSTEM") {
+    filters.push({ userId: null });
+  } else if (params.environment === "ADMIN" || params.environment === "ORGANIZER" || params.environment === "ATHLETE") {
+    filters.push({ user: { role: params.environment } });
   }
 
   return filters.length ? { AND: filters } : {};
