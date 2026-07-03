@@ -20,6 +20,7 @@ export default function AdminNav() {
           <Link href="/admin/conteudo-legal" className="hover:text-gray-300">Legal</Link>
           <Link href="/admin/configuracoes" className="hover:text-gray-300">Config.</Link>
           <Link href="/admin/backup" className="hover:text-gray-300">Backup</Link>
+          <Link href="/admin/whatsapp" className="hover:text-gray-300">WhatsApp</Link>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle className="text-gray-400 hover:text-white hover:bg-gray-800" />
