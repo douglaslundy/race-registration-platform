@@ -98,6 +98,7 @@ model User {
   emailVerified DateTime?
   passwordHash  String?
   name          String
+  phone         String?
   role          UserRole  @default(ATHLETE)
   active        Boolean   @default(true)
   uiDensity     String    @default("comfortable")
