@@ -30,6 +30,7 @@ const dbMock = db as any;
 
 const orderFixture = {
   id: "order-1",
+  buyerUserId: "athlete-1",
   event: { title: "Corrida Teste" },
   buyer: { name: "Atleta", email: "atleta@example.com", athleteProfile: { phone: "5511988888888" } },
 };
@@ -42,13 +43,25 @@ describe("checkAbandonedCarts", () => {
     vi.mocked(claimAlert).mockResolvedValue(true);
   });
 
-  it("não consulta pedidos quando os dois canais estão desligados", async () => {
+  it("consulta pedidos e grava auditoria mesmo com os dois canais desligados, mas não envia nada", async () => {
     vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: false, minutesThreshold: 30 });
+    dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
 
     const result = await checkAbandonedCarts();
 
-    expect(dbMock.order.findMany).not.toHaveBeenCalled();
-    expect(result).toEqual({ checked: 0, notified: 0 });
+    expect(dbMock.order.findMany).toHaveBeenCalled();
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: "athlete-1",
+        action: "CART_ABANDONED",
+        entityType: "Order",
+        entityId: "order-1",
+        metadata: { eventTitle: "Corrida Teste" },
+      },
+    });
+    expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(result).toEqual({ checked: 1, notified: 0 });
   });
 
   it("filtra por status PENDING e createdAt mais antigo que o limiar de minutos", async () => {
@@ -62,12 +75,15 @@ describe("checkAbandonedCarts", () => {
     );
   });
 
-  it("envia e-mail e reivindica o alerta para um pedido pendente", async () => {
+  it("grava auditoria e envia e-mail para um pedido pendente quando o canal está ligado", async () => {
     vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 30 });
     dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
 
     const result = await checkAbandonedCarts();
 
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "CART_ABANDONED", entityId: "order-1" }) }),
+    );
     expect(claimAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
     expect(sendAbandonedCartEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),

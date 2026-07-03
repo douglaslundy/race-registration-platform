@@ -9,14 +9,13 @@ const ALERT_TYPE = "ABANDONED_CART";
 
 export async function checkAbandonedCarts(): Promise<{ checked: number; notified: number }> {
   const settings = await getAbandonedCartAlertSettings();
-  if (!settings.emailEnabled && !settings.whatsappEnabled) return { checked: 0, notified: 0 };
-
   const cutoff = new Date(Date.now() - settings.minutesThreshold * 60 * 1000);
 
   const orders = await db.order.findMany({
     where: { status: "PENDING", createdAt: { lte: cutoff } },
     select: {
       id: true,
+      buyerUserId: true,
       event: { select: { title: true } },
       buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
     },
@@ -26,6 +25,16 @@ export async function checkAbandonedCarts(): Promise<{ checked: number; notified
 
   for (const order of orders) {
     try {
+      await db.auditLog.create({
+        data: {
+          userId: order.buyerUserId,
+          action: "CART_ABANDONED",
+          entityType: "Order",
+          entityId: order.id,
+          metadata: { eventTitle: order.event.title },
+        },
+      });
+
       let sentSomething = false;
 
       if (settings.emailEnabled) {
