@@ -53,3 +53,22 @@ export async function getPaymentErrorAlertSettings(): Promise<PaymentErrorAlertS
     whatsappEnabled: whatsappEnabled === "true",
   };
 }
+
+export interface ReconciliationAlertSettings {
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  minutesThreshold: number;
+}
+
+export async function getReconciliationAlertSettings(): Promise<ReconciliationAlertSettings> {
+  const [emailEnabled, whatsappEnabled, minutesThreshold] = await Promise.all([
+    getSetting("alert_reconciliation_email_enabled"),
+    getSetting("alert_reconciliation_whatsapp_enabled"),
+    getSetting("alert_reconciliation_minutes_threshold"),
+  ]);
+  return {
+    emailEnabled: emailEnabled === "true",
+    whatsappEnabled: whatsappEnabled === "true",
+    minutesThreshold: minutesThreshold ? parseInt(minutesThreshold, 10) : 15,
+  };
+}
