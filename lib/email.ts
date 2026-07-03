@@ -101,6 +101,30 @@ export async function sendCancellationRequestedEmail(params: {
   });
 }
 
+/** E-mail avisando o organizador que um lote está quase esgotado. */
+export async function sendLowStockEmail(params: {
+  to: string;
+  organizerName: string;
+  eventTitle: string;
+  batchName: string;
+  soldCount: number;
+  capacity: number;
+}): Promise<void> {
+  const appName = await getAppName();
+  const percent = Math.round((params.soldCount / params.capacity) * 100);
+  await sendMail({
+    to: params.to,
+    subject: `Vagas se esgotando — ${params.eventTitle}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.organizerName},</p>
+       <p>O lote <strong>${params.batchName}</strong> do evento <strong>${params.eventTitle}</strong> já vendeu
+       <strong>${params.soldCount} de ${params.capacity}</strong> vagas (${percent}%).</p>
+       <p>Considere abrir um novo lote em breve.</p>`
+    ),
+  });
+}
+
 /** E-mail de recuperação de senha. */
 export async function sendPasswordResetEmail(params: {
   to: string;
