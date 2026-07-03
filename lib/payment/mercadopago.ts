@@ -8,6 +8,7 @@ import type {
   PaymentWebhookPayload,
   RefundPaymentInput,
   RefundPaymentResult,
+  PaymentStatusCheck,
 } from "./types";
 
 async function getClient() {
@@ -217,5 +218,20 @@ export class MercadoPagoProvider implements PaymentProvider {
       status: mpToStatus[status] ?? "CANCELLED",
       rawPayload: payload,
     };
+  }
+
+  async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusCheck> {
+    const client = await getClient();
+    const paymentApi = new Payment(client);
+    const res = await paymentApi.get({ id: providerPaymentId });
+    const statusMap: Record<string, PaymentStatusCheck> = {
+      approved: "PAID",
+      cancelled: "CANCELLED",
+      rejected: "CANCELLED",
+      refunded: "REFUNDED",
+      charged_back: "CHARGEBACK",
+      expired: "EXPIRED",
+    };
+    return statusMap[String(res.status)] ?? "PENDING";
   }
 }

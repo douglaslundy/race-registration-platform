@@ -42,9 +42,12 @@ export interface RefundPaymentResult {
   providerRefundId?: string;
 }
 
+export type PaymentStatusCheck = "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED" | "CHARGEBACK";
+
 export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult>;
   verifyWebhookSignature(payload: string, signature: string): Promise<boolean>;
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload;
+  checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusCheck>;
 }

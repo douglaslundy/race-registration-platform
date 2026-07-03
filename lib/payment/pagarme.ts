@@ -7,6 +7,7 @@ import type {
   PaymentWebhookPayload,
   RefundPaymentInput,
   RefundPaymentResult,
+  PaymentStatusCheck,
 } from "./types";
 
 const BASE_URL = "https://api.pagar.me/core/v5";
@@ -51,6 +52,18 @@ const CHARGE_STATUS_MAP: Record<string, PaymentWebhookPayload["status"]> = {
   refunded: "REFUNDED",
   pending: "EXPIRED",
   waiting_payment: "EXPIRED",
+};
+
+// Mapeamento dedicado para consulta de status em tempo real (diferente do mapa acima, que é
+// específico para o contexto de webhook — ali "pending" é tratado como EXPIRED porque um webhook
+// chegando com esse status é incomum; aqui "pending" é um status normal em trânsito).
+const CHECK_STATUS_MAP: Record<string, PaymentStatusCheck> = {
+  paid: "PAID",
+  overpaid: "PAID",
+  refunded: "REFUNDED",
+  chargedback: "CHARGEBACK",
+  failed: "CANCELLED",
+  canceled: "CANCELLED",
 };
 
 const WEBHOOK_TYPE_MAP: Record<string, PaymentWebhookPayload["status"]> = {
@@ -170,5 +183,20 @@ export class PagarMeProvider implements PaymentProvider {
       paidAt: status === "PAID" ? new Date().toISOString() : undefined,
       rawPayload: payload,
     };
+  }
+
+  async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusCheck> {
+    const res = await fetch(`${BASE_URL}/charges/${providerPaymentId}`, {
+      method: "GET",
+      headers: { Authorization: await authHeader() },
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Pagar.me ${res.status}: ${err.slice(0, 300)}`);
+    }
+
+    const data = await res.json();
+    return CHECK_STATUS_MAP[String(data.status)] ?? "PENDING";
   }
 }

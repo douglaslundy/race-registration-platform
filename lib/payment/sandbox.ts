@@ -5,6 +5,7 @@ import type {
   PaymentWebhookPayload,
   RefundPaymentInput,
   RefundPaymentResult,
+  PaymentStatusCheck,
 } from "./types";
 
 export class SandboxPaymentProvider implements PaymentProvider {
@@ -34,5 +35,9 @@ export class SandboxPaymentProvider implements PaymentProvider {
       paidAt: payload.paid_at ? String(payload.paid_at) : undefined,
       rawPayload: payload,
     };
+  }
+
+  async checkPaymentStatus(_providerPaymentId: string): Promise<PaymentStatusCheck> {
+    return "PENDING";
   }
 }
