@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
 import RefundRegistrationButton from "@/components/organizer/RefundRegistrationButton";
 import CancellationDecisionButtons from "@/components/organizer/CancellationDecisionButtons";
+import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -77,7 +78,7 @@ export default async function InscritosPage({
           payments: {
             orderBy: { createdAt: "desc" },
             take: 1,
-            select: { method: true, paidAt: true, status: true },
+            select: { method: true, paidAt: true, status: true, providerPaymentId: true },
           },
         },
       },
@@ -157,6 +158,7 @@ export default async function InscritosPage({
                 <th className="pb-2 pr-4">Pagamento</th>
                 <th className="pb-2 pr-4">Valor</th>
                 <th className="pb-2 pr-4">Data pag.</th>
+                <th className="pb-2 pr-4">Cód. transação</th>
                 <th className="pb-2 pr-4">Data inscrição</th>
                 <th className="pb-2 pr-4">Status</th>
                 <th className="pb-2">Ações</th>
@@ -185,6 +187,9 @@ export default async function InscritosPage({
                     <td className="py-2 pr-4 text-gray-700">
                       {payment?.paidAt ? formatDate(payment.paidAt, "dd/MM/yyyy HH:mm") : "—"}
                     </td>
+                    <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[10rem]">
+                      {payment?.providerPaymentId ?? "—"}
+                    </td>
                     <td className="py-2 pr-4 text-gray-700">
                       {formatDate(r.createdAt, "dd/MM/yyyy HH:mm")}
                     </td>
@@ -197,6 +202,7 @@ export default async function InscritosPage({
                       <div className="flex flex-col gap-1">
                         {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
                         {r.status === "CANCELLATION_REQUESTED" && <CancellationDecisionButtons registrationId={r.id} />}
+                        {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
                       </div>
                     </td>
                   </tr>

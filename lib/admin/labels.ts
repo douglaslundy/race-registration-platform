@@ -26,6 +26,7 @@ export const ACTION_LABEL: Record<string, string> = {
   WHATSAPP_INSTANCE_DELETED: "Instância do WhatsApp excluída",
   PAGE_VIEWED: "Página acessada",
   CART_ABANDONED: "Carrinho abandonado",
+  REGISTRATION_MANUALLY_CONFIRMED: "Inscrição confirmada manualmente",
 };
 
 export const ENTITY_LABEL: Record<string, string> = {
