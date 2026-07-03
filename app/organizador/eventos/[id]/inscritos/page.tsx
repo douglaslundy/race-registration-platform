@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
 import RefundRegistrationButton from "@/components/organizer/RefundRegistrationButton";
+import CancellationDecisionButtons from "@/components/organizer/CancellationDecisionButtons";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -19,6 +20,7 @@ const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
   CANCELLED:       { label: "Cancelada", color: BADGE.red },
   TRANSFERRED:     { label: "Transferida", color: BADGE.blue },
   WAITLISTED:      { label: "Lista de espera", color: BADGE.gray },
+  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
 };
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
@@ -192,7 +194,10 @@ export default async function InscritosPage({
                       </span>
                     </td>
                     <td className="py-2">
-                      {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
+                      <div className="flex flex-col gap-1">
+                        {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
+                        {r.status === "CANCELLATION_REQUESTED" && <CancellationDecisionButtons registrationId={r.id} />}
+                      </div>
                     </td>
                   </tr>
                 );
