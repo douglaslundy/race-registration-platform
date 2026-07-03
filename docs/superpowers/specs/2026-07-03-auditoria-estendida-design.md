@@ -25,7 +25,9 @@ O "ambiente" de uma entrada de auditoria é derivado do `role` do usuário assoc
 - **Admin** → `user.role = "ADMIN"`
 - **Organizador** → `user.role = "ORGANIZER"`
 - **Atleta** → `user.role = "ATHLETE"`
-- **Sistema** → `userId` é `null` (ex.: `PAYMENT_WEBHOOK`, e o novo `CART_ABANDONED`)
+- **Sistema** → `userId` é `null` (ex.: `PAYMENT_WEBHOOK`)
+
+Nota: `CART_ABANDONED` grava `userId: order.buyerUserId` (o atleta comprador), não `null` — por isso essa entrada aparece no ambiente **Atleta**, não "Sistema" (ver detalhamento mais abaixo).
 
 `lib/admin/audit.ts`: `buildAdminAuditWhere` ganha um parâmetro `environment?: "ADMIN" | "ORGANIZER" | "ATHLETE" | "SYSTEM"`, traduzido para `{ user: { role: "ADMIN" } }` (etc.) ou `{ userId: null }` para `"SYSTEM"`.
 
