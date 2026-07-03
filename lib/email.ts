@@ -169,6 +169,33 @@ export async function sendPaymentErrorEmail(params: {
   });
 }
 
+/** E-mail avisando o admin sobre divergências encontradas na conciliação de pagamentos. */
+export async function sendReconciliationMismatchEmail(params: {
+  to: string;
+  mismatches: { paymentId: string; orderId: string; eventTitle: string; localStatus: string; gatewayStatus: string }[];
+}): Promise<void> {
+  const appName = await getAppName();
+  const rows = params.mismatches
+    .map(
+      (m) =>
+        `<tr><td>${m.eventTitle}</td><td>${m.orderId}</td><td>${m.localStatus}</td><td>${m.gatewayStatus}</td></tr>`,
+    )
+    .join("");
+  await sendMail({
+    to: params.to,
+    subject: `Conciliação de pagamentos — ${params.mismatches.length} divergência(s) encontrada(s)`,
+    html: layout(
+      appName,
+      `<p>A rotina de conciliação encontrou divergências entre o status local e o status no gateway de pagamento:</p>
+       <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">
+         <thead><tr><th>Evento</th><th>Pedido</th><th>Status local</th><th>Status no gateway</th></tr></thead>
+         <tbody>${rows}</tbody>
+       </table>
+       <p>Nenhuma correção automática foi feita — revise manualmente em Admin → Conciliação.</p>`
+    ),
+  });
+}
+
 /** E-mail de recuperação de senha. */
 export async function sendPasswordResetEmail(params: {
   to: string;
