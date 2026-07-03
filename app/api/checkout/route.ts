@@ -9,6 +9,7 @@ import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
 import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
 import { notifyOrderConfirmed } from "@/lib/notifications";
+import { checkLowStockAlert } from "@/lib/alerts/low-stock";
 
 const checkoutSchema = z.object({
   eventId: opaqueIdField(),
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : "Erro ao processar inscrição";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+
+  // Verifica se o lote está quase esgotado e avisa o organizador (fire-and-forget)
+  void checkLowStockAlert(checkoutData.ticketBatchId);
 
   const idempotencyKey = `${checkout.orderId}_${paymentMethod}_${Date.now()}`;
 

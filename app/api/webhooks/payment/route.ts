@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
+import { notifyPaymentError } from "@/lib/alerts/payment-error";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -130,6 +131,11 @@ export async function POST(req: NextRequest) {
   // Envia a confirmação de inscrição por e-mail quando o pagamento é aprovado
   if (newPaymentStatus === "PAID") {
     void notifyOrderConfirmed(payment.orderId);
+  }
+
+  // Avisa o atleta quando o pagamento falha ou expira
+  if (newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED") {
+    void notifyPaymentError(payment.id);
   }
 
   return NextResponse.json({ ok: true });

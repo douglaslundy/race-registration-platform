@@ -3,6 +3,9 @@ import { POST } from "@/app/api/checkout/route";
 import { auth } from "@/lib/auth";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import { db } from "@/lib/db";
+import { createCheckout } from "@/lib/checkout";
+import { getPaymentProvider } from "@/lib/payment";
+import { checkLowStockAlert } from "@/lib/alerts/low-stock";
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
@@ -10,6 +13,18 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/payment-methods", () => ({
   getEnabledPaymentMethods: vi.fn(),
+}));
+
+vi.mock("@/lib/checkout", () => ({
+  createCheckout: vi.fn(),
+}));
+
+vi.mock("@/lib/payment", () => ({
+  getPaymentProvider: vi.fn(),
+}));
+
+vi.mock("@/lib/alerts/low-stock", () => ({
+  checkLowStockAlert: vi.fn(),
 }));
 
 const authMock = vi.mocked(auth);
@@ -39,5 +54,38 @@ describe("checkout api", () => {
     expect(res.status).toBe(400);
     expect(dbMock.payment.create).not.toHaveBeenCalled();
     expect(dbMock.order.create).not.toHaveBeenCalled();
+    expect(checkLowStockAlert).not.toHaveBeenCalled();
+  });
+
+  it("verifica o estoque baixo do lote depois de um checkout bem-sucedido", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 10000,
+      discountAmount: 0,
+      platformFeeAmount: 0,
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      createPayment: vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-1", status: "PENDING" }),
+    } as any);
+    dbMock.payment.create.mockResolvedValueOnce({ id: "payment-1" });
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(checkLowStockAlert).toHaveBeenCalledWith("batch-1");
   });
 });

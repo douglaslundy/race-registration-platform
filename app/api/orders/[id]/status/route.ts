@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPaymentProviderSetting, getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
+import { notifyPaymentError } from "@/lib/alerts/payment-error";
 
 async function checkMPPaymentStatus(providerPaymentId: string): Promise<"PAID" | "CANCELLED" | null> {
   const token = await getMercadoPagoAccessToken();
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             db.payment.update({ where: { id: payment.id }, data: { status: "CANCELLED" } }),
             db.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } }),
           ]);
+          void notifyPaymentError(payment.id);
           return NextResponse.json({ status: "CANCELLED", totalAmount: order.totalAmount });
         }
       }

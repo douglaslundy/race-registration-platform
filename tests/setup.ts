@@ -6,7 +6,7 @@ vi.mock("@/lib/db", () => ({
     event: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     ticketBatch: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     registration: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn() },
-    order: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
+    order: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
     payment: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
     coupon: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
     transferPayout: { findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
@@ -15,7 +15,7 @@ vi.mock("@/lib/db", () => ({
     fileAsset: { count: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
     platformSetting: { findUnique: vi.fn(), upsert: vi.fn() },
     auditLog: { create: vi.fn(), updateMany: vi.fn(), findMany: vi.fn(), count: vi.fn() },
-    athleteProfile: { upsert: vi.fn() },
+    athleteProfile: { upsert: vi.fn(), findUnique: vi.fn() },
     organizerProfile: { upsert: vi.fn(), findUnique: vi.fn() },
     alertLog: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn({
