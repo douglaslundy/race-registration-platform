@@ -147,6 +147,28 @@ export async function sendAbandonedCartEmail(params: {
   });
 }
 
+/** E-mail avisando o atleta que o pagamento foi recusado ou expirou. */
+export async function sendPaymentErrorEmail(params: {
+  to: string;
+  name: string;
+  eventTitle: string;
+  orderId: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const url = `${baseUrl}/dashboard/inscricoes`;
+  await sendMail({
+    to: params.to,
+    subject: `Pagamento não concluído — ${params.eventTitle}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p>O pagamento da sua inscrição em <strong>${params.eventTitle}</strong> não foi concluído (recusado ou expirado).</p>
+       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Tentar novamente</a></p>`
+    ),
+  });
+}
+
 /** E-mail de recuperação de senha. */
 export async function sendPasswordResetEmail(params: {
   to: string;
