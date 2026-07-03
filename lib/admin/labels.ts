@@ -24,6 +24,8 @@ export const ACTION_LABEL: Record<string, string> = {
   PAYMENT_REFUNDED: "Pagamento estornado",
   WHATSAPP_INSTANCE_CREATED: "Instância do WhatsApp criada",
   WHATSAPP_INSTANCE_DELETED: "Instância do WhatsApp excluída",
+  PAGE_VIEWED: "Página acessada",
+  CART_ABANDONED: "Carrinho abandonado",
 };
 
 export const ENTITY_LABEL: Record<string, string> = {
@@ -34,6 +36,7 @@ export const ENTITY_LABEL: Record<string, string> = {
   Payment: "Pagamento",
   PlatformSetting: "Configuração",
   TransferPayout: "Repasse",
+  Page: "Página",
 };
 
 export const EVENT_STATUS_LABEL: Record<string, string> = {

@@ -25,6 +25,8 @@ const ACTION_COLOR: Record<string, string> = {
   USER_DEACTIVATED: BADGE.red,
   USER_ACTIVATED: BADGE.green,
   CHECKOUT_COMPLETED: BADGE.green,
+  PAGE_VIEWED: BADGE.gray,
+  CART_ABANDONED: BADGE.yellow,
 };
 
 interface SearchParams {
@@ -33,6 +35,7 @@ interface SearchParams {
   userId?: string;
   dateFrom?: string;
   dateTo?: string;
+  environment?: string;
   page?: string;
   sort?: string;
   dir?: string;
@@ -70,6 +73,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
   const userId = params.userId?.trim() ?? "";
   const dateFrom = params.dateFrom?.trim() ?? "";
   const dateTo = params.dateTo?.trim() ?? "";
+  const environment = params.environment?.trim() ?? "";
   const requestedPage = Number.parseInt(params.page ?? "1", 10);
   const sortParam = params.sort?.trim() ?? "createdAt";
   const dirParam = params.dir?.trim() ?? "desc";
@@ -80,7 +84,14 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
   });
   const compact = params.compact ? params.compact === "1" : userSettings?.uiDensity === "compact";
   const pageSize = 50;
-  const where = buildAdminAuditWhere({ action, entity, userId, dateFrom, dateTo });
+  const where = buildAdminAuditWhere({
+    action,
+    entity,
+    userId,
+    dateFrom,
+    dateTo,
+    environment: environment ? (environment as "ADMIN" | "ORGANIZER" | "ATHLETE" | "SYSTEM") : undefined,
+  });
 
   const [logs, total, distinctActions] = await Promise.all([
     db.auditLog.findMany({
@@ -102,7 +113,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-  const hasFilters = Boolean(action) || Boolean(entity) || Boolean(userId) || Boolean(dateFrom) || Boolean(dateTo);
+  const hasFilters = Boolean(action) || Boolean(entity) || Boolean(userId) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(environment);
 
   const buildQuery = (targetPage: number, overrides: Partial<Record<"sort" | "dir" | "compact", string>> = {}) => {
     const query = new URLSearchParams();
@@ -111,6 +122,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
     if (userId) query.set("userId", userId);
     if (dateFrom) query.set("dateFrom", dateFrom);
     if (dateTo) query.set("dateTo", dateTo);
+    if (environment) query.set("environment", environment);
     if (compact) query.set("compact", "1");
     query.set("sort", overrides.sort ?? sortConfig.normalizedSort);
     query.set("dir", overrides.dir ?? sortConfig.normalizedDir);
@@ -171,9 +183,19 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
           <label className="block text-xs text-gray-500 mb-1">Entidade</label>
           <select name="entity" defaultValue={entity} className="input-field text-sm py-1.5">
             <option value="">Todas</option>
-            {["Event", "Registration", "User", "Order", "Payment"].map((e) => (
+            {["Event", "Registration", "User", "Order", "Payment", "Page"].map((e) => (
               <option key={e} value={e}>{ENTITY_LABEL[e] ?? e}</option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Ambiente</label>
+          <select name="environment" defaultValue={environment} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            <option value="ADMIN">Admin</option>
+            <option value="ORGANIZER">Organizador</option>
+            <option value="ATHLETE">Atleta</option>
+            <option value="SYSTEM">Sistema</option>
           </select>
         </div>
         <div>
