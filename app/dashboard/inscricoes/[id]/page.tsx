@@ -6,6 +6,7 @@ import Link from "next/link";
 import PaymentStatusPoller from "@/components/dashboard/PaymentStatusPoller";
 import CancelRegistrationButton from "@/components/dashboard/CancelRegistrationButton";
 import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
+import { getCancellationPolicyEnabled } from "@/lib/settings";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe da Inscrição" };
@@ -18,6 +19,7 @@ const STATUS_INFO: Record<string, { label: string; color: string; icon: string }
   CANCELLED:       { label: "Inscrição cancelada", color: `${BADGE.red} border border-red-200 dark:border-red-800`, icon: "❌" },
   TRANSFERRED:     { label: "Inscrição transferida", color: `${BADGE.blue} border border-blue-200 dark:border-blue-800`, icon: "🔄" },
   WAITLISTED:      { label: "Lista de espera", color: `${BADGE.gray} border border-gray-200 dark:border-gray-600`, icon: "🕐" },
+  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: `${BADGE.orange} border border-orange-200 dark:border-orange-800`, icon: "🕓" },
 };
 
 export default async function InscricaoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,7 +33,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
         select: {
           title: true, slug: true, startAt: true, kitPickupAt: true,
           venueName: true, addressLine: true, city: true, state: true,
-          organizerContact: true,
+          organizerContact: true, cancellationDeadline: true, cancellationRequiresApproval: true,
         },
       },
       route: { select: { name: true, distanceKm: true } },
@@ -54,7 +56,12 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
   const statusInfo = STATUS_INFO[registration.status] ?? STATUS_INFO.PENDING_PAYMENT;
   const isPending = registration.status === "PENDING_PAYMENT";
   const isConfirmed = registration.status === "CONFIRMED";
-  const canCancel = isConfirmed && new Date(registration.event.startAt) > new Date();
+  const policyEnabled = await getCancellationPolicyEnabled();
+  const deadlinePassed = Boolean(
+    policyEnabled && registration.event.cancellationDeadline && new Date(registration.event.cancellationDeadline) <= new Date(),
+  );
+  const requiresApproval = policyEnabled && registration.event.cancellationRequiresApproval;
+  const canCancel = isConfirmed && new Date(registration.event.startAt) > new Date() && !deadlinePassed;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -175,7 +182,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           Ver página do evento
         </Link>
         {canCancel && (
-          <CancelRegistrationButton registrationId={registration.id} />
+          <CancelRegistrationButton registrationId={registration.id} requiresApproval={requiresApproval} />
         )}
       </div>
     </div>
