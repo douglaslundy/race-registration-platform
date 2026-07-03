@@ -529,3 +529,15 @@ model PlatformSetting {
 
   @@map("platform_settings")
 }
+
+model AlertLog {
+  id         String   @id @default(cuid())
+  alertType  String
+  entityType String
+  entityId   String
+  channel    String
+  sentAt     DateTime @default(now())
+
+  @@unique([alertType, entityId, channel])
+  @@map("alert_logs")
+}
