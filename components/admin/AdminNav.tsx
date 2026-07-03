@@ -22,6 +22,8 @@ export default function AdminNav() {
           <Link href="/admin/backup" className="hover:text-gray-300">Backup</Link>
           <Link href="/admin/whatsapp" className="hover:text-gray-300">WhatsApp</Link>
           <Link href="/admin/alertas" className="hover:text-gray-300">Alertas</Link>
+          <Link href="/admin/conciliacao" className="hover:text-gray-300">Conciliação</Link>
+          <Link href="/admin/perfil" className="hover:text-gray-300">Perfil</Link>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle className="text-gray-400 hover:text-white hover:bg-gray-800" />
