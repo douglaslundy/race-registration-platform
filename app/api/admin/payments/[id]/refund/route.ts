@@ -13,8 +13,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : undefined;
 
   try {
-    await refundPayment({ paymentId: id, initiatedByUserId: session.user.id, reason });
-    return NextResponse.json({ success: true });
+    const result = await refundPayment({ paymentId: id, initiatedByUserId: session.user.id, reason });
+    return NextResponse.json({ success: true, alreadySynced: result.alreadySynced });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao estornar pagamento";
     return NextResponse.json({ error: message }, { status: 400 });

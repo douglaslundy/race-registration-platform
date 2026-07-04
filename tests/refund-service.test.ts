@@ -46,7 +46,10 @@ describe("refundPayment", () => {
       order: { registrations: [] },
     });
     const refundPaymentGateway = vi.fn().mockRejectedValueOnce(new Error("gateway down"));
-    getPaymentProviderMock.mockResolvedValueOnce({ refundPayment: refundPaymentGateway } as any);
+    getPaymentProviderMock.mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      refundPayment: refundPaymentGateway,
+    } as any);
 
     await expect(refundPayment({ paymentId: "pay-1", initiatedByUserId: "user-1" })).rejects.toThrow(
       "gateway down",
@@ -64,7 +67,10 @@ describe("refundPayment", () => {
       order: { registrations: [{ id: "reg-1", status: "CONFIRMED", ticketBatchId: "tb-1" }] },
     });
     const refundPaymentGateway = vi.fn().mockResolvedValueOnce({ providerRefundId: "mp-refund-1" });
-    getPaymentProviderMock.mockResolvedValueOnce({ refundPayment: refundPaymentGateway } as any);
+    getPaymentProviderMock.mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      refundPayment: refundPaymentGateway,
+    } as any);
 
     const txRefundCreate = vi.fn();
     const txPaymentUpdate = vi.fn();
@@ -83,8 +89,9 @@ describe("refundPayment", () => {
       }),
     );
 
-    await refundPayment({ paymentId: "pay-1", initiatedByUserId: "user-1", reason: "atleta desistiu" });
+    const result = await refundPayment({ paymentId: "pay-1", initiatedByUserId: "user-1", reason: "atleta desistiu" });
 
+    expect(result).toEqual({ alreadySynced: false });
     expect(refundPaymentGateway).toHaveBeenCalledWith({ providerPaymentId: "mp-1" });
     expect(txRefundCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -123,6 +130,7 @@ describe("refundPayment", () => {
       order: { registrations: [{ id: "reg-1", status: "CANCELLED", ticketBatchId: "tb-1" }] },
     });
     getPaymentProviderMock.mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
       refundPayment: vi.fn().mockResolvedValueOnce({ providerRefundId: "mp-refund-1" }),
     } as any);
 
@@ -143,5 +151,44 @@ describe("refundPayment", () => {
 
     expect(txRegistrationUpdate).not.toHaveBeenCalled();
     expect(txTicketBatchUpdate).not.toHaveBeenCalled();
+  });
+
+  it("sincroniza localmente e não chama o gateway de novo quando já está estornado lá", async () => {
+    dbMock.payment.findUnique.mockResolvedValueOnce({
+      id: "pay-1",
+      status: "PAID",
+      providerPaymentId: "mp-1",
+      orderId: "ord-1",
+      amount: 1000,
+      order: {
+        id: "ord-1",
+        status: "PAID",
+        registrations: [{ id: "reg-1", ticketBatchId: "tb-1" }],
+      },
+    });
+    const refundPaymentGateway = vi.fn();
+    getPaymentProviderMock.mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce("REFUNDED"),
+      refundPayment: refundPaymentGateway,
+    } as any);
+
+    const txPaymentUpdate = vi.fn();
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        payment: { update: txPaymentUpdate },
+        order: { update: vi.fn() },
+        registration: { update: vi.fn() },
+        ticketBatch: { update: vi.fn() },
+        auditLog: { create: vi.fn() },
+      }),
+    );
+
+    const result = await refundPayment({ paymentId: "pay-1", initiatedByUserId: "user-1" });
+
+    expect(result).toEqual({ alreadySynced: true });
+    expect(refundPaymentGateway).not.toHaveBeenCalled();
+    expect(txPaymentUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "pay-1" }, data: expect.objectContaining({ status: "REFUNDED" }) }),
+    );
   });
 });

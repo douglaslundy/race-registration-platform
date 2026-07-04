@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
+import { applyGatewayStatus } from "./sync-payment-status";
 
 export interface RefundPaymentParams {
   paymentId: string;
@@ -7,7 +8,11 @@ export interface RefundPaymentParams {
   reason?: string;
 }
 
-export async function refundPayment(params: RefundPaymentParams): Promise<void> {
+export interface RefundPaymentResult {
+  alreadySynced: boolean;
+}
+
+export async function refundPayment(params: RefundPaymentParams): Promise<RefundPaymentResult> {
   const payment = await db.payment.findUnique({
     where: { id: params.paymentId },
     include: { order: { include: { registrations: true } } },
@@ -18,6 +23,15 @@ export async function refundPayment(params: RefundPaymentParams): Promise<void> 
   if (!payment.providerPaymentId) throw new Error("Pagamento sem referência no gateway");
 
   const provider = await getPaymentProvider();
+
+  const gatewayStatus = await provider.checkPaymentStatus(payment.providerPaymentId);
+  if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
+    await db.$transaction(async (tx) => {
+      await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "refund_check");
+    });
+    return { alreadySynced: true };
+  }
+
   const result = await provider.refundPayment({ providerPaymentId: payment.providerPaymentId });
 
   await db.$transaction(async (tx) => {
@@ -65,4 +79,6 @@ export async function refundPayment(params: RefundPaymentParams): Promise<void> 
       },
     });
   });
+
+  return { alreadySynced: false };
 }
