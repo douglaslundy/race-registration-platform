@@ -8,6 +8,7 @@ import ChangeUserRoleButton from "@/components/admin/ChangeUserRoleButton";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
 import ToggleUserActiveButton from "@/components/admin/ToggleUserActiveButton";
 import UserDeleteButton from "@/components/admin/UserDeleteButton";
+import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
 import { buildAdminUserOrderBy, buildAdminUserWhere } from "@/lib/admin/users";
 
 export const metadata: Metadata = { title: "Usuários — Admin" };
@@ -109,6 +110,18 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
       active: true,
       createdAt: true,
       _count: { select: { registrations: true, orders: true } },
+      athleteProfile: {
+        select: {
+          cpf: true,
+          birthDate: true,
+          phone: true,
+          gender: true,
+          city: true,
+          state: true,
+          teamName: true,
+          preferredShirtSize: true,
+        },
+      },
     },
   });
 
@@ -301,6 +314,11 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                       <Link href={`/admin/usuarios/${u.id}`} className="text-xs text-primary-600 hover:underline">
                         Detalhes
                       </Link>
+                      <AthleteDetailsModal
+                        athleteName={u.name}
+                        athleteEmail={u.email}
+                        profile={u.athleteProfile}
+                      />
                       <Link href={`/admin/usuarios/${u.id}/editar`} className="text-xs text-primary-600 hover:underline">
                         Editar
                       </Link>
