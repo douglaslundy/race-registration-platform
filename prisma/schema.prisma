@@ -99,6 +99,7 @@ model User {
   passwordHash  String?
   name          String
   phone         String?
+  cpf           String?
   role          UserRole  @default(ATHLETE)
   active        Boolean   @default(true)
   uiDensity     String    @default("comfortable")
