@@ -43,15 +43,6 @@ export default async function InscricaoPage({ params }: Props) {
   const session = await auth();
   if (!session?.user) redirect(`/auth/login?callbackUrl=/inscricao/${(await params).slug}`);
 
-  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Acesso não permitido</h1>
-        <p className="text-gray-600 dark:text-gray-400">Administradores e organizadores não podem realizar inscrições em eventos.</p>
-      </div>
-    );
-  }
-
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) notFound();
