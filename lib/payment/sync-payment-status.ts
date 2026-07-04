@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PaymentStatus, OrderStatus } from "@prisma/client";
 
 export type GatewayPaymentStatus = "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED" | "CHARGEBACK";
 export type SyncSource = "webhook" | "reconciliation" | "refund_check";
@@ -11,12 +11,12 @@ const AUDIT_ACTION: Record<SyncSource, string> = {
 
 interface SyncablePayment {
   id: string;
-  status: string;
+  status: PaymentStatus;
 }
 
 interface SyncableOrder {
   id: string;
-  status: string;
+  status: OrderStatus;
 }
 
 interface SyncableRegistration {
