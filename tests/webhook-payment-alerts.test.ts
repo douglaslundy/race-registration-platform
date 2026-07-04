@@ -70,3 +70,118 @@ describe("payment webhook alert hook", () => {
     expect(notifyPaymentError).not.toHaveBeenCalled();
   });
 });
+
+describe("payment webhook capacity release", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.$transaction.mockImplementation(async (arg: any) =>
+      Array.isArray(arg) ? Promise.all(arg) : arg(dbMock),
+    );
+  });
+
+  it("libera a vaga do lote quando o pagamento estava PENDING e agora expira", async () => {
+    vi.mocked(getPaymentProvider).mockResolvedValue(
+      makeProvider({ providerPaymentId: "pay-1", status: "EXPIRED", rawPayload: {} }) as any,
+    );
+    dbMock.payment.findFirst.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "PENDING",
+      orderId: "order-1",
+      order: {
+        status: "PENDING",
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        buyer: { name: "Atleta", email: "atleta@example.com" },
+      },
+    });
+
+    await POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ type: "charge.updated" }),
+      }) as any,
+    );
+
+    expect(dbMock.ticketBatch.update).toHaveBeenCalledWith({
+      where: { id: "batch-1" },
+      data: { soldCount: { decrement: 1 } },
+    });
+  });
+
+  it("não libera a vaga de novo quando o pagamento já não estava mais PENDING (webhook reentregue)", async () => {
+    vi.mocked(getPaymentProvider).mockResolvedValue(
+      makeProvider({ providerPaymentId: "pay-1", status: "EXPIRED", rawPayload: {} }) as any,
+    );
+    dbMock.payment.findFirst.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "EXPIRED",
+      orderId: "order-1",
+      order: {
+        status: "CANCELLED",
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        buyer: { name: "Atleta", email: "atleta@example.com" },
+      },
+    });
+
+    await POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ type: "charge.updated" }),
+      }) as any,
+    );
+
+    expect(dbMock.ticketBatch.update).not.toHaveBeenCalled();
+  });
+
+  it("devolve a vaga quando um webhook de aprovação atrasado chega depois do pagamento já ter expirado", async () => {
+    vi.mocked(getPaymentProvider).mockResolvedValue(
+      makeProvider({ providerPaymentId: "pay-1", status: "PAID", rawPayload: {} }) as any,
+    );
+    dbMock.payment.findFirst.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "EXPIRED",
+      orderId: "order-1",
+      order: {
+        status: "CANCELLED",
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        buyer: { name: "Atleta", email: "atleta@example.com" },
+      },
+    });
+
+    await POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ type: "charge.updated" }),
+      }) as any,
+    );
+
+    expect(dbMock.ticketBatch.update).toHaveBeenCalledWith({
+      where: { id: "batch-1" },
+      data: { soldCount: { increment: 1 } },
+    });
+  });
+
+  it("não mexe na vaga quando o pagamento é aprovado normalmente a partir de PENDING", async () => {
+    vi.mocked(getPaymentProvider).mockResolvedValue(
+      makeProvider({ providerPaymentId: "pay-1", status: "PAID", rawPayload: {} }) as any,
+    );
+    dbMock.payment.findFirst.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "PENDING",
+      orderId: "order-1",
+      order: {
+        status: "PENDING",
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        buyer: { name: "Atleta", email: "atleta@example.com" },
+      },
+    });
+
+    await POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ type: "charge.updated" }),
+      }) as any,
+    );
+
+    expect(dbMock.ticketBatch.update).not.toHaveBeenCalled();
+  });
+});

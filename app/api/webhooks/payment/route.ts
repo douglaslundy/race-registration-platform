@@ -100,6 +100,17 @@ export async function POST(req: NextRequest) {
     : newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED" ? "CANCELLED"
     : undefined;
 
+  // Libera a vaga do lote quando o pagamento expira/cancela e estava PENDING antes deste webhook —
+  // corrige um bug em que a vaga reservada no checkout nunca era devolvida se o pagamento nunca fosse
+  // concluído. A guarda pelo status ANTERIOR evita decrementar duas vezes se o gateway reentregar o webhook.
+  const shouldReleaseCapacity =
+    (newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED") && payment.status === "PENDING";
+
+  // Devolve a vaga se um webhook de aprovação atrasado chegar depois que o cron de expiração automática
+  // já tinha liberado a vaga — fecha a corrida cron-vs-webhook-atrasado.
+  const shouldRestoreCapacity =
+    newPaymentStatus === "PAID" && (payment.status === "EXPIRED" || payment.status === "CANCELLED");
+
   await db.$transaction([
     db.payment.update({
       where: { id: payment.id },
@@ -116,6 +127,16 @@ export async function POST(req: NextRequest) {
     ...(newRegistrationStatus
       ? payment.order.registrations.map((r) =>
           db.registration.update({ where: { id: r.id }, data: { status: newRegistrationStatus } })
+        )
+      : []),
+    ...(shouldReleaseCapacity
+      ? payment.order.registrations.map((r) =>
+          db.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { decrement: 1 } } })
+        )
+      : []),
+    ...(shouldRestoreCapacity
+      ? payment.order.registrations.map((r) =>
+          db.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { increment: 1 } } })
         )
       : []),
     db.auditLog.create({
