@@ -4,9 +4,9 @@ import { db } from "@/lib/db";
 
 const BATCH = 500;
 
-type Fetcher = (cursor: string | undefined) => Promise<{ id: string }[]>;
+type Fetcher = (cursor: string | undefined) => Promise<Record<string, unknown>[]>;
 
-async function* paginateTable(name: string, fetcher: Fetcher, last: boolean) {
+async function* paginateTable(name: string, fetcher: Fetcher, last: boolean, idField: string = "id") {
   yield `"${name}": [\n`;
   let cursor: string | undefined;
   let firstRow = true;
@@ -17,7 +17,7 @@ async function* paginateTable(name: string, fetcher: Fetcher, last: boolean) {
       firstRow = false;
     }
     if (rows.length < BATCH) break;
-    cursor = rows[rows.length - 1].id;
+    cursor = String(rows[rows.length - 1][idField]);
   }
   yield `\n]${last ? "" : ","}\n`;
 }
@@ -25,7 +25,7 @@ async function* paginateTable(name: string, fetcher: Fetcher, last: boolean) {
 async function* streamTables() {
   yield "{\n";
 
-  const tables: Array<{ name: string; fetcher: Fetcher }> = [
+  const tables: Array<{ name: string; fetcher: Fetcher; idField?: string }> = [
     {
       name: "users",
       fetcher: (cursor) =>
@@ -81,12 +81,53 @@ async function* streamTables() {
       fetcher: (cursor) =>
         db.refund.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
     },
+    {
+      name: "athleteProfiles",
+      fetcher: (cursor) =>
+        db.athleteProfile.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "transferPayouts",
+      fetcher: (cursor) =>
+        db.transferPayout.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "resultImports",
+      fetcher: (cursor) =>
+        db.resultImport.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "raceResults",
+      fetcher: (cursor) =>
+        db.raceResult.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "fileAssets",
+      fetcher: (cursor) =>
+        db.fileAsset.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "auditLogs",
+      fetcher: (cursor) =>
+        db.auditLog.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "platformSettings",
+      fetcher: (cursor) =>
+        db.platformSetting.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { key: cursor } } : {}), orderBy: { key: "asc" } }),
+      idField: "key",
+    },
+    {
+      name: "alertLogs",
+      fetcher: (cursor) =>
+        db.alertLog.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
   ];
 
   for (let i = 0; i < tables.length; i++) {
-    const { name, fetcher } = tables[i];
+    const { name, fetcher, idField } = tables[i];
     const isLast = i === tables.length - 1;
-    for await (const chunk of paginateTable(name, fetcher, isLast)) {
+    for await (const chunk of paginateTable(name, fetcher, isLast, idField)) {
       yield chunk;
     }
   }
