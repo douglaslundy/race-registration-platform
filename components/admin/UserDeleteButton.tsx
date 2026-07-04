@@ -38,12 +38,12 @@ export default function UserDeleteButton({ userId, userName }: { userId: string;
       </button>
 
       {confirming ? (
-        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-red-200 bg-white p-4 shadow-lg">
-          <p className="text-sm font-semibold text-gray-900">Confirmar exclusão</p>
-          <p className="mt-2 text-xs leading-5 text-gray-600">
+        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-900 p-4 shadow-lg">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Confirmar exclusão</p>
+          <p className="mt-2 text-xs leading-5 text-gray-600 dark:text-gray-400">
             Excluir <strong>{userName}</strong> só funciona se ele não tiver inscrições ou pedidos vinculados.
           </p>
-          {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+          {error ? <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p> : null}
           <div className="mt-4 flex items-center justify-end gap-2">
             <button
               type="button"
