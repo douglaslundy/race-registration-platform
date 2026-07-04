@@ -31,7 +31,7 @@ const dbMock = db as any;
 const paymentFixture = {
   order: {
     id: "order-1",
-    event: { title: "Corrida Teste" },
+    event: { title: "Corrida Teste", slug: "corrida-teste" },
     buyer: { name: "Atleta", email: "atleta@example.com", athleteProfile: { phone: "5511988888888" } },
   },
 };
@@ -69,7 +69,7 @@ describe("notifyPaymentError", () => {
 
     expect(claimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Payment", "payment-1", "EMAIL");
     expect(sendPaymentErrorEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),
+      expect.objectContaining({ to: "atleta@example.com", eventSlug: "corrida-teste" }),
     );
   });
 
@@ -110,5 +110,28 @@ describe("notifyPaymentError", () => {
     vi.mocked(sendPaymentErrorEmail).mockRejectedValueOnce(new Error("SMTP down"));
 
     await expect(notifyPaymentError("payment-1")).resolves.toBeUndefined();
+  });
+
+  it("com bypassDedupe: envia por e-mail mesmo que claimAlert diria não (nem chama claimAlert)", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    vi.mocked(claimAlert).mockResolvedValue(false);
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+
+    await notifyPaymentError("payment-1", { bypassDedupe: true });
+
+    expect(claimAlert).not.toHaveBeenCalled();
+    expect(sendPaymentErrorEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta@example.com" }),
+    );
+  });
+
+  it("com bypassDedupe: não chama unclaimAlert se o envio falhar (nada foi reivindicado)", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+    vi.mocked(sendPaymentErrorEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    await notifyPaymentError("payment-1", { bypassDedupe: true });
+
+    expect(unclaimAlert).not.toHaveBeenCalled();
   });
 });

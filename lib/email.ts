@@ -147,24 +147,25 @@ export async function sendAbandonedCartEmail(params: {
   });
 }
 
-/** E-mail avisando o atleta que o pagamento foi recusado ou expirou. */
+/** E-mail avisando o atleta que a inscrição foi cancelada por pagamento não identificado. */
 export async function sendPaymentErrorEmail(params: {
   to: string;
   name: string;
   eventTitle: string;
-  orderId: string;
+  eventSlug: string;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const url = `${baseUrl}/dashboard/inscricoes`;
+  const url = `${baseUrl}/eventos/${params.eventSlug}`;
   await sendMail({
     to: params.to,
-    subject: `Pagamento não concluído — ${params.eventTitle}`,
+    subject: `Inscrição cancelada — pagamento não identificado — ${params.eventTitle}`,
     html: layout(
       appName,
       `<p>Olá ${params.name},</p>
-       <p>O pagamento da sua inscrição em <strong>${params.eventTitle}</strong> não foi concluído (recusado ou expirado).</p>
-       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Tentar novamente</a></p>`
+       <p>Não conseguimos identificar o pagamento da sua inscrição em <strong>${params.eventTitle}</strong>, por isso ela foi cancelada.</p>
+       <p>Não fique de fora! Faça agora mesmo uma nova inscrição e venha participar conosco.</p>
+       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Fazer nova inscrição</a></p>`
     ),
   });
 }
