@@ -27,6 +27,12 @@ export default function AdminNav() {
           <Link href="/admin/perfil" className="hover:text-gray-300">Perfil</Link>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/eventos"
+            className="text-xs bg-blue-900/40 text-blue-300 hover:bg-blue-900/60 px-2 py-1 rounded font-medium"
+          >
+            Área do atleta
+          </Link>
           <ThemeToggle className="text-gray-400 hover:text-white hover:bg-gray-800" />
           <button onClick={() => signOut({ callbackUrl: "/" })} className="text-sm text-gray-400 hover:text-white">
             Sair
