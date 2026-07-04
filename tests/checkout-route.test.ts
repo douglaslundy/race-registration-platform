@@ -88,4 +88,37 @@ describe("checkout api", () => {
     expect(res.status).toBe(200);
     expect(checkLowStockAlert).toHaveBeenCalledWith("batch-1");
   });
+
+  it("permite checkout para usuário ORGANIZER (auto-inscrição liberada)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 10000,
+      discountAmount: 0,
+      platformFeeAmount: 0,
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Organizador", email: "org@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      createPayment: vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-1", status: "PENDING" }),
+    } as any);
+    dbMock.payment.create.mockResolvedValueOnce({ id: "payment-1" });
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.payment.create).toHaveBeenCalled();
+  });
 });

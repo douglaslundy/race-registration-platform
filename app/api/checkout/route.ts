@@ -35,10 +35,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Autenticação necessária" }, { status: 401 });
   }
 
-  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
-    return NextResponse.json({ error: "Administradores e organizadores não podem realizar inscrições" }, { status: 403 });
-  }
-
   const body = await req.json();
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
