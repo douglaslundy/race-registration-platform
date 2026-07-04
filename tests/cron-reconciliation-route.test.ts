@@ -41,7 +41,7 @@ describe("POST /api/cron/reconciliation", () => {
   });
 
   it("dispara o alerta quando há divergências", async () => {
-    const mismatches = [{ paymentId: "p1", orderId: "o1", eventTitle: "Corrida", localStatus: "PENDING", gatewayStatus: "PAID" }];
+    const mismatches = [{ paymentId: "p1", orderId: "o1", eventTitle: "Corrida", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false }];
     vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 1, mismatches });
 
     await POST(makeRequest({ "x-cron-secret": "test-secret" }));

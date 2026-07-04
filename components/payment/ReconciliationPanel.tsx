@@ -8,6 +8,7 @@ interface Mismatch {
   eventTitle: string;
   localStatus: string;
   gatewayStatus: string;
+  corrected: boolean;
 }
 
 export default function ReconciliationPanel({ endpoint }: { endpoint: string }) {
@@ -55,6 +56,7 @@ export default function ReconciliationPanel({ endpoint }: { endpoint: string }) 
                   <th className="pb-2 pr-4">Pedido</th>
                   <th className="pb-2 pr-4">Status local</th>
                   <th className="pb-2">Status no gateway</th>
+                  <th className="pb-2 pl-4">Situação</th>
                 </tr>
               </thead>
               <tbody>
@@ -64,6 +66,13 @@ export default function ReconciliationPanel({ endpoint }: { endpoint: string }) 
                     <td className="py-2 pr-4 font-mono text-xs">{m.orderId}</td>
                     <td className="py-2 pr-4">{m.localStatus}</td>
                     <td className="py-2">{m.gatewayStatus}</td>
+                    <td className="py-2 pl-4">
+                      {m.corrected ? (
+                        <span className="text-green-700 dark:text-green-400 text-xs font-medium">Corrigido automaticamente</span>
+                      ) : (
+                        <span className="text-amber-700 dark:text-amber-400 text-xs font-medium">Requer revisão manual</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

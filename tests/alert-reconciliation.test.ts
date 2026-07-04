@@ -24,7 +24,7 @@ import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 const dbMock = db as any;
 
 const mismatchFixture = [
-  { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID" },
+  { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false },
 ];
 
 describe("notifyReconciliationMismatches", () => {

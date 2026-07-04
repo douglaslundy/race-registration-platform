@@ -31,12 +31,14 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
     }
 
     if (settings.whatsappEnabled) {
+      const correctedCount = mismatches.filter((m) => m.corrected).length;
+      const manualCount = mismatches.length - correctedCount;
       for (const admin of admins) {
         if (!admin.phone) continue;
         try {
           await sendWhatsAppMessage(
             admin.phone,
-            `Conciliação de pagamentos encontrou ${mismatches.length} divergência(s). Acesse /admin/conciliacao para revisar.`,
+            `Conciliação de pagamentos: ${correctedCount} corrigida(s) automaticamente, ${manualCount} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`,
           );
         } catch (err) {
           console.error("[notifyReconciliationMismatches] whatsapp failed for", admin.phone, err);

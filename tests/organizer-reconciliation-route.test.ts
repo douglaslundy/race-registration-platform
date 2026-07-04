@@ -34,7 +34,7 @@ describe("POST /api/organizer/reconciliation", () => {
 
   it("dispara o alerta para o admin quando encontra divergências", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
-    const mismatches = [{ paymentId: "p1", orderId: "o1", eventTitle: "Corrida", localStatus: "PENDING", gatewayStatus: "PAID" }];
+    const mismatches = [{ paymentId: "p1", orderId: "o1", eventTitle: "Corrida", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false }];
     vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 1, mismatches });
 
     await POST();

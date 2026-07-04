@@ -172,13 +172,15 @@ export async function sendPaymentErrorEmail(params: {
 /** E-mail avisando o admin sobre divergências encontradas na conciliação de pagamentos. */
 export async function sendReconciliationMismatchEmail(params: {
   to: string;
-  mismatches: { paymentId: string; orderId: string; eventTitle: string; localStatus: string; gatewayStatus: string }[];
+  mismatches: { paymentId: string; orderId: string; eventTitle: string; localStatus: string; gatewayStatus: string; corrected: boolean }[];
 }): Promise<void> {
   const appName = await getAppName();
+  const correctedCount = params.mismatches.filter((m) => m.corrected).length;
+  const manualCount = params.mismatches.length - correctedCount;
   const rows = params.mismatches
     .map(
       (m) =>
-        `<tr><td>${m.eventTitle}</td><td>${m.orderId}</td><td>${m.localStatus}</td><td>${m.gatewayStatus}</td></tr>`,
+        `<tr><td>${m.eventTitle}</td><td>${m.orderId}</td><td>${m.localStatus}</td><td>${m.gatewayStatus}</td><td>${m.corrected ? "Corrigido automaticamente" : "Requer verificação manual"}</td></tr>`,
     )
     .join("");
   await sendMail({
@@ -186,12 +188,15 @@ export async function sendReconciliationMismatchEmail(params: {
     subject: `Conciliação de pagamentos — ${params.mismatches.length} divergência(s) encontrada(s)`,
     html: layout(
       appName,
-      `<p>A rotina de conciliação encontrou divergências entre o status local e o status no gateway de pagamento:</p>
+      `<p>A rotina de conciliação encontrou divergências entre o status local e o status no gateway de
+       pagamento (${correctedCount} corrigida(s) automaticamente, ${manualCount} precisa(m) de revisão
+       manual):</p>
        <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">
-         <thead><tr><th>Evento</th><th>Pedido</th><th>Status local</th><th>Status no gateway</th></tr></thead>
+         <thead><tr><th>Evento</th><th>Pedido</th><th>Status local</th><th>Status no gateway</th><th>Situação</th></tr></thead>
          <tbody>${rows}</tbody>
        </table>
-       <p>Nenhuma correção automática foi feita — revise manualmente em Admin → Conciliação.</p>`
+       <p>Divergências marcadas como "Requer verificação manual" precisam de revisão em Admin →
+       Conciliação.</p>`
     ),
   });
 }
