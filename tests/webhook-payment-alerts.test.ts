@@ -89,7 +89,7 @@ describe("payment webhook capacity release", () => {
       orderId: "order-1",
       order: {
         status: "PENDING",
-        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" }],
         buyer: { name: "Atleta", email: "atleta@example.com" },
       },
     });
@@ -117,7 +117,7 @@ describe("payment webhook capacity release", () => {
       orderId: "order-1",
       order: {
         status: "CANCELLED",
-        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "CANCELLED" }],
         buyer: { name: "Atleta", email: "atleta@example.com" },
       },
     });
@@ -142,7 +142,7 @@ describe("payment webhook capacity release", () => {
       orderId: "order-1",
       order: {
         status: "CANCELLED",
-        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "CANCELLED" }],
         buyer: { name: "Atleta", email: "atleta@example.com" },
       },
     });
@@ -170,7 +170,7 @@ describe("payment webhook capacity release", () => {
       orderId: "order-1",
       order: {
         status: "PENDING",
-        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" }],
         buyer: { name: "Atleta", email: "atleta@example.com" },
       },
     });
@@ -205,7 +205,7 @@ describe("payment webhook refund/chargeback sync", () => {
       order: {
         id: "order-1",
         status: "PAID",
-        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "CONFIRMED" }],
         buyer: { name: "Atleta", email: "atleta@example.com" },
       },
     });
@@ -237,7 +237,7 @@ describe("payment webhook refund/chargeback sync", () => {
       order: {
         id: "order-1",
         status: "PAID",
-        registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+        registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "CONFIRMED" }],
         buyer: { name: "Atleta", email: "atleta@example.com" },
       },
     });

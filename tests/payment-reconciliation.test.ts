@@ -26,7 +26,7 @@ const paidFixture = {
     id: "order-2",
     status: "PAID",
     event: { title: "Corrida Paga" },
-    registrations: [{ id: "reg-1", ticketBatchId: "batch-1" }],
+    registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "CONFIRMED" }],
   },
 };
 
@@ -39,7 +39,7 @@ const expiredFixture = {
     id: "order-3",
     status: "CANCELLED",
     event: { title: "Corrida Expirada" },
-    registrations: [{ id: "reg-2", ticketBatchId: "batch-2" }],
+    registrations: [{ id: "reg-2", ticketBatchId: "batch-2", status: "CANCELLED" }],
   },
 };
 

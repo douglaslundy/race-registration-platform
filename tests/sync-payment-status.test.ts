@@ -59,7 +59,7 @@ describe("applyGatewayStatus", () => {
 
   it("PENDING -> PAID confirma a inscrição sem mexer na vaga", async () => {
     const tx = makeTx();
-    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1" }];
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" as const }];
 
     const result = await applyGatewayStatus(
       tx as any,
@@ -78,7 +78,7 @@ describe("applyGatewayStatus", () => {
 
   it("PENDING -> EXPIRED cancela a inscrição e libera a vaga", async () => {
     const tx = makeTx();
-    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1" }];
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" as const }];
 
     await applyGatewayStatus(
       tx as any,
@@ -96,7 +96,7 @@ describe("applyGatewayStatus", () => {
 
   it("PAID -> REFUNDED cancela a inscrição, libera a vaga e marca refundedAt", async () => {
     const tx = makeTx();
-    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1" }];
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "CONFIRMED" as const }];
 
     const result = await applyGatewayStatus(
       tx as any,
@@ -122,7 +122,7 @@ describe("applyGatewayStatus", () => {
 
   it("PAID -> CHARGEBACK trata igual a REFUNDED (libera vaga)", async () => {
     const tx = makeTx();
-    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1" }];
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "CONFIRMED" as const }];
 
     await applyGatewayStatus(
       tx as any,
@@ -142,7 +142,7 @@ describe("applyGatewayStatus", () => {
 
   it("EXPIRED -> PAID (aprovação atrasada) devolve a vaga e reconfirma a inscrição", async () => {
     const tx = makeTx();
-    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1" }];
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "CANCELLED" as const }];
 
     await applyGatewayStatus(
       tx as any,
@@ -156,6 +156,24 @@ describe("applyGatewayStatus", () => {
     expect(tx.order.update).toHaveBeenCalledWith({ where: { id: "ord-1" }, data: { status: "PAID" } });
     expect(tx.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: { status: "CONFIRMED" } });
     expect(tx.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-1" }, data: { soldCount: { increment: 1 } } });
+  });
+
+  it("não libera a vaga de novo para uma inscrição já cancelada individualmente (evita oversell)", async () => {
+    const tx = makeTx();
+    // Uma inscrição já foi cancelada por um fluxo separado (ex.: o atleta cancelou a própria
+    // inscrição) enquanto o pagamento seguia PAID — a vaga dela já foi liberada nesse momento.
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "CANCELLED" as const }];
+
+    await applyGatewayStatus(
+      tx as any,
+      { id: "pay-1", status: "PAID" },
+      { id: "ord-1", status: "PAID" },
+      registrations,
+      "REFUNDED",
+      "reconciliation",
+    );
+
+    expect(tx.ticketBatch.update).not.toHaveBeenCalled();
   });
 
   it("guarda o rawPayload quando informado", async () => {

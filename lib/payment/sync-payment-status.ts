@@ -1,4 +1,4 @@
-import type { Prisma, PaymentStatus, OrderStatus } from "@prisma/client";
+import type { Prisma, PaymentStatus, OrderStatus, RegistrationStatus } from "@prisma/client";
 
 export type GatewayPaymentStatus = "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED" | "CHARGEBACK";
 export type SyncSource = "webhook" | "reconciliation" | "refund_check";
@@ -22,6 +22,7 @@ interface SyncableOrder {
 interface SyncableRegistration {
   id: string;
   ticketBatchId: string;
+  status: RegistrationStatus;
 }
 
 export async function applyGatewayStatus(
@@ -56,6 +57,15 @@ export async function applyGatewayStatus(
   const shouldRestoreCapacity =
     newStatus === "PAID" && (payment.status === "EXPIRED" || payment.status === "CANCELLED");
 
+  // Uma inscrição só é elegível para liberar/restaurar vaga se ainda estiver no status que a
+  // transição do pagamento pressupõe — evita decrementar/incrementar de novo uma inscrição que já
+  // foi cancelada (ou já teve a vaga restaurada) por um fluxo independente (ex.: o atleta cancelou
+  // a própria inscrição enquanto o pagamento seguia PAID).
+  const releaseEligibleStatus: RegistrationStatus | undefined =
+    payment.status === "PENDING" ? "PENDING_PAYMENT"
+    : payment.status === "PAID" ? "CONFIRMED"
+    : undefined;
+
   await tx.payment.update({
     where: { id: payment.id },
     data: {
@@ -70,19 +80,25 @@ export async function applyGatewayStatus(
 
   if (newRegistrationStatus) {
     for (const r of registrations) {
+      if (shouldReleaseCapacity && r.status !== releaseEligibleStatus) continue;
+      if (shouldRestoreCapacity && r.status !== "CANCELLED") continue;
       await tx.registration.update({ where: { id: r.id }, data: { status: newRegistrationStatus } });
     }
   }
 
   if (shouldReleaseCapacity) {
     for (const r of registrations) {
-      await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { decrement: 1 } } });
+      if (r.status === releaseEligibleStatus) {
+        await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { decrement: 1 } } });
+      }
     }
   }
 
   if (shouldRestoreCapacity) {
     for (const r of registrations) {
-      await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { increment: 1 } } });
+      if (r.status === "CANCELLED") {
+        await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { increment: 1 } } });
+      }
     }
   }
 
