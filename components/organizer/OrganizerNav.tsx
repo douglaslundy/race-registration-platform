@@ -22,6 +22,12 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-600 dark:text-gray-400">{userName}</span>
+          <Link
+            href="/eventos"
+            className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded font-medium"
+          >
+            Área do atleta
+          </Link>
           <ThemeToggle />
           <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-secondary text-xs px-3 py-1">
             Sair
@@ -37,6 +43,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
           <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Perfil</Link>
           <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>
           <Link href="/organizador/pedidos-vencidos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Pedidos vencidos</Link>
+          <Link href="/eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Área do atleta</Link>
         </div>
       </div>
     </nav>
