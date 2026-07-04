@@ -38,7 +38,7 @@ export async function applyGatewayStatus(
 
   const newOrderStatus =
     newStatus === "PAID" ? "PAID"
-    : newStatus === "REFUNDED" ? "REFUNDED"
+    : newStatus === "REFUNDED" || newStatus === "CHARGEBACK" ? "REFUNDED"
     : newStatus === "CANCELLED" || newStatus === "EXPIRED" ? "CANCELLED"
     : order.status;
 

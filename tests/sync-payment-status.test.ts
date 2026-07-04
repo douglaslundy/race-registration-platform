@@ -133,6 +133,7 @@ describe("applyGatewayStatus", () => {
       "refund_check",
     );
 
+    expect(tx.order.update).toHaveBeenCalledWith({ where: { id: "ord-1" }, data: { status: "REFUNDED" } });
     expect(tx.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-1" }, data: { soldCount: { decrement: 1 } } });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ action: "PAYMENT_STATUS_SYNCED_REFUND_CHECK" }),
