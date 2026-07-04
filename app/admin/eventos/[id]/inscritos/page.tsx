@@ -7,6 +7,7 @@ import PrintButton from "@/components/ui/PrintButton";
 import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
+import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
 import { BADGE } from "@/lib/badge-colors";
 
 export const metadata: Metadata = { title: "Inscritos — Admin" };
@@ -152,7 +153,20 @@ export default async function AdminInscritosPage({
       {registrations.length === 0 ? (
         <div className="card text-center py-12 text-gray-500">Nenhuma inscrição ainda.</div>
       ) : (
-        <RegistrationsTable registrations={registrations} />
+        <RegistrationsTable
+          registrations={registrations}
+          renderActions={(r) => {
+            const payment = r.order.payments[0];
+            if (payment?.status === "EXPIRED" || payment?.status === "CANCELLED") {
+              return (
+                <ResendPaymentNotificationButton
+                  endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}
+                />
+              );
+            }
+            return null;
+          }}
+        />
       )}
     </div>
   );

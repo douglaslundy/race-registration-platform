@@ -9,6 +9,7 @@ import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organize
 import RefundRegistrationButton from "@/components/organizer/RefundRegistrationButton";
 import CancellationDecisionButtons from "@/components/organizer/CancellationDecisionButtons";
 import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
+import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 
 export const metadata: Metadata = { title: "Inscritos" };
@@ -165,6 +166,11 @@ export default async function InscritosPage({
                 {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
                 {r.status === "CANCELLATION_REQUESTED" && <CancellationDecisionButtons registrationId={r.id} />}
                 {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
+                {(payment?.status === "EXPIRED" || payment?.status === "CANCELLED") && (
+                  <ResendPaymentNotificationButton
+                    endpoint={`/api/organizer/registrations/${r.id}/resend-payment-notification`}
+                  />
+                )}
               </>
             );
           }}
