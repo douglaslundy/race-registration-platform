@@ -45,7 +45,13 @@ export default function AdminPerfilPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(typeof data.error === "string" ? data.error : "Erro ao salvar perfil.");
+        if (typeof data.error === "string") {
+          setError(data.error);
+        } else {
+          const fieldMessage = Object.values(data.error?.fieldErrors ?? {}).flat()[0];
+          const formMessage = data.error?.formErrors?.[0];
+          setError((fieldMessage as string) ?? formMessage ?? "Erro ao salvar perfil.");
+        }
         setSaving(false);
         return;
       }
