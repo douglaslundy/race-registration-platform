@@ -13,17 +13,17 @@ export default function AdminNav() {
           <Link href="/admin/eventos" className="hover:text-gray-300">Eventos</Link>
           <Link href="/admin/usuarios" className="hover:text-gray-300">Usuários</Link>
           <Link href="/admin/pagamentos" className="hover:text-gray-300">Pagamentos</Link>
+          <Link href="/admin/pedidos-vencidos" className="hover:text-gray-300">Pedidos vencidos</Link>
           <Link href="/admin/cupons" className="hover:text-gray-300">Cupons</Link>
           <Link href="/admin/repasses" className="hover:text-gray-300">Repasses</Link>
           <Link href="/admin/relatorio" className="hover:text-gray-300">Relatório</Link>
+          <Link href="/admin/conciliacao" className="hover:text-gray-300">Conciliação</Link>
           <Link href="/admin/auditoria" className="hover:text-gray-300">Auditoria</Link>
-          <Link href="/admin/conteudo-legal" className="hover:text-gray-300">Legal</Link>
-          <Link href="/admin/configuracoes" className="hover:text-gray-300">Config.</Link>
-          <Link href="/admin/backup" className="hover:text-gray-300">Backup</Link>
           <Link href="/admin/whatsapp" className="hover:text-gray-300">WhatsApp</Link>
           <Link href="/admin/alertas" className="hover:text-gray-300">Alertas</Link>
-          <Link href="/admin/conciliacao" className="hover:text-gray-300">Conciliação</Link>
-          <Link href="/admin/pedidos-vencidos" className="hover:text-gray-300">Pedidos vencidos</Link>
+          <Link href="/admin/configuracoes" className="hover:text-gray-300">Config.</Link>
+          <Link href="/admin/conteudo-legal" className="hover:text-gray-300">Legal</Link>
+          <Link href="/admin/backup" className="hover:text-gray-300">Backup</Link>
           <Link href="/admin/perfil" className="hover:text-gray-300">Perfil</Link>
         </div>
         <div className="flex items-center gap-2">
