@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const schema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
   phone: z.string().optional().nullable(),
+  cpf: z.string().max(14).optional().nullable(),
 });
 
 export async function GET() {
@@ -15,7 +17,7 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { phone: true },
+    select: { name: true, phone: true, cpf: true },
   });
 
   return NextResponse.json({ profile: user });
@@ -33,8 +35,8 @@ export async function PUT(req: NextRequest) {
 
   const user = await db.user.update({
     where: { id: session.user.id },
-    data: { phone: parsed.data.phone || null },
-    select: { phone: true },
+    data: { name: parsed.data.name, phone: parsed.data.phone || null, cpf: parsed.data.cpf || null },
+    select: { name: true, phone: true, cpf: true },
   });
 
   return NextResponse.json({ profile: user });

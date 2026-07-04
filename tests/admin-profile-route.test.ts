@@ -29,38 +29,45 @@ describe("admin profile api", () => {
       expect(res.status).toBe(403);
     });
 
-    it("retorna o telefone do admin autenticado", async () => {
+    it("retorna nome, telefone e cpf do admin autenticado", async () => {
       authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
-      dbMock.user.findUnique.mockResolvedValueOnce({ phone: "5511999999999" });
+      dbMock.user.findUnique.mockResolvedValueOnce({ name: "Admin", phone: "5511999999999", cpf: "123.456.789-00" });
 
       const res = await GET();
       const body = await res.json();
 
-      expect(body).toEqual({ profile: { phone: "5511999999999" } });
+      expect(body).toEqual({ profile: { name: "Admin", phone: "5511999999999", cpf: "123.456.789-00" } });
     });
   });
 
   describe("PUT", () => {
     it("retorna 403 para quem não é admin", async () => {
       authMock.mockResolvedValue({ user: { id: "u1", role: "ATHLETE" } } as any);
-      const res = await PUT(makeRequest({ phone: "5511999999999" }));
+      const res = await PUT(makeRequest({ name: "Admin", phone: "5511999999999" }));
       expect(res.status).toBe(403);
       expect(dbMock.user.update).not.toHaveBeenCalled();
     });
 
-    it("atualiza o telefone do admin autenticado", async () => {
+    it("retorna 400 quando o nome está vazio", async () => {
       authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
-      dbMock.user.update.mockResolvedValueOnce({ phone: "5511999999999" });
+      const res = await PUT(makeRequest({ name: "", phone: "5511999999999" }));
+      expect(res.status).toBe(400);
+      expect(dbMock.user.update).not.toHaveBeenCalled();
+    });
 
-      const res = await PUT(makeRequest({ phone: "5511999999999" }));
+    it("atualiza nome, telefone e cpf do admin autenticado", async () => {
+      authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+      dbMock.user.update.mockResolvedValueOnce({ name: "Admin", phone: "5511999999999", cpf: "123.456.789-00" });
+
+      const res = await PUT(makeRequest({ name: "Admin", phone: "5511999999999", cpf: "123.456.789-00" }));
       const body = await res.json();
 
       expect(dbMock.user.update).toHaveBeenCalledWith({
         where: { id: "admin-1" },
-        data: { phone: "5511999999999" },
-        select: { phone: true },
+        data: { name: "Admin", phone: "5511999999999", cpf: "123.456.789-00" },
+        select: { name: true, phone: true, cpf: true },
       });
-      expect(body).toEqual({ profile: { phone: "5511999999999" } });
+      expect(body).toEqual({ profile: { name: "Admin", phone: "5511999999999", cpf: "123.456.789-00" } });
     });
   });
 });
