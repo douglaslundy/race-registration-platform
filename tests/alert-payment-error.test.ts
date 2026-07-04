@@ -134,4 +134,15 @@ describe("notifyPaymentError", () => {
 
     expect(unclaimAlert).not.toHaveBeenCalled();
   });
+
+  it("não reivindica o alerta de e-mail quando o SMTP não está pronto (evita travar o alerta pra sempre)", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    vi.mocked(isSmtpReady).mockReturnValue(false);
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+
+    await notifyPaymentError("payment-1");
+
+    expect(claimAlert).not.toHaveBeenCalled();
+    expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
+  });
 });

@@ -20,7 +20,6 @@ export async function notifyPaymentError(
       select: {
         order: {
           select: {
-            id: true,
             event: { select: { title: true, slug: true } },
             buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
           },
@@ -35,18 +34,20 @@ export async function notifyPaymentError(
 
     if (settings.emailEnabled) {
       const cfg = await getSmtpConfig();
-      const claimed = options?.bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Payment", paymentId, "EMAIL");
-      if (isSmtpReady(cfg) && claimed) {
-        try {
-          await sendPaymentErrorEmail({
-            to: payment.order.buyer.email,
-            name: payment.order.buyer.name,
-            eventTitle: payment.order.event.title,
-            eventSlug: payment.order.event.slug,
-          });
-        } catch (err) {
-          if (!options?.bypassDedupe) await unclaimAlert(ALERT_TYPE, paymentId, "EMAIL");
-          throw err;
+      if (isSmtpReady(cfg)) {
+        const claimed = options?.bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Payment", paymentId, "EMAIL");
+        if (claimed) {
+          try {
+            await sendPaymentErrorEmail({
+              to: payment.order.buyer.email,
+              name: payment.order.buyer.name,
+              eventTitle: payment.order.event.title,
+              eventSlug: payment.order.event.slug,
+            });
+          } catch (err) {
+            if (!options?.bypassDedupe) await unclaimAlert(ALERT_TYPE, paymentId, "EMAIL");
+            throw err;
+          }
         }
       }
     }
