@@ -22,6 +22,8 @@ export const ACTION_LABEL: Record<string, string> = {
   TRANSFER_COMPLETED: "Repasse concluído",
   TRANSFER_FAILED: "Repasse falhou",
   PAYMENT_REFUNDED: "Pagamento estornado",
+  PAYMENT_STATUS_SYNCED_RECONCILIATION: "Status sincronizado pela conciliação",
+  PAYMENT_STATUS_SYNCED_REFUND_CHECK: "Estorno externo detectado ao tentar estornar",
   WHATSAPP_INSTANCE_CREATED: "Instância do WhatsApp criada",
   WHATSAPP_INSTANCE_DELETED: "Instância do WhatsApp excluída",
   PAGE_VIEWED: "Página acessada",
