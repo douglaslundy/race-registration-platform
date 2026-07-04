@@ -25,6 +25,7 @@ function toUserRow(row: Row): Prisma.UserCreateManyInput {
     id: s(row.id),
     email: s(row.email),
     name: s(row.name),
+    phone: sn(row.phone),
     role: s(row.role) as Prisma.UserCreateManyInput["role"],
     active: b(row.active),
     uiDensity: s(row.uiDensity) || "comfortable",
