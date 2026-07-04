@@ -157,9 +157,9 @@ export default async function InscritosPage({
                 <th className="pb-2 pr-4">Camiseta</th>
                 <th className="pb-2 pr-4">Pagamento</th>
                 <th className="pb-2 pr-4">Valor</th>
+                <th className="pb-2 pr-4">Data inscrição</th>
                 <th className="pb-2 pr-4">Data pag.</th>
                 <th className="pb-2 pr-4">Cód. transação</th>
-                <th className="pb-2 pr-4">Data inscrição</th>
                 <th className="pb-2 pr-4">Status</th>
                 <th className="pb-2">Ações</th>
               </tr>
@@ -185,13 +185,13 @@ export default async function InscritosPage({
                       {formatCurrency(r.order.totalAmount)}
                     </td>
                     <td className="py-2 pr-4 text-gray-700">
+                      {formatDate(r.createdAt, "dd/MM/yyyy HH:mm")}
+                    </td>
+                    <td className="py-2 pr-4 text-gray-700">
                       {payment?.paidAt ? formatDate(payment.paidAt, "dd/MM/yyyy HH:mm") : "—"}
                     </td>
                     <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[10rem]">
                       {payment?.providerPaymentId ?? "—"}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-700">
-                      {formatDate(r.createdAt, "dd/MM/yyyy HH:mm")}
                     </td>
                     <td className="py-2 pr-4">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
