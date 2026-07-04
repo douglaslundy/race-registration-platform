@@ -27,6 +27,7 @@ export default function OrganizerPerfilPage() {
   const [saved, setSaved] = useState(false);
   const [accountSaving, setAccountSaving] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -56,18 +57,34 @@ export default function OrganizerPerfilPage() {
   async function handleAccountSubmit(e: React.FormEvent) {
     e.preventDefault();
     setAccountSaving(true);
-    await fetch("/api/organizer/account", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: accountForm.name?.trim() ?? "",
-        phone: accountForm.phone?.trim() || null,
-        cpf: accountForm.cpf?.trim() || null,
-      }),
-    });
-    setAccountSaving(false);
-    setAccountSaved(true);
-    setTimeout(() => setAccountSaved(false), 3000);
+    setAccountError(null);
+    try {
+      const res = await fetch("/api/organizer/account", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: accountForm.name?.trim() ?? "",
+          phone: accountForm.phone?.trim() || null,
+          cpf: accountForm.cpf?.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        if (typeof data.error === "string") {
+          setAccountError(data.error);
+        } else {
+          const fieldMessage = Object.values(data.error?.fieldErrors ?? {}).flat()[0];
+          const formMessage = data.error?.formErrors?.[0];
+          setAccountError((fieldMessage as string) ?? formMessage ?? "Erro ao salvar perfil.");
+        }
+        setAccountSaving(false);
+        return;
+      }
+      setAccountSaved(true);
+      setTimeout(() => setAccountSaved(false), 3000);
+    } finally {
+      setAccountSaving(false);
+    }
   }
 
   function set(field: keyof OrgProfileData, value: string) {
@@ -86,6 +103,9 @@ export default function OrganizerPerfilPage() {
 
       <form onSubmit={handleAccountSubmit} className="card space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados pessoais</h2>
+        {accountError && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{accountError}</div>
+        )}
         <p className="text-sm text-gray-600 dark:text-gray-400">{session?.user?.email}</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
