@@ -54,9 +54,10 @@ export default async function AdminBackupPage() {
       <div className="card space-y-4">
         <h2 className="font-semibold">Exportar backup</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          O backup inclui todas as tabelas: usuários, eventos, inscrições, pedidos, pagamentos, cupons,
-          lotes, categorias, percursos, repasses e estornos. Os dados são exportados em JSON com streaming
-          — funciona mesmo com grandes volumes sem timeout.
+          O backup inclui todas as tabelas do sistema: usuários, perfis, eventos, inscrições,
+          pedidos, pagamentos, cupons, lotes, categorias, percursos, repasses, resultados,
+          arquivos, logs de auditoria e configurações da plataforma. Os dados são exportados em
+          JSON com streaming — funciona mesmo com grandes volumes sem timeout.
         </p>
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
           <strong>Atenção:</strong> o arquivo de backup contém dados sensíveis (e-mails, informações pessoais,
@@ -65,17 +66,18 @@ export default async function AdminBackupPage() {
         <BackupDownloadButton />
       </div>
 
-      {/* Importar */}
+      {/* Restaurar */}
       <div className="card space-y-4">
-        <h2 className="font-semibold">Importar backup</h2>
+        <h2 className="font-semibold">Restaurar backup</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Selecione um arquivo <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">.json</code> gerado
-          pelo exportador acima. Cada registro é processado como <strong>upsert</strong> (inserido se não existir, atualizado
-          se o mesmo ID já estiver no banco). Tabelas são processadas em ordem de dependência: usuários → eventos → inscrições…
+          pelo exportador acima. A restauração <strong>apaga todos os dados atuais</strong> das tabelas cobertas pelo backup
+          e insere exatamente o conteúdo do arquivo — não é uma mesclagem, e IDs ou e-mails antigos não são preservados.
         </p>
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-sm text-red-800 dark:text-red-300">
-          <strong>Atenção:</strong> registros com o mesmo ID serão sobrescritos pelos dados do arquivo.
-          Use somente em ambiente controlado ou após ter certeza do que está restaurando.
+          <strong>Atenção:</strong> essa ação é destrutiva e não pode ser desfeita pelo sistema. Antes de apagar, um
+          backup do estado atual é baixado automaticamente no seu navegador. Use somente em ambiente controlado e com
+          certeza do que está restaurando.
         </div>
         <BackupImportButton />
       </div>

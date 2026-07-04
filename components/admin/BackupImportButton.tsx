@@ -2,59 +2,121 @@
 
 import { useRef, useState } from "react";
 
-type TableResult = { table: string; upserted: number; errors: number; errorSamples: string[] };
-type ImportResult = { tables: TableResult[]; totalUpserted: number; totalErrors: number };
+type TableResult = { table: string; restored: number };
+type ImportResult = { tables: TableResult[]; totalRestored: number };
 
-type Phase = "idle" | "reading" | "uploading" | "done" | "error";
+type Phase = "idle" | "confirming" | "snapshotting" | "uploading" | "done" | "error";
 
 const TABLE_LABELS: Record<string, string> = {
   users: "Usuários",
+  athleteProfiles: "Perfis de atleta",
   organizerProfiles: "Perfis de organizador",
   events: "Eventos",
-  ticketBatches: "Lotes",
-  eventCategories: "Categorias",
   eventRoutes: "Percursos",
+  eventCategories: "Categorias",
+  ticketBatches: "Lotes",
+  transferPayouts: "Repasses",
   coupons: "Cupons",
   orders: "Pedidos",
   registrations: "Inscrições",
   payments: "Pagamentos",
   refunds: "Estornos",
+  resultImports: "Importações de resultado",
+  raceResults: "Resultados",
+  fileAssets: "Arquivos",
+  auditLogs: "Logs de auditoria",
+  platformSettings: "Configurações da plataforma",
+  alertLogs: "Logs de alerta",
 };
+
+const TABLE_KEYS = Object.keys(TABLE_LABELS);
+const CONFIRM_WORD = "CONFIRMAR";
+
+function countsFromBackup(backup: Record<string, unknown>): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const key of TABLE_KEYS) {
+    const value = backup[key];
+    counts[key] = Array.isArray(value) ? value.length : 0;
+  }
+  return counts;
+}
+
+async function downloadCurrentSnapshot() {
+  const res = await fetch("/api/admin/backup");
+  if (!res.ok) throw new Error("Falha ao gerar backup de segurança do estado atual");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const now = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pre-restore-backup-${now}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function BackupImportButton() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+  const [confirmText, setConfirmText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function resetToIdle() {
+    setPhase("idle");
+    setPendingFile(null);
+    setCounts(null);
+    setConfirmText("");
+    if (inputRef.current) inputRef.current.value = "";
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Basic validation before upload
+    setErrorMsg(null);
+    setResult(null);
+
     if (!file.name.endsWith(".json") && file.type !== "application/json") {
       setErrorMsg("Selecione um arquivo .json gerado pelo backup deste sistema.");
       setPhase("error");
       return;
     }
 
-    setPhase("reading");
-    setErrorMsg(null);
-    setResult(null);
-
-    // Validate JSON client-side before upload
-    let parsedKeys: string[];
     try {
-      setPhase("reading");
       const text = await file.text();
       const obj = JSON.parse(text);
-      parsedKeys = Object.keys(obj);
-      const expectedKeys = ["users", "events", "registrations", "orders"];
-      if (!expectedKeys.some((k) => parsedKeys.includes(k))) {
+      if (!TABLE_KEYS.some((k) => Object.prototype.hasOwnProperty.call(obj, k))) {
         throw new Error("Arquivo não parece ser um backup válido deste sistema.");
       }
+      setCounts(countsFromBackup(obj));
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Arquivo JSON inválido.");
+      setPhase("error");
+      return;
+    }
+
+    setPendingFile(file);
+    setConfirmText("");
+    setPhase("confirming");
+  }
+
+  async function handleConfirm() {
+    if (!pendingFile || confirmText !== CONFIRM_WORD) return;
+
+    setPhase("snapshotting");
+    setErrorMsg(null);
+
+    try {
+      await downloadCurrentSnapshot();
+    } catch (err) {
+      setErrorMsg(
+        (err instanceof Error ? err.message : "Falha ao gerar backup de segurança") +
+          " — importação cancelada, nada foi apagado.",
+      );
       setPhase("error");
       return;
     }
@@ -63,7 +125,7 @@ export default function BackupImportButton() {
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", pendingFile);
 
       const res = await fetch("/api/admin/backup/import", {
         method: "POST",
@@ -72,7 +134,7 @@ export default function BackupImportButton() {
 
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error ?? `Erro HTTP ${res.status}`);
+        setErrorMsg(typeof data.error === "string" ? data.error : `Erro HTTP ${res.status}`);
         setPhase("error");
         return;
       }
@@ -83,37 +145,84 @@ export default function BackupImportButton() {
       setErrorMsg(err instanceof Error ? err.message : "Erro de conexão.");
       setPhase("error");
     } finally {
-      // Reset file input so the same file can be re-selected if needed
+      setPendingFile(null);
+      setCounts(null);
+      setConfirmText("");
       if (inputRef.current) inputRef.current.value = "";
     }
   }
 
-  const isWorking = phase === "reading" || phase === "uploading";
+  const isWorking = phase === "snapshotting" || phase === "uploading";
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <label
-          className={`btn-secondary cursor-pointer ${isWorking ? "opacity-60 pointer-events-none" : ""}`}
+          className={`btn-secondary cursor-pointer ${isWorking || phase === "confirming" ? "opacity-60 pointer-events-none" : ""}`}
         >
-          {isWorking
-            ? phase === "reading" ? "Lendo arquivo…" : "Importando…"
-            : "Selecionar arquivo .json"}
+          Selecionar arquivo .json
           <input
             ref={inputRef}
             type="file"
             accept=".json,application/json"
             className="hidden"
-            disabled={isWorking}
+            disabled={isWorking || phase === "confirming"}
             onChange={handleFile}
           />
         </label>
         {phase === "done" && (
           <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-            ✓ Importação concluída
+            ✓ Restauração concluída
           </span>
         )}
       </div>
+
+      {phase === "confirming" && counts && (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 space-y-3">
+          <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+            Isso vai apagar todos os dados atuais e substituir pelo conteúdo deste arquivo. Um
+            backup do estado atual será baixado automaticamente antes de apagar.
+          </p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-red-800 dark:text-red-300">
+            {TABLE_KEYS.filter((k) => counts[k] > 0).map((k) => (
+              <div key={k} className="flex justify-between">
+                <span>{TABLE_LABELS[k]}</span>
+                <span className="font-medium">{counts[k].toLocaleString("pt-BR")}</span>
+              </div>
+            ))}
+          </div>
+          <label className="block text-xs font-medium text-red-800 dark:text-red-300">
+            Digite {CONFIRM_WORD} para confirmar
+            <input
+              type="text"
+              className="input mt-1"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={resetToIdle}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="text-sm px-4 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              disabled={confirmText !== CONFIRM_WORD}
+              onClick={handleConfirm}
+            >
+              Prosseguir e apagar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {phase === "snapshotting" && (
+        <p className="text-sm text-gray-500">Baixando backup de segurança do estado atual…</p>
+      )}
+      {phase === "uploading" && (
+        <p className="text-sm text-gray-500">Restaurando dados do backup…</p>
+      )}
 
       {phase === "error" && errorMsg && (
         <div className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
@@ -123,62 +232,32 @@ export default function BackupImportButton() {
 
       {result && (
         <div className="space-y-3">
-          <div className="flex gap-4 text-sm">
-            <span className="font-medium text-green-700 dark:text-green-400">
-              {result.totalUpserted.toLocaleString("pt-BR")} registros importados
-            </span>
-            {result.totalErrors > 0 && (
-              <span className="font-medium text-red-600 dark:text-red-400">
-                {result.totalErrors} erros
-              </span>
-            )}
-          </div>
+          <p className="text-sm font-medium text-green-700 dark:text-green-400">
+            {result.totalRestored.toLocaleString("pt-BR")} registros restaurados
+          </p>
 
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase text-gray-500">
                   <th className="px-4 py-2">Tabela</th>
-                  <th className="px-4 py-2 text-right">Importados</th>
-                  <th className="px-4 py-2 text-right">Erros</th>
+                  <th className="px-4 py-2 text-right">Restaurados</th>
                 </tr>
               </thead>
               <tbody>
                 {result.tables
-                  .filter((t) => t.upserted > 0 || t.errors > 0)
+                  .filter((t) => t.restored > 0)
                   .map((t) => (
                     <tr key={t.table} className="border-t dark:border-gray-700">
                       <td className="px-4 py-2 font-medium">{TABLE_LABELS[t.table] ?? t.table}</td>
                       <td className="px-4 py-2 text-right text-green-700 dark:text-green-400">
-                        {t.upserted.toLocaleString("pt-BR")}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {t.errors > 0 ? (
-                          <span className="text-red-600 dark:text-red-400" title={t.errorSamples.join("\n")}>
-                            {t.errors}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
+                        {t.restored.toLocaleString("pt-BR")}
                       </td>
                     </tr>
                   ))}
               </tbody>
             </table>
           </div>
-
-          {result.tables.some((t) => t.errorSamples.length > 0) && (
-            <details className="text-xs text-red-600 dark:text-red-400">
-              <summary className="cursor-pointer hover:underline">Ver amostra de erros</summary>
-              <ul className="mt-2 space-y-1 list-disc list-inside">
-                {result.tables.flatMap((t) =>
-                  t.errorSamples.map((e, i) => (
-                    <li key={`${t.table}-${i}`}><span className="font-medium">{t.table}:</span> {e}</li>
-                  ))
-                )}
-              </ul>
-            </details>
-          )}
         </div>
       )}
     </div>
