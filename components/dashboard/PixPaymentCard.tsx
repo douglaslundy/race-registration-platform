@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import QRCode from "react-qr-code";
 
 interface PixPaymentCardProps {
@@ -8,6 +9,34 @@ interface PixPaymentCardProps {
 }
 
 export default function PixPaymentCard({ pixQrCodeText, expiresAt }: PixPaymentCardProps) {
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+
+  async function handleCopy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(pixQrCodeText);
+      } else {
+        // Fallback para navegadores/contextos sem suporte à Clipboard API moderna
+        // (ex.: sem HTTPS ou API indisponível) — evita falha silenciosa do botão.
+        const textarea = document.createElement("textarea");
+        textarea.value = pixQrCodeText;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        if (!copied) throw new Error("Fallback copy command failed");
+      }
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    } finally {
+      setTimeout(() => setCopyStatus("idle"), 2000);
+    }
+  }
+
   return (
     <div className="card space-y-3">
       <h3 className="font-semibold text-gray-900 dark:text-gray-100">Pague via Pix</h3>
@@ -20,10 +49,14 @@ export default function PixPaymentCard({ pixQrCodeText, expiresAt }: PixPaymentC
       </div>
       <button
         type="button"
-        onClick={() => navigator.clipboard.writeText(pixQrCodeText)}
+        onClick={handleCopy}
         className="btn-secondary w-full text-sm"
       >
-        Copiar código Pix
+        {copyStatus === "copied"
+          ? "Copiado!"
+          : copyStatus === "error"
+            ? "Não foi possível copiar — selecione o texto acima"
+            : "Copiar código Pix"}
       </button>
       {expiresAt && (
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
