@@ -97,6 +97,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
       </div>
 
       <div className="flex gap-3">
+        <Link href={`/admin/eventos/${event.id}/inscritos`} className="btn-secondary text-sm">
+          Ver inscritos
+        </Link>
         <Link href={`/api/events/${event.id}/registrations?format=csv`} className="btn-secondary text-sm">
           Exportar inscritos CSV
         </Link>
