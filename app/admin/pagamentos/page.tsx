@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BADGE } from "@/lib/badge-colors";
@@ -246,7 +246,7 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
                     <span className="text-xs text-gray-400">{p.order.buyer.email}</span>
                   </div>
                 </td>
-                <td className={cellPadding + " text-gray-500 text-xs whitespace-nowrap"}>{p.createdAt.toLocaleDateString("pt-BR")}</td>
+                <td className={cellPadding + " text-gray-500 text-xs whitespace-nowrap"}>{formatDate(p.createdAt, "dd/MM/yyyy HH:mm")}</td>
                 <td className={cellPadding}>
                   <Link href={`/admin/pagamentos/${p.id}`} className="text-xs text-primary-600 hover:underline">
                     Detalhes
