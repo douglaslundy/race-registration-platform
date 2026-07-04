@@ -10,6 +10,7 @@ import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organize
 import RefundRegistrationButton from "@/components/organizer/RefundRegistrationButton";
 import CancellationDecisionButtons from "@/components/organizer/CancellationDecisionButtons";
 import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
+import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -68,7 +69,24 @@ export default async function InscritosPage({
   const registrations = await db.registration.findMany({
     where: buildRegistrationWhere(id, status),
     include: {
-      athlete: { select: { name: true, email: true } },
+      athlete: {
+        select: {
+          name: true,
+          email: true,
+          athleteProfile: {
+            select: {
+              cpf: true,
+              birthDate: true,
+              phone: true,
+              gender: true,
+              city: true,
+              state: true,
+              teamName: true,
+              preferredShirtSize: true,
+            },
+          },
+        },
+      },
       route: { select: { name: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true } },
@@ -146,71 +164,19 @@ export default async function InscritosPage({
       {registrations.length === 0 ? (
         <div className="card text-center py-12 text-gray-500">Nenhuma inscrição ainda.</div>
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b">
-                <th className="pb-2 pr-4">Atleta</th>
-                <th className="pb-2 pr-4">Percurso</th>
-                <th className="pb-2 pr-4">Categoria</th>
-                <th className="pb-2 pr-4">Lote</th>
-                <th className="pb-2 pr-4">Camiseta</th>
-                <th className="pb-2 pr-4">Pagamento</th>
-                <th className="pb-2 pr-4">Valor</th>
-                <th className="pb-2 pr-4">Data inscrição</th>
-                <th className="pb-2 pr-4">Data pag.</th>
-                <th className="pb-2 pr-4">Cód. transação</th>
-                <th className="pb-2 pr-4">Status</th>
-                <th className="pb-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {registrations.map((r) => {
-                const payment = r.order.payments[0];
-                const statusInfo = REGISTRATION_STATUS[r.status];
-                return (
-                  <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                    <td className="py-2 pr-4">
-                      <p className="font-medium">{r.athlete.name}</p>
-                      <p className="text-xs text-gray-500">{r.athlete.email}</p>
-                    </td>
-                    <td className="py-2 pr-4 text-gray-700">{r.route?.name ?? "—"}</td>
-                    <td className="py-2 pr-4 text-gray-700">{r.category?.name ?? "—"}</td>
-                    <td className="py-2 pr-4 text-gray-700">{r.ticketBatch.name}</td>
-                    <td className="py-2 pr-4 text-gray-700">{r.shirtSize ?? "—"}</td>
-                    <td className="py-2 pr-4 text-gray-700">
-                      {payment ? PAYMENT_METHOD_LABEL[payment.method] ?? payment.method : "—"}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-700">
-                      {formatCurrency(r.order.totalAmount)}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-700">
-                      {formatDate(r.createdAt, "dd/MM/yyyy HH:mm")}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-700">
-                      {payment?.paidAt ? formatDate(payment.paidAt, "dd/MM/yyyy HH:mm") : "—"}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[10rem]">
-                      {payment?.providerPaymentId ?? "—"}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
-                        {statusInfo?.label ?? r.status}
-                      </span>
-                    </td>
-                    <td className="py-2">
-                      <div className="flex flex-col gap-1">
-                        {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
-                        {r.status === "CANCELLATION_REQUESTED" && <CancellationDecisionButtons registrationId={r.id} />}
-                        {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <RegistrationsTable
+          registrations={registrations}
+          renderActions={(r) => {
+            const payment = r.order.payments[0];
+            return (
+              <>
+                {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
+                {r.status === "CANCELLATION_REQUESTED" && <CancellationDecisionButtons registrationId={r.id} />}
+                {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
+              </>
+            );
+          }}
+        />
       )}
     </div>
   );
