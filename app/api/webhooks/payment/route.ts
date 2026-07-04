@@ -4,6 +4,7 @@ import { getPaymentProvider } from "@/lib/payment";
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
+import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -86,68 +87,25 @@ export async function POST(req: NextRequest) {
   });
 
   if (!payment) return NextResponse.json({ ok: true });
-  if (payment.status === "PAID" || payment.status === "REFUNDED") return NextResponse.json({ ok: true });
 
   const newPaymentStatus = event.status;
-  const newOrderStatus =
-    newPaymentStatus === "PAID" ? "PAID"
-    : newPaymentStatus === "REFUNDED" ? "REFUNDED"
-    : newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED" ? "CANCELLED"
-    : payment.order.status;
 
-  const newRegistrationStatus =
-    newPaymentStatus === "PAID" ? "CONFIRMED"
-    : newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED" ? "CANCELLED"
-    : undefined;
-
-  // Libera a vaga do lote quando o pagamento expira/cancela e estava PENDING antes deste webhook —
-  // corrige um bug em que a vaga reservada no checkout nunca era devolvida se o pagamento nunca fosse
-  // concluído. A guarda pelo status ANTERIOR evita decrementar duas vezes se o gateway reentregar o webhook.
-  const shouldReleaseCapacity =
-    (newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED") && payment.status === "PENDING";
-
-  // Devolve a vaga se um webhook de aprovação atrasado chegar depois que o cron de expiração automática
-  // já tinha liberado a vaga — fecha a corrida cron-vs-webhook-atrasado.
-  const shouldRestoreCapacity =
-    newPaymentStatus === "PAID" && (payment.status === "EXPIRED" || payment.status === "CANCELLED");
-
-  await db.$transaction([
-    db.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: newPaymentStatus,
+  const result = await db.$transaction(async (tx) => {
+    return applyGatewayStatus(
+      tx,
+      payment,
+      payment.order,
+      payment.order.registrations,
+      newPaymentStatus,
+      "webhook",
+      {
         paidAt: event.paidAt ? new Date(event.paidAt) : undefined,
-        rawPayload: event.rawPayload as Parameters<typeof db.payment.update>[0]["data"]["rawPayload"],
+        rawPayload: event.rawPayload,
       },
-    }),
-    db.order.update({
-      where: { id: payment.orderId },
-      data: { status: newOrderStatus },
-    }),
-    ...(newRegistrationStatus
-      ? payment.order.registrations.map((r) =>
-          db.registration.update({ where: { id: r.id }, data: { status: newRegistrationStatus } })
-        )
-      : []),
-    ...(shouldReleaseCapacity
-      ? payment.order.registrations.map((r) =>
-          db.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { decrement: 1 } } })
-        )
-      : []),
-    ...(shouldRestoreCapacity
-      ? payment.order.registrations.map((r) =>
-          db.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { increment: 1 } } })
-        )
-      : []),
-    db.auditLog.create({
-      data: {
-        action: "PAYMENT_WEBHOOK",
-        entityType: "Payment",
-        entityId: payment.id,
-        metadata: JSON.parse(JSON.stringify(event)),
-      },
-    }),
-  ]);
+    );
+  });
+
+  if (!result.changed) return NextResponse.json({ ok: true });
 
   // Envia a confirmação de inscrição por e-mail quando o pagamento é aprovado
   if (newPaymentStatus === "PAID") {
