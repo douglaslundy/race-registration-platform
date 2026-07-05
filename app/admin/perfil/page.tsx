@@ -16,7 +16,8 @@ export default function AdminPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/profile")
@@ -25,14 +26,14 @@ export default function AdminPerfilPage() {
         return res.json();
       })
       .then(({ profile }) => { if (profile) setForm(profile); })
-      .catch(() => setError("Erro ao carregar perfil."))
+      .catch(() => setLoadError("Erro ao carregar perfil."))
       .finally(() => setLoading(false));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setError(null);
+    setSaveError(null);
     try {
       const res = await fetch("/api/admin/profile", {
         method: "PUT",
@@ -46,11 +47,11 @@ export default function AdminPerfilPage() {
       if (!res.ok) {
         const data = await res.json();
         if (typeof data.error === "string") {
-          setError(data.error);
+          setSaveError(data.error);
         } else {
           const fieldMessage = Object.values(data.error?.fieldErrors ?? {}).flat()[0];
           const formMessage = data.error?.formErrors?.[0];
-          setError((fieldMessage as string) ?? formMessage ?? "Erro ao salvar perfil.");
+          setSaveError((fieldMessage as string) ?? formMessage ?? "Erro ao salvar perfil.");
         }
         setSaving(false);
         return;
@@ -67,7 +68,7 @@ export default function AdminPerfilPage() {
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
-  if (error) return <div className="text-sm text-red-600">{error}</div>;
+  if (loadError) return <div className="text-sm text-red-600">{loadError}</div>;
 
   return (
     <div className="max-w-2xl space-y-6 mx-auto">
@@ -79,6 +80,9 @@ export default function AdminPerfilPage() {
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados pessoais</h2>
+        {saveError && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{saveError}</div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
           <input
