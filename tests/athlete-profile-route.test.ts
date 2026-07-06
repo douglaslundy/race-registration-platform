@@ -63,16 +63,21 @@ describe("PUT /api/athlete/profile", () => {
     expect(dbMock.athleteProfile.upsert).not.toHaveBeenCalled();
   });
 
-  it("ignora tentativa de alterar CPF já salvo, sem erro", async () => {
+  it("ignora tentativa de alterar CPF já salvo, sem erro, mas salva os demais campos", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: "11144477735" });
     dbMock.athleteProfile.upsert.mockResolvedValueOnce({ cpf: "11144477735" });
 
-    const res = await PUT(makeRequest({ cpf: "222.222.222-22" }));
+    const res = await PUT(makeRequest({ cpf: "222.222.222-22", phone: "11999998888" }));
 
     expect(res.status).toBe(200);
     expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: expect.not.objectContaining({ cpf: expect.anything() }),
+      }),
+    );
+    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ phone: "11999998888" }),
       }),
     );
   });
