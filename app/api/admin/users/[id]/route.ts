@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -64,42 +65,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof parsed.data.active === "boolean") data.active = parsed.data.active;
   if (parsed.data.password) data.passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
-  const user = await db.$transaction(async (tx) => {
-    const updatedUser = await tx.user.update({
-      where: { id },
-      data,
-      select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
-    });
-
-    if (normalizedCpf || parsed.data.birthDate) {
-      const athleteData: Record<string, unknown> = {};
-      if (normalizedCpf) athleteData.cpf = normalizedCpf;
-      if (parsed.data.birthDate) athleteData.birthDate = new Date(parsed.data.birthDate);
-
-      await tx.athleteProfile.upsert({
-        where: { userId: id },
-        create: { userId: id, ...athleteData },
-        update: athleteData,
+  let user;
+  try {
+    user = await db.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data,
+        select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
       });
-    }
 
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "USER_UPDATED",
-        entityType: "User",
-        entityId: id,
-        metadata: {
-          ...data,
-          ...(normalizedCpf ? { cpf: normalizedCpf } : {}),
-          ...(parsed.data.birthDate ? { birthDate: parsed.data.birthDate } : {}),
-          passwordHash: parsed.data.password ? "[redacted]" : undefined,
+      if (normalizedCpf || parsed.data.birthDate) {
+        const athleteData: Record<string, unknown> = {};
+        if (normalizedCpf) athleteData.cpf = normalizedCpf;
+        if (parsed.data.birthDate) athleteData.birthDate = new Date(parsed.data.birthDate);
+
+        await tx.athleteProfile.upsert({
+          where: { userId: id },
+          create: { userId: id, ...athleteData },
+          update: athleteData,
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: "USER_UPDATED",
+          entityType: "User",
+          entityId: id,
+          metadata: {
+            ...data,
+            ...(normalizedCpf ? { cpf: normalizedCpf } : {}),
+            ...(parsed.data.birthDate ? { birthDate: parsed.data.birthDate } : {}),
+            passwordHash: parsed.data.password ? "[redacted]" : undefined,
+          },
         },
-      },
-    });
+      });
 
-    return updatedUser;
-  });
+      return updatedUser;
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "Este CPF já está cadastrado em outra conta" }, { status: 409 });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ user });
 }

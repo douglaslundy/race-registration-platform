@@ -81,4 +81,18 @@ describe("PUT /api/athlete/profile", () => {
       }),
     );
   });
+
+  it("não sobrescreve birthDate já salvo quando o campo é omitido do corpo da requisição", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: "11144477735" });
+    dbMock.athleteProfile.upsert.mockResolvedValueOnce({ cpf: "11144477735" });
+
+    const res = await PUT(makeRequest({ cpf: "111.444.777-35" }));
+
+    expect(res.status).toBe(200);
+    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.not.objectContaining({ birthDate: expect.anything() }),
+      }),
+    );
+  });
 });

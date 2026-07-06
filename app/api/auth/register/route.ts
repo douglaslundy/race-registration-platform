@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 
@@ -72,9 +73,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (role === "ATHLETE" && birthDate) {
-      await db.athleteProfile.create({
-        data: { userId: user.id, birthDate: new Date(birthDate), cpf: normalizedCpf },
-      });
+      try {
+        await db.athleteProfile.create({
+          data: { userId: user.id, birthDate: new Date(birthDate), cpf: normalizedCpf },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          return NextResponse.json({ error: "Este CPF já está cadastrado em outra conta" }, { status: 409 });
+        }
+        throw error;
+      }
     }
 
     await db.auditLog.create({

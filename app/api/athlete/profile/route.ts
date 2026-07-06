@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -44,10 +45,10 @@ export async function PUT(req: NextRequest) {
     select: { cpf: true },
   });
 
-  const data: Record<string, unknown> = {
-    ...rest,
-    birthDate: rest.birthDate ? new Date(rest.birthDate) : null,
-  };
+  const data: Record<string, unknown> = { ...rest };
+  if (rest.birthDate !== undefined) {
+    data.birthDate = rest.birthDate ? new Date(rest.birthDate) : null;
+  }
 
   if (!existing?.cpf && incomingCpf) {
     const normalized = normalizeCpf(incomingCpf);
@@ -63,11 +64,18 @@ export async function PUT(req: NextRequest) {
     data.cpf = normalized;
   }
 
-  const profile = await db.athleteProfile.upsert({
-    where: { userId: session.user.id },
-    create: { userId: session.user.id, ...data },
-    update: data,
-  });
+  try {
+    const profile = await db.athleteProfile.upsert({
+      where: { userId: session.user.id },
+      create: { userId: session.user.id, ...data },
+      update: data,
+    });
 
-  return NextResponse.json({ profile });
+    return NextResponse.json({ profile });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "Este CPF já está cadastrado em outra conta" }, { status: 409 });
+    }
+    throw error;
+  }
 }
