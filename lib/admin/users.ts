@@ -1,4 +1,5 @@
 import type { Prisma, UserRole } from "@prisma/client";
+import { normalizeCpf } from "@/lib/cpf";
 
 export interface AdminUserSearchParams {
   q?: string;
@@ -14,10 +15,17 @@ export function buildAdminUserWhere(params: Pick<AdminUserSearchParams, "q" | "r
   const filters: Prisma.UserWhereInput[] = [];
 
   if (params.q) {
+    const normalizedCpf = normalizeCpf(params.q);
     filters.push({
       OR: [
         { name: { contains: params.q, mode: "insensitive" as const } },
         { email: { contains: params.q, mode: "insensitive" as const } },
+        ...(normalizedCpf
+          ? [
+              { cpf: { contains: normalizedCpf } },
+              { athleteProfile: { cpf: { contains: normalizedCpf } } },
+            ]
+          : []),
       ],
     });
   }

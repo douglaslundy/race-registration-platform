@@ -123,12 +123,12 @@ export default async function InscritosPage({
 
       <form method="GET" className="card flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Buscar por pedido, nome ou e-mail</label>
+          <label className="block text-xs text-gray-500 mb-1">Buscar por pedido, nome, e-mail ou CPF</label>
           <input
             type="text"
             name="q"
             defaultValue={q}
-            placeholder="Nº do pedido, nome ou e-mail"
+            placeholder="Nº do pedido, nome, e-mail ou CPF"
             className="input-field text-sm py-1.5"
           />
         </div>

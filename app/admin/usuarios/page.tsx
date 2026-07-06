@@ -210,7 +210,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
         {compact ? <input type="hidden" name="compact" value="1" /> : null}
         <div className="md:col-span-2">
           <label className="block text-xs font-medium text-gray-500 mb-1">Buscar</label>
-          <input name="q" defaultValue={q} className="input-field" placeholder="Nome ou e-mail" />
+          <input name="q" defaultValue={q} className="input-field" placeholder="Nome, e-mail ou CPF" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Perfil</label>

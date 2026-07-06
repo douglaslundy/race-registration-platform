@@ -39,4 +39,27 @@ describe("buildRegistrationWhere", () => {
   it("ignores empty string status", () => {
     expect(buildRegistrationWhere("evt-1", "")).toEqual({ eventId: "evt-1" });
   });
+
+  it("searches by order id, athlete name and email when q has no digits", () => {
+    expect(buildRegistrationWhere("evt-1", "", "maria")).toEqual({
+      eventId: "evt-1",
+      OR: [
+        { orderId: { contains: "maria", mode: "insensitive" } },
+        { athlete: { name: { contains: "maria", mode: "insensitive" } } },
+        { athlete: { email: { contains: "maria", mode: "insensitive" } } },
+      ],
+    });
+  });
+
+  it("also matches athlete CPF when q contains digits", () => {
+    expect(buildRegistrationWhere("evt-1", "", "111.444.777-35")).toEqual({
+      eventId: "evt-1",
+      OR: [
+        { orderId: { contains: "111.444.777-35", mode: "insensitive" } },
+        { athlete: { name: { contains: "111.444.777-35", mode: "insensitive" } } },
+        { athlete: { email: { contains: "111.444.777-35", mode: "insensitive" } } },
+        { athlete: { athleteProfile: { cpf: { contains: "11144477735" } } } },
+      ],
+    });
+  });
 });

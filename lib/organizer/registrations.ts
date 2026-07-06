@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { normalizeCpf } from "@/lib/cpf";
 
 export type RegistrationSortColumn = "name" | "date";
 export type SortDirection = "asc" | "desc";
@@ -29,6 +30,7 @@ export function buildRegistrationOrderBy(
 
 export function buildRegistrationWhere(eventId: string, status?: string, q?: string): Prisma.RegistrationWhereInput {
   const query = q?.trim();
+  const normalizedCpf = query ? normalizeCpf(query) : "";
   return {
     eventId,
     ...(status && VALID_REGISTRATION_STATUSES.includes(status) ? { status: status as never } : {}),
@@ -38,6 +40,9 @@ export function buildRegistrationWhere(eventId: string, status?: string, q?: str
             { orderId: { contains: query, mode: "insensitive" as const } },
             { athlete: { name: { contains: query, mode: "insensitive" as const } } },
             { athlete: { email: { contains: query, mode: "insensitive" as const } } },
+            ...(normalizedCpf
+              ? [{ athlete: { athleteProfile: { cpf: { contains: normalizedCpf } } } }]
+              : []),
           ],
         }
       : {}),
