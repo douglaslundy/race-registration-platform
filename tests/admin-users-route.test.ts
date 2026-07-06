@@ -26,8 +26,9 @@ describe("admin users API", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     dbMock.$transaction.mockImplementation(async (fn: any) =>
       fn({
-        auditLog: { updateMany: vi.fn() },
-        user: { delete: vi.fn() },
+        auditLog: { updateMany: vi.fn(), create: vi.fn() },
+        user: { delete: vi.fn(), update: vi.fn() },
+        athleteProfile: { upsert: vi.fn() },
       }),
     );
   });
@@ -161,7 +162,7 @@ describe("admin users API", () => {
       id: "user-1",
       email: "old@exemplo.com",
     });
-    dbMock.user.update.mockResolvedValueOnce({
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
       id: "user-1",
       name: "Usuário Atualizado",
       email: "novo@exemplo.com",
@@ -169,6 +170,14 @@ describe("admin users API", () => {
       active: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
+    const txAuditLogCreate = vi.fn();
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        user: { update: txUserUpdate },
+        athleteProfile: { upsert: vi.fn() },
+        auditLog: { create: txAuditLogCreate },
+      }),
+    );
 
     const res = await PATCH(
       new Request("http://localhost/api/admin/users/user-1", {
@@ -185,7 +194,7 @@ describe("admin users API", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(dbMock.user.update).toHaveBeenCalledWith(
+    expect(txUserUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "user-1" },
         data: expect.objectContaining({
@@ -197,7 +206,7 @@ describe("admin users API", () => {
         }),
       }),
     );
-    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+    expect(txAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           action: "USER_UPDATED",
@@ -209,7 +218,8 @@ describe("admin users API", () => {
 
   it("corrige CPF e data de nascimento de um atleta", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
-    dbMock.user.update.mockResolvedValueOnce({
+    dbMock.athleteProfile.findFirst.mockResolvedValueOnce(null);
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
       id: "user-1",
       name: "Atleta",
       email: "atleta@exemplo.com",
@@ -217,8 +227,14 @@ describe("admin users API", () => {
       active: true,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     });
-    dbMock.athleteProfile.findFirst.mockResolvedValueOnce(null);
-    dbMock.athleteProfile.upsert.mockResolvedValueOnce({});
+    const txAthleteProfileUpsert = vi.fn().mockResolvedValueOnce({});
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        user: { update: txUserUpdate },
+        athleteProfile: { upsert: txAthleteProfileUpsert },
+        auditLog: { create: vi.fn() },
+      }),
+    );
 
     const res = await PATCH(
       new Request("http://localhost/api/admin/users/user-1", {
@@ -229,7 +245,7 @@ describe("admin users API", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
+    expect(txAthleteProfileUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: "user-1" },
         update: expect.objectContaining({ cpf: "11144477735", birthDate: new Date("1990-01-01") }),
@@ -249,7 +265,7 @@ describe("admin users API", () => {
     );
 
     expect(res.status).toBe(400);
-    expect(dbMock.user.update).not.toHaveBeenCalled();
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("rejeita CPF já usado por outro atleta na correção do admin", async () => {
@@ -265,7 +281,22 @@ describe("admin users API", () => {
     );
 
     expect(res.status).toBe(409);
-    expect(dbMock.user.update).not.toHaveBeenCalled();
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejeita data de nascimento com formato inválido na correção do admin", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ birthDate: "not-a-date" }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("prevents deleting users with linked orders or registrations", async () => {
