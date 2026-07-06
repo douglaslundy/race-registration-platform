@@ -13,6 +13,7 @@ const GENDERS = [
 
 type ProfileData = {
   birthDate?: string | null;
+  cpf?: string | null;
   phone?: string | null;
   gender?: string | null;
   city?: string | null;
@@ -111,9 +112,28 @@ export default function PerfilPage() {
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados pessoais</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de nascimento</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de nascimento *</label>
               <input type="date" value={form.birthDate ?? ""} onChange={(e) => set("birthDate", e.target.value)}
                 className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                CPF {!form.cpf && "*"}
+              </label>
+              <input
+                type="text"
+                value={form.cpf ?? ""}
+                onChange={(e) => set("cpf", e.target.value)}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                disabled={Boolean(form.cpf)}
+                className="input w-full disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:text-gray-500"
+              />
+              {form.cpf && (
+                <p className="text-xs text-gray-500 mt-1">
+                  CPF confirmado não pode ser alterado. Em caso de erro, contate o suporte.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Gênero</label>
