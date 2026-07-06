@@ -13,7 +13,14 @@ export default async function EditAdminUserPage({ params }: { params: Promise<{ 
 
   const user = await db.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, active: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      active: true,
+      athleteProfile: { select: { cpf: true, birthDate: true } },
+    },
   });
 
   if (!user) notFound();

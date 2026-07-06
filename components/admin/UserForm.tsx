@@ -22,6 +22,7 @@ type InitialUser = {
   email: string;
   role: UserRole;
   active: boolean;
+  athleteProfile?: { cpf: string | null; birthDate: Date | string | null } | null;
 };
 
 export default function UserForm({
@@ -38,6 +39,12 @@ export default function UserForm({
   const [email, setEmail] = useState(initialUser?.email ?? "");
   const [role, setRole] = useState<UserRole>(initialUser?.role ?? "ATHLETE");
   const [active, setActive] = useState(initialUser?.active ?? true);
+  const [cpf, setCpf] = useState(initialUser?.athleteProfile?.cpf ?? "");
+  const [birthDate, setBirthDate] = useState(
+    initialUser?.athleteProfile?.birthDate
+      ? new Date(initialUser.athleteProfile.birthDate).toISOString().split("T")[0]
+      : "",
+  );
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +65,11 @@ export default function UserForm({
 
     if (!isEdit || password.trim()) {
       payload.password = password.trim();
+    }
+
+    if (isEdit && role === "ATHLETE") {
+      if (cpf.trim()) payload.cpf = cpf.trim();
+      if (birthDate) payload.birthDate = birthDate;
     }
 
     const res = await fetch(isEdit ? `/api/admin/users/${initialUser?.id}` : "/api/admin/users", {
@@ -131,6 +143,30 @@ export default function UserForm({
           </label>
         </div>
       </div>
+
+      {isEdit && role === "ATHLETE" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
+            <input
+              className="input-field"
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data de nascimento</label>
+            <input
+              type="date"
+              className="input-field"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
