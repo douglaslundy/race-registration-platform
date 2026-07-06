@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
 
 vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn(async () => "hashed-password") },
@@ -40,7 +39,8 @@ describe("POST /api/auth/register", () => {
   });
 
   it("rejeita cadastro de atleta sem CPF", async () => {
-    const { cpf, ...body } = validAthleteBody;
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.cpf;
     const res = await POST(makeRequest(body));
 
     expect(res.status).toBe(400);

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
-import { GET, PUT } from "@/app/api/athlete/profile/route";
+import { PUT } from "@/app/api/athlete/profile/route";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
