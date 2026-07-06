@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const registrations = await db.registration.findMany({
     where: { eventId },
     include: {
-      athlete: { select: { name: true, email: true } },
+      athlete: { select: { name: true, email: true, athleteProfile: { select: { cpf: true } } } },
       route: { select: { name: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true, priceAmount: true } },
@@ -30,11 +30,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (format === "csv") {
-    const header = "Nome,Email,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data\n";
+    const header = "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data\n";
     const rows = registrations.map((r) =>
       [
         r.athlete.name,
         r.athlete.email,
+        r.athlete.athleteProfile?.cpf ?? "",
         r.route?.name ?? "",
         r.category?.name ?? "",
         r.ticketBatch.name,
