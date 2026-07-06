@@ -79,6 +79,8 @@ export default async function InscritosPage({
               state: true,
               teamName: true,
               preferredShirtSize: true,
+              createdAt: true,
+              updatedAt: true,
             },
           },
         },

@@ -120,6 +120,8 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
           state: true,
           teamName: true,
           preferredShirtSize: true,
+          createdAt: true,
+          updatedAt: true,
         },
       },
     },

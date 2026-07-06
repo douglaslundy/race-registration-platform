@@ -39,6 +39,8 @@ export interface RegistrationRow {
       state: string | null;
       teamName: string | null;
       preferredShirtSize: string | null;
+      createdAt: Date;
+      updatedAt: Date;
     } | null;
   };
   route: { name: string } | null;

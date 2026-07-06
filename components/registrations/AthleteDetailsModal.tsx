@@ -12,6 +12,8 @@ interface AthleteProfileData {
   state: string | null;
   teamName: string | null;
   preferredShirtSize: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 interface RegistrationContextData {
@@ -104,6 +106,13 @@ export default function AthleteDetailsModal({
                 </p>
               )}
             </div>
+
+            {profile && (
+              <p className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500">
+                Cadastrado em {formatDate(profile.createdAt, "dd/MM/yyyy HH:mm")} · Última atualização em{" "}
+                {formatDate(profile.updatedAt, "dd/MM/yyyy HH:mm")}
+              </p>
+            )}
 
             {registrationContext && (
               <div className="mt-4">
