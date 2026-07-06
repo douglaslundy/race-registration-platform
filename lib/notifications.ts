@@ -29,6 +29,8 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
       registrationId: order.registrations[0].id,
       eventTitle: order.event?.title,
     });
+
+    await db.order.update({ where: { id: orderId }, data: { confirmationEmailSentAt: new Date() } });
   } catch (err) {
     console.error("[notifyOrderConfirmed] failed:", err);
   }

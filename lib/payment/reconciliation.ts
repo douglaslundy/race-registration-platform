@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
 import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
+import { notifyOrderConfirmed } from "@/lib/notifications";
 import { applyGatewayStatus } from "./sync-payment-status";
 
 export interface PaymentMismatch {
@@ -52,15 +53,40 @@ async function checkPendingMismatches(
       id: true,
       providerPaymentId: true,
       status: true,
-      order: { select: { id: true, event: { select: { title: true } } } },
+      order: {
+        select: {
+          id: true,
+          status: true,
+          event: { select: { title: true } },
+          registrations: { select: { id: true, ticketBatchId: true, status: true } },
+        },
+      },
     },
   });
 
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
-      const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
-      if (gatewayStatus !== payment.status) {
+      const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      if (gatewayStatus === payment.status) continue;
+
+      if (gatewayStatus === "PAID") {
+        await db.$transaction(async (tx) => {
+          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation", {
+            gatewayFeeAmount,
+            paidAt: paidAt ? new Date(paidAt) : new Date(),
+          });
+        });
+        void notifyOrderConfirmed(payment.order.id);
+        mismatches.push({
+          paymentId: payment.id,
+          orderId: payment.order.id,
+          eventTitle: payment.order.event.title,
+          localStatus: payment.status,
+          gatewayStatus,
+          corrected: true,
+        });
+      } else {
         mismatches.push({
           paymentId: payment.id,
           orderId: payment.order.id,
@@ -170,6 +196,7 @@ async function checkLateApprovalMismatches(
             paidAt: paidAt ? new Date(paidAt) : new Date(),
           });
         });
+        void notifyOrderConfirmed(payment.order.id);
         mismatches.push({
           paymentId: payment.id,
           orderId: payment.order.id,

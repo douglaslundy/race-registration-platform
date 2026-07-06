@@ -4,9 +4,11 @@ import { getPaymentProvider } from "@/lib/payment";
 
 vi.mock("@/lib/payment", () => ({ getPaymentProvider: vi.fn() }));
 vi.mock("@/lib/alerts/alert-settings", () => ({ getReconciliationAlertSettings: vi.fn() }));
+vi.mock("@/lib/notifications", () => ({ notifyOrderConfirmed: vi.fn() }));
 
 import { reconcilePayments } from "@/lib/payment/reconciliation";
 import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
+import { notifyOrderConfirmed } from "@/lib/notifications";
 
 const dbMock = db as any;
 
@@ -14,7 +16,12 @@ const pendingFixture = {
   id: "payment-1",
   providerPaymentId: "mp-1",
   status: "PENDING",
-  order: { id: "order-1", event: { title: "Corrida Teste" } },
+  order: {
+    id: "order-1",
+    status: "PENDING",
+    event: { title: "Corrida Teste" },
+    registrations: [{ id: "reg-9", ticketBatchId: "batch-9", status: "PENDING_PAYMENT" }],
+  },
 };
 
 const paidFixture = {
@@ -88,10 +95,52 @@ describe("reconcilePayments", () => {
     expect(call.where.order).toBeUndefined();
   });
 
-  it("detecta divergência PENDING sem corrigir sozinho", async () => {
+  it("corrige automaticamente um PENDING que o gateway diz estar PAID", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID", paidAt: "2026-07-06T10:00:00.000Z", gatewayFeeAmount: 150 }),
+    } as any);
+
+    const result = await reconcilePayments();
+
+    expect(dbMock.$transaction).toHaveBeenCalled();
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "payment-1" },
+        data: expect.objectContaining({ status: "PAID", paidAt: new Date("2026-07-06T10:00:00.000Z"), gatewayFeeAmount: 150 }),
+      }),
+    );
+    expect(dbMock.order.update).toHaveBeenCalledWith({ where: { id: "order-1" }, data: { status: "PAID" } });
+    expect(dbMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-9" }, data: { status: "CONFIRMED" } });
+    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1");
+    expect(result).toEqual({
+      checked: 1,
+      mismatches: [
+        { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
+      ],
+    });
+  });
+
+  it("usa a data atual como paidAt quando o gateway nao informa date_approved para um PENDING aprovado", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
       checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
+    } as any);
+
+    await reconcilePayments();
+
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "payment-1" },
+        data: expect.objectContaining({ status: "PAID", paidAt: expect.any(Date) }),
+      }),
+    );
+  });
+
+  it("detecta divergência PENDING para outro status sem corrigir automaticamente", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "CANCELLED" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -99,10 +148,11 @@ describe("reconcilePayments", () => {
     expect(result).toEqual({
       checked: 1,
       mismatches: [
-        { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false },
+        { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "CANCELLED", corrected: false },
       ],
     });
     expect(dbMock.payment.update).not.toHaveBeenCalled();
+    expect(notifyOrderConfirmed).not.toHaveBeenCalled();
   });
 
   it("não reporta nada quando o status do gateway bate com o local", async () => {
@@ -132,9 +182,14 @@ describe("reconcilePayments", () => {
     expect(result).toEqual({
       checked: 2,
       mismatches: [
-        { paymentId: "payment-4", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false },
+        { paymentId: "payment-4", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
       ],
     });
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "payment-4" }, data: expect.objectContaining({ status: "PAID" }) }),
+    );
+    expect(notifyOrderConfirmed).toHaveBeenCalledTimes(1);
+    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1");
   });
 
   it("corrige automaticamente um PAID que o gateway diz estar REFUNDED", async () => {
@@ -154,6 +209,7 @@ describe("reconcilePayments", () => {
     expect(result.mismatches).toEqual([
       { paymentId: "payment-2", orderId: "order-2", eventTitle: "Corrida Paga", localStatus: "PAID", gatewayStatus: "REFUNDED", corrected: true },
     ]);
+    expect(notifyOrderConfirmed).not.toHaveBeenCalled();
   });
 
   it("corrige automaticamente um PAID que o gateway diz estar em CHARGEBACK", async () => {
@@ -200,6 +256,7 @@ describe("reconcilePayments", () => {
     expect(result.mismatches).toEqual([
       { paymentId: "payment-3", orderId: "order-3", eventTitle: "Corrida Expirada", localStatus: "EXPIRED", gatewayStatus: "PAID", corrected: true },
     ]);
+    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-3");
   });
 
   it("usa a data atual como paidAt quando o gateway nao informa date_approved (aprovação atrasada)", async () => {
