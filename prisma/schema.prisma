@@ -160,7 +160,7 @@ model VerificationToken {
 model AthleteProfile {
   id                 String    @id @default(cuid())
   userId             String    @unique
-  cpf                String?
+  cpf                String?   @unique
   birthDate          DateTime?
   phone              String?
   gender             String?
