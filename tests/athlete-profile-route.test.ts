@@ -89,10 +89,7 @@ describe("PUT /api/athlete/profile", () => {
     const res = await PUT(makeRequest({ cpf: "111.444.777-35" }));
 
     expect(res.status).toBe(200);
-    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        update: expect.not.objectContaining({ birthDate: expect.anything() }),
-      }),
-    );
+    const call = dbMock.athleteProfile.upsert.mock.calls[0][0];
+    expect(Object.prototype.hasOwnProperty.call(call.update, "birthDate")).toBe(false);
   });
 });
