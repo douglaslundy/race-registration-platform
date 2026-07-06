@@ -1679,14 +1679,203 @@ git commit -m "feat: accept CPF and birth date correction in admin user edit rou
 
 ---
 
-### Task 12: Verificação final
+### Task 12: Exportar CPF no CSV de inscritos
+
+**Files:**
+- Modify: `app/api/events/[id]/registrations/route.ts`
+- Test: `tests/events-registrations-export-route.test.ts` (novo — esta rota não tinha nenhum teste)
+
+**Interfaces:** nenhuma nova — só adiciona uma coluna ao CSV já existente. Rota compartilhada por
+`/organizador/eventos/[id]/inscritos` e `/admin/eventos/[id]/inscritos` (ambas usam
+`ExportCsvButton` apontando para `GET /api/events/[id]/registrations?format=csv`).
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tests/events-registrations-export-route.test.ts`:
+
+```ts
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
+
+vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+
+import { GET } from "@/app/api/events/[id]/registrations/route";
+
+const authMock = vi.mocked(auth);
+const dbMock = db as any;
+
+function makeRequest() {
+  return new Request("http://localhost/api/events/event-1/registrations?format=csv") as any;
+}
+
+describe("GET /api/events/[id]/registrations?format=csv", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+  });
+
+  it("inclui a coluna CPF no cabeçalho e o valor do atleta nas linhas", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      {
+        athlete: { name: "Ana Silva", email: "ana@example.com", athleteProfile: { cpf: "11144477735" } },
+        route: { name: "10km" },
+        category: null,
+        ticketBatch: { name: "Lote 1", priceAmount: 5000 },
+        shirtSize: "M",
+        teamName: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        status: "CONFIRMED",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+    const csv = await res.text();
+
+    expect(csv.split("\n")[0]).toBe(
+      "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data",
+    );
+    expect(csv).toContain('"Ana Silva","ana@example.com","11144477735",');
+  });
+
+  it("usa string vazia quando o atleta ainda não tem CPF cadastrado", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      {
+        athlete: { name: "Bruno Costa", email: "bruno@example.com", athleteProfile: null },
+        route: null,
+        category: null,
+        ticketBatch: { name: "Lote 1", priceAmount: 5000 },
+        shirtSize: null,
+        teamName: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        status: "PENDING_PAYMENT",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+    const csv = await res.text();
+
+    expect(csv).toContain('"Bruno Costa","bruno@example.com","",');
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run tests/events-registrations-export-route.test.ts`
+Expected: FAIL — o cabeçalho atual não tem a coluna `CPF` e a query não seleciona
+`athleteProfile.cpf`, então a primeira asserção de cada teste falha.
+
+- [ ] **Step 3: Implementar na rota**
+
+Em `app/api/events/[id]/registrations/route.ts`, trocar o bloco `include` da consulta (linhas
+21-30):
+
+```ts
+  const registrations = await db.registration.findMany({
+    where: { eventId },
+    include: {
+      athlete: { select: { name: true, email: true } },
+      route: { select: { name: true } },
+      category: { select: { name: true } },
+      ticketBatch: { select: { name: true, priceAmount: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+```
+
+por:
+
+```ts
+  const registrations = await db.registration.findMany({
+    where: { eventId },
+    include: {
+      athlete: { select: { name: true, email: true, athleteProfile: { select: { cpf: true } } } },
+      route: { select: { name: true } },
+      category: { select: { name: true } },
+      ticketBatch: { select: { name: true, priceAmount: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+```
+
+E trocar o bloco do CSV (linhas 32-50):
+
+```ts
+  if (format === "csv") {
+    const header = "Nome,Email,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data\n";
+    const rows = registrations.map((r) =>
+      [
+        r.athlete.name,
+        r.athlete.email,
+        r.route?.name ?? "",
+        r.category?.name ?? "",
+        r.ticketBatch.name,
+        r.shirtSize ?? "",
+        r.teamName ?? "",
+        r.emergencyContactName ?? "",
+        r.emergencyContactPhone ?? "",
+        r.status,
+        r.createdAt.toISOString(),
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    );
+```
+
+por:
+
+```ts
+  if (format === "csv") {
+    const header = "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data\n";
+    const rows = registrations.map((r) =>
+      [
+        r.athlete.name,
+        r.athlete.email,
+        r.athlete.athleteProfile?.cpf ?? "",
+        r.route?.name ?? "",
+        r.category?.name ?? "",
+        r.ticketBatch.name,
+        r.shirtSize ?? "",
+        r.teamName ?? "",
+        r.emergencyContactName ?? "",
+        r.emergencyContactPhone ?? "",
+        r.status,
+        r.createdAt.toISOString(),
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    );
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run tests/events-registrations-export-route.test.ts`
+Expected: PASS (2 tests).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/api/events/[id]/registrations/route.ts tests/events-registrations-export-route.test.ts
+git commit -m "feat: include athlete CPF in event registrations CSV export"
+```
+
+---
+
+### Task 13: Verificação final
 
 **Files:** nenhum (só execução de comandos de verificação).
 
 - [ ] **Step 1: Rodar a suíte completa de testes**
 
 Run: `npx vitest run`
-Expected: todos os testes passando (a suíte anterior tinha 316 testes; esta feature adiciona os de `cpf.test.ts`, `profile-completion.test.ts`, `register-route.test.ts`, `athlete-profile-route.test.ts` e os 3 novos em `admin-users-route.test.ts`).
+Expected: todos os testes passando (a suíte anterior tinha 316 testes; esta feature adiciona os de `cpf.test.ts`, `profile-completion.test.ts`, `register-route.test.ts`, `athlete-profile-route.test.ts`, `events-registrations-export-route.test.ts` e os 3 novos em `admin-users-route.test.ts`).
 
 - [ ] **Step 2: Type-check completo**
 
@@ -1697,7 +1886,7 @@ Expected: sem output (sem erros).
 
 Run:
 ```bash
-npx eslint lib/cpf.ts lib/auth/profile-completion.ts app/api/auth/register/route.ts components/auth/RegisterForm.tsx app/api/athlete/profile/route.ts app/dashboard/perfil/page.tsx app/dashboard/layout.tsx "app/(public)/inscricao/[slug]/page.tsx" app/completar-cadastro/layout.tsx app/completar-cadastro/page.tsx app/completar-cadastro/CompletarCadastroForm.tsx "app/admin/usuarios/[id]/editar/page.tsx" components/admin/UserForm.tsx app/api/admin/users/[id]/route.ts tests/cpf.test.ts tests/profile-completion.test.ts tests/register-route.test.ts tests/athlete-profile-route.test.ts tests/admin-users-route.test.ts
+npx eslint lib/cpf.ts lib/auth/profile-completion.ts app/api/auth/register/route.ts components/auth/RegisterForm.tsx app/api/athlete/profile/route.ts app/dashboard/perfil/page.tsx app/dashboard/layout.tsx "app/(public)/inscricao/[slug]/page.tsx" app/completar-cadastro/layout.tsx app/completar-cadastro/page.tsx app/completar-cadastro/CompletarCadastroForm.tsx "app/admin/usuarios/[id]/editar/page.tsx" components/admin/UserForm.tsx app/api/admin/users/[id]/route.ts "app/api/events/[id]/registrations/route.ts" tests/cpf.test.ts tests/profile-completion.test.ts tests/register-route.test.ts tests/athlete-profile-route.test.ts tests/admin-users-route.test.ts tests/events-registrations-export-route.test.ts
 ```
 Expected: 0 erros (warnings de `no-explicit-any` nos arquivos de teste são aceitáveis, seguem o padrão já existente no projeto).
 
@@ -1712,7 +1901,8 @@ Este ambiente não consegue conectar no banco de desenvolvimento (Supabase inace
 5. Logar com outra conta de atleta sem CPF e ir direto para `/inscricao/<slug-de-um-evento-aberto>` → deve redirecionar para `/completar-cadastro?callbackUrl=/inscricao/<slug>` e, após salvar, voltar para a página de inscrição.
 6. Em "Meus Dados", confirmar que o campo CPF fica desabilitado depois de salvo.
 7. Como admin, editar o usuário desse atleta e confirmar que dá para corrigir CPF/nascimento por lá.
-8. **Antes de aplicar em produção**: rodar a query de checagem de CPFs duplicados (Task 2) contra o banco de produção antes do `prisma db push`.
+8. Exportar o CSV de inscritos de um evento (organizador e admin) e confirmar que a coluna CPF aparece com o valor certo (ou vazia, para inscrições de atletas sem CPF).
+9. **Antes de aplicar em produção**: rodar a query de checagem de CPFs duplicados (Task 2) contra o banco de produção antes do `prisma db push`.
 
 - [ ] **Step 5: Commit final (se houver ajustes desta etapa)**
 
