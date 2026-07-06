@@ -23,7 +23,7 @@ describe("PUT /api/athlete/profile", () => {
   });
 
   it("retorna 401 quando não autenticado", async () => {
-    authMock.mockResolvedValueOnce(null);
+    authMock.mockResolvedValueOnce(null as any);
     const res = await PUT(makeRequest({ cpf: "111.444.777-35" }));
     expect(res.status).toBe(401);
   });
