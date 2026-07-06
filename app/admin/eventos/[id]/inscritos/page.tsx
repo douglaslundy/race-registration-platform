@@ -86,6 +86,7 @@ export default async function AdminInscritosPage({
         select: {
           id: true,
           totalAmount: true,
+          confirmationEmailSentAt: true,
           payments: {
             orderBy: { createdAt: "desc" },
             take: 1,
@@ -171,14 +172,22 @@ export default async function AdminInscritosPage({
           registrations={registrations}
           renderActions={(r) => {
             const payment = r.order.payments[0];
-            if (payment?.status === "EXPIRED" || payment?.status === "CANCELLED") {
-              return (
-                <ResendPaymentNotificationButton
-                  endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}
-                />
-              );
-            }
-            return null;
+            return (
+              <>
+                {(payment?.status === "EXPIRED" || payment?.status === "CANCELLED") && (
+                  <ResendPaymentNotificationButton
+                    endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}
+                  />
+                )}
+                {r.status === "CONFIRMED" && !r.order.confirmationEmailSentAt && (
+                  <ResendPaymentNotificationButton
+                    endpoint={`/api/admin/registrations/${r.id}/resend-confirmation-email`}
+                    label="Enviar e-mail de confirmação"
+                    loadingLabel="Enviando..."
+                  />
+                )}
+              </>
+            );
           }}
         />
       )}

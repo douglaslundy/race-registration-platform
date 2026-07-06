@@ -7,8 +7,8 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 export default function AdminNav() {
   return (
     <nav className="bg-gray-900 dark:bg-gray-950 text-white px-4 py-3 border-b border-gray-800">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-6 text-sm">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <Link href="/admin" className="font-bold text-yellow-400">Admin</Link>
           <Link href="/admin/eventos" className="hover:text-gray-300">Eventos</Link>
           <Link href="/admin/usuarios" className="hover:text-gray-300">Usuários</Link>

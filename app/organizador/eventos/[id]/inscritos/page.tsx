@@ -90,6 +90,7 @@ export default async function InscritosPage({
         select: {
           id: true,
           totalAmount: true,
+          confirmationEmailSentAt: true,
           payments: {
             orderBy: { createdAt: "desc" },
             take: 1,
@@ -183,6 +184,13 @@ export default async function InscritosPage({
                 {(payment?.status === "EXPIRED" || payment?.status === "CANCELLED") && (
                   <ResendPaymentNotificationButton
                     endpoint={`/api/organizer/registrations/${r.id}/resend-payment-notification`}
+                  />
+                )}
+                {r.status === "CONFIRMED" && !r.order.confirmationEmailSentAt && (
+                  <ResendPaymentNotificationButton
+                    endpoint={`/api/organizer/registrations/${r.id}/resend-confirmation-email`}
+                    label="Enviar e-mail de confirmação"
+                    loadingLabel="Enviando..."
                   />
                 )}
               </>

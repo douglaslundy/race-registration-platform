@@ -47,6 +47,7 @@ export interface RegistrationRow {
   order: {
     id: string;
     totalAmount: number;
+    confirmationEmailSentAt: Date | null;
     payments: { method: string; paidAt: Date | null; status: string; providerPaymentId: string | null }[];
   };
 }
@@ -60,21 +61,19 @@ export default function RegistrationsTable({
 }) {
   return (
     <div className="card overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-gray-500 border-b">
-            <th className="pb-2 pr-4">Atleta</th>
-            <th className="pb-2 pr-4">Percurso</th>
-            <th className="pb-2 pr-4">Categoria</th>
-            <th className="pb-2 pr-4">Lote</th>
-            <th className="pb-2 pr-4">Camiseta</th>
-            <th className="pb-2 pr-4">Pagamento</th>
-            <th className="pb-2 pr-4">Valor</th>
-            <th className="pb-2 pr-4">Data inscrição</th>
-            <th className="pb-2 pr-4">Data pag.</th>
-            <th className="pb-2 pr-4">Pedido</th>
-            <th className="pb-2 pr-4">Cód. transação</th>
-            <th className="pb-2 pr-4">Status</th>
+            <th className="pb-2 pr-3">Atleta</th>
+            <th className="pb-2 pr-3">Percurso / Categoria</th>
+            <th className="pb-2 pr-3">Lote</th>
+            <th className="pb-2 pr-3">Camiseta</th>
+            <th className="pb-2 pr-3">Pagamento</th>
+            <th className="pb-2 pr-3">Valor</th>
+            <th className="pb-2 pr-3">Datas</th>
+            <th className="pb-2 pr-3">Pedido / Transação</th>
+            <th className="pb-2 pr-3">Status</th>
+            <th className="pb-2 pr-3">E-mail</th>
             {renderActions && <th className="pb-2">Ações</th>}
           </tr>
         </thead>
@@ -84,9 +83,9 @@ export default function RegistrationsTable({
             const statusInfo = REGISTRATION_STATUS[r.status];
             return (
               <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
-                <td className="py-2 pr-4">
-                  <p className="font-medium">{r.athlete.name}</p>
-                  <p className="text-xs text-gray-500">{r.athlete.email}</p>
+                <td className="py-2 pr-3 max-w-[10rem]">
+                  <p className="font-medium truncate" title={r.athlete.name}>{r.athlete.name}</p>
+                  <p className="text-gray-500 truncate" title={r.athlete.email}>{r.athlete.email}</p>
                   <AthleteDetailsModal
                     athleteName={r.athlete.name}
                     athleteEmail={r.athlete.email}
@@ -98,32 +97,45 @@ export default function RegistrationsTable({
                     }}
                   />
                 </td>
-                <td className="py-2 pr-4 text-gray-700">{r.route?.name ?? "—"}</td>
-                <td className="py-2 pr-4 text-gray-700">{r.category?.name ?? "—"}</td>
-                <td className="py-2 pr-4 text-gray-700">{r.ticketBatch.name}</td>
-                <td className="py-2 pr-4 text-gray-700">{r.shirtSize ?? "—"}</td>
-                <td className="py-2 pr-4 text-gray-700">
+                <td className="py-2 pr-3 text-gray-700">
+                  <p>{r.route?.name ?? "—"}</p>
+                  <p className="text-gray-500">{r.category?.name ?? "—"}</p>
+                </td>
+                <td className="py-2 pr-3 text-gray-700">{r.ticketBatch.name}</td>
+                <td className="py-2 pr-3 text-gray-700">{r.shirtSize ?? "—"}</td>
+                <td className="py-2 pr-3 text-gray-700">
                   {payment ? PAYMENT_METHOD_LABEL[payment.method] ?? payment.method : "—"}
                 </td>
-                <td className="py-2 pr-4 text-gray-700">
+                <td className="py-2 pr-3 text-gray-700">
                   {formatCurrency(r.order.totalAmount)}
                 </td>
-                <td className="py-2 pr-4 text-gray-700">
-                  {formatDate(r.createdAt, "dd/MM/yyyy HH:mm")}
+                <td className="py-2 pr-3 text-gray-700">
+                  <p>{formatDate(r.createdAt, "dd/MM/yy HH:mm")}</p>
+                  <p className="text-gray-500">
+                    {payment?.paidAt ? formatDate(payment.paidAt, "dd/MM/yy HH:mm") : "—"}
+                  </p>
                 </td>
-                <td className="py-2 pr-4 text-gray-700">
-                  {payment?.paidAt ? formatDate(payment.paidAt, "dd/MM/yyyy HH:mm") : "—"}
+                <td className="py-2 pr-3 text-gray-500 font-mono">
+                  <p className="truncate max-w-[7rem]" title={r.order.id}>{r.order.id}</p>
+                  <p className="truncate max-w-[7rem]">{payment?.providerPaymentId ?? "—"}</p>
                 </td>
-                <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[8rem]" title={r.order.id}>
-                  {r.order.id}
-                </td>
-                <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[10rem]">
-                  {payment?.providerPaymentId ?? "—"}
-                </td>
-                <td className="py-2 pr-4">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
+                <td className="py-2 pr-3">
+                  <span className={`px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
                     {statusInfo?.label ?? r.status}
                   </span>
+                </td>
+                <td className="py-2 pr-3">
+                  {r.status === "CONFIRMED" ? (
+                    <span
+                      className={`px-2 py-0.5 rounded-full ${
+                        r.order.confirmationEmailSentAt ? BADGE.green : BADGE.yellow
+                      }`}
+                    >
+                      {r.order.confirmationEmailSentAt ? "Enviado" : "Pendente"}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
                 </td>
                 {renderActions && (
                   <td className="py-2">

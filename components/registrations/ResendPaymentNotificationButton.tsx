@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ResendPaymentNotificationButton({ endpoint }: { endpoint: string }) {
+export default function ResendPaymentNotificationButton({
+  endpoint,
+  label = "Reenviar notificação",
+  loadingLabel = "Reenviando...",
+}: {
+  endpoint: string;
+  label?: string;
+  loadingLabel?: string;
+}) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -25,7 +33,7 @@ export default function ResendPaymentNotificationButton({ endpoint }: { endpoint
       disabled={loading}
       className="text-xs text-blue-600 hover:underline disabled:opacity-50"
     >
-      {loading ? "Reenviando..." : "Reenviar notificação"}
+      {loading ? loadingLabel : label}
     </button>
   );
 }
