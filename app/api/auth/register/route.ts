@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 
 const registerSchema = z
   .object({
@@ -10,13 +11,30 @@ const registerSchema = z
     password: z.string().min(8),
     role: z.enum(["ATHLETE", "ORGANIZER"]).default("ATHLETE"),
     birthDate: z.string().optional(),
+    cpf: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.role === "ATHLETE" && !data.birthDate) {
+    if (data.role !== "ATHLETE") return;
+
+    if (!data.birthDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Data de nascimento é obrigatória",
         path: ["birthDate"],
+      });
+    }
+
+    if (!data.cpf) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CPF é obrigatório",
+        path: ["cpf"],
+      });
+    } else if (!isValidCpf(data.cpf)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CPF inválido",
+        path: ["cpf"],
       });
     }
   });
@@ -30,11 +48,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { name, email, password, role, birthDate } = parsed.data;
+    const { name, email, password, role, birthDate, cpf } = parsed.data;
 
     const exists = await db.user.findUnique({ where: { email } });
     if (exists) {
       return NextResponse.json({ error: "E-mail já cadastrado" }, { status: 409 });
+    }
+
+    let normalizedCpf: string | undefined;
+    if (role === "ATHLETE" && cpf) {
+      normalizedCpf = normalizeCpf(cpf);
+      const cpfTaken = await db.athleteProfile.findFirst({ where: { cpf: normalizedCpf } });
+      if (cpfTaken) {
+        return NextResponse.json({ error: "Este CPF já está cadastrado em outra conta" }, { status: 409 });
+      }
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -46,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     if (role === "ATHLETE" && birthDate) {
       await db.athleteProfile.create({
-        data: { userId: user.id, birthDate: new Date(birthDate) },
+        data: { userId: user.id, birthDate: new Date(birthDate), cpf: normalizedCpf },
       });
     }
 
