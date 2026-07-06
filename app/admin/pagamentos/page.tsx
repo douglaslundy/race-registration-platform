@@ -108,7 +108,12 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const totalAmount = await db.payment.aggregate({
     _sum: { amount: true },
-    where: { status: "PAID", order: { status: "PAID" } },
+    where: {
+      AND: [
+        buildAdminPaymentWhere({ q, method, dateFrom, dateTo, status: "PAID" }),
+        { order: { status: "PAID" } },
+      ],
+    },
   });
 
   const hasFilters = Boolean(q) || Boolean(status) || Boolean(method) || Boolean(dateFrom) || Boolean(dateTo);

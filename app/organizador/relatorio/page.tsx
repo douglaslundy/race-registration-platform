@@ -8,6 +8,7 @@ import { buildOrganizerOrderWhere, buildOrganizerOrderFeeWhere, buildOrganizerPa
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
+import ReportKpiLegend from "@/components/ui/ReportKpiLegend";
 
 export const metadata: Metadata = { title: "Relatório Financeiro" };
 export const dynamic = "force-dynamic";
@@ -48,7 +49,7 @@ export default async function OrganizerRelatorioPage({
   const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg, payoutsByStatus, payouts, nonPaidOrdersAgg, events] =
     await Promise.all([
       db.payment.aggregate({
-        _sum: { amount: true },
+        _sum: { amount: true, gatewayFeeAmount: true },
         _count: { id: true },
         where: buildOrganizerPaymentWhere(filter, "PAID"),
       }),
@@ -108,6 +109,7 @@ export default async function OrganizerRelatorioPage({
   const platformFeeActual = orderFeeAgg._sum.platformFeeAmount ?? 0;
   const serviceFeeActual = orderFeeAgg._sum.paymentFeeAmount ?? 0;
   const eventRevenue = orderFeeAgg._sum.subtotalAmount ?? 0;
+  const gatewayFeeActual = paymentsAgg._sum.gatewayFeeAmount ?? 0;
 
   const payoutStatusMap = new Map(
     payoutsByStatus.map((row) => [row.status, { count: row._count.id, net: row._sum.netAmount ?? 0 }])
@@ -166,6 +168,10 @@ export default async function OrganizerRelatorioPage({
           <p className="text-gray-500 text-sm mt-1">Taxa de serviço</p>
         </div>
         <div className="card text-center">
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(gatewayFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Comissão do gateway</p>
+        </div>
+        <div className="card text-center">
           <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
           <p className="text-gray-500 text-sm mt-1">Receita bruta</p>
         </div>
@@ -186,6 +192,8 @@ export default async function OrganizerRelatorioPage({
           <p className="text-gray-500 text-sm mt-1">Repasse líquido</p>
         </div>
       </div>
+
+      <ReportKpiLegend />
 
       <div className="card space-y-3">
         <h2 className="font-semibold">Pedidos por status</h2>

@@ -8,13 +8,31 @@ import type {
   PaymentWebhookPayload,
   RefundPaymentInput,
   RefundPaymentResult,
-  PaymentStatusCheck,
+  PaymentStatusResult,
 } from "./types";
 
 async function getClient() {
   const token = await getMercadoPagoAccessToken();
   if (!token) throw new Error("MP_ACCESS_TOKEN não configurado");
   return new MercadoPagoConfig({ accessToken: token, options: { timeout: 10000 } });
+}
+
+interface MPFeeDetail {
+  type?: string;
+  amount?: number;
+  fee_payer?: string;
+}
+
+// Soma as taxas que o Mercado Pago cobra do recebedor (fee_payer: "collector"),
+// convertendo de reais (float) para centavos. Retorna undefined se o pagamento
+// ainda nao tiver fee_details (ex: Pix/boleto pendentes).
+export function extractGatewayFeeAmount(res: unknown): number | undefined {
+  const feeDetails = (res as { fee_details?: MPFeeDetail[] })?.fee_details;
+  if (!feeDetails || feeDetails.length === 0) return undefined;
+  const totalBRL = feeDetails
+    .filter((f) => !f.fee_payer || f.fee_payer === "collector")
+    .reduce((sum, f) => sum + (f.amount ?? 0), 0);
+  return totalBRL > 0 ? Math.round(totalBRL * 100) : undefined;
 }
 
 export class MercadoPagoProvider implements PaymentProvider {
@@ -46,6 +64,7 @@ export class MercadoPagoProvider implements PaymentProvider {
       return {
         providerPaymentId: String(res.id),
         status: res.status === "approved" ? "PAID" : "PENDING",
+        gatewayFeeAmount: res.status === "approved" ? extractGatewayFeeAmount(res) : undefined,
         pixQrCodeText:
           (res as unknown as {
             point_of_interaction?: { transaction_data?: { qr_code?: string } };
@@ -170,6 +189,7 @@ export class MercadoPagoProvider implements PaymentProvider {
     return {
       providerPaymentId: String(resCC.id),
       status: resCC.status === "approved" ? "PAID" : "PENDING",
+      gatewayFeeAmount: resCC.status === "approved" ? extractGatewayFeeAmount(resCC) : undefined,
     };
   }
 
@@ -220,11 +240,11 @@ export class MercadoPagoProvider implements PaymentProvider {
     };
   }
 
-  async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusCheck> {
+  async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusResult> {
     const client = await getClient();
     const paymentApi = new Payment(client);
     const res = await paymentApi.get({ id: providerPaymentId });
-    const statusMap: Record<string, PaymentStatusCheck> = {
+    const statusMap: Record<string, PaymentStatusResult["status"]> = {
       approved: "PAID",
       cancelled: "CANCELLED",
       rejected: "CANCELLED",
@@ -232,6 +252,10 @@ export class MercadoPagoProvider implements PaymentProvider {
       charged_back: "CHARGEBACK",
       expired: "EXPIRED",
     };
-    return statusMap[String(res.status)] ?? "PENDING";
+    const status = statusMap[String(res.status)] ?? "PENDING";
+    return {
+      status,
+      gatewayFeeAmount: status === "PAID" ? extractGatewayFeeAmount(res) : undefined,
+    };
   }
 }

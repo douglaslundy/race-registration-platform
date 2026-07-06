@@ -5,6 +5,6 @@ describe("SandboxPaymentProvider.checkPaymentStatus", () => {
   it("sempre retorna PENDING (não há gateway real para consultar)", async () => {
     const provider = new SandboxPaymentProvider();
     const result = await provider.checkPaymentStatus("sandbox_abc");
-    expect(result).toBe("PENDING");
+    expect(result).toEqual({ status: "PENDING" });
   });
 });

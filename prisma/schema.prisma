@@ -374,6 +374,7 @@ model Payment {
   expiresAt         DateTime?
   paidAt            DateTime?
   refundedAt        DateTime?
+  gatewayFeeAmount  Int?          // centavos - comissao cobrada pelo gateway (ex: Mercado Pago)
   rawPayload        Json?
   idempotencyKey    String        @unique
   createdAt         DateTime      @default(now())

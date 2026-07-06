@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
       amount: checkout.totalAmount,
       idempotencyKey,
       paidAt: paymentResult.status === "PAID" ? new Date() : null,
+      gatewayFeeAmount: paymentResult.gatewayFeeAmount ?? null,
       pixQrCodeText: paymentResult.pixQrCodeText ?? null,
       boletoUrl: paymentResult.boletoUrl ?? null,
       expiresAt: paymentResult.expiresAt ? new Date(paymentResult.expiresAt) : null,

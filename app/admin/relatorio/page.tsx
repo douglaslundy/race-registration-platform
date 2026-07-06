@@ -7,6 +7,7 @@ import { buildReportOrderWhere, buildReportOrderFeeWhere, buildReportPaymentWher
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
+import ReportKpiLegend from "@/components/ui/ReportKpiLegend";
 
 export const metadata: Metadata = { title: "Relatório Financeiro — Admin" };
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export default async function AdminRelatorioPage({
     events,
   ] = await Promise.all([
     db.payment.aggregate({
-      _sum: { amount: true },
+      _sum: { amount: true, gatewayFeeAmount: true },
       _count: { id: true },
       where: buildReportPaymentWhere(filter, "PAID"),
     }),
@@ -108,6 +109,7 @@ export default async function AdminRelatorioPage({
   const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
   const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
   const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
+  const gatewayFeeActual = paymentsAgg._sum.gatewayFeeAmount ?? 0;
 
   const METHOD_LABEL: Record<string, string> = {
     PIX: "Pix", CREDIT_CARD: "Cartão de Crédito", DEBIT_CARD: "Débito", BOLETO: "Boleto",
@@ -166,6 +168,10 @@ export default async function AdminRelatorioPage({
           <p className="text-gray-500 text-sm mt-1">Taxa de serviço</p>
         </div>
         <div className="card text-center">
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(gatewayFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Comissão do gateway</p>
+        </div>
+        <div className="card text-center">
           <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
           <p className="text-gray-500 text-sm mt-1">Receita bruta</p>
         </div>
@@ -182,6 +188,8 @@ export default async function AdminRelatorioPage({
           <p className="text-gray-500 text-sm mt-1">Receita líquida</p>
         </div>
       </div>
+
+      <ReportKpiLegend />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card text-center">

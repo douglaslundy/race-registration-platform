@@ -32,7 +32,7 @@ export async function applyGatewayStatus(
   registrations: SyncableRegistration[],
   newStatus: GatewayPaymentStatus,
   source: SyncSource,
-  options?: { paidAt?: Date; rawPayload?: unknown },
+  options?: { paidAt?: Date; rawPayload?: unknown; gatewayFeeAmount?: number },
 ): Promise<{ changed: boolean }> {
   if (newStatus === payment.status) return { changed: false };
   if (payment.status === "REFUNDED" || payment.status === "CHARGEBACK") return { changed: false };
@@ -71,6 +71,7 @@ export async function applyGatewayStatus(
     data: {
       status: newStatus,
       ...(options?.paidAt ? { paidAt: options.paidAt } : {}),
+      ...(options?.gatewayFeeAmount !== undefined ? { gatewayFeeAmount: options.gatewayFeeAmount } : {}),
       ...(newStatus === "REFUNDED" || newStatus === "CHARGEBACK" ? { refundedAt: new Date() } : {}),
       ...(options?.rawPayload !== undefined ? { rawPayload: options.rawPayload as Prisma.InputJsonValue } : {}),
     },

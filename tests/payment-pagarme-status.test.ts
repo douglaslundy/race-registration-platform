@@ -21,37 +21,37 @@ describe("PagarMeProvider.checkPaymentStatus", () => {
       "https://api.pagar.me/core/v5/charges/ch_123",
       expect.objectContaining({ method: "GET" }),
     );
-    expect(result).toBe("PAID");
+    expect(result.status).toBe("PAID");
   });
 
   it("mapeia 'overpaid' para PAID", async () => {
     (global.fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ status: "overpaid" }) });
     const provider = new PagarMeProvider();
-    expect(await provider.checkPaymentStatus("ch_123")).toBe("PAID");
+    expect((await provider.checkPaymentStatus("ch_123")).status).toBe("PAID");
   });
 
   it("mapeia 'refunded' para REFUNDED", async () => {
     (global.fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ status: "refunded" }) });
     const provider = new PagarMeProvider();
-    expect(await provider.checkPaymentStatus("ch_123")).toBe("REFUNDED");
+    expect((await provider.checkPaymentStatus("ch_123")).status).toBe("REFUNDED");
   });
 
   it("mapeia 'chargedback' para CHARGEBACK", async () => {
     (global.fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ status: "chargedback" }) });
     const provider = new PagarMeProvider();
-    expect(await provider.checkPaymentStatus("ch_123")).toBe("CHARGEBACK");
+    expect((await provider.checkPaymentStatus("ch_123")).status).toBe("CHARGEBACK");
   });
 
   it("mapeia 'failed' para CANCELLED", async () => {
     (global.fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ status: "failed" }) });
     const provider = new PagarMeProvider();
-    expect(await provider.checkPaymentStatus("ch_123")).toBe("CANCELLED");
+    expect((await provider.checkPaymentStatus("ch_123")).status).toBe("CANCELLED");
   });
 
   it("mapeia qualquer outro status (ex.: 'pending') para PENDING", async () => {
     (global.fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ status: "pending" }) });
     const provider = new PagarMeProvider();
-    expect(await provider.checkPaymentStatus("ch_123")).toBe("PENDING");
+    expect((await provider.checkPaymentStatus("ch_123")).status).toBe("PENDING");
   });
 
   it("lança erro quando a chamada falha", async () => {

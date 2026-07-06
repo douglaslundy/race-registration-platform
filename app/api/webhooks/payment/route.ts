@@ -5,10 +5,11 @@ import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
+import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
 
 async function fetchMPPaymentStatus(
   paymentId: string
-): Promise<{ status: string; paidAt?: string } | null> {
+): Promise<{ status: string; paidAt?: string; gatewayFeeAmount?: number } | null> {
   const token = await getMercadoPagoAccessToken();
   if (!token) return null;
   try {
@@ -17,7 +18,11 @@ async function fetchMPPaymentStatus(
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return { status: data.status, paidAt: data.date_approved };
+    return {
+      status: data.status,
+      paidAt: data.date_approved,
+      gatewayFeeAmount: data.status === "approved" ? extractGatewayFeeAmount(data) : undefined,
+    };
   } catch {
     return null;
   }
@@ -70,6 +75,7 @@ export async function POST(req: NextRequest) {
         providerPaymentId: mpPaymentId,
         status: MP_STATUS_MAP[real.status] ?? "CANCELLED",
         paidAt: real.paidAt,
+        gatewayFeeAmount: real.gatewayFeeAmount,
         rawPayload: payload,
       };
     }
@@ -100,6 +106,7 @@ export async function POST(req: NextRequest) {
       "webhook",
       {
         paidAt: event.paidAt ? new Date(event.paidAt) : undefined,
+        gatewayFeeAmount: event.gatewayFeeAmount,
         rawPayload: event.rawPayload,
       },
     );

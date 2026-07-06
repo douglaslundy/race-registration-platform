@@ -91,7 +91,7 @@ describe("reconcilePayments", () => {
   it("detecta divergência PENDING sem corrigir sozinho", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -108,7 +108,7 @@ describe("reconcilePayments", () => {
   it("não reporta nada quando o status do gateway bate com o local", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PENDING"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PENDING" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -123,7 +123,7 @@ describe("reconcilePayments", () => {
       .mockResolvedValueOnce([]);
     const checkPaymentStatus = vi.fn()
       .mockRejectedValueOnce(new Error("gateway down"))
-      .mockResolvedValueOnce("PAID");
+      .mockResolvedValueOnce({ status: "PAID" });
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
 
     const result = await reconcilePayments();
@@ -140,7 +140,7 @@ describe("reconcilePayments", () => {
   it("corrige automaticamente um PAID que o gateway diz estar REFUNDED", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([paidFixture]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("REFUNDED"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "REFUNDED" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -159,7 +159,7 @@ describe("reconcilePayments", () => {
   it("corrige automaticamente um PAID que o gateway diz estar em CHARGEBACK", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([paidFixture]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("CHARGEBACK"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "CHARGEBACK" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -172,7 +172,7 @@ describe("reconcilePayments", () => {
   it("não mexe num pagamento PAID cujo status no gateway ainda é PAID", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([paidFixture]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -184,7 +184,7 @@ describe("reconcilePayments", () => {
   it("reativa um pagamento EXPIRED que o gateway diz estar PAID (aprovação atrasada)", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([expiredFixture]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
     } as any);
 
     const result = await reconcilePayments();
@@ -200,9 +200,9 @@ describe("reconcilePayments", () => {
     dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([paidFixture]).mockResolvedValueOnce([expiredFixture]);
     // Cada verificação bate com o status local (sem divergência) — só valida a soma do "checked".
     const checkPaymentStatus = vi.fn()
-      .mockResolvedValueOnce("PENDING")
-      .mockResolvedValueOnce("PAID")
-      .mockResolvedValueOnce("EXPIRED");
+      .mockResolvedValueOnce({ status: "PENDING" })
+      .mockResolvedValueOnce({ status: "PAID" })
+      .mockResolvedValueOnce({ status: "EXPIRED" });
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
 
     const result = await reconcilePayments();

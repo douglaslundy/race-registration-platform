@@ -47,7 +47,7 @@ describe("refundPayment", () => {
     });
     const refundPaymentGateway = vi.fn().mockRejectedValueOnce(new Error("gateway down"));
     getPaymentProviderMock.mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
       refundPayment: refundPaymentGateway,
     } as any);
 
@@ -68,7 +68,7 @@ describe("refundPayment", () => {
     });
     const refundPaymentGateway = vi.fn().mockResolvedValueOnce({ providerRefundId: "mp-refund-1" });
     getPaymentProviderMock.mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
       refundPayment: refundPaymentGateway,
     } as any);
 
@@ -130,7 +130,7 @@ describe("refundPayment", () => {
       order: { registrations: [{ id: "reg-1", status: "CANCELLED", ticketBatchId: "tb-1" }] },
     });
     getPaymentProviderMock.mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("PAID"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
       refundPayment: vi.fn().mockResolvedValueOnce({ providerRefundId: "mp-refund-1" }),
     } as any);
 
@@ -168,7 +168,7 @@ describe("refundPayment", () => {
     });
     const refundPaymentGateway = vi.fn();
     getPaymentProviderMock.mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce("REFUNDED"),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "REFUNDED" }),
       refundPayment: refundPaymentGateway,
     } as any);
 

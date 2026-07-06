@@ -8,6 +8,7 @@ import type {
   RefundPaymentInput,
   RefundPaymentResult,
   PaymentStatusCheck,
+  PaymentStatusResult,
 } from "./types";
 
 const BASE_URL = "https://api.pagar.me/core/v5";
@@ -185,7 +186,7 @@ export class PagarMeProvider implements PaymentProvider {
     };
   }
 
-  async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusCheck> {
+  async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusResult> {
     const res = await fetch(`${BASE_URL}/charges/${providerPaymentId}`, {
       method: "GET",
       headers: { Authorization: await authHeader() },
@@ -197,6 +198,6 @@ export class PagarMeProvider implements PaymentProvider {
     }
 
     const data = await res.json();
-    return CHECK_STATUS_MAP[String(data.status)] ?? "PENDING";
+    return { status: CHECK_STATUS_MAP[String(data.status)] ?? "PENDING" };
   }
 }

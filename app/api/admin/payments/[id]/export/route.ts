@@ -49,6 +49,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ["Desconto", formatCurrency(payment.order.discountAmount)],
     ["Taxa plataforma", formatCurrency(payment.order.platformFeeAmount)],
     ["Taxa de serviço", formatCurrency(payment.order.paymentFeeAmount)],
+    ["Comissão do gateway", payment.gatewayFeeAmount != null ? formatCurrency(payment.gatewayFeeAmount) : ""],
   ];
 
   if (payment.refunds.length > 0) {

@@ -25,42 +25,67 @@ describe("MercadoPagoProvider.checkPaymentStatus", () => {
     const provider = new MercadoPagoProvider();
     const result = await provider.checkPaymentStatus("123456");
     expect(getMock).toHaveBeenCalledWith({ id: "123456" });
-    expect(result).toBe("PAID");
+    expect(result.status).toBe("PAID");
+  });
+
+  it("extrai a comissao do gateway (fee_details, fee_payer=collector) quando aprovado", async () => {
+    getMock.mockResolvedValueOnce({
+      status: "approved",
+      fee_details: [
+        { type: "mercadopago_fee", amount: 4.99, fee_payer: "collector" },
+        { type: "financing_fee", amount: 1.5, fee_payer: "payer" },
+      ],
+    });
+    const provider = new MercadoPagoProvider();
+    const result = await provider.checkPaymentStatus("123456");
+    expect(result.status).toBe("PAID");
+    expect(result.gatewayFeeAmount).toBe(499);
+  });
+
+  it("nao retorna comissao quando o pagamento ainda nao esta aprovado", async () => {
+    getMock.mockResolvedValueOnce({
+      status: "in_process",
+      fee_details: [{ type: "mercadopago_fee", amount: 4.99, fee_payer: "collector" }],
+    });
+    const provider = new MercadoPagoProvider();
+    const result = await provider.checkPaymentStatus("123456");
+    expect(result.status).toBe("PENDING");
+    expect(result.gatewayFeeAmount).toBeUndefined();
   });
 
   it("mapeia 'cancelled' para CANCELLED", async () => {
     getMock.mockResolvedValueOnce({ status: "cancelled" });
     const provider = new MercadoPagoProvider();
-    expect(await provider.checkPaymentStatus("123456")).toBe("CANCELLED");
+    expect((await provider.checkPaymentStatus("123456")).status).toBe("CANCELLED");
   });
 
   it("mapeia 'rejected' para CANCELLED", async () => {
     getMock.mockResolvedValueOnce({ status: "rejected" });
     const provider = new MercadoPagoProvider();
-    expect(await provider.checkPaymentStatus("123456")).toBe("CANCELLED");
+    expect((await provider.checkPaymentStatus("123456")).status).toBe("CANCELLED");
   });
 
   it("mapeia 'refunded' para REFUNDED", async () => {
     getMock.mockResolvedValueOnce({ status: "refunded" });
     const provider = new MercadoPagoProvider();
-    expect(await provider.checkPaymentStatus("123456")).toBe("REFUNDED");
+    expect((await provider.checkPaymentStatus("123456")).status).toBe("REFUNDED");
   });
 
   it("mapeia 'charged_back' para CHARGEBACK", async () => {
     getMock.mockResolvedValueOnce({ status: "charged_back" });
     const provider = new MercadoPagoProvider();
-    expect(await provider.checkPaymentStatus("123456")).toBe("CHARGEBACK");
+    expect((await provider.checkPaymentStatus("123456")).status).toBe("CHARGEBACK");
   });
 
   it("mapeia 'expired' para EXPIRED", async () => {
     getMock.mockResolvedValueOnce({ status: "expired" });
     const provider = new MercadoPagoProvider();
-    expect(await provider.checkPaymentStatus("123456")).toBe("EXPIRED");
+    expect((await provider.checkPaymentStatus("123456")).status).toBe("EXPIRED");
   });
 
   it("mapeia qualquer outro status (ex.: 'in_process') para PENDING", async () => {
     getMock.mockResolvedValueOnce({ status: "in_process" });
     const provider = new MercadoPagoProvider();
-    expect(await provider.checkPaymentStatus("123456")).toBe("PENDING");
+    expect((await provider.checkPaymentStatus("123456")).status).toBe("PENDING");
   });
 });

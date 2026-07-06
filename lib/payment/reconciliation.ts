@@ -59,7 +59,7 @@ async function checkPendingMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
-      const gatewayStatus = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus !== payment.status) {
         mismatches.push({
           paymentId: payment.id,
@@ -109,7 +109,7 @@ async function checkPaidMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
-      const gatewayStatus = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
         await db.$transaction(async (tx) => {
           await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation");
@@ -162,10 +162,10 @@ async function checkLateApprovalMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
-      const gatewayStatus = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus, gatewayFeeAmount } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "PAID") {
         await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation");
+          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation", { gatewayFeeAmount });
         });
         mismatches.push({
           paymentId: payment.id,

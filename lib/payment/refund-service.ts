@@ -24,7 +24,7 @@ export async function refundPayment(params: RefundPaymentParams): Promise<Refund
 
   const provider = await getPaymentProvider();
 
-  const gatewayStatus = await provider.checkPaymentStatus(payment.providerPaymentId);
+  const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId);
   if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
     await db.$transaction(async (tx) => {
       await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "refund_check");

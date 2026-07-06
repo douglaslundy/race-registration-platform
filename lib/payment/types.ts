@@ -25,12 +25,14 @@ export interface CreatePaymentResult {
   boletoUrl?: string;
   checkoutUrl?: string; // for redirect-based flows (e.g. MP Checkout Pro)
   expiresAt?: Date;
+  gatewayFeeAmount?: number; // centavos - preenchido quando o gateway ja aprova e informa a comissao na criacao
 }
 
 export interface PaymentWebhookPayload {
   providerPaymentId: string;
   status: "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED" | "CHARGEBACK";
   paidAt?: string;
+  gatewayFeeAmount?: number; // centavos
   rawPayload: Record<string, unknown>;
 }
 
@@ -44,10 +46,15 @@ export interface RefundPaymentResult {
 
 export type PaymentStatusCheck = "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED" | "CHARGEBACK";
 
+export interface PaymentStatusResult {
+  status: PaymentStatusCheck;
+  gatewayFeeAmount?: number; // centavos - comissao cobrada pelo gateway, quando disponivel
+}
+
 export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult>;
   verifyWebhookSignature(payload: string, signature: string): Promise<boolean>;
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload;
-  checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusCheck>;
+  checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusResult>;
 }

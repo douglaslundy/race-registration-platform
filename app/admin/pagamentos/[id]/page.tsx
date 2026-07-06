@@ -166,6 +166,12 @@ export default async function AdminPaymentDetailPage({
               <span>Total</span>
               <span>{formatCurrency(order.totalAmount)}</span>
             </div>
+            {payment.gatewayFeeAmount != null && (
+              <div className="flex justify-between text-xs text-gray-400 pt-1 border-t dark:border-gray-700">
+                <span>Comissão do gateway (custo, não incluído no total)</span>
+                <span>{formatCurrency(payment.gatewayFeeAmount)}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
