@@ -48,17 +48,18 @@ export default async function OrganizerDashboard() {
     );
   }
 
-  const totalRevenue = organizer.events.reduce(
-    (sum, e) => sum + e.orders.reduce((s, o) => s + o.totalAmount, 0),
-    0
-  );
-  const totalRegistrations = organizer.events.reduce((sum, e) => sum + e._count.registrations, 0);
-
-  const [confirmedRegistrations, pendingRegistrations, cancelledRegistrations] = await Promise.all([
+  const [eventCount, totalRegistrations, revenueAgg, confirmedRegistrations, pendingRegistrations, cancelledRegistrations] = await Promise.all([
+    db.event.count({ where: { organizerId: organizer.id } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id } } }),
+    db.order.aggregate({
+      _sum: { totalAmount: true },
+      where: { status: "PAID", event: { organizerId: organizer.id } },
+    }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED" } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT" } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CANCELLED" } }),
   ]);
+  const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -69,7 +70,7 @@ export default async function OrganizerDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card text-center">
-          <p className="text-3xl font-bold text-primary-600">{organizer.events.length}</p>
+          <p className="text-3xl font-bold text-primary-600">{eventCount}</p>
           <p className="text-gray-600 mt-1">Eventos</p>
         </div>
         <div className="card text-center">

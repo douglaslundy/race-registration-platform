@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
-import { buildOrganizerPaymentWhere, buildOrganizerPayoutWhere } from "@/lib/organizer/report";
+import { buildOrganizerOrderWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const filter = { organizerId: organizer.id, from, to, eventId };
 
-  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, payoutTotalAgg] = await Promise.all([
+  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg] = await Promise.all([
     db.payment.aggregate({
       _sum: { amount: true },
       _count: { id: true },
@@ -37,18 +37,14 @@ export async function GET(req: NextRequest) {
       _count: { id: true },
       where: buildOrganizerPaymentWhere(filter, "CANCELLED"),
     }),
-    db.refund.aggregate({
+    db.payment.aggregate({
       _sum: { amount: true },
       _count: { id: true },
-      where: {
-        createdAt: { gte: from, lte: to },
-        payment: {
-          order: {
-            event: { organizerId: organizer.id },
-            ...(eventId ? { eventId } : {}),
-          },
-        },
-      },
+      where: buildOrganizerRefundWhere(filter),
+    }),
+    db.order.aggregate({
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
+      where: buildOrganizerOrderWhere(filter, "PAID"),
     }),
     db.transferPayout.aggregate({
       _sum: { netAmount: true },
@@ -61,9 +57,15 @@ export async function GET(req: NextRequest) {
   const refunds = refundsAgg._sum.amount ?? 0;
   const netRevenue = grossRevenue - refunds;
   const payoutNetTotal = payoutTotalAgg._sum.netAmount ?? 0;
+  const platformFeeActual = orderFeeAgg._sum.platformFeeAmount ?? 0;
+  const serviceFeeActual = orderFeeAgg._sum.paymentFeeAmount ?? 0;
+  const eventRevenue = orderFeeAgg._sum.subtotalAmount ?? 0;
 
   const rows: Array<[string, string]> = [
     ["Período", `${from.toISOString()} - ${to.toISOString()}`],
+    ["Receita do evento", formatCurrency(eventRevenue)],
+    ["Taxa da plataforma", formatCurrency(platformFeeActual)],
+    ["Taxa de serviço", formatCurrency(serviceFeeActual)],
     ["Receita bruta", formatCurrency(grossRevenue)],
     ["Pagamentos cancelados", formatCurrency(cancelledAmount)],
     ["Estornos", formatCurrency(refunds)],

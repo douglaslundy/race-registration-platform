@@ -27,9 +27,19 @@ export function buildRegistrationOrderBy(
   return { orderBy: { createdAt: normalizedDir }, normalizedSort: "date", normalizedDir };
 }
 
-export function buildRegistrationWhere(eventId: string, status?: string): Prisma.RegistrationWhereInput {
-  if (status && VALID_REGISTRATION_STATUSES.includes(status)) {
-    return { eventId, status: status as never };
-  }
-  return { eventId };
+export function buildRegistrationWhere(eventId: string, status?: string, q?: string): Prisma.RegistrationWhereInput {
+  const query = q?.trim();
+  return {
+    eventId,
+    ...(status && VALID_REGISTRATION_STATUSES.includes(status) ? { status: status as never } : {}),
+    ...(query
+      ? {
+          OR: [
+            { orderId: { contains: query, mode: "insensitive" as const } },
+            { athlete: { name: { contains: query, mode: "insensitive" as const } } },
+            { athlete: { email: { contains: query, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
 }

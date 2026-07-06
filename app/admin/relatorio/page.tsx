@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL } from "@/lib/admin/labels";
-import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere } from "@/lib/admin/report";
+import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
@@ -52,13 +52,13 @@ export default async function AdminRelatorioPage({
       where: buildReportOrderWhere(filter),
     }),
     db.order.aggregate({
-      _sum: { platformFeeAmount: true },
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
       where: buildReportOrderWhere(filter, "PAID"),
     }),
-    db.refund.aggregate({
+    db.payment.aggregate({
       _sum: { amount: true },
       _count: { id: true },
-      where: { createdAt: { gte: from, lte: to } },
+      where: buildReportRefundWhere(filter),
     }),
     db.event.count({ where: { createdAt: { gte: from, lte: to } } }),
     db.registration.count({ where: buildReportRegistrationWhere(filter) }),
@@ -95,6 +95,8 @@ export default async function AdminRelatorioPage({
   const refunds = refundsAgg._sum.amount ?? 0;
   const netRevenue = grossRevenue - refunds;
   const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
+  const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
+  const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
 
   const METHOD_LABEL: Record<string, string> = {
     PIX: "Pix", CREDIT_CARD: "Cartão de Crédito", DEBIT_CARD: "Débito", BOLETO: "Boleto",
@@ -139,7 +141,19 @@ export default async function AdminRelatorioPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-teal-600">{formatCurrency(eventRevenue)}</p>
+          <p className="text-gray-500 text-sm mt-1">Receita do evento</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Taxa da plataforma</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(serviceFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Taxa de serviço</p>
+        </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
           <p className="text-gray-500 text-sm mt-1">Receita bruta</p>
@@ -155,10 +169,6 @@ export default async function AdminRelatorioPage({
         <div className="card text-center">
           <p className="text-2xl font-bold text-blue-600">{formatCurrency(netRevenue)}</p>
           <p className="text-gray-500 text-sm mt-1">Receita líquida</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Taxa da plataforma</p>
         </div>
       </div>
 

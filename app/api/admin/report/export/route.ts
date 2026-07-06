@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
-import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere } from "@/lib/admin/report";
+import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -40,13 +40,13 @@ export async function GET(req: NextRequest) {
         where: buildReportOrderWhere(filter),
       }),
       db.order.aggregate({
-        _sum: { platformFeeAmount: true },
+        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
         where: buildReportOrderWhere(filter, "PAID"),
       }),
-      db.refund.aggregate({
+      db.payment.aggregate({
         _sum: { amount: true },
         _count: { id: true },
-        where: { createdAt: { gte: from, lte: to } },
+        where: buildReportRefundWhere(filter),
       }),
       db.event.count({ where: { createdAt: { gte: from, lte: to } } }),
       db.registration.count({ where: buildReportRegistrationWhere(filter) }),
@@ -57,14 +57,18 @@ export async function GET(req: NextRequest) {
   const refunds = refundsAgg._sum.amount ?? 0;
   const netRevenue = grossRevenue - refunds;
   const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
+  const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
+  const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
 
   const rows: Array<[string, string]> = [
     ["Período", `${from.toISOString()} - ${to.toISOString()}`],
+    ["Receita do evento", formatCurrency(eventRevenue)],
+    ["Taxa da plataforma", formatCurrency(platformFeeActual)],
+    ["Taxa de serviço", formatCurrency(serviceFeeActual)],
     ["Receita bruta", formatCurrency(grossRevenue)],
     ["Pagamentos cancelados", formatCurrency(cancelledAmount)],
     ["Estornos", formatCurrency(refunds)],
     ["Receita líquida", formatCurrency(netRevenue)],
-    ["Taxa da plataforma", formatCurrency(platformFeeActual)],
     ["Pagamentos confirmados", String(paymentsAgg._count.id)],
     ["Inscrições no período", String(registrationCount)],
     ["Eventos criados", String(eventCount)],

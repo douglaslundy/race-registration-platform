@@ -41,3 +41,14 @@ export function buildOrganizerPayoutWhere(filter: OrganizerReportFilter): Prisma
     ...(filter.eventId ? { eventId: filter.eventId } : {}),
   };
 }
+
+export function buildOrganizerRefundWhere(filter: OrganizerReportFilter): Prisma.PaymentWhereInput {
+  return {
+    status: { in: ["REFUNDED", "CHARGEBACK"] },
+    refundedAt: { gte: filter.from, lte: filter.to },
+    order: {
+      event: { organizerId: filter.organizerId },
+      ...(filter.eventId ? { eventId: filter.eventId } : {}),
+    },
+  };
+}

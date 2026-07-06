@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   const payment = await db.payment.create({
     data: {
       orderId: checkout.orderId,
-      provider: process.env.PAYMENT_PROVIDER ?? "sandbox",
+      provider: providerKey,
       providerPaymentId: paymentResult.providerPaymentId,
       method: paymentMethod as PaymentMethod,
       status: paymentResult.status === "PAID" ? "PAID" : "PENDING",

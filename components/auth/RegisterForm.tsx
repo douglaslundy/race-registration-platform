@@ -7,12 +7,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const schema = z.object({
-  name: z.string().min(2, "Nome muito curto"),
-  email: z.string().email("E-mail inválido"),
-  password: z.string().min(8, "Mínimo 8 caracteres"),
-  role: z.enum(["ATHLETE", "ORGANIZER"]),
-});
+const schema = z
+  .object({
+    name: z.string().min(2, "Nome muito curto"),
+    email: z.string().email("E-mail inválido"),
+    password: z.string().min(8, "Mínimo 8 caracteres"),
+    role: z.enum(["ATHLETE", "ORGANIZER"]),
+    birthDate: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "ATHLETE" && !data.birthDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe sua data de nascimento",
+        path: ["birthDate"],
+      });
+    }
+  });
 
 type FormData = z.infer<typeof schema>;
 
@@ -22,11 +33,13 @@ export default function RegisterForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { role: "ATHLETE" },
   });
+  const role = watch("role");
 
   async function onSubmit(data: FormData) {
     setError(null);
@@ -72,6 +85,14 @@ export default function RegisterForm() {
           <option value="ORGANIZER">Organizador de eventos</option>
         </select>
       </div>
+
+      {role === "ATHLETE" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento</label>
+          <input type="date" {...register("birthDate")} className="input-field" />
+          {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate.message}</p>}
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">

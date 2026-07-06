@@ -45,6 +45,7 @@ export interface RegistrationRow {
   category: { name: string } | null;
   ticketBatch: { name: string };
   order: {
+    id: string;
     totalAmount: number;
     payments: { method: string; paidAt: Date | null; status: string; providerPaymentId: string | null }[];
   };
@@ -71,6 +72,7 @@ export default function RegistrationsTable({
             <th className="pb-2 pr-4">Valor</th>
             <th className="pb-2 pr-4">Data inscrição</th>
             <th className="pb-2 pr-4">Data pag.</th>
+            <th className="pb-2 pr-4">Pedido</th>
             <th className="pb-2 pr-4">Cód. transação</th>
             <th className="pb-2 pr-4">Status</th>
             {renderActions && <th className="pb-2">Ações</th>}
@@ -111,6 +113,9 @@ export default function RegistrationsTable({
                 </td>
                 <td className="py-2 pr-4 text-gray-700">
                   {payment?.paidAt ? formatDate(payment.paidAt, "dd/MM/yyyy HH:mm") : "—"}
+                </td>
+                <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[8rem]" title={r.order.id}>
+                  {r.order.id}
                 </td>
                 <td className="py-2 pr-4 text-gray-500 font-mono text-xs truncate max-w-[10rem]">
                   {payment?.providerPaymentId ?? "—"}

@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL, PAYOUT_STATUS_LABEL } from "@/lib/admin/labels";
 import { BADGE } from "@/lib/badge-colors";
-import { buildOrganizerOrderWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere } from "@/lib/organizer/report";
+import { buildOrganizerOrderWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
@@ -45,7 +45,7 @@ export default async function OrganizerRelatorioPage({
 
   const filter = { organizerId: organizer.id, from, to, eventId: eventId || undefined };
 
-  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, payoutTotalAgg, payoutsByStatus, payouts, ordersAgg, events] =
+  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg, payoutsByStatus, payouts, ordersAgg, events] =
     await Promise.all([
       db.payment.aggregate({
         _sum: { amount: true },
@@ -57,18 +57,14 @@ export default async function OrganizerRelatorioPage({
         _count: { id: true },
         where: buildOrganizerPaymentWhere(filter, "CANCELLED"),
       }),
-      db.refund.aggregate({
+      db.payment.aggregate({
         _sum: { amount: true },
         _count: { id: true },
-        where: {
-          createdAt: { gte: from, lte: to },
-          payment: {
-            order: {
-              event: { organizerId: organizer.id },
-              ...(eventId ? { eventId } : {}),
-            },
-          },
-        },
+        where: buildOrganizerRefundWhere(filter),
+      }),
+      db.order.aggregate({
+        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
+        where: buildOrganizerOrderWhere(filter, "PAID"),
       }),
       db.transferPayout.aggregate({
         _sum: { netAmount: true },
@@ -103,6 +99,9 @@ export default async function OrganizerRelatorioPage({
   const refunds = refundsAgg._sum.amount ?? 0;
   const netRevenue = grossRevenue - refunds;
   const payoutNetTotal = payoutTotalAgg._sum.netAmount ?? 0;
+  const platformFeeActual = orderFeeAgg._sum.platformFeeAmount ?? 0;
+  const serviceFeeActual = orderFeeAgg._sum.paymentFeeAmount ?? 0;
+  const eventRevenue = orderFeeAgg._sum.subtotalAmount ?? 0;
 
   const payoutStatusMap = new Map(
     payoutsByStatus.map((row) => [row.status, { count: row._count.id, net: row._sum.netAmount ?? 0 }])
@@ -147,7 +146,19 @@ export default async function OrganizerRelatorioPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-teal-600">{formatCurrency(eventRevenue)}</p>
+          <p className="text-gray-500 text-sm mt-1">Receita do evento</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Taxa da plataforma</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-2xl font-bold text-purple-600">{formatCurrency(serviceFeeActual)}</p>
+          <p className="text-gray-500 text-sm mt-1">Taxa de serviço</p>
+        </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
           <p className="text-gray-500 text-sm mt-1">Receita bruta</p>

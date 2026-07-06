@@ -25,13 +25,15 @@ interface SearchParams {
   status?: string;
   sort?: string;
   dir?: string;
+  q?: string;
 }
 
-function buildInscritosUrl(id: string, params: { status?: string; sort?: string; dir?: string }) {
+function buildInscritosUrl(id: string, params: { status?: string; sort?: string; dir?: string; q?: string }) {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.sort) query.set("sort", params.sort);
   if (params.dir) query.set("dir", params.dir);
+  if (params.q) query.set("q", params.q);
   const qs = query.toString();
   return `/admin/eventos/${id}/inscritos${qs ? `?${qs}` : ""}`;
 }
@@ -47,6 +49,7 @@ export default async function AdminInscritosPage({
   const { id } = await params;
   const sp = await searchParams;
   const status = sp.status?.trim() ?? "";
+  const q = sp.q?.trim() ?? "";
   const sortConfig = buildRegistrationOrderBy(sp.sort?.trim() ?? "", sp.dir?.trim() ?? "");
 
   const event = await db.event.findFirst({
@@ -56,7 +59,7 @@ export default async function AdminInscritosPage({
   if (!event) notFound();
 
   const registrations = await db.registration.findMany({
-    where: buildRegistrationWhere(id, status),
+    where: buildRegistrationWhere(id, status, q),
     include: {
       athlete: {
         select: {
@@ -81,6 +84,7 @@ export default async function AdminInscritosPage({
       ticketBatch: { select: { name: true } },
       order: {
         select: {
+          id: true,
           totalAmount: true,
           payments: {
             orderBy: { createdAt: "desc" },
@@ -114,6 +118,16 @@ export default async function AdminInscritosPage({
 
       <form method="GET" className="card flex flex-wrap items-end gap-3">
         <div>
+          <label className="block text-xs text-gray-500 mb-1">Buscar por pedido, nome ou e-mail</label>
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder="Nº do pedido, nome ou e-mail"
+            className="input-field text-sm py-1.5"
+          />
+        </div>
+        <div>
           <label className="block text-xs text-gray-500 mb-1">Status</label>
           <select name="status" defaultValue={status} className="input-field text-sm py-1.5">
             <option value="">Todos</option>
@@ -125,7 +139,7 @@ export default async function AdminInscritosPage({
         <input type="hidden" name="sort" value={sortConfig.normalizedSort} />
         <input type="hidden" name="dir" value={sortConfig.normalizedDir} />
         <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
-        {status ? (
+        {status || q ? (
           <Link
             href={buildInscritosUrl(id, { sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir })}
             className="btn-secondary py-1.5 px-4 text-sm"
@@ -137,13 +151,13 @@ export default async function AdminInscritosPage({
 
       <div className="flex gap-2">
         <Link
-          href={buildInscritosUrl(id, { status, sort: "name", dir: nameDir })}
+          href={buildInscritosUrl(id, { status, q, sort: "name", dir: nameDir })}
           className={sortConfig.normalizedSort === "name" ? activeButtonClass : inactiveButtonClass}
         >
           Ordem alfabética {sortConfig.normalizedSort === "name" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}
         </Link>
         <Link
-          href={buildInscritosUrl(id, { status, sort: "date", dir: dateDir })}
+          href={buildInscritosUrl(id, { status, q, sort: "date", dir: dateDir })}
           className={sortConfig.normalizedSort === "date" ? activeButtonClass : inactiveButtonClass}
         >
           Ordem cronológica {sortConfig.normalizedSort === "date" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}

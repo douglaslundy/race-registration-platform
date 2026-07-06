@@ -158,6 +158,10 @@ export default async function AdminPaymentDetailPage({
               <span>Taxa plataforma</span>
               <span>{formatCurrency(order.platformFeeAmount)}</span>
             </div>
+            <div className="flex justify-between text-xs text-gray-400">
+              <span>Taxa de serviço</span>
+              <span>{formatCurrency(order.paymentFeeAmount)}</span>
+            </div>
             <div className="flex justify-between font-bold">
               <span>Total</span>
               <span>{formatCurrency(order.totalAmount)}</span>

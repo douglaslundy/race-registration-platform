@@ -48,6 +48,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ["Subtotal", formatCurrency(payment.order.subtotalAmount)],
     ["Desconto", formatCurrency(payment.order.discountAmount)],
     ["Taxa plataforma", formatCurrency(payment.order.platformFeeAmount)],
+    ["Taxa de serviço", formatCurrency(payment.order.paymentFeeAmount)],
   ];
 
   if (payment.refunds.length > 0) {

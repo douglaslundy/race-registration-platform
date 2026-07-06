@@ -3,12 +3,23 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 
-const registerSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(8),
-  role: z.enum(["ATHLETE", "ORGANIZER"]).default("ATHLETE"),
-});
+const registerSchema = z
+  .object({
+    name: z.string().min(2).max(100),
+    email: z.string().email(),
+    password: z.string().min(8),
+    role: z.enum(["ATHLETE", "ORGANIZER"]).default("ATHLETE"),
+    birthDate: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "ATHLETE" && !data.birthDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Data de nascimento é obrigatória",
+        path: ["birthDate"],
+      });
+    }
+  });
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { name, email, password, role } = parsed.data;
+    const { name, email, password, role, birthDate } = parsed.data;
 
     const exists = await db.user.findUnique({ where: { email } });
     if (exists) {
@@ -32,6 +43,12 @@ export async function POST(req: NextRequest) {
       data: { name, email, passwordHash, role },
       select: { id: true, name: true, email: true, role: true },
     });
+
+    if (role === "ATHLETE" && birthDate) {
+      await db.athleteProfile.create({
+        data: { userId: user.id, birthDate: new Date(birthDate) },
+      });
+    }
 
     await db.auditLog.create({
       data: { userId: user.id, action: "USER_REGISTERED", entityType: "User", entityId: user.id },
