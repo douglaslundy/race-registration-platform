@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { isValidCpf } from "@/lib/cpf";
 
 const schema = z
   .object({
@@ -14,13 +15,30 @@ const schema = z
     password: z.string().min(8, "Mínimo 8 caracteres"),
     role: z.enum(["ATHLETE", "ORGANIZER"]),
     birthDate: z.string().optional(),
+    cpf: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.role === "ATHLETE" && !data.birthDate) {
+    if (data.role !== "ATHLETE") return;
+
+    if (!data.birthDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Informe sua data de nascimento",
         path: ["birthDate"],
+      });
+    }
+
+    if (!data.cpf) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe seu CPF",
+        path: ["cpf"],
+      });
+    } else if (!isValidCpf(data.cpf)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CPF inválido",
+        path: ["cpf"],
       });
     }
   });
@@ -61,19 +79,19 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo *</label>
         <input {...register("name")} className="input-field" placeholder="Seu nome" />
         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
         <input type="email" {...register("email")} className="input-field" placeholder="seu@email.com" />
         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
         <input type="password" {...register("password")} className="input-field" placeholder="Mínimo 8 caracteres" />
         {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
       </div>
@@ -87,11 +105,25 @@ export default function RegisterForm() {
       </div>
 
       {role === "ATHLETE" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento</label>
-          <input type="date" {...register("birthDate")} className="input-field" />
-          {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate.message}</p>}
-        </div>
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento *</label>
+            <input type="date" {...register("birthDate")} className="input-field" />
+            {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
+            <input
+              type="text"
+              {...register("cpf")}
+              className="input-field"
+              placeholder="000.000.000-00"
+              maxLength={14}
+            />
+            {errors.cpf && <p className="text-red-500 text-xs mt-1">{errors.cpf.message}</p>}
+          </div>
+        </>
       )}
 
       {error && (
