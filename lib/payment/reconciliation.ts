@@ -162,10 +162,13 @@ async function checkLateApprovalMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
-      const { status: gatewayStatus, gatewayFeeAmount } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "PAID") {
         await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation", { gatewayFeeAmount });
+          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation", {
+            gatewayFeeAmount,
+            paidAt: paidAt ? new Date(paidAt) : new Date(),
+          });
         });
         mismatches.push({
           paymentId: payment.id,

@@ -184,16 +184,38 @@ describe("reconcilePayments", () => {
   it("reativa um pagamento EXPIRED que o gateway diz estar PAID (aprovação atrasada)", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([expiredFixture]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
-      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID", paidAt: "2026-07-04T10:00:00.000Z" }),
     } as any);
 
     const result = await reconcilePayments();
 
     expect(dbMock.order.update).toHaveBeenCalledWith({ where: { id: "order-3" }, data: { status: "PAID" } });
     expect(dbMock.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-2" }, data: { soldCount: { increment: 1 } } });
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "payment-3" },
+        data: expect.objectContaining({ status: "PAID", paidAt: new Date("2026-07-04T10:00:00.000Z") }),
+      }),
+    );
     expect(result.mismatches).toEqual([
       { paymentId: "payment-3", orderId: "order-3", eventTitle: "Corrida Expirada", localStatus: "EXPIRED", gatewayStatus: "PAID", corrected: true },
     ]);
+  });
+
+  it("usa a data atual como paidAt quando o gateway nao informa date_approved (aprovação atrasada)", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([expiredFixture]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
+    } as any);
+
+    await reconcilePayments();
+
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "payment-3" },
+        data: expect.objectContaining({ status: "PAID", paidAt: expect.any(Date) }),
+      }),
+    );
   });
 
   it("soma o total verificado das 3 varreduras", async () => {

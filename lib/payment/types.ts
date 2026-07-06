@@ -49,6 +49,7 @@ export type PaymentStatusCheck = "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | 
 export interface PaymentStatusResult {
   status: PaymentStatusCheck;
   gatewayFeeAmount?: number; // centavos - comissao cobrada pelo gateway, quando disponivel
+  paidAt?: string; // data real de aprovacao no gateway, quando disponivel
 }
 
 export interface PaymentProvider {

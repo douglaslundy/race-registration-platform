@@ -256,6 +256,7 @@ export class MercadoPagoProvider implements PaymentProvider {
     return {
       status,
       gatewayFeeAmount: status === "PAID" ? extractGatewayFeeAmount(res) : undefined,
+      paidAt: status === "PAID" ? (res.date_approved ?? undefined) : undefined,
     };
   }
 }
