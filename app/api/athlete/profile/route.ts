@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 
 const profileSchema = z.object({
   birthDate: z.string().optional().nullable(),
+  cpf: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   gender: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
@@ -35,10 +37,31 @@ export async function PUT(req: NextRequest) {
   const parsed = profileSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const data = {
-    ...parsed.data,
-    birthDate: parsed.data.birthDate ? new Date(parsed.data.birthDate) : null,
+  const { cpf: incomingCpf, ...rest } = parsed.data;
+
+  const existing = await db.athleteProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { cpf: true },
+  });
+
+  const data: Record<string, unknown> = {
+    ...rest,
+    birthDate: rest.birthDate ? new Date(rest.birthDate) : null,
   };
+
+  if (!existing?.cpf && incomingCpf) {
+    const normalized = normalizeCpf(incomingCpf);
+    if (!isValidCpf(normalized)) {
+      return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
+    }
+    const taken = await db.athleteProfile.findFirst({
+      where: { cpf: normalized, userId: { not: session.user.id } },
+    });
+    if (taken) {
+      return NextResponse.json({ error: "Este CPF já está cadastrado em outra conta" }, { status: 409 });
+    }
+    data.cpf = normalized;
+  }
 
   const profile = await db.athleteProfile.upsert({
     where: { userId: session.user.id },
