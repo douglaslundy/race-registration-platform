@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
-import { buildOrganizerOrderWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
+import { buildOrganizerOrderWhere, buildOrganizerOrderFeeWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     }),
     db.order.aggregate({
       _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
-      where: buildOrganizerOrderWhere(filter, "PAID"),
+      where: buildOrganizerOrderFeeWhere(filter),
     }),
     db.transferPayout.aggregate({
       _sum: { netAmount: true },

@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL, PAYOUT_STATUS_LABEL } from "@/lib/admin/labels";
 import { BADGE } from "@/lib/badge-colors";
-import { buildOrganizerOrderWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
+import { buildOrganizerOrderWhere, buildOrganizerOrderFeeWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
@@ -64,7 +64,7 @@ export default async function OrganizerRelatorioPage({
       }),
       db.order.aggregate({
         _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
-        where: buildOrganizerOrderWhere(filter, "PAID"),
+        where: buildOrganizerOrderFeeWhere(filter),
       }),
       db.transferPayout.aggregate({
         _sum: { netAmount: true },

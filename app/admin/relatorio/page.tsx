@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL } from "@/lib/admin/labels";
-import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
+import { buildReportOrderWhere, buildReportOrderFeeWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
@@ -53,7 +53,7 @@ export default async function AdminRelatorioPage({
     }),
     db.order.aggregate({
       _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
-      where: buildReportOrderWhere(filter, "PAID"),
+      where: buildReportOrderFeeWhere(filter),
     }),
     db.payment.aggregate({
       _sum: { amount: true },

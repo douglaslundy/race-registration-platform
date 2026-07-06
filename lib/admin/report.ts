@@ -38,6 +38,14 @@ export function buildReportRegistrationWhere(filter: ReportPeriodFilter): Prisma
   };
 }
 
+export function buildReportOrderFeeWhere(filter: ReportPeriodFilter): Prisma.OrderWhereInput {
+  return {
+    status: "PAID",
+    payments: { some: { status: "PAID", paidAt: { gte: filter.from, lte: filter.to } } },
+    ...(filter.eventId ? { eventId: filter.eventId } : {}),
+  };
+}
+
 export function buildReportRefundWhere(filter: ReportPeriodFilter): Prisma.PaymentWhereInput {
   return {
     status: { in: ["REFUNDED", "CHARGEBACK"] },

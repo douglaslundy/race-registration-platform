@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
-import { buildReportOrderWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
+import { buildReportOrderWhere, buildReportOrderFeeWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       }),
       db.order.aggregate({
         _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
-        where: buildReportOrderWhere(filter, "PAID"),
+        where: buildReportOrderFeeWhere(filter),
       }),
       db.payment.aggregate({
         _sum: { amount: true },
