@@ -6,6 +6,7 @@ import { getEventBySlug } from "@/lib/events";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import { isBatchAvailable } from "@/lib/batch-status";
 import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getAppName } from "@/lib/settings";
+import { getMissingAthleteProfileFields } from "@/lib/auth/profile-completion";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
 interface Props {
@@ -40,10 +41,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function InscricaoPage({ params }: Props) {
-  const session = await auth();
-  if (!session?.user) redirect(`/auth/login?callbackUrl=/inscricao/${(await params).slug}`);
-
   const { slug } = await params;
+  const session = await auth();
+  if (!session?.user) redirect(`/auth/login?callbackUrl=/inscricao/${slug}`);
+
+  if (session.user.role === "ATHLETE") {
+    const missing = await getMissingAthleteProfileFields(session.user.id);
+    if (missing.length > 0) redirect(`/completar-cadastro?callbackUrl=/inscricao/${slug}`);
+  }
+
   const event = await getEventBySlug(slug);
   if (!event) notFound();
   if (event.status !== "REGISTRATIONS_OPEN") {
