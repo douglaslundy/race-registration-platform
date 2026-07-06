@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 
 const roleSchema = z.enum(["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"]);
 
@@ -12,6 +13,8 @@ const patchSchema = z.object({
   role: roleSchema.optional(),
   active: z.boolean().optional(),
   password: z.string().min(8).optional(),
+  cpf: z.string().optional(),
+  birthDate: z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +39,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  let normalizedCpf: string | undefined;
+  if (parsed.data.cpf) {
+    normalizedCpf = normalizeCpf(parsed.data.cpf);
+    if (!isValidCpf(normalizedCpf)) {
+      return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
+    }
+    const cpfTaken = await db.athleteProfile.findFirst({
+      where: { cpf: normalizedCpf, userId: { not: id } },
+    });
+    if (cpfTaken) {
+      return NextResponse.json({ error: "Este CPF já está cadastrado em outra conta" }, { status: 409 });
+    }
+  }
+
   const data: Record<string, unknown> = {};
   if (parsed.data.name) data.name = parsed.data.name.trim();
   if (incomingEmail) data.email = incomingEmail;
@@ -49,6 +66,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
   });
 
+  if (normalizedCpf || parsed.data.birthDate) {
+    const athleteData: Record<string, unknown> = {};
+    if (normalizedCpf) athleteData.cpf = normalizedCpf;
+    if (parsed.data.birthDate) athleteData.birthDate = new Date(parsed.data.birthDate);
+
+    await db.athleteProfile.upsert({
+      where: { userId: id },
+      create: { userId: id, ...athleteData },
+      update: athleteData,
+    });
+  }
+
   await db.auditLog.create({
     data: {
       userId: session.user.id,
@@ -57,6 +86,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       entityId: id,
       metadata: {
         ...data,
+        ...(normalizedCpf ? { cpf: normalizedCpf } : {}),
+        ...(parsed.data.birthDate ? { birthDate: parsed.data.birthDate } : {}),
         passwordHash: parsed.data.password ? "[redacted]" : undefined,
       },
     },

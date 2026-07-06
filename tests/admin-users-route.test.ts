@@ -207,6 +207,67 @@ describe("admin users API", () => {
     );
   });
 
+  it("corrige CPF e data de nascimento de um atleta", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
+    dbMock.user.update.mockResolvedValueOnce({
+      id: "user-1",
+      name: "Atleta",
+      email: "atleta@exemplo.com",
+      role: "ATHLETE",
+      active: true,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    dbMock.athleteProfile.findFirst.mockResolvedValueOnce(null);
+    dbMock.athleteProfile.upsert.mockResolvedValueOnce({});
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ cpf: "111.444.777-35", birthDate: "1990-01-01" }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1" },
+        update: expect.objectContaining({ cpf: "11144477735", birthDate: new Date("1990-01-01") }),
+      }),
+    );
+  });
+
+  it("rejeita CPF inválido na correção do admin", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ cpf: "111.444.777-36" }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.update).not.toHaveBeenCalled();
+  });
+
+  it("rejeita CPF já usado por outro atleta na correção do admin", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
+    dbMock.athleteProfile.findFirst.mockResolvedValueOnce({ id: "outro-perfil" });
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ cpf: "111.444.777-35" }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(409);
+    expect(dbMock.user.update).not.toHaveBeenCalled();
+  });
+
   it("prevents deleting users with linked orders or registrations", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce({
       id: "user-1",
