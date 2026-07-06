@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
-import { buildReportOrderWhere, buildReportOrderFeeWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
+import { buildReportOrderFeeWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const filter = { from, to, eventId };
 
-  const [paymentsAgg, cancelledPaymentsAgg, ordersAgg, platformFeeAgg, refundsAgg, eventCount, registrationCount] =
+  const [paymentsAgg, cancelledPaymentsAgg, platformFeeAgg, refundsAgg, eventCount, registrationCount] =
     await Promise.all([
       db.payment.aggregate({
         _sum: { amount: true },
@@ -33,13 +33,8 @@ export async function GET(req: NextRequest) {
         _count: { id: true },
         where: buildReportPaymentWhere(filter, "CANCELLED"),
       }),
-      db.order.groupBy({
-        by: ["status"],
-        _count: { id: true },
-        _sum: { totalAmount: true },
-        where: buildReportOrderWhere(filter),
-      }),
       db.order.aggregate({
+        _count: { id: true },
         _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
         where: buildReportOrderFeeWhere(filter),
       }),
@@ -72,7 +67,7 @@ export async function GET(req: NextRequest) {
     ["Pagamentos confirmados", String(paymentsAgg._count.id)],
     ["Inscrições no período", String(registrationCount)],
     ["Eventos criados", String(eventCount)],
-    ["Pedidos PAID", String(ordersAgg.find((row) => row.status === "PAID")?._count.id ?? 0)],
+    ["Pedidos PAID", String(platformFeeAgg._count.id)],
   ];
 
   const csv = ["Métrica,Valor", ...rows.map(([metric, value]) => `${escapeCsvValue(metric)},${escapeCsvValue(value)}`)].join("\n");

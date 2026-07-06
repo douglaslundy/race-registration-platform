@@ -21,10 +21,7 @@ describe("admin report export", () => {
       .mockResolvedValueOnce({ _sum: { amount: 20000 }, _count: { id: 2 } }) // gross (order PAID)
       .mockResolvedValueOnce({ _sum: { amount: 3000 }, _count: { id: 1 } }) // cancelled (order CANCELLED)
       .mockResolvedValueOnce({ _sum: { amount: 5000 }, _count: { id: 1 } }); // refunds (payment status REFUNDED/CHARGEBACK)
-    dbMock.order.groupBy.mockResolvedValueOnce([
-      { status: "PAID", _count: { id: 2 }, _sum: { totalAmount: 20000 } },
-    ]);
-    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { platformFeeAmount: 2200 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({ _count: { id: 2 }, _sum: { platformFeeAmount: 2200 } });
     dbMock.event.count.mockResolvedValueOnce(3);
     dbMock.registration.count.mockResolvedValueOnce(4);
 
@@ -53,8 +50,7 @@ describe("admin report export", () => {
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } });
-    dbMock.order.groupBy.mockResolvedValueOnce([]);
-    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { platformFeeAmount: 0 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({ _count: { id: 0 }, _sum: { platformFeeAmount: 0 } });
     dbMock.event.count.mockResolvedValueOnce(0);
     dbMock.registration.count.mockResolvedValueOnce(0);
 

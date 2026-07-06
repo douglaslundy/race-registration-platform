@@ -28,7 +28,8 @@ export default async function AdminRelatorioPage({
   const [
     paymentsAgg,
     cancelledPaymentsAgg,
-    ordersAgg,
+    nonPaidOrdersAgg,
+    paidOrdersAgg,
     platformFeeAgg,
     refundsAgg,
     eventCount,
@@ -49,7 +50,12 @@ export default async function AdminRelatorioPage({
       by: ["status"],
       _count: { id: true },
       _sum: { totalAmount: true },
-      where: buildReportOrderWhere(filter),
+      where: { ...buildReportOrderWhere(filter), status: { not: "PAID" } },
+    }),
+    db.order.aggregate({
+      _count: { id: true },
+      _sum: { totalAmount: true },
+      where: buildReportOrderFeeWhere(filter),
     }),
     db.order.aggregate({
       _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
@@ -64,6 +70,11 @@ export default async function AdminRelatorioPage({
     db.registration.count({ where: buildReportRegistrationWhere(filter) }),
     db.event.findMany({ select: { id: true, title: true }, orderBy: { title: "asc" } }),
   ]);
+
+  const ordersAgg = [
+    ...nonPaidOrdersAgg,
+    { status: "PAID" as const, _count: { id: paidOrdersAgg._count.id }, _sum: { totalAmount: paidOrdersAgg._sum.totalAmount } },
+  ];
 
   const byMethod = await db.payment.groupBy({
     by: ["method"],

@@ -45,7 +45,7 @@ export default async function OrganizerRelatorioPage({
 
   const filter = { organizerId: organizer.id, from, to, eventId: eventId || undefined };
 
-  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg, payoutsByStatus, payouts, ordersAgg, events] =
+  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg, payoutsByStatus, payouts, nonPaidOrdersAgg, events] =
     await Promise.all([
       db.payment.aggregate({
         _sum: { amount: true },
@@ -63,7 +63,8 @@ export default async function OrganizerRelatorioPage({
         where: buildOrganizerRefundWhere(filter),
       }),
       db.order.aggregate({
-        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
+        _count: { id: true },
+        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true, totalAmount: true },
         where: buildOrganizerOrderFeeWhere(filter),
       }),
       db.transferPayout.aggregate({
@@ -85,7 +86,7 @@ export default async function OrganizerRelatorioPage({
         by: ["status"],
         _count: { id: true },
         _sum: { totalAmount: true },
-        where: buildOrganizerOrderWhere(filter),
+        where: { ...buildOrganizerOrderWhere(filter), status: { not: "PAID" } },
       }),
       db.event.findMany({
         where: { organizerId: organizer.id },
@@ -93,6 +94,11 @@ export default async function OrganizerRelatorioPage({
         orderBy: { title: "asc" },
       }),
     ]);
+
+  const ordersAgg = [
+    ...nonPaidOrdersAgg,
+    { status: "PAID" as const, _count: { id: orderFeeAgg._count.id }, _sum: { totalAmount: orderFeeAgg._sum.totalAmount } },
+  ];
 
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
