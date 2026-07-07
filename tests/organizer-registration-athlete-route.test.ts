@@ -149,4 +149,43 @@ describe("PATCH /api/organizer/registrations/[id]/athlete", () => {
       }),
     );
   });
+
+  it("rejeita e ignora tentativa de escalar privilégios (role, active, password)", async () => {
+    dbMock.registration.findFirst.mockResolvedValueOnce({ athleteUserId: "athlete-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "athlete-1", email: "atleta@exemplo.com" });
+    dbMock.athleteProfile.findFirst.mockResolvedValueOnce(null);
+
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
+      id: "athlete-1",
+      name: "Novo Nome",
+      email: "atleta@exemplo.com",
+    });
+    const txAthleteProfileUpsert = vi.fn().mockResolvedValueOnce({});
+    const txAuditLogCreate = vi.fn();
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        user: { update: txUserUpdate },
+        athleteProfile: { upsert: txAthleteProfileUpsert },
+        auditLog: { create: txAuditLogCreate },
+      }),
+    );
+
+    const res = await PATCH(
+      makeRequest({
+        name: "Novo Nome",
+        role: "ADMIN",
+        active: false,
+        password: "hacked1234",
+      }),
+      { params: Promise.resolve({ id: "reg-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    const callArgs = txUserUpdate.mock.calls[0][0];
+    expect(callArgs.data).not.toHaveProperty("role");
+    expect(callArgs.data).not.toHaveProperty("active");
+    expect(callArgs.data).not.toHaveProperty("password");
+    expect(callArgs.data).not.toHaveProperty("passwordHash");
+    expect(callArgs.data).toEqual({ name: "Novo Nome" });
+  });
 });
