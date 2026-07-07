@@ -134,24 +134,34 @@ git commit -m "feat: show platform and service fee breakdown in athlete registra
 
 ---
 
-### Task 2: Centralizar a página "Importar resultados" do organizador
+### Task 2: Centralizar as 7 páginas com `max-w-*` sem `mx-auto`
 
 **Files:**
 - Modify: `app/organizador/eventos/[id]/resultados/page.tsx`
+- Modify: `app/admin/eventos/[id]/page.tsx`
+- Modify: `app/admin/usuarios/[id]/page.tsx`
+- Modify: `app/admin/usuarios/[id]/editar/page.tsx`
+- Modify: `app/admin/usuarios/novo/page.tsx`
+- Modify: `app/admin/pagamentos/[id]/page.tsx`
+- Modify: `app/dashboard/inscricoes/[id]/page.tsx`
 
-**Interfaces:** nenhuma — mudança isolada de CSS em um Client Component, sem exports novos.
+**Interfaces:** nenhuma — mudanças isoladas de CSS, sem exports novos.
 
 Contexto: varredura de todas as 56 páginas em `app/**/page.tsx` procurando containers com
 `max-w-*` sem `mx-auto` (o mesmo padrão de bug já corrigido em `app/dashboard/perfil/page.tsx` na
-Task 6 do plano `2026-07-06-edicao-atleta-admin-organizador.md`). Único resultado encontrado:
-`app/organizador/eventos/[id]/resultados/page.tsx:47`. `admin/eventos` e a home do organizador
-(`app/organizador/page.tsx`) foram inspecionados e não têm esse problema — usam o container
-inteiro do layout já centralizado (`max-w-7xl mx-auto` / `max-w-5xl mx-auto`), sem `max-w` próprio
-mais estreito.
+Task 6 do plano `2026-07-06-edicao-atleta-admin-organizador.md`). A primeira varredura só pegava
+`max-w-*` quando era a primeira classe do `className` e perdeu casos como `"space-y-6 max-w-3xl"`
+(max-w no meio da string); a busca corrigida achou mais 6 páginas com o mesmo problema. Todas as 7
+estão sob layouts que já centralizam (`max-w-7xl mx-auto` em admin, `max-w-5xl mx-auto` no
+dashboard), então cada uma delas fica desalinhada à esquerda dentro da área já centralizada.
+`admin/eventos` (lista), a home do organizador (`app/organizador/page.tsx`) e as páginas de
+`app/auth/*`/`app/acesso-negado/page.tsx` foram inspecionadas e não têm esse problema — as duas
+primeiras usam o container inteiro do layout sem `max-w` próprio mais estreito, e as de auth já
+centralizam via `flex items-center justify-center` no wrapper pai.
 
-- [ ] **Step 1: Adicionar `mx-auto` ao container**
+- [ ] **Step 1: `app/organizador/eventos/[id]/resultados/page.tsx`**
 
-Em `app/organizador/eventos/[id]/resultados/page.tsx`, trocar (linha 47):
+Trocar (linha 47):
 
 ```tsx
     <div className="max-w-lg space-y-6">
@@ -163,14 +173,98 @@ por:
     <div className="max-w-lg mx-auto space-y-6">
 ```
 
-- [ ] **Step 2: Verificar compilação**
+- [ ] **Step 2: `app/admin/eventos/[id]/page.tsx`**
+
+Trocar (linha 33):
+
+```tsx
+    <div className="space-y-6 max-w-3xl">
+```
+
+por:
+
+```tsx
+    <div className="space-y-6 max-w-3xl mx-auto">
+```
+
+- [ ] **Step 3: `app/admin/usuarios/[id]/page.tsx`**
+
+Trocar (linha 74):
+
+```tsx
+    <div className="space-y-6 max-w-3xl">
+```
+
+por:
+
+```tsx
+    <div className="space-y-6 max-w-3xl mx-auto">
+```
+
+- [ ] **Step 4: `app/admin/usuarios/[id]/editar/page.tsx`**
+
+Trocar (linha 29):
+
+```tsx
+    <div className="space-y-6 max-w-3xl">
+```
+
+por:
+
+```tsx
+    <div className="space-y-6 max-w-3xl mx-auto">
+```
+
+- [ ] **Step 5: `app/admin/usuarios/novo/page.tsx`**
+
+Trocar (linha 12):
+
+```tsx
+    <div className="space-y-6 max-w-3xl">
+```
+
+por:
+
+```tsx
+    <div className="space-y-6 max-w-3xl mx-auto">
+```
+
+- [ ] **Step 6: `app/admin/pagamentos/[id]/page.tsx`**
+
+Trocar (linha 63):
+
+```tsx
+    <div className="space-y-6 max-w-3xl">
+```
+
+por:
+
+```tsx
+    <div className="space-y-6 max-w-3xl mx-auto">
+```
+
+- [ ] **Step 7: `app/dashboard/inscricoes/[id]/page.tsx`**
+
+Trocar (linha 67):
+
+```tsx
+    <div className="space-y-6 max-w-2xl">
+```
+
+por:
+
+```tsx
+    <div className="space-y-6 max-w-2xl mx-auto">
+```
+
+- [ ] **Step 8: Verificar compilação**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: sem output (sem erros).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add app/organizador/eventos/'[id]'/resultados/page.tsx
-git commit -m "fix: center 'Importar resultados' page content on wide screens"
+git add app/organizador/eventos/'[id]'/resultados/page.tsx app/admin/eventos/'[id]'/page.tsx app/admin/usuarios/'[id]'/page.tsx app/admin/usuarios/'[id]'/editar/page.tsx app/admin/usuarios/novo/page.tsx app/admin/pagamentos/'[id]'/page.tsx app/dashboard/inscricoes/'[id]'/page.tsx
+git commit -m "fix: center 7 pages whose content div lacked mx-auto"
 ```
