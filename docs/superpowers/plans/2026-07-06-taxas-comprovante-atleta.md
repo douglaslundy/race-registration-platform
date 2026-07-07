@@ -4,11 +4,14 @@
 
 **Goal:** Mostrar a taxa da plataforma e a taxa de serviço no resumo financeiro do comprovante de
 inscrição do atleta (`/dashboard/inscricoes/[id]`), reaproveitando os valores já calculados no
-`Order` e os rótulos já usados na tela de checkout.
+`Order` e os rótulos já usados na tela de checkout. Também corrige uma página que ficou
+desalinhada à esquerda por falta de `mx-auto`, achada numa varredura de todas as 56 páginas do
+sistema em busca desse mesmo padrão de bug.
 
-**Architecture:** Uma mudança em um único Server Component: buscar o campo `paymentFeeAmount` que
-falta no `select` do `order`, e renderizar duas linhas condicionais (`> 0`) no card "Resumo
-financeiro" já existente.
+**Architecture:** Duas mudanças pequenas e independentes em Server Components existentes: (1)
+buscar o campo `paymentFeeAmount` que falta no `select` do `order` e renderizar duas linhas
+condicionais (`> 0`) no card "Resumo financeiro" já existente; (2) adicionar `mx-auto` ao único
+container encontrado na varredura com `max-w-*` sem `mx-auto`.
 
 **Tech Stack:** Next.js (App Router, Server Components), Prisma.
 
@@ -127,4 +130,47 @@ Expected: sem output (sem erros).
 ```bash
 git add app/dashboard/inscricoes/'[id]'/page.tsx
 git commit -m "feat: show platform and service fee breakdown in athlete registration receipt"
+```
+
+---
+
+### Task 2: Centralizar a página "Importar resultados" do organizador
+
+**Files:**
+- Modify: `app/organizador/eventos/[id]/resultados/page.tsx`
+
+**Interfaces:** nenhuma — mudança isolada de CSS em um Client Component, sem exports novos.
+
+Contexto: varredura de todas as 56 páginas em `app/**/page.tsx` procurando containers com
+`max-w-*` sem `mx-auto` (o mesmo padrão de bug já corrigido em `app/dashboard/perfil/page.tsx` na
+Task 6 do plano `2026-07-06-edicao-atleta-admin-organizador.md`). Único resultado encontrado:
+`app/organizador/eventos/[id]/resultados/page.tsx:47`. `admin/eventos` e a home do organizador
+(`app/organizador/page.tsx`) foram inspecionados e não têm esse problema — usam o container
+inteiro do layout já centralizado (`max-w-7xl mx-auto` / `max-w-5xl mx-auto`), sem `max-w` próprio
+mais estreito.
+
+- [ ] **Step 1: Adicionar `mx-auto` ao container**
+
+Em `app/organizador/eventos/[id]/resultados/page.tsx`, trocar (linha 47):
+
+```tsx
+    <div className="max-w-lg space-y-6">
+```
+
+por:
+
+```tsx
+    <div className="max-w-lg mx-auto space-y-6">
+```
+
+- [ ] **Step 2: Verificar compilação**
+
+Run: `npx tsc --noEmit -p tsconfig.json`
+Expected: sem output (sem erros).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add app/organizador/eventos/'[id]'/resultados/page.tsx
+git commit -m "fix: center 'Importar resultados' page content on wide screens"
 ```
