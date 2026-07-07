@@ -85,7 +85,10 @@ export default function RegistrationsTable({
         <tbody>
           {registrations.map((r) => {
             const payment = r.order.payments[0];
-            const statusInfo = REGISTRATION_STATUS[r.status];
+            const isRefunded = payment?.status === "REFUNDED" || payment?.status === "CHARGEBACK";
+            const statusInfo = isRefunded
+              ? { label: "Estornado", color: BADGE.purple }
+              : REGISTRATION_STATUS[r.status];
             return (
               <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                 <td className="py-2 pr-3 max-w-[10rem]">

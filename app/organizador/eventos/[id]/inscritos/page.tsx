@@ -6,6 +6,7 @@ import ExportCsvButton from "@/components/organizer/ExportCsvButton";
 import PrintButton from "@/components/ui/PrintButton";
 import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
+import { formatCurrency } from "@/lib/format";
 import RefundRegistrationButton from "@/components/organizer/RefundRegistrationButton";
 import CancellationDecisionButtons from "@/components/organizer/CancellationDecisionButtons";
 import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
@@ -105,6 +106,8 @@ export default async function InscritosPage({
     orderBy: sortConfig.orderBy,
   });
 
+  const totalAmount = registrations.reduce((s, r) => s + r.order.totalAmount, 0);
+
   const nameDir = sortConfig.normalizedSort === "name" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
   const dateDir = sortConfig.normalizedSort === "date" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
   const activeButtonClass = "text-sm px-3 py-1.5 rounded-lg border border-primary-500 text-primary-600";
@@ -116,7 +119,9 @@ export default async function InscritosPage({
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar ao evento</Link>
           <h1 className="text-xl font-bold mt-1">Inscritos — {event.title}</h1>
-          <p className="text-sm text-gray-500">{registrations.length} inscrições</p>
+          <p className="text-sm text-gray-500">
+            {registrations.length} inscrições · Total de pagamentos: <strong className="text-gray-700 dark:text-gray-300">{formatCurrency(totalAmount)}</strong>
+          </p>
         </div>
         <div className="flex gap-2">
           <ExportCsvButton eventId={id} />
