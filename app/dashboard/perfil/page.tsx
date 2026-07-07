@@ -99,7 +99,7 @@ export default function PerfilPage() {
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Meus Dados</h1>
 
       <div className="card">
