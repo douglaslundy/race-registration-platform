@@ -30,7 +30,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   const revenue = event.orders.reduce((s, o) => s + o.totalAmount, 0);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/admin/eventos" className="hover:text-primary-600">← Eventos</Link>
       </div>

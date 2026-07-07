@@ -44,7 +44,7 @@ export default function ResultadosPage() {
   }
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <div>
         <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
         <h1 className="text-xl font-bold mt-1">Importar resultados</h1>

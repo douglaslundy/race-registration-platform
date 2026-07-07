@@ -71,7 +71,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
   const canCancel = isConfirmed && new Date(registration.event.startAt) > new Date() && !deadlinePassed;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/dashboard/inscricoes" className="hover:text-primary-600">← Minhas inscrições</Link>
       </div>

@@ -60,7 +60,7 @@ export default async function AdminPaymentDetailPage({
   const reg = order.registrations[0];
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3">
         <Link href="/admin/pagamentos" className="text-sm text-gray-500 hover:text-primary-600">
           ← Pagamentos

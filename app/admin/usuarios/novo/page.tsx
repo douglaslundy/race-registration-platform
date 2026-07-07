@@ -9,7 +9,7 @@ export default async function NewAdminUserPage() {
   await requireAdmin();
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/admin/usuarios" className="hover:text-primary-600">
           ← Usuários
