@@ -6,7 +6,7 @@ A página de detalhe da inscrição do atleta (`app/dashboard/inscricoes/[id]/pa
 financeiro", mostra hoje Subtotal, Desconto e Total pago — mas não mostra a taxa da plataforma nem a
 taxa de serviço, mesmo essas duas já existindo no `Order` (`platformFeeAmount`, `paymentFeeAmount`) e
 já sendo exibidas com esses nomes na tela de checkout (`components/checkout/CheckoutForm.tsx:558,563`:
-"Taxa da plataforma" / "Taxa de serviço").
+"Taxa da plataforma" / "Taxa de serviço de ingresso").
 
 ## Decisão
 
@@ -14,7 +14,7 @@ Adicionar, entre "Desconto" e "Total pago" no mesmo card, duas linhas condiciona
 quando o valor é maior que zero), reaproveitando os rótulos já usados no checkout:
 
 - `+ Taxa da plataforma` — `order.platformFeeAmount`
-- `+ Taxa de serviço` — `order.paymentFeeAmount`
+- `+ Taxa de serviço de ingresso` — `order.paymentFeeAmount`
 
 ## Arquitetura
 
