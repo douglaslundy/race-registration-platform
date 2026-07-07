@@ -32,6 +32,20 @@ describe("buildRegistrationWhere", () => {
     expect(buildRegistrationWhere("evt-1", "CONFIRMED")).toEqual({ eventId: "evt-1", status: "CONFIRMED" });
   });
 
+  it("adds status filter for CANCELLATION_REQUESTED", () => {
+    expect(buildRegistrationWhere("evt-1", "CANCELLATION_REQUESTED")).toEqual({
+      eventId: "evt-1",
+      status: "CANCELLATION_REQUESTED",
+    });
+  });
+
+  it("filters by refunded/chargeback payment status for REFUNDED", () => {
+    expect(buildRegistrationWhere("evt-1", "REFUNDED")).toEqual({
+      eventId: "evt-1",
+      order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] } } } },
+    });
+  });
+
   it("ignores invalid status values", () => {
     expect(buildRegistrationWhere("evt-1", "NOT_A_STATUS")).toEqual({ eventId: "evt-1" });
   });

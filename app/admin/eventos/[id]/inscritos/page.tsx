@@ -20,6 +20,7 @@ const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
   TRANSFERRED: { label: "Transferida", color: BADGE.blue },
   WAITLISTED: { label: "Lista de espera", color: BADGE.gray },
   CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
+  REFUNDED: { label: "Estornado", color: BADGE.purple },
 };
 
 interface SearchParams {

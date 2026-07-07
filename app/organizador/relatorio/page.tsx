@@ -104,7 +104,6 @@ export default async function OrganizerRelatorioPage({
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
-  const netRevenue = grossRevenue - refunds;
   const payoutNetTotal = payoutTotalAgg._sum.netAmount ?? 0;
   const platformFeeActual = orderFeeAgg._sum.platformFeeAmount ?? 0;
   const serviceFeeActual = orderFeeAgg._sum.paymentFeeAmount ?? 0;
@@ -182,10 +181,6 @@ export default async function OrganizerRelatorioPage({
         <div className="card text-center">
           <p className="text-2xl font-bold text-red-500">-{formatCurrency(refunds)}</p>
           <p className="text-gray-500 text-sm mt-1">Estornos ({refundsAgg._count.id})</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-blue-600">{formatCurrency(netRevenue)}</p>
-          <p className="text-gray-500 text-sm mt-1">Receita líquida</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-purple-600">{formatCurrency(payoutNetTotal)}</p>

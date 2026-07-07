@@ -105,7 +105,6 @@ export default async function AdminRelatorioPage({
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
-  const netRevenue = grossRevenue - refunds;
   const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
   const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
   const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
@@ -182,10 +181,6 @@ export default async function AdminRelatorioPage({
         <div className="card text-center">
           <p className="text-2xl font-bold text-red-500">-{formatCurrency(refunds)}</p>
           <p className="text-gray-500 text-sm mt-1">Estornos ({refundsAgg._count.id})</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-blue-600">{formatCurrency(netRevenue)}</p>
-          <p className="text-gray-500 text-sm mt-1">Receita líquida</p>
         </div>
       </div>
 

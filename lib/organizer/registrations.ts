@@ -10,6 +10,7 @@ const VALID_REGISTRATION_STATUSES = [
   "CANCELLED",
   "TRANSFERRED",
   "WAITLISTED",
+  "CANCELLATION_REQUESTED",
 ];
 
 export function buildRegistrationOrderBy(
@@ -33,7 +34,11 @@ export function buildRegistrationWhere(eventId: string, status?: string, q?: str
   const normalizedCpf = query ? normalizeCpf(query) : "";
   return {
     eventId,
-    ...(status && VALID_REGISTRATION_STATUSES.includes(status) ? { status: status as never } : {}),
+    ...(status === "REFUNDED"
+      ? { order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] } } } } }
+      : status && VALID_REGISTRATION_STATUSES.includes(status)
+        ? { status: status as never }
+        : {}),
     ...(query
       ? {
           OR: [

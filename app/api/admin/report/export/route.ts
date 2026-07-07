@@ -50,7 +50,6 @@ export async function GET(req: NextRequest) {
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
-  const netRevenue = grossRevenue - refunds;
   const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
   const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
   const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
@@ -65,7 +64,6 @@ export async function GET(req: NextRequest) {
     ["Receita bruta", formatCurrency(grossRevenue)],
     ["Pagamentos cancelados", formatCurrency(cancelledAmount)],
     ["Estornos", formatCurrency(refunds)],
-    ["Receita líquida", formatCurrency(netRevenue)],
     ["Pagamentos confirmados", String(paymentsAgg._count.id)],
     ["Inscrições no período", String(registrationCount)],
     ["Eventos criados", String(eventCount)],

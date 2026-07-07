@@ -3,10 +3,9 @@ const ENTRIES: Array<[string, string]> = [
   ["Taxa da plataforma", "Comissão cobrada pela plataforma em cada inscrição."],
   ["Taxa de serviço", "Taxa de processamento repassada ao comprador no momento da compra."],
   ["Comissão do gateway", "Valor real cobrado pelo Mercado Pago para processar os pagamentos — um custo da plataforma, não incluído no total pago pelo comprador."],
-  ["Receita bruta", "Total efetivamente pago pelos compradores no período (ingresso + taxa da plataforma + taxa de serviço)."],
+  ["Receita bruta", "Total pago pelos compradores no período (ingresso + taxa da plataforma + taxa de serviço) que continua confirmado agora — pagamentos estornados depois já saem dessa conta automaticamente, não precisam ser subtraídos de novo."],
   ["Pagamentos cancelados", "Pagamentos que ficaram com status Pago mas cujo pedido foi cancelado depois — dinheiro coletado que ainda não foi estornado."],
   ["Estornos", "Pagamentos devolvidos aos compradores dentro do período filtrado, independente de quando a venda original ocorreu."],
-  ["Receita líquida", "Receita bruta menos os estornos do período (regime de caixa — mesmo critério usado por processadores de pagamento)."],
   ["Repasse líquido", "Valor líquido já repassado ao organizador, depois de descontadas as taxas."],
 ];
 
