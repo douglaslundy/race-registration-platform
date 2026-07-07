@@ -253,6 +253,56 @@ describe("admin users API", () => {
     );
   });
 
+  it("atualiza campos adicionais do perfil do atleta", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
+      id: "user-1",
+      name: "Atleta",
+      email: "atleta@exemplo.com",
+      role: "ATHLETE",
+      active: true,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    const txAthleteProfileUpsert = vi.fn().mockResolvedValueOnce({});
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        user: { update: txUserUpdate },
+        athleteProfile: { upsert: txAthleteProfileUpsert },
+        auditLog: { create: vi.fn() },
+      }),
+    );
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({
+          phone: "11999998888",
+          gender: "F",
+          city: "São Paulo",
+          state: "SP",
+          teamName: "Equipe X",
+          preferredShirtSize: "M",
+        }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(txAthleteProfileUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1" },
+        update: {
+          phone: "11999998888",
+          gender: "F",
+          city: "São Paulo",
+          state: "SP",
+          teamName: "Equipe X",
+          preferredShirtSize: "M",
+        },
+      }),
+    );
+  });
+
   it("rejeita CPF inválido na correção do admin", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce({ id: "user-1", email: "atleta@exemplo.com" });
 

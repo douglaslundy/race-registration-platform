@@ -16,6 +16,12 @@ const patchSchema = z.object({
   password: z.string().min(8).optional(),
   cpf: z.string().optional(),
   birthDate: z.string().optional(),
+  phone: z.string().nullable().optional(),
+  gender: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  teamName: z.string().nullable().optional(),
+  preferredShirtSize: z.enum(["PP", "P", "M", "G", "GG", "XGG"]).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -74,11 +80,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
       });
 
-      if (normalizedCpf || parsed.data.birthDate) {
-        const athleteData: Record<string, unknown> = {};
-        if (normalizedCpf) athleteData.cpf = normalizedCpf;
-        if (parsed.data.birthDate) athleteData.birthDate = new Date(parsed.data.birthDate);
+      const athleteData: Record<string, unknown> = {};
+      if (normalizedCpf) athleteData.cpf = normalizedCpf;
+      if (parsed.data.birthDate) athleteData.birthDate = new Date(parsed.data.birthDate);
+      if (parsed.data.phone !== undefined) athleteData.phone = parsed.data.phone;
+      if (parsed.data.gender !== undefined) athleteData.gender = parsed.data.gender;
+      if (parsed.data.city !== undefined) athleteData.city = parsed.data.city;
+      if (parsed.data.state !== undefined) athleteData.state = parsed.data.state;
+      if (parsed.data.teamName !== undefined) athleteData.teamName = parsed.data.teamName;
+      if (parsed.data.preferredShirtSize !== undefined) {
+        athleteData.preferredShirtSize = parsed.data.preferredShirtSize;
+      }
 
+      if (Object.keys(athleteData).length > 0) {
         await tx.athleteProfile.upsert({
           where: { userId: id },
           create: { userId: id, ...athleteData },
@@ -94,8 +108,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           entityId: id,
           metadata: {
             ...data,
-            ...(normalizedCpf ? { cpf: normalizedCpf } : {}),
-            ...(parsed.data.birthDate ? { birthDate: parsed.data.birthDate } : {}),
+            ...athleteData,
             passwordHash: parsed.data.password ? "[redacted]" : undefined,
           },
         },
