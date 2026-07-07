@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           action: "USER_UPDATED",
           entityType: "User",
           entityId: userId,
-          metadata: { ...data, ...athleteData },
+          metadata: { ...data, ...athleteData } as Prisma.InputJsonValue,
         },
       });
 
