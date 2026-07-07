@@ -185,7 +185,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           )}
           {registration.order.paymentFeeAmount > 0 && (
             <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>Taxa de serviço</span>
+              <span>Taxa de serviço de ingresso</span>
               <span>+ {formatCurrency(registration.order.paymentFeeAmount)}</span>
             </div>
           )}
