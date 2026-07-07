@@ -38,8 +38,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       categories: { orderBy: { name: "asc" } },
       ticketBatches: { orderBy: { startAt: "asc" } },
       coupons: { orderBy: { createdAt: "asc" } },
-      _count: { select: { registrations: true } },
-      orders: { where: { status: "PAID" }, select: { totalAmount: true } },
+      orders: { where: { status: "PAID" }, select: { subtotalAmount: true } },
     },
   });
 
@@ -84,7 +83,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
     batchSoldTotal: event.ticketBatches.reduce((s, b) => s + b.soldCount, 0),
   });
 
-  const revenue = event.orders.reduce((s, o) => s + o.totalAmount, 0);
+  const revenue = event.orders.reduce((s, o) => s + o.subtotalAmount, 0);
   const statusInfo = STATUS_LABEL[event.status] ?? STATUS_LABEL.DRAFT;
   const canPublish = event.status === "DRAFT";
   const canDelete = ["DRAFT", "CANCELLED"].includes(event.status);
@@ -123,15 +122,15 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       {/* Métricas gerais */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card text-center">
-          <p className="text-3xl font-bold text-primary-600">{event._count.registrations}</p>
-          <p className="text-gray-500 text-sm mt-1">Inscrições</p>
+          <p className="text-3xl font-bold text-primary-600">{statusBreakdown.paid}</p>
+          <p className="text-gray-500 text-sm mt-1">Inscrições confirmadas</p>
           <p className="text-xs text-gray-400 mt-1">
-            {statusBreakdown.paid} pagas · {statusBreakdown.pending} pendentes · {statusBreakdown.cancelled} canceladas
+            {statusBreakdown.pending} pendentes · {statusBreakdown.cancelled} canceladas
           </p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-green-600">{formatCurrency(revenue)}</p>
-          <p className="text-gray-500 text-sm mt-1">Receita (pago)</p>
+          <p className="text-gray-500 text-sm mt-1">Receita do evento</p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold">{slotsInfo.total}</p>
