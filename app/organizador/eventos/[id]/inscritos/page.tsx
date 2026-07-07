@@ -67,6 +67,7 @@ export default async function InscritosPage({
     include: {
       athlete: {
         select: {
+          id: true,
           name: true,
           email: true,
           athleteProfile: {

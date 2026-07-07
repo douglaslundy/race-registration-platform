@@ -28,6 +28,7 @@ export interface RegistrationRow {
   emergencyContactPhone: string | null;
   medicalNotes: string | null;
   athlete: {
+    id: string;
     name: string;
     email: string;
     athleteProfile: {

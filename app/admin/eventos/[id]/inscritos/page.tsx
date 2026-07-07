@@ -63,6 +63,7 @@ export default async function AdminInscritosPage({
     include: {
       athlete: {
         select: {
+          id: true,
           name: true,
           email: true,
           athleteProfile: {
