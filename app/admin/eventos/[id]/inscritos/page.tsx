@@ -173,6 +173,7 @@ export default async function AdminInscritosPage({
       ) : (
         <RegistrationsTable
           registrations={registrations}
+          editEndpoint={(r) => `/api/admin/users/${r.athlete.id}`}
           renderActions={(r) => {
             const payment = r.order.payments[0];
             return (

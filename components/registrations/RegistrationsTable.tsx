@@ -58,9 +58,11 @@ export interface RegistrationRow {
 export default function RegistrationsTable({
   registrations,
   renderActions,
+  editEndpoint,
 }: {
   registrations: RegistrationRow[];
   renderActions?: (registration: RegistrationRow) => ReactNode;
+  editEndpoint?: (registration: RegistrationRow) => string;
 }) {
   return (
     <div className="card overflow-x-auto">
@@ -93,6 +95,7 @@ export default function RegistrationsTable({
                     athleteName={r.athlete.name}
                     athleteEmail={r.athlete.email}
                     profile={r.athlete.athleteProfile}
+                    editEndpoint={editEndpoint?.(r)}
                     registrationContext={{
                       emergencyContactName: r.emergencyContactName,
                       emergencyContactPhone: r.emergencyContactPhone,

@@ -320,6 +320,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                         athleteName={u.name}
                         athleteEmail={u.email}
                         profile={u.athleteProfile}
+                        editEndpoint={`/api/admin/users/${u.id}`}
                       />
                       <Link href={`/admin/usuarios/${u.id}/editar`} className="text-xs text-primary-600 hover:underline">
                         Editar
