@@ -40,7 +40,14 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
       category: { select: { name: true } },
       ticketBatch: { select: { name: true, priceAmount: true } },
       order: {
-        select: { id: true, status: true, totalAmount: true, discountAmount: true, platformFeeAmount: true },
+        select: {
+          id: true,
+          status: true,
+          totalAmount: true,
+          discountAmount: true,
+          platformFeeAmount: true,
+          paymentFeeAmount: true,
+        },
       },
     },
   });
@@ -168,6 +175,18 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
             <div className="flex justify-between text-green-600">
               <span>Desconto</span>
               <span>- {formatCurrency(registration.order.discountAmount)}</span>
+            </div>
+          )}
+          {registration.order.platformFeeAmount > 0 && (
+            <div className="flex justify-between text-gray-600 dark:text-gray-400">
+              <span>Taxa da plataforma</span>
+              <span>+ {formatCurrency(registration.order.platformFeeAmount)}</span>
+            </div>
+          )}
+          {registration.order.paymentFeeAmount > 0 && (
+            <div className="flex justify-between text-gray-600 dark:text-gray-400">
+              <span>Taxa de serviço</span>
+              <span>+ {formatCurrency(registration.order.paymentFeeAmount)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-gray-900 dark:text-gray-100 pt-2 border-t dark:border-gray-700">
