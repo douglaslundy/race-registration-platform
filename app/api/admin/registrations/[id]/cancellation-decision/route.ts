@@ -9,7 +9,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session?.user || (session.user.role !== "ORGANIZER" && session.user.role !== "ADMIN")) {
+  if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const result = await decideRegistrationCancellation({
-    where: { id, event: { organizer: { userId: session.user.id } } },
+    where: { id },
     decision: parsed.data.decision,
     actingUserId: session.user.id,
   });
