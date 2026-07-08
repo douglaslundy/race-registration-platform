@@ -21,6 +21,7 @@ const checkoutSchema = z.object({
   emergencyContactName: z.string().max(100).optional(),
   emergencyContactPhone: z.string().max(20).optional(),
   medicalNotes: z.string().max(500).optional(),
+  notes: z.string().max(200).optional(),
   couponCode: z.string().max(50).optional(),
   paymentMethod: z.enum(["PIX", "CREDIT_CARD", "BOLETO"]),
   cpf: z.string().max(14).optional(),

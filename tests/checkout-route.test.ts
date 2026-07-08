@@ -121,4 +121,56 @@ describe("checkout api", () => {
     expect(res.status).toBe(200);
     expect(dbMock.payment.create).toHaveBeenCalled();
   });
+
+  it("rejeita observação com mais de 200 caracteres", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+          notes: "a".repeat(201),
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(400);
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("repassa a observação para createCheckout quando dentro do limite", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 10000,
+      discountAmount: 0,
+      platformFeeAmount: 0,
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      createPayment: vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-1", status: "PENDING" }),
+    } as any);
+    dbMock.payment.create.mockResolvedValueOnce({ id: "payment-1" });
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+          notes: "Chegarei atrasado",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(createCheckout).toHaveBeenCalledWith(expect.objectContaining({ notes: "Chegarei atrasado" }));
+  });
 });
