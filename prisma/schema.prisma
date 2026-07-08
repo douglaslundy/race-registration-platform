@@ -314,6 +314,7 @@ model Registration {
   emergencyContactName String?
   emergencyContactPhone String?
   medicalNotes         String?
+  notes                String?
   status               RegistrationStatus @default(PENDING_PAYMENT)
   acceptedTermsAt      DateTime?
   cancellationReason      String?
