@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BADGE } from "@/lib/badge-colors";
 import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
+import CancellationReasonModal from "@/components/registrations/CancellationReasonModal";
 
 const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
   PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
@@ -27,6 +28,8 @@ export interface RegistrationRow {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   medicalNotes: string | null;
+  cancellationReason: string | null;
+  cancellationRequestedAt: Date | null;
   athlete: {
     id: string;
     name: string;
@@ -85,10 +88,13 @@ export default function RegistrationsTable({
         <tbody>
           {registrations.map((r) => {
             const payment = r.order.payments[0];
+            const isRefundPending = payment?.status === "REFUND_PENDING";
             const isRefunded = payment?.status === "REFUNDED" || payment?.status === "CHARGEBACK";
-            const statusInfo = isRefunded
-              ? { label: "Estornado", color: BADGE.purple }
-              : REGISTRATION_STATUS[r.status];
+            const statusInfo = isRefundPending
+              ? { label: "Cancelado — reembolso pendente", color: BADGE.orange }
+              : isRefunded
+                ? { label: "Estornado", color: BADGE.purple }
+                : REGISTRATION_STATUS[r.status];
             return (
               <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                 <td className="py-2 pr-3 max-w-[10rem]">
@@ -132,6 +138,15 @@ export default function RegistrationsTable({
                   <span className={`px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
                     {statusInfo?.label ?? r.status}
                   </span>
+                  {r.cancellationReason && (
+                    <div className="mt-1">
+                      <CancellationReasonModal
+                        athleteName={r.athlete.name}
+                        reason={r.cancellationReason}
+                        requestedAt={r.cancellationRequestedAt}
+                      />
+                    </div>
+                  )}
                 </td>
                 <td className="py-2 pr-3">
                   {r.status === "CONFIRMED" ? (

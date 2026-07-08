@@ -21,6 +21,7 @@ const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
   WAITLISTED: { label: "Lista de espera", color: BADGE.gray },
   CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
   REFUNDED: { label: "Estornado", color: BADGE.purple },
+  REFUND_PENDING: { label: "Cancelado — reembolso pendente", color: BADGE.orange },
 };
 
 interface SearchParams {

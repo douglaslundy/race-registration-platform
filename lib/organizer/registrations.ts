@@ -36,9 +36,11 @@ export function buildRegistrationWhere(eventId: string, status?: string, q?: str
     eventId,
     ...(status === "REFUNDED"
       ? { order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] } } } } }
-      : status && VALID_REGISTRATION_STATUSES.includes(status)
-        ? { status: status as never }
-        : {}),
+      : status === "REFUND_PENDING"
+        ? { order: { payments: { some: { status: "REFUND_PENDING" } } } }
+        : status && VALID_REGISTRATION_STATUSES.includes(status)
+          ? { status: status as never }
+          : {}),
     ...(query
       ? {
           OR: [
