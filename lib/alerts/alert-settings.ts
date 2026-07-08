@@ -72,3 +72,19 @@ export async function getReconciliationAlertSettings(): Promise<ReconciliationAl
     minutesThreshold: minutesThreshold ? parseInt(minutesThreshold, 10) : 15,
   };
 }
+
+export interface CancellationAlertSettings {
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+}
+
+export async function getCancellationAlertSettings(): Promise<CancellationAlertSettings> {
+  const [emailEnabled, whatsappEnabled] = await Promise.all([
+    getSetting("alert_cancellation_email_enabled"),
+    getSetting("alert_cancellation_whatsapp_enabled"),
+  ]);
+  return {
+    emailEnabled: emailEnabled === "true",
+    whatsappEnabled: whatsappEnabled === "true",
+  };
+}

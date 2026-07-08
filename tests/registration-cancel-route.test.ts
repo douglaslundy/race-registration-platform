@@ -6,7 +6,7 @@ import { POST } from "@/app/api/registrations/[id]/cancel/route";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/settings", () => ({ getCancellationPolicyEnabled: vi.fn() }));
-vi.mock("@/lib/notifications", () => ({ notifyCancellationRequested: vi.fn() }));
+vi.mock("@/lib/alerts/cancellation-requested", () => ({ notifyCancellationRequested: vi.fn() }));
 
 const dbMock = db as any;
 const authMock = vi.mocked(auth);

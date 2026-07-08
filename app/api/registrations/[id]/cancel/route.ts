@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
 import { decideCancellationOutcome } from "@/lib/registrations/cancellation-policy";
-import { notifyCancellationRequested } from "@/lib/notifications";
+import { notifyCancellationRequested } from "@/lib/alerts/cancellation-requested";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
