@@ -28,23 +28,27 @@ export async function attemptAutoRefund(params: AttemptAutoRefundParams): Promis
   } catch (error) {
     const failureReason = error instanceof Error ? error.message : "Erro desconhecido ao estornar";
 
-    await db.$transaction(async (tx) => {
-      await tx.refund.create({
-        data: {
-          paymentId: params.payment.id,
-          amount: params.payment.amount,
-          reason: params.reason,
-          status: "FAILED",
-          failureReason,
-          initiatedByUserId: params.initiatedByUserId,
-        },
-      });
+    try {
+      await db.$transaction(async (tx) => {
+        await tx.refund.create({
+          data: {
+            paymentId: params.payment.id,
+            amount: params.payment.amount,
+            reason: params.reason,
+            status: "FAILED",
+            failureReason,
+            initiatedByUserId: params.initiatedByUserId,
+          },
+        });
 
-      await tx.payment.update({
-        where: { id: params.payment.id },
-        data: { status: "REFUND_PENDING" },
+        await tx.payment.update({
+          where: { id: params.payment.id },
+          data: { status: "REFUND_PENDING" },
+        });
       });
-    });
+    } catch (dbError) {
+      console.error("[attemptAutoRefund] failed to record fallback refund:", dbError);
+    }
 
     return { outcome: "failed", failureReason };
   }

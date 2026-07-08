@@ -64,6 +64,23 @@ describe("attemptAutoRefund", () => {
     expect(txPaymentUpdate).toHaveBeenCalledWith({ where: { id: "pay-1" }, data: { status: "REFUND_PENDING" } });
   });
 
+  it("nunca lança exceção mesmo quando a gravação de fallback no banco também falha", async () => {
+    refundPaymentMock.mockRejectedValueOnce(new Error("gateway indisponível"));
+    dbMock.$transaction.mockRejectedValueOnce(new Error("db indisponível"));
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await attemptAutoRefund({
+      payment: { id: "pay-1", amount: 1000 },
+      initiatedByUserId: "org-1",
+      reason: "Contusão",
+    });
+
+    expect(result).toEqual({ outcome: "failed", failureReason: "gateway indisponível" });
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it("usa uma mensagem padrão de erro quando o gateway lança algo que não é um Error", async () => {
     refundPaymentMock.mockRejectedValueOnce("timeout cru");
     dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
