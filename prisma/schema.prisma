@@ -72,6 +72,7 @@ enum PaymentStatus {
   CANCELLED
   REFUNDED
   CHARGEBACK
+  REFUND_PENDING
 }
 
 enum PayoutStatus {
@@ -388,15 +389,24 @@ model Payment {
   @@map("payments")
 }
 
+enum RefundStatus {
+  PROCESSED
+  FAILED
+  MANUAL
+}
+
 model Refund {
-  id                String    @id @default(cuid())
+  id                String       @id @default(cuid())
   paymentId         String
   amount            Int       // centavos
   reason            String?
+  status            RefundStatus
+  failureReason     String?
+  resolutionNote    String?
   providerRefundId  String?
   initiatedByUserId String
   processedAt       DateTime?
-  createdAt         DateTime  @default(now())
+  createdAt         DateTime     @default(now())
 
   payment         Payment @relation(fields: [paymentId], references: [id])
   initiatedByUser User    @relation(fields: [initiatedByUserId], references: [id])
