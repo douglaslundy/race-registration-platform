@@ -48,19 +48,17 @@ export default function CancelRegistrationButton({
   if (confirming) {
     return (
       <div className="flex-1 flex flex-col gap-2">
-        {requiresApproval && (
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Justifique o motivo do cancelamento"
-            className="input-field text-sm"
-            rows={3}
-          />
-        )}
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Justifique o motivo do cancelamento"
+          className="input-field text-sm"
+          rows={3}
+        />
         <div className="flex gap-2">
           <button
             onClick={handleCancel}
-            disabled={loading || (requiresApproval && !reason.trim())}
+            disabled={loading || !reason.trim()}
             className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           >
             {loading ? "Enviando..." : "Confirmar cancelamento"}

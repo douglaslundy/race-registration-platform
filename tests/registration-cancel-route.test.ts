@@ -56,15 +56,35 @@ describe("POST /api/registrations/[id]/cancel", () => {
       }),
     );
 
-    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+    const res = await POST(makeRequest({ reason: "Não poderei mais participar" }), { params: Promise.resolve({ id: "reg-1" }) });
 
     expect(res.status).toBe(200);
-    expect(txRegistrationUpdate).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: { status: "CANCELLED" } });
+    expect(txRegistrationUpdate).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { status: "CANCELLED", cancellationReason: "Não poderei mais participar" },
+    });
     expect(txOrderUpdate).toHaveBeenCalledWith({ where: { id: "ord-1" }, data: { status: "CANCELLED" } });
     expect(txTicketBatchUpdate).toHaveBeenCalledWith({ where: { id: "tb-1" }, data: { soldCount: { decrement: 1 } } });
     expect(txAuditLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ action: "REGISTRATION_CANCELLED" }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "REGISTRATION_CANCELLED",
+          metadata: expect.objectContaining({ reason: "Não poderei mais participar" }),
+        }),
+      }),
     );
+  });
+
+  it("exige justificativa mesmo no cancelamento imediato (sem aprovação)", async () => {
+    policyMock.mockResolvedValue(false);
+    dbMock.registration.findFirst.mockResolvedValueOnce(baseRegistration);
+
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "reg-1" }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("Justificativa obrigatória para cancelar a inscrição");
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("bloqueia quando o interruptor está ligado e o prazo do evento já passou", async () => {
@@ -74,7 +94,7 @@ describe("POST /api/registrations/[id]/cancel", () => {
       event: { ...baseRegistration.event, cancellationDeadline: new Date("2020-01-01") },
     });
 
-    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+    const res = await POST(makeRequest({ reason: "Não poderei mais participar" }), { params: Promise.resolve({ id: "reg-1" }) });
     const body = await res.json();
 
     expect(res.status).toBe(400);
@@ -93,7 +113,7 @@ describe("POST /api/registrations/[id]/cancel", () => {
     const body = await res.json();
 
     expect(res.status).toBe(400);
-    expect(body.error).toBe("Justificativa obrigatória para solicitar o cancelamento");
+    expect(body.error).toBe("Justificativa obrigatória para cancelar a inscrição");
     expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 

@@ -39,6 +39,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Não é possível cancelar após o início do evento" }, { status: 400 });
   }
 
+  if (!reason) {
+    return NextResponse.json({ error: "Justificativa obrigatória para cancelar a inscrição" }, { status: 400 });
+  }
+
   const policyEnabled = await getCancellationPolicyEnabled();
   const decision = decideCancellationOutcome({
     policyEnabled,
@@ -52,10 +56,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (decision.outcome === "requires_approval") {
-    if (!reason) {
-      return NextResponse.json({ error: "Justificativa obrigatória para solicitar o cancelamento" }, { status: 400 });
-    }
-
     await db.$transaction(async (tx) => {
       await tx.registration.update({
         where: { id },
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await db.$transaction(async (tx) => {
     await tx.registration.update({
       where: { id },
-      data: { status: "CANCELLED" },
+      data: { status: "CANCELLED", cancellationReason: reason },
     });
 
     await tx.order.update({
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         action: "REGISTRATION_CANCELLED",
         entityType: "Registration",
         entityId: id,
-        metadata: { eventTitle: registration.event.title, orderId: registration.order.id },
+        metadata: { eventTitle: registration.event.title, orderId: registration.order.id, reason },
       },
     });
   });
