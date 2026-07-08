@@ -4,7 +4,7 @@ import { BADGE } from "@/lib/badge-colors";
 import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
 import CancellationReasonModal from "@/components/registrations/CancellationReasonModal";
 
-const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
+export const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
   PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
   CONFIRMED: { label: "Confirmada", color: BADGE.green },
   CANCELLED: { label: "Cancelada", color: BADGE.red },
@@ -30,6 +30,8 @@ export interface RegistrationRow {
   medicalNotes: string | null;
   cancellationReason: string | null;
   cancellationRequestedAt: Date | null;
+  teamName: string | null;
+  notes: string | null;
   athlete: {
     id: string;
     name: string;
@@ -106,9 +108,18 @@ export default function RegistrationsTable({
                     profile={r.athlete.athleteProfile}
                     editEndpoint={editEndpoint?.(r)}
                     registrationContext={{
+                      status: r.status,
+                      createdAt: r.createdAt,
+                      routeName: r.route?.name ?? null,
+                      categoryName: r.category?.name ?? null,
+                      ticketBatchName: r.ticketBatch.name,
+                      shirtSize: r.shirtSize,
+                      teamName: r.teamName,
+                      orderId: r.order.id,
                       emergencyContactName: r.emergencyContactName,
                       emergencyContactPhone: r.emergencyContactPhone,
                       medicalNotes: r.medicalNotes,
+                      notes: r.notes,
                     }}
                   />
                 </td>

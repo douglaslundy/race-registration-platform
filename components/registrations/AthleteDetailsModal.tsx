@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { REGISTRATION_STATUS } from "@/components/registrations/RegistrationsTable";
 
 const GENDERS = [
   { value: "M", label: "Masculino" },
@@ -28,9 +29,18 @@ interface AthleteProfileData {
 }
 
 interface RegistrationContextData {
+  status: string;
+  createdAt: Date | string;
+  routeName: string | null;
+  categoryName: string | null;
+  ticketBatchName: string;
+  shirtSize: string | null;
+  teamName: string | null;
+  orderId: string;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   medicalNotes: string | null;
+  notes: string | null;
 }
 
 interface AthleteDetailsModalProps {
@@ -220,6 +230,42 @@ export default function AthleteDetailsModal({
                     </h3>
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                       <div>
+                        <dt className="text-xs text-gray-500">Status</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">
+                          {REGISTRATION_STATUS[registrationContext.status]?.label ?? registrationContext.status}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Data da inscrição</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">
+                          {formatDate(registrationContext.createdAt, "dd/MM/yyyy HH:mm")}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Percurso</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">{registrationContext.routeName ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Categoria</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">{registrationContext.categoryName ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Lote</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">{registrationContext.ticketBatchName}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Camiseta</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">{registrationContext.shirtSize ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Equipe</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">{registrationContext.teamName ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-gray-500">Nº do pedido</dt>
+                        <dd className="text-gray-800 dark:text-gray-200 font-mono">{registrationContext.orderId}</dd>
+                      </div>
+                      <div>
                         <dt className="text-xs text-gray-500">Contato de emergência</dt>
                         <dd className="text-gray-800 dark:text-gray-200">
                           {registrationContext.emergencyContactName ?? "—"}
@@ -236,6 +282,10 @@ export default function AthleteDetailsModal({
                         <dd className="text-gray-800 dark:text-gray-200">
                           {registrationContext.medicalNotes ?? "—"}
                         </dd>
+                      </div>
+                      <div className="col-span-2">
+                        <dt className="text-xs text-gray-500">Observação</dt>
+                        <dd className="text-gray-800 dark:text-gray-200">{registrationContext.notes ?? "—"}</dd>
                       </div>
                     </dl>
                   </div>
