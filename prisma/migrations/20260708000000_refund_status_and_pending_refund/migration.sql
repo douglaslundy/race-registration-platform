@@ -7,10 +7,9 @@ CREATE TYPE "RefundStatus" AS ENUM ('PROCESSED', 'FAILED', 'MANUAL');
 
 -- AlterTable
 -- A coluna "status" é obrigatória no Prisma Client (sem @default, sempre setada
--- explicitamente na criação do Refund). Ela é adicionada aqui como NULLABLE porque
--- o Postgres exige um valor para colunas NOT NULL em linhas já existentes e esta
--- é uma feature ainda não lançada em produção (tabela "refunds" sem linhas que
--- dependam do formato antigo) — não há necessidade de backfill.
-ALTER TABLE "refunds" ADD COLUMN "status" "RefundStatus";
+-- explicitamente na criação do Refund). É segura como NOT NULL direto (sem
+-- backfill) porque esta é uma feature ainda não lançada em produção — a tabela
+-- "refunds" não tem linhas existentes que dependam do formato antigo.
+ALTER TABLE "refunds" ADD COLUMN "status" "RefundStatus" NOT NULL;
 ALTER TABLE "refunds" ADD COLUMN "failureReason" TEXT;
 ALTER TABLE "refunds" ADD COLUMN "resolutionNote" TEXT;
