@@ -26,6 +26,7 @@ const schema = z.object({
   emergencyContactName: z.string().min(2, "Informe o contato de emergência"),
   emergencyContactPhone: z.string().min(8, "Telefone inválido"),
   medicalNotes: z.string().max(500).optional(),
+  notes: z.string().max(200, "Máximo de 200 caracteres").optional(),
   couponCode: z.string().optional(),
   paymentMethod: z.enum(["PIX", "CREDIT_CARD", "BOLETO"]),
   acceptTerms: z.literal(true, { errorMap: () => ({ message: "Aceite os termos para continuar" }) }),
@@ -213,6 +214,7 @@ export default function CheckoutForm({
       "couponCode",
       "teamName",
       "medicalNotes",
+      "notes",
     ];
 
     for (const key of orderedKeys) {
@@ -445,6 +447,19 @@ export default function CheckoutForm({
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Informações médicas</label>
           <textarea {...register("medicalNotes")} className="input-field" rows={2} placeholder="Alergias, condições médicas..." />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observação (opcional)</label>
+          <textarea
+            {...register("notes")}
+            className="input-field"
+            rows={2}
+            maxLength={200}
+            placeholder="Alguma informação adicional para o organizador?"
+          />
+          <p className="text-xs text-gray-400 mt-1 text-right">{(watch("notes") ?? "").length}/200</p>
+          {errors.notes && <p className="text-red-500 text-xs mt-1">{errors.notes.message}</p>}
         </div>
 
         <div>
