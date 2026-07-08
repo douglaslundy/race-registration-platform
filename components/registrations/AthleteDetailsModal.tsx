@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/format";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
-import { REGISTRATION_STATUS } from "@/components/registrations/RegistrationsTable";
+import { REGISTRATION_STATUS } from "@/lib/registration-status";
 
 const GENDERS = [
   { value: "M", label: "Masculino" },

@@ -1,17 +1,9 @@
 import type { ReactNode } from "react";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BADGE } from "@/lib/badge-colors";
+import { REGISTRATION_STATUS } from "@/lib/registration-status";
 import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
 import CancellationReasonModal from "@/components/registrations/CancellationReasonModal";
-
-export const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
-  CONFIRMED: { label: "Confirmada", color: BADGE.green },
-  CANCELLED: { label: "Cancelada", color: BADGE.red },
-  TRANSFERRED: { label: "Transferida", color: BADGE.blue },
-  WAITLISTED: { label: "Lista de espera", color: BADGE.gray },
-  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
-};
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   PIX: "PIX",
