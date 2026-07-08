@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (format === "csv") {
-    const header = "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data\n";
+    const header = "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Status,Data\n";
     const rows = registrations.map((r) =>
       [
         r.athlete.name,
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         r.teamName ?? "",
         r.emergencyContactName ?? "",
         r.emergencyContactPhone ?? "",
+        r.notes ?? "",
         r.status,
         r.createdAt.toISOString(),
       ]

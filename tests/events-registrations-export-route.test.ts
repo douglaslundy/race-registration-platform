@@ -21,7 +21,7 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
   });
 
-  it("inclui a coluna CPF no cabeçalho e o valor do atleta nas linhas", async () => {
+  it("inclui a coluna CPF e Observação no cabeçalho e os valores nas linhas", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
         athlete: { name: "Ana Silva", email: "ana@example.com", athleteProfile: { cpf: "11144477735" } },
@@ -32,6 +32,7 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
         teamName: null,
         emergencyContactName: null,
         emergencyContactPhone: null,
+        notes: "Chegarei atrasado",
         status: "CONFIRMED",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
@@ -41,9 +42,10 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     const csv = await res.text();
 
     expect(csv.split("\n")[0]).toBe(
-      "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Status,Data",
+      "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Status,Data",
     );
     expect(csv).toContain('"Ana Silva","ana@example.com","11144477735",');
+    expect(csv).toContain('"Chegarei atrasado","CONFIRMED"');
   });
 
   it("usa string vazia quando o atleta ainda não tem CPF cadastrado", async () => {
@@ -57,6 +59,7 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
         teamName: null,
         emergencyContactName: null,
         emergencyContactPhone: null,
+        notes: null,
         status: "PENDING_PAYMENT",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
       },
