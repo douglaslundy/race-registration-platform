@@ -50,16 +50,18 @@ describe("resolveRefundManually", () => {
     });
   });
 
-  it("marca o Refund como MANUAL e o Payment como REFUNDED", async () => {
-    dbMock.payment.findFirst.mockResolvedValueOnce({ id: "pay-1", status: "REFUND_PENDING" });
+  it("marca o Refund como MANUAL, o Payment como REFUNDED e o Order como REFUNDED", async () => {
+    dbMock.payment.findFirst.mockResolvedValueOnce({ id: "pay-1", status: "REFUND_PENDING", orderId: "ord-1" });
     dbMock.refund.findFirst.mockResolvedValueOnce({ id: "refund-1", status: "FAILED" });
     const txRefundUpdate = vi.fn();
     const txPaymentUpdate = vi.fn();
+    const txOrderUpdate = vi.fn();
     const txAuditLogCreate = vi.fn();
     dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
       fn({
         refund: { update: txRefundUpdate },
         payment: { update: txPaymentUpdate },
+        order: { update: txOrderUpdate },
         auditLog: { create: txAuditLogCreate },
       }),
     );
@@ -78,6 +80,10 @@ describe("resolveRefundManually", () => {
     expect(txPaymentUpdate).toHaveBeenCalledWith({
       where: { id: "pay-1" },
       data: expect.objectContaining({ status: "REFUNDED" }),
+    });
+    expect(txOrderUpdate).toHaveBeenCalledWith({
+      where: { id: "ord-1" },
+      data: { status: "REFUNDED" },
     });
     expect(txAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({

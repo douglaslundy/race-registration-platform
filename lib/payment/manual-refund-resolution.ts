@@ -6,7 +6,7 @@ export async function resolveRefundManually(params: {
   resolvedByUserId: string;
   resolutionNote: string;
 }): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const payment = await db.payment.findFirst({ where: params.where, select: { id: true, status: true } });
+  const payment = await db.payment.findFirst({ where: params.where, select: { id: true, status: true, orderId: true } });
   if (!payment) return { ok: false, status: 404, error: "Pagamento não encontrado" };
 
   if (payment.status !== "REFUND_PENDING") {
@@ -30,6 +30,11 @@ export async function resolveRefundManually(params: {
     await tx.payment.update({
       where: { id: payment.id },
       data: { status: "REFUNDED", refundedAt: new Date() },
+    });
+
+    await tx.order.update({
+      where: { id: payment.orderId },
+      data: { status: "REFUNDED" },
     });
 
     await tx.auditLog.create({
