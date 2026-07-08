@@ -19,7 +19,7 @@ const dbMock = db as any;
 const orderFixture = {
   buyer: { name: "Atleta Teste", email: "atleta@example.com" },
   event: { title: "Corrida Teste" },
-  registrations: [{ id: "reg-1" }],
+  registrations: [{ id: "reg-1", notes: "Chegarei atrasado" }],
 };
 
 describe("notifyOrderConfirmed", () => {
@@ -29,18 +29,36 @@ describe("notifyOrderConfirmed", () => {
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
   });
 
-  it("envia o e-mail e grava confirmationEmailSentAt no pedido", async () => {
+  it("envia o e-mail com o código do pedido e a observação, e grava confirmationEmailSentAt", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
 
     await notifyOrderConfirmed("order-1");
 
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta@example.com", registrationId: "reg-1" }),
+      expect.objectContaining({
+        to: "atleta@example.com",
+        registrationId: "reg-1",
+        orderId: "order-1",
+        notes: "Chegarei atrasado",
+      }),
     );
     expect(dbMock.order.update).toHaveBeenCalledWith({
       where: { id: "order-1" },
       data: { confirmationEmailSentAt: expect.any(Date) },
     });
+  });
+
+  it("envia notes como undefined quando a inscrição não tem observação", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce({
+      ...orderFixture,
+      registrations: [{ id: "reg-1", notes: null }],
+    });
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: undefined }),
+    );
   });
 
   it("não grava confirmationEmailSentAt quando o SMTP não está configurado", async () => {

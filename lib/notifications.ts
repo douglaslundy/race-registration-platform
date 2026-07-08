@@ -17,7 +17,7 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
       select: {
         buyer: { select: { name: true, email: true } },
         event: { select: { title: true } },
-        registrations: { select: { id: true }, take: 1 },
+        registrations: { select: { id: true, notes: true }, take: 1 },
       },
     });
 
@@ -27,7 +27,9 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
       to: order.buyer.email,
       name: order.buyer.name,
       registrationId: order.registrations[0].id,
+      orderId,
       eventTitle: order.event?.title,
+      notes: order.registrations[0].notes ?? undefined,
     });
 
     await db.order.update({ where: { id: orderId }, data: { confirmationEmailSentAt: new Date() } });

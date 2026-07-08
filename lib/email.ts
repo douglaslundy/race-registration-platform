@@ -62,7 +62,9 @@ export async function sendRegistrationConfirmationEmail(params: {
   to: string;
   name: string;
   registrationId: string;
+  orderId: string;
   eventTitle?: string;
+  notes?: string;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -75,6 +77,8 @@ export async function sendRegistrationConfirmationEmail(params: {
       `<p>Olá ${params.name},</p>
        <p>Sua inscrição${params.eventTitle ? ` em <strong>${params.eventTitle}</strong>` : ""} foi <strong>confirmada</strong> com sucesso! 🎉</p>
        <p>O pagamento foi aprovado e sua vaga está garantida.</p>
+       <p>Código do pedido: <strong>${params.orderId}</strong></p>
+       ${params.notes ? `<p>Observação registrada: ${params.notes}</p>` : ""}
        <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Ver detalhes da inscrição</a></p>`
     ),
   });
