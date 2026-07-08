@@ -239,6 +239,11 @@ function toRefundRow(row: Row): Prisma.RefundCreateManyInput {
     paymentId: s(row.paymentId),
     amount: n(row.amount),
     reason: sn(row.reason),
+    // Backups taken before RefundStatus existed have no `status` field — those refunds all went
+    // through the (then-only) synchronous gateway success path, so "PROCESSED" is the correct backfill.
+    status: (row.status ? s(row.status) : "PROCESSED") as Prisma.RefundCreateManyInput["status"],
+    failureReason: sn(row.failureReason),
+    resolutionNote: sn(row.resolutionNote),
     providerRefundId: sn(row.providerRefundId),
     initiatedByUserId: s(row.initiatedByUserId),
     processedAt: dn(row.processedAt),
