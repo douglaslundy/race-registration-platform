@@ -4,11 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function CancellationDecisionButtons({
-  registrationId,
   cancellationReason,
   endpoint,
 }: {
-  registrationId: string;
   cancellationReason: string | null;
   endpoint: string;
 }) {

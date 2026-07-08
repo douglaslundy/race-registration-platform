@@ -46,7 +46,6 @@ export default function PendingCancellationsTable({
               </td>
               <td className="py-2">
                 <CancellationDecisionButtons
-                  registrationId={item.id}
                   cancellationReason={item.cancellationReason}
                   endpoint={decisionEndpoint(item.id)}
                 />
