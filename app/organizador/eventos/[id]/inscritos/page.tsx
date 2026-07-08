@@ -190,7 +190,13 @@ export default async function InscritosPage({
             return (
               <>
                 {payment?.status === "PAID" && <RefundRegistrationButton registrationId={r.id} />}
-                {r.status === "CANCELLATION_REQUESTED" && <CancellationDecisionButtons registrationId={r.id} />}
+                {r.status === "CANCELLATION_REQUESTED" && (
+                  <CancellationDecisionButtons
+                    registrationId={r.id}
+                    cancellationReason={r.cancellationReason}
+                    endpoint={`/api/organizer/registrations/${r.id}/cancellation-decision`}
+                  />
+                )}
                 {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
                 {(payment?.status === "EXPIRED" || payment?.status === "CANCELLED") && (
                   <ResendPaymentNotificationButton
