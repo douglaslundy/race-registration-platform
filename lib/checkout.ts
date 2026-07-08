@@ -16,6 +16,7 @@ export interface CheckoutInput {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   medicalNotes?: string;
+  notes?: string;
   couponCode?: string;
 }
 
@@ -138,6 +139,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         emergencyContactName: input.emergencyContactName,
         emergencyContactPhone: input.emergencyContactPhone,
         medicalNotes: input.medicalNotes,
+        notes: input.notes,
         acceptedTermsAt: new Date(),
       },
     });
