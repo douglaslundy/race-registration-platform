@@ -40,6 +40,7 @@ export async function refundPayment(params: RefundPaymentParams): Promise<Refund
         paymentId: payment.id,
         amount: payment.amount,
         reason: params.reason,
+        status: "PROCESSED",
         processedAt: new Date(),
         providerRefundId: result.providerRefundId,
         initiatedByUserId: params.initiatedByUserId,

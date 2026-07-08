@@ -98,6 +98,7 @@ describe("refundPayment", () => {
         paymentId: "pay-1",
         amount: 1000,
         reason: "atleta desistiu",
+        status: "PROCESSED",
         providerRefundId: "mp-refund-1",
         initiatedByUserId: "user-1",
       }),
