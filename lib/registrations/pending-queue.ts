@@ -1,0 +1,74 @@
+import { db } from "@/lib/db";
+
+export interface PendingCancellation {
+  id: string;
+  createdAt: Date;
+  cancellationReason: string | null;
+  cancellationRequestedAt: Date | null;
+  athlete: { name: string; email: string };
+  event: { id: string; title: string };
+}
+
+export interface PendingRefund {
+  id: string;
+  amount: number;
+  order: { id: string };
+  event: { id: string; title: string };
+  athlete: { name: string; email: string };
+  latestFailedRefund: { failureReason: string | null; createdAt: Date } | null;
+}
+
+export async function listPendingCancellations(organizerUserId?: string): Promise<PendingCancellation[]> {
+  const registrations = await db.registration.findMany({
+    where: {
+      status: "CANCELLATION_REQUESTED",
+      ...(organizerUserId ? { event: { organizer: { userId: organizerUserId } } } : {}),
+    },
+    orderBy: { cancellationRequestedAt: "asc" },
+    select: {
+      id: true,
+      createdAt: true,
+      cancellationReason: true,
+      cancellationRequestedAt: true,
+      athlete: { select: { name: true, email: true } },
+      event: { select: { id: true, title: true } },
+    },
+  });
+  return registrations;
+}
+
+export async function listPendingRefunds(organizerUserId?: string): Promise<PendingRefund[]> {
+  const payments = await db.payment.findMany({
+    where: {
+      status: "REFUND_PENDING",
+      ...(organizerUserId ? { order: { event: { organizer: { userId: organizerUserId } } } } : {}),
+    },
+    orderBy: { updatedAt: "asc" },
+    select: {
+      id: true,
+      amount: true,
+      order: {
+        select: {
+          id: true,
+          event: { select: { id: true, title: true } },
+          buyer: { select: { name: true, email: true } },
+        },
+      },
+      refunds: {
+        where: { status: "FAILED" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { failureReason: true, createdAt: true },
+      },
+    },
+  });
+
+  return payments.map((p) => ({
+    id: p.id,
+    amount: p.amount,
+    order: { id: p.order.id },
+    event: p.order.event,
+    athlete: p.order.buyer,
+    latestFailedRefund: p.refunds[0] ?? null,
+  }));
+}
