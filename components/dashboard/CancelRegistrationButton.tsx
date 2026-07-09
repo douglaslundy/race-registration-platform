@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ErrorModal from "@/components/ui/ErrorModal";
 
 export default function CancelRegistrationButton({
   registrationId,
@@ -14,6 +15,7 @@ export default function CancelRegistrationButton({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleCancel() {
@@ -31,7 +33,7 @@ export default function CancelRegistrationButton({
       }
     } else {
       const data = await res.json().catch(() => ({}));
-      alert(data.error ?? "Erro ao cancelar inscrição. Tente novamente.");
+      setError(data.error ?? "Erro ao cancelar inscrição. Tente novamente.");
     }
     setLoading(false);
     setConfirming(false);
@@ -67,13 +69,17 @@ export default function CancelRegistrationButton({
             Voltar
           </button>
         </div>
+        <ErrorModal message={error} onClose={() => setError(null)} />
       </div>
     );
   }
 
   return (
-    <button onClick={() => setConfirming(true)} className="flex-1 btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
-      Cancelar inscrição
-    </button>
+    <>
+      <button onClick={() => setConfirming(true)} className="flex-1 btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
+        Cancelar inscrição
+      </button>
+      <ErrorModal message={error} onClose={() => setError(null)} />
+    </>
   );
 }

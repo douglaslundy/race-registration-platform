@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ErrorModal from "@/components/ui/ErrorModal";
 
 export default function ManualConfirmButton({ registrationId }: { registrationId: string }) {
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleConfirm() {
@@ -21,7 +23,7 @@ export default function ManualConfirmButton({ registrationId }: { registrationId
       return;
     }
     const data = await res.json().catch(() => ({}));
-    alert(data.error ?? "Erro ao confirmar inscrição.");
+    setError(data.error ?? "Erro ao confirmar inscrição.");
     setLoading(false);
   }
 
@@ -47,13 +49,17 @@ export default function ManualConfirmButton({ registrationId }: { registrationId
             Cancelar
           </button>
         </div>
+        <ErrorModal message={error} onClose={() => setError(null)} />
       </div>
     );
   }
 
   return (
-    <button onClick={() => setConfirming(true)} className="text-xs text-green-600 hover:underline">
-      Confirmar manualmente
-    </button>
+    <>
+      <button onClick={() => setConfirming(true)} className="text-xs text-green-600 hover:underline">
+        Confirmar manualmente
+      </button>
+      <ErrorModal message={error} onClose={() => setError(null)} />
+    </>
   );
 }

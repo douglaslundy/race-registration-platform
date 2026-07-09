@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ErrorModal from "@/components/ui/ErrorModal";
 
 export default function ResendPaymentNotificationButton({
   endpoint,
@@ -13,6 +14,7 @@ export default function ResendPaymentNotificationButton({
   loadingLabel?: string;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleResend() {
@@ -23,17 +25,20 @@ export default function ResendPaymentNotificationButton({
       return;
     }
     const data = await res.json().catch(() => ({}));
-    alert(data.error ?? "Erro ao reenviar notificação.");
+    setError(data.error ?? "Erro ao reenviar notificação.");
     setLoading(false);
   }
 
   return (
-    <button
-      onClick={handleResend}
-      disabled={loading}
-      className="text-xs text-blue-600 hover:underline disabled:opacity-50"
-    >
-      {loading ? loadingLabel : label}
-    </button>
+    <>
+      <button
+        onClick={handleResend}
+        disabled={loading}
+        className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+      >
+        {loading ? loadingLabel : label}
+      </button>
+      <ErrorModal message={error} onClose={() => setError(null)} />
+    </>
   );
 }

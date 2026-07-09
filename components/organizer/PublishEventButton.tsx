@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ErrorModal from "@/components/ui/ErrorModal";
 
 export default function PublishEventButton({ eventId }: { eventId: string }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   async function handlePublish() {
@@ -17,14 +19,17 @@ export default function PublishEventButton({ eventId }: { eventId: string }) {
     if (res.ok) {
       router.refresh();
     } else {
-      alert("Erro ao solicitar publicação.");
+      setError("Erro ao solicitar publicação.");
     }
     setLoading(false);
   }
 
   return (
-    <button onClick={handlePublish} disabled={loading} className="btn-primary text-sm disabled:opacity-50">
-      {loading ? "Enviando..." : "Solicitar publicação"}
-    </button>
+    <>
+      <button onClick={handlePublish} disabled={loading} className="btn-primary text-sm disabled:opacity-50">
+        {loading ? "Enviando..." : "Solicitar publicação"}
+      </button>
+      <ErrorModal message={error} onClose={() => setError(null)} />
+    </>
   );
 }
