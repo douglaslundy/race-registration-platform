@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/format";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import { BADGE } from "@/lib/badge-colors";
 import PrintButton from "@/components/ui/PrintButton";
+import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,6 @@ export default async function OrganizerDashboard() {
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {
-          _count: { select: { registrations: true } },
           orders: {
             where: { status: "PAID" },
             select: { totalAmount: true },
@@ -48,7 +48,7 @@ export default async function OrganizerDashboard() {
     );
   }
 
-  const [eventCount, totalRegistrations, revenueAgg, confirmedRegistrations, pendingRegistrations, cancelledRegistrations] = await Promise.all([
+  const [eventCount, totalRegistrations, revenueAgg, confirmedRegistrations, pendingRegistrations, cancelledRegistrations, statusGroups] = await Promise.all([
     db.event.count({ where: { organizerId: organizer.id } }),
     db.registration.count({ where: { event: { organizerId: organizer.id } } }),
     db.order.aggregate({
@@ -58,8 +58,20 @@ export default async function OrganizerDashboard() {
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED" } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT" } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CANCELLED" } }),
+    db.registration.groupBy({
+      by: ["eventId", "status"],
+      where: { event: { organizerId: organizer.id } },
+      _count: { id: true },
+    }),
   ]);
   const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
+
+  const statusCountsByEvent = new Map<string, { status: string; count: number }[]>();
+  for (const g of statusGroups) {
+    const arr = statusCountsByEvent.get(g.eventId) ?? [];
+    arr.push({ status: g.status, count: g._count.id });
+    statusCountsByEvent.set(g.eventId, arr);
+  }
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -125,7 +137,9 @@ export default async function OrganizerDashboard() {
               </tr>
             </thead>
             <tbody>
-              {organizer.events.map((event) => (
+              {organizer.events.map((event) => {
+                const breakdown = computeRegistrationStatusBreakdown(statusCountsByEvent.get(event.id) ?? []);
+                return (
                 <tr key={event.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                   <td className="py-3 font-medium">{event.title}</td>
                   <td className="py-3">
@@ -133,7 +147,10 @@ export default async function OrganizerDashboard() {
                       <span className={`text-xs px-2 py-1 rounded font-medium ${s.cls}`}>{s.label}</span>
                     ); })()}
                   </td>
-                  <td className="py-3">{event._count.registrations}</td>
+                  <td className="py-3">
+                    <p>{breakdown.paid} confirmadas</p>
+                    <p className="text-xs text-gray-400">{breakdown.pending} pendentes · {breakdown.cancelled} canceladas</p>
+                  </td>
                   <td className="py-3">{formatCurrency(event.orders.reduce((s, o) => s + o.totalAmount, 0))}</td>
                   <td className="py-3">
                     <div className="flex items-center gap-3">
@@ -146,7 +163,8 @@ export default async function OrganizerDashboard() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
