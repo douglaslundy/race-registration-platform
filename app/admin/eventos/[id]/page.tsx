@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import { EVENT_STATUS_LABEL, MODALITY_LABEL } from "@/lib/admin/labels";
+import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe do Evento — Admin" };
@@ -20,7 +21,6 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
       routes: true,
       categories: true,
       ticketBatches: true,
-      _count: { select: { registrations: true } },
       orders: { where: { status: "PAID" }, select: { totalAmount: true } },
     },
   });
@@ -28,6 +28,15 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   if (!event) notFound();
 
   const revenue = event.orders.reduce((s, o) => s + o.totalAmount, 0);
+
+  const statusCounts = await db.registration.groupBy({
+    by: ["status"],
+    where: { eventId: id },
+    _count: { id: true },
+  });
+  const breakdown = computeRegistrationStatusBreakdown(
+    statusCounts.map((s) => ({ status: s.status, count: s._count.id }))
+  );
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -48,8 +57,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
 
       <div className="grid grid-cols-3 gap-4">
         <div className="card text-center">
-          <p className="text-2xl font-bold text-primary-600">{event._count.registrations}</p>
-          <p className="text-gray-500 text-sm">Inscrições</p>
+          <p className="text-2xl font-bold text-primary-600">{breakdown.paid}</p>
+          <p className="text-gray-500 text-sm">Inscrições confirmadas</p>
+          <p className="text-xs text-gray-400 mt-1">{breakdown.pending} pendentes · {breakdown.cancelled} canceladas</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-green-600">{formatCurrency(revenue)}</p>

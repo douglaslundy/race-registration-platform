@@ -8,6 +8,7 @@ import UserDensityToggle from "@/components/admin/UserDensityToggle";
 import { buildAdminEventOrderBy, buildAdminEventWhere } from "@/lib/admin/events";
 import { EVENT_STATUS_LABEL } from "@/lib/admin/labels";
 import PrintButton from "@/components/ui/PrintButton";
+import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 
 export const metadata: Metadata = { title: "Eventos — Admin" };
 
@@ -105,9 +106,20 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
     take: pageSize,
     include: {
       organizer: { include: { user: { select: { name: true, email: true } } } },
-      _count: { select: { registrations: true } },
     },
   });
+
+  const statusGroups = await db.registration.groupBy({
+    by: ["eventId", "status"],
+    where: { eventId: { in: events.map((e) => e.id) } },
+    _count: { id: true },
+  });
+  const statusCountsByEvent = new Map<string, { status: string; count: number }[]>();
+  for (const g of statusGroups) {
+    const arr = statusCountsByEvent.get(g.eventId) ?? [];
+    arr.push({ status: g.status, count: g._count.id });
+    statusCountsByEvent.set(g.eventId, arr);
+  }
 
   const hasFilters = Boolean(q) || status !== "ALL" || modality !== "ALL" || Boolean(city) || Boolean(dateFrom) || Boolean(dateTo) || Boolean(organizerId);
 
@@ -255,7 +267,9 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
                 </td>
               </tr>
             ) : (
-              events.map((event) => (
+              events.map((event) => {
+                const breakdown = computeRegistrationStatusBreakdown(statusCountsByEvent.get(event.id) ?? []);
+                return (
                 <tr key={event.id} className={rowClass}>
                   <td className={cellPadding + " font-medium"}>
                     <div className="space-y-1">
@@ -272,7 +286,10 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
                   <td className={cellPadding}>
                     <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200">{EVENT_STATUS_LABEL[event.status] ?? event.status}</span>
                   </td>
-                  <td className={cellPadding + " text-center"}>{event._count.registrations}</td>
+                  <td className={cellPadding + " text-center"}>
+                    <div>{breakdown.paid} confirmadas</div>
+                    <div className="text-[11px] text-gray-400">{breakdown.pending} pendentes · {breakdown.cancelled} canceladas</div>
+                  </td>
                   <td className={cellPadding + " text-gray-500"}>{event.city}/{event.state}</td>
                   <td className={cellPadding + " text-gray-500"}>{event.startAt.toLocaleDateString("pt-BR")}</td>
                   <td className={cellPadding}>
@@ -284,7 +301,8 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
