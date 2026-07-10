@@ -417,7 +417,7 @@ export default function CheckoutForm({
 
       <div className="card space-y-4">
         <h3 className="font-semibold">Dados complementares</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta</label>
             <select {...register("shirtSize")} className="input-field">
@@ -431,7 +431,7 @@ export default function CheckoutForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contato emergência *</label>
             <input {...register("emergencyContactName")} className="input-field" placeholder="Nome" />

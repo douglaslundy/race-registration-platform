@@ -110,7 +110,7 @@ export default function PerfilPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="card space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados pessoais</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de nascimento *</label>
               <input type="date" value={form.birthDate ?? ""} onChange={(e) => set("birthDate", e.target.value)}
@@ -184,7 +184,7 @@ export default function PerfilPage() {
 
         <div className="card space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Contato de emergência</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
               <input type="text" value={form.emergencyName ?? ""} onChange={(e) => set("emergencyName", e.target.value)}
