@@ -10,6 +10,7 @@ import ToggleUserActiveButton from "@/components/admin/ToggleUserActiveButton";
 import UserDeleteButton from "@/components/admin/UserDeleteButton";
 import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
 import { buildAdminUserOrderBy, buildAdminUserWhere } from "@/lib/admin/users";
+import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 
 export const metadata: Metadata = { title: "Usuários — Admin" };
 
@@ -109,7 +110,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
       role: true,
       active: true,
       createdAt: true,
-      _count: { select: { registrations: true, orders: true } },
+      _count: { select: { orders: true } },
       athleteProfile: {
         select: {
           cpf: true,
@@ -126,6 +127,18 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
       },
     },
   });
+
+  const statusGroups = await db.registration.groupBy({
+    by: ["athleteUserId", "status"],
+    where: { athleteUserId: { in: users.map((u) => u.id) } },
+    _count: { id: true },
+  });
+  const statusCountsByUser = new Map<string, { status: string; count: number }[]>();
+  for (const g of statusGroups) {
+    const arr = statusCountsByUser.get(g.athleteUserId) ?? [];
+    arr.push({ status: g.status, count: g._count.id });
+    statusCountsByUser.set(g.athleteUserId, arr);
+  }
 
   const hasFilters = Boolean(q) || role !== "ALL" || status !== "ALL" || Boolean(createdFrom) || Boolean(createdTo);
 
@@ -288,7 +301,9 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                 </td>
               </tr>
             ) : (
-              users.map((u) => (
+              users.map((u) => {
+                const breakdown = computeRegistrationStatusBreakdown(statusCountsByUser.get(u.id) ?? []);
+                return (
                 <tr key={u.id} className={rowClass}>
                   <td className={cellPadding + " font-medium"}>{u.name}</td>
                   <td className={cellPadding + " text-gray-500 text-xs"}>{u.email}</td>
@@ -297,7 +312,10 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                       {ROLE_LABELS[u.role]}
                     </span>
                   </td>
-                  <td className={cellPadding + " text-center"}>{u._count.registrations}</td>
+                  <td className={cellPadding + " text-center"}>
+                    <div>{breakdown.paid} confirmadas</div>
+                    <div className="text-[11px] text-gray-400">{breakdown.pending} pendentes · {breakdown.cancelled} canceladas</div>
+                  </td>
                   <td className={cellPadding + " text-center"}>{u._count.orders}</td>
                   <td className={cellPadding + " text-center"}>
                     <span
@@ -331,7 +349,8 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
