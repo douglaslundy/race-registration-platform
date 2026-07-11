@@ -32,3 +32,21 @@ export async function unclaimAlert(alertType: string, entityId: string, channel:
     where: { alertType, entityId, channel },
   });
 }
+
+/**
+ * Unconditionally records that an alert was sent, creating the row if absent or refreshing
+ * `sentAt` if one already exists. Used by manual/bypass sends so they still leave a claim behind
+ * for later automatic runs to see, even though the manual send itself ignored any prior claim.
+ */
+export async function recordAlert(
+  alertType: string,
+  entityType: string,
+  entityId: string,
+  channel: AlertChannel,
+): Promise<void> {
+  await db.alertLog.upsert({
+    where: { alertType_entityId_channel: { alertType, entityId, channel } },
+    create: { alertType, entityType, entityId, channel },
+    update: { sentAt: new Date() },
+  });
+}

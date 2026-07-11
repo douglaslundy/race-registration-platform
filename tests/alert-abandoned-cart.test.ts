@@ -17,6 +17,7 @@ vi.mock("@/lib/alerts/alert-settings", () => ({
 vi.mock("@/lib/alerts/dedupe", () => ({
   claimAlert: vi.fn(),
   unclaimAlert: vi.fn(),
+  recordAlert: vi.fn(),
 }));
 
 import { checkAbandonedCarts, sendAbandonedCartAlert } from "@/lib/alerts/abandoned-cart";
@@ -24,7 +25,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
-import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { claimAlert, recordAlert, unclaimAlert } from "@/lib/alerts/dedupe";
 
 const dbMock = db as any;
 
@@ -173,6 +174,28 @@ describe("sendAbandonedCartAlert", () => {
     expect(result).toEqual({ sent: true });
   });
 
+  it("com bypassDedupe, grava o alerta via recordAlert (não claimAlert) após o envio de e-mail ter sucesso", async () => {
+    await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: true, whatsappEnabled: false },
+      { bypassDedupe: true },
+    );
+
+    expect(recordAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
+    expect(claimAlert).not.toHaveBeenCalled();
+  });
+
+  it("com bypassDedupe, grava o alerta via recordAlert (não claimAlert) após o envio de WhatsApp ter sucesso", async () => {
+    await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: false, whatsappEnabled: true },
+      { bypassDedupe: true },
+    );
+
+    expect(recordAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "WHATSAPP");
+    expect(claimAlert).not.toHaveBeenCalled();
+  });
+
   it("sem bypassDedupe, continua respeitando claimAlert (comportamento automático inalterado)", async () => {
     vi.mocked(claimAlert).mockResolvedValue(false);
 
@@ -190,5 +213,6 @@ describe("sendAbandonedCartAlert", () => {
       sendAbandonedCartAlert(orderFixture, { emailEnabled: true, whatsappEnabled: false }, { bypassDedupe: true }),
     ).rejects.toThrow("SMTP down");
     expect(unclaimAlert).not.toHaveBeenCalled();
+    expect(recordAlert).not.toHaveBeenCalled();
   });
 });

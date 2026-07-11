@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "./alert-settings";
-import { claimAlert, unclaimAlert } from "./dedupe";
+import { claimAlert, recordAlert, unclaimAlert } from "./dedupe";
 
 const ALERT_TYPE = "ABANDONED_CART";
 
@@ -43,6 +43,7 @@ export async function sendAbandonedCartAlert(
           eventTitle: order.event.title,
           orderId: order.id,
         });
+        if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "EMAIL");
         sentSomething = true;
       } catch (err) {
         if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, order.id, "EMAIL");
@@ -58,6 +59,7 @@ export async function sendAbandonedCartAlert(
           order.buyer.athleteProfile.phone,
           `Sua inscrição em "${order.event.title}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
         );
+        if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
         sentSomething = true;
       } catch (err) {
         if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, order.id, "WHATSAPP");
