@@ -5,7 +5,7 @@ import { REGISTRATION_STATUS } from "@/lib/registration-status";
 import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
 import CancellationReasonModal from "@/components/registrations/CancellationReasonModal";
 
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   PIX: "PIX",
   CREDIT_CARD: "Cartão de crédito",
   DEBIT_CARD: "Cartão de débito",
