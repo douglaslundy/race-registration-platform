@@ -29,18 +29,54 @@ export function buildRegistrationOrderBy(
   return { orderBy: { createdAt: normalizedDir }, normalizedSort: "date", normalizedDir };
 }
 
-export function buildRegistrationWhere(eventId: string, status?: string, q?: string): Prisma.RegistrationWhereInput {
+export interface RegistrationFilters {
+  status?: string;
+  q?: string;
+  categoryId?: string;
+  routeId?: string;
+  ticketBatchId?: string;
+  couponId?: string;
+  paymentMethod?: string;
+}
+
+export function buildRegistrationWhere(
+  eventId: string,
+  filters: RegistrationFilters = {},
+): Prisma.RegistrationWhereInput {
+  const { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod } = filters;
   const query = q?.trim();
   const normalizedCpf = query ? normalizeCpf(query) : "";
+  const isPaymentStatusFilter = status === "REFUNDED" || status === "REFUND_PENDING";
+
+  // Both couponId and paymentMethod (and the REFUNDED/REFUND_PENDING status filters) live on the
+  // related Order/Payment, and Tasks 3-4 let a user pick more than one of these at once — so they
+  // must be merged into a single `order` filter object instead of each producing its own spread
+  // key, which would let the last one silently overwrite the others.
+  const paymentSomeFilter: Prisma.PaymentWhereInput = {};
+  if (status === "REFUNDED") {
+    paymentSomeFilter.status = { in: ["REFUNDED", "CHARGEBACK"] };
+  } else if (status === "REFUND_PENDING") {
+    paymentSomeFilter.status = "REFUND_PENDING";
+  }
+  if (paymentMethod) {
+    paymentSomeFilter.method = paymentMethod as never;
+  }
+
+  const orderFilter: Prisma.OrderWhereInput = {};
+  if (couponId) orderFilter.couponId = couponId;
+  if (Object.keys(paymentSomeFilter).length > 0) {
+    orderFilter.payments = { some: paymentSomeFilter };
+  }
+
   return {
     eventId,
-    ...(status === "REFUNDED"
-      ? { order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] } } } } }
-      : status === "REFUND_PENDING"
-        ? { order: { payments: { some: { status: "REFUND_PENDING" } } } }
-        : status && VALID_REGISTRATION_STATUSES.includes(status)
-          ? { status: status as never }
-          : {}),
+    ...(!isPaymentStatusFilter && status && VALID_REGISTRATION_STATUSES.includes(status)
+      ? { status: status as never }
+      : {}),
+    ...(categoryId ? { categoryId } : {}),
+    ...(routeId ? { routeId } : {}),
+    ...(ticketBatchId ? { ticketBatchId } : {}),
+    ...(Object.keys(orderFilter).length > 0 ? { order: orderFilter } : {}),
     ...(query
       ? {
           OR: [

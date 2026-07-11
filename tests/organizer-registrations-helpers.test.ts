@@ -24,38 +24,42 @@ describe("buildRegistrationOrderBy", () => {
 });
 
 describe("buildRegistrationWhere", () => {
-  it("filters by eventId only when no status given", () => {
+  it("filters by eventId only when no filters given", () => {
     expect(buildRegistrationWhere("evt-1")).toEqual({ eventId: "evt-1" });
   });
 
+  it("filters by eventId only when filters object is empty", () => {
+    expect(buildRegistrationWhere("evt-1", {})).toEqual({ eventId: "evt-1" });
+  });
+
   it("adds status filter when a valid status is given", () => {
-    expect(buildRegistrationWhere("evt-1", "CONFIRMED")).toEqual({ eventId: "evt-1", status: "CONFIRMED" });
+    expect(buildRegistrationWhere("evt-1", { status: "CONFIRMED" })).toEqual({ eventId: "evt-1", status: "CONFIRMED" });
   });
 
   it("adds status filter for CANCELLATION_REQUESTED", () => {
-    expect(buildRegistrationWhere("evt-1", "CANCELLATION_REQUESTED")).toEqual({
+    expect(buildRegistrationWhere("evt-1", { status: "CANCELLATION_REQUESTED" })).toEqual({
       eventId: "evt-1",
       status: "CANCELLATION_REQUESTED",
     });
   });
 
   it("filters by refunded/chargeback payment status for REFUNDED", () => {
-    expect(buildRegistrationWhere("evt-1", "REFUNDED")).toEqual({
+    expect(buildRegistrationWhere("evt-1", { status: "REFUNDED" })).toEqual({
       eventId: "evt-1",
       order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] } } } },
     });
   });
 
   it("ignores invalid status values", () => {
-    expect(buildRegistrationWhere("evt-1", "NOT_A_STATUS")).toEqual({ eventId: "evt-1" });
+    expect(buildRegistrationWhere("evt-1", { status: "NOT_A_STATUS" })).toEqual({ eventId: "evt-1" });
   });
 
   it("ignores empty string status", () => {
-    expect(buildRegistrationWhere("evt-1", "")).toEqual({ eventId: "evt-1" });
+    expect(buildRegistrationWhere("evt-1", { status: "" })).toEqual({ eventId: "evt-1" });
   });
 
   it("searches by order id, athlete name and email when q has no digits", () => {
-    expect(buildRegistrationWhere("evt-1", "", "maria")).toEqual({
+    expect(buildRegistrationWhere("evt-1", { q: "maria" })).toEqual({
       eventId: "evt-1",
       OR: [
         { orderId: { contains: "maria", mode: "insensitive" } },
@@ -66,7 +70,7 @@ describe("buildRegistrationWhere", () => {
   });
 
   it("also matches athlete CPF when q contains digits", () => {
-    expect(buildRegistrationWhere("evt-1", "", "111.444.777-35")).toEqual({
+    expect(buildRegistrationWhere("evt-1", { q: "111.444.777-35" })).toEqual({
       eventId: "evt-1",
       OR: [
         { orderId: { contains: "111.444.777-35", mode: "insensitive" } },
@@ -74,6 +78,70 @@ describe("buildRegistrationWhere", () => {
         { athlete: { email: { contains: "111.444.777-35", mode: "insensitive" } } },
         { athlete: { athleteProfile: { cpf: { contains: "11144477735" } } } },
       ],
+    });
+  });
+
+  it("filters by categoryId", () => {
+    expect(buildRegistrationWhere("evt-1", { categoryId: "cat-1" })).toEqual({
+      eventId: "evt-1",
+      categoryId: "cat-1",
+    });
+  });
+
+  it("filters by routeId", () => {
+    expect(buildRegistrationWhere("evt-1", { routeId: "route-1" })).toEqual({
+      eventId: "evt-1",
+      routeId: "route-1",
+    });
+  });
+
+  it("filters by ticketBatchId", () => {
+    expect(buildRegistrationWhere("evt-1", { ticketBatchId: "batch-1" })).toEqual({
+      eventId: "evt-1",
+      ticketBatchId: "batch-1",
+    });
+  });
+
+  it("filters by couponId via the order relation", () => {
+    expect(buildRegistrationWhere("evt-1", { couponId: "coupon-1" })).toEqual({
+      eventId: "evt-1",
+      order: { couponId: "coupon-1" },
+    });
+  });
+
+  it("filters by paymentMethod via any payment on the order", () => {
+    expect(buildRegistrationWhere("evt-1", { paymentMethod: "PIX" })).toEqual({
+      eventId: "evt-1",
+      order: { payments: { some: { method: "PIX" } } },
+    });
+  });
+
+  it("combines multiple filters at once", () => {
+    expect(
+      buildRegistrationWhere("evt-1", { status: "CONFIRMED", categoryId: "cat-1", routeId: "route-1" }),
+    ).toEqual({
+      eventId: "evt-1",
+      status: "CONFIRMED",
+      categoryId: "cat-1",
+      routeId: "route-1",
+    });
+  });
+
+  it("merges couponId and paymentMethod into a single order filter instead of one overwriting the other", () => {
+    expect(
+      buildRegistrationWhere("evt-1", { couponId: "coupon-1", paymentMethod: "PIX" }),
+    ).toEqual({
+      eventId: "evt-1",
+      order: { couponId: "coupon-1", payments: { some: { method: "PIX" } } },
+    });
+  });
+
+  it("merges the REFUNDED status's payment condition with paymentMethod into the same payments.some clause", () => {
+    expect(
+      buildRegistrationWhere("evt-1", { status: "REFUNDED", paymentMethod: "PIX" }),
+    ).toEqual({
+      eventId: "evt-1",
+      order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] }, method: "PIX" } } },
     });
   });
 });
