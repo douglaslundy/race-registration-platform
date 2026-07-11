@@ -180,11 +180,10 @@ português, contagem e receita por método.
 - Filtro por status de pagamento (PAID/PENDING/EXPIRED) separado do filtro por status de inscrição
   — já existe o filtro de `status` de inscrição, que cobre o caso de uso principal; não duplicar com
   outro filtro de status de pagamento bruto.
-- Exportar CSV com os novos filtros aplicados — o botão de export já existente
-  (`ExportCsvButton`) continua exportando a partir da URL atual da página; se ele já repassa query
-  params pro endpoint de export, os novos filtros já funcionam de graça (não é um item de trabalho
-  novo, é consequência automática); não é necessário validar/alterar isso especificamente aqui além
-  de uma checagem rápida na verificação final.
+- Exportar CSV com os novos filtros aplicados — verificado: `ExportCsvButton` hoje ignora
+  completamente os filtros da página (só manda `eventId`), e `/api/events/[id]/registrations`
+  também não lê nenhum query param de filtro, exporta tudo do evento sempre. Continua assim; passar
+  os filtros pro export é trabalho novo, não pedido nesta sessão.
 - Filtro por faixa de valor pago ou por data de inscrição — não pedido.
 - Refatorar a seção de cupons pra um helper compartilhado entre as duas páginas — copiar o bloco já
   pronto do organizador pro admin é suficiente; extrair duplicação é um passo de limpeza futuro, não
