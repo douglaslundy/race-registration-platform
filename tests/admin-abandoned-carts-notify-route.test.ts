@@ -71,6 +71,19 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
     const body = await res.json();
 
     expect(sendAbandonedCartAlert).toHaveBeenCalledTimes(2);
+    expect(dbMock.auditLog.create).toHaveBeenCalledTimes(2);
+    expect(dbMock.auditLog.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: "admin-1", action: "ABANDONED_CART_NOTIFICATION_RESENT", entityId: "order-1" }),
+      }),
+    );
+    expect(dbMock.auditLog.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: "admin-1", action: "ABANDONED_CART_NOTIFICATION_RESENT", entityId: "order-2" }),
+      }),
+    );
     expect(body).toEqual({ notified: 2, total: 2 });
   });
 
@@ -78,5 +91,17 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(400);
+  });
+
+  it("não grava auditoria quando sendAbandonedCartAlert retorna sent: false", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.order.findFirst.mockResolvedValueOnce(orderFixture);
+    vi.mocked(sendAbandonedCartAlert).mockResolvedValueOnce({ sent: false });
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+    const body = await res.json();
+
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
+    expect(body).toEqual({ notified: 0, total: 1 });
   });
 });

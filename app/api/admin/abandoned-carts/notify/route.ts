@@ -38,18 +38,22 @@ export async function POST(req: NextRequest) {
 
   let notified = 0;
   for (const order of orders) {
-    const { sent } = await sendAbandonedCartAlert(order, settings, { bypassDedupe: true });
-    if (sent) {
-      notified++;
-      await db.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "ABANDONED_CART_NOTIFICATION_RESENT",
-          entityType: "Order",
-          entityId: order.id,
-          metadata: { eventTitle: order.event.title },
-        },
-      });
+    try {
+      const { sent } = await sendAbandonedCartAlert(order, settings, { bypassDedupe: true });
+      if (sent) {
+        notified++;
+        await db.auditLog.create({
+          data: {
+            userId: session.user.id,
+            action: "ABANDONED_CART_NOTIFICATION_RESENT",
+            entityType: "Order",
+            entityId: order.id,
+            metadata: { eventTitle: order.event.title },
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[admin-abandoned-carts-notify] failed for order", order.id, err);
     }
   }
 
