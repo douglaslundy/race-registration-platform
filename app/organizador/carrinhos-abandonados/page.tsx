@@ -21,6 +21,29 @@ interface SearchParams {
   page?: string;
 }
 
+function SortLink({
+  label,
+  column,
+  currentSort,
+  currentDir,
+  href,
+}: {
+  label: string;
+  column: string;
+  currentSort: string;
+  currentDir: "asc" | "desc";
+  href: string;
+}) {
+  const active = currentSort === column;
+  const arrow = active ? (currentDir === "asc" ? "↑" : "↓") : "";
+  return (
+    <Link href={href} className="inline-flex items-center gap-1 hover:text-primary-600">
+      <span>{label}</span>
+      <span className="text-[10px]">{arrow}</span>
+    </Link>
+  );
+}
+
 export default async function OrganizerAbandonedCartsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const session = await requireOrganizer();
   const params = await searchParams;
@@ -40,7 +63,27 @@ export default async function OrganizerAbandonedCartsPage({ searchParams }: { se
     pageSize,
   );
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const hasFilters = Boolean(q) || Boolean(event) || Boolean(dateFrom) || Boolean(dateTo);
+
+  const buildPageUrl = (targetPage: number, overrides: Partial<Record<"sort" | "dir", string>> = {}) => {
+    const query = new URLSearchParams();
+    if (q) query.set("q", q);
+    if (event) query.set("event", event);
+    if (dateFrom) query.set("dateFrom", dateFrom);
+    if (dateTo) query.set("dateTo", dateTo);
+    query.set("sort", overrides.sort ?? sortConfig.normalizedSort);
+    query.set("dir", overrides.dir ?? sortConfig.normalizedDir);
+    if (targetPage > 1) query.set("page", String(targetPage));
+    return `/organizador/carrinhos-abandonados${query.toString() ? `?${query.toString()}` : ""}`;
+  };
+
+  const sortHeader = (column: string) => {
+    const isActive = sortConfig.normalizedSort === column;
+    const nextDir = isActive && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
+    return buildPageUrl(1, { sort: column, dir: nextDir });
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -88,9 +131,13 @@ export default async function OrganizerAbandonedCartsPage({ searchParams }: { se
               <tr className="text-left text-gray-500 border-b dark:border-gray-700 text-xs uppercase">
                 <th className="pb-2 pr-4">Comprador</th>
                 <th className="pb-2 pr-4">Evento</th>
-                <th className="pb-2 pr-4">Valor</th>
+                <th className="pb-2 pr-4">
+                  <SortLink label="Valor" column="amount" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("amount")} />
+                </th>
                 <th className="pb-2 pr-4">Canais</th>
-                <th className="pb-2 pr-4">Pendente há</th>
+                <th className="pb-2 pr-4">
+                  <SortLink label="Pendente há" column="createdAt" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("createdAt")} />
+                </th>
                 <th className="pb-2 pr-4">Último alerta</th>
                 <th className="pb-2">Ação</th>
               </tr>
@@ -122,6 +169,40 @@ export default async function OrganizerAbandonedCartsPage({ searchParams }: { se
           </table>
         </div>
       )}
+
+      {totalPages > 1 ? (
+        <div className="flex gap-2 justify-center flex-wrap">
+          <Link
+            href={buildPageUrl(Math.max(1, page - 1))}
+            aria-disabled={page === 1}
+            className={`text-sm px-3 py-1.5 rounded-lg border ${
+              page === 1 ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
+            }`}
+          >
+            Anterior
+          </Link>
+          {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map((p) => (
+            <Link
+              key={p}
+              href={buildPageUrl(p)}
+              className={`text-sm px-3 py-1.5 rounded-lg border ${
+                p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
+              }`}
+            >
+              {p}
+            </Link>
+          ))}
+          <Link
+            href={buildPageUrl(Math.min(totalPages, page + 1))}
+            aria-disabled={page === totalPages}
+            className={`text-sm px-3 py-1.5 rounded-lg border ${
+              page === totalPages ? "pointer-events-none border-gray-200 text-gray-300" : "border-gray-300 dark:border-gray-600 hover:border-primary-400"
+            }`}
+          >
+            Próxima
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }
