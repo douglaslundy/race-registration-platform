@@ -19,7 +19,7 @@ vi.mock("@/lib/alerts/dedupe", () => ({
   unclaimAlert: vi.fn(),
 }));
 
-import { checkAbandonedCarts } from "@/lib/alerts/abandoned-cart";
+import { checkAbandonedCarts, sendAbandonedCartAlert } from "@/lib/alerts/abandoned-cart";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
@@ -137,5 +137,58 @@ describe("checkAbandonedCarts", () => {
 
     expect(sendAbandonedCartEmail).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ checked: 2, notified: 1 });
+  });
+});
+
+describe("sendAbandonedCartAlert", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+    vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
+  });
+
+  it("com bypassDedupe, envia e-mail sem chamar claimAlert", async () => {
+    const result = await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: true, whatsappEnabled: false },
+      { bypassDedupe: true },
+    );
+
+    expect(claimAlert).not.toHaveBeenCalled();
+    expect(sendAbandonedCartEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),
+    );
+    expect(result).toEqual({ sent: true });
+  });
+
+  it("com bypassDedupe, envia WhatsApp mesmo se um alerta automático já tiver sido enviado antes", async () => {
+    const result = await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: false, whatsappEnabled: true },
+      { bypassDedupe: true },
+    );
+
+    expect(claimAlert).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).toHaveBeenCalled();
+    expect(result).toEqual({ sent: true });
+  });
+
+  it("sem bypassDedupe, continua respeitando claimAlert (comportamento automático inalterado)", async () => {
+    vi.mocked(claimAlert).mockResolvedValue(false);
+
+    const result = await sendAbandonedCartAlert(orderFixture, { emailEnabled: true, whatsappEnabled: false });
+
+    expect(claimAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
+    expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ sent: false });
+  });
+
+  it("com bypassDedupe, não chama unclaimAlert quando o envio falha (não há claim pra desfazer)", async () => {
+    vi.mocked(sendAbandonedCartEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    await expect(
+      sendAbandonedCartAlert(orderFixture, { emailEnabled: true, whatsappEnabled: false }, { bypassDedupe: true }),
+    ).rejects.toThrow("SMTP down");
+    expect(unclaimAlert).not.toHaveBeenCalled();
   });
 });
