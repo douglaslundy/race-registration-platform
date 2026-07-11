@@ -14,6 +14,7 @@ export default function AdminNav() {
           <Link href="/admin/usuarios" className="hover:text-gray-300">Usuários</Link>
           <Link href="/admin/pagamentos" className="hover:text-gray-300">Pagamentos</Link>
           <Link href="/admin/pedidos-vencidos" className="hover:text-gray-300">Pedidos vencidos</Link>
+          <Link href="/admin/carrinhos-abandonados" className="hover:text-gray-300">Carrinhos abandonados</Link>
           <Link href="/admin/reembolsos-pendentes" className="hover:text-gray-300">Cancelamentos pendentes</Link>
           <Link href="/admin/cupons" className="hover:text-gray-300">Cupons</Link>
           <Link href="/admin/repasses" className="hover:text-gray-300">Repasses</Link>
