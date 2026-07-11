@@ -12,6 +12,7 @@ import CancellationDecisionButtons from "@/components/organizer/CancellationDeci
 import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
 import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
+import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -33,14 +34,37 @@ interface SearchParams {
   sort?: string;
   dir?: string;
   q?: string;
+  categoryId?: string;
+  routeId?: string;
+  ticketBatchId?: string;
+  couponId?: string;
+  paymentMethod?: string;
 }
 
-function buildInscritosUrl(id: string, params: { status?: string; sort?: string; dir?: string; q?: string }) {
+function buildInscritosUrl(
+  id: string,
+  params: {
+    status?: string;
+    sort?: string;
+    dir?: string;
+    q?: string;
+    categoryId?: string;
+    routeId?: string;
+    ticketBatchId?: string;
+    couponId?: string;
+    paymentMethod?: string;
+  },
+) {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
   if (params.sort) query.set("sort", params.sort);
   if (params.dir) query.set("dir", params.dir);
   if (params.q) query.set("q", params.q);
+  if (params.categoryId) query.set("categoryId", params.categoryId);
+  if (params.routeId) query.set("routeId", params.routeId);
+  if (params.ticketBatchId) query.set("ticketBatchId", params.ticketBatchId);
+  if (params.couponId) query.set("couponId", params.couponId);
+  if (params.paymentMethod) query.set("paymentMethod", params.paymentMethod);
   const qs = query.toString();
   return `/organizador/eventos/${id}/inscritos${qs ? `?${qs}` : ""}`;
 }
@@ -57,16 +81,28 @@ export default async function InscritosPage({
   const sp = await searchParams;
   const status = sp.status?.trim() ?? "";
   const q = sp.q?.trim() ?? "";
+  const categoryId = sp.categoryId?.trim() ?? "";
+  const routeId = sp.routeId?.trim() ?? "";
+  const ticketBatchId = sp.ticketBatchId?.trim() ?? "";
+  const couponId = sp.couponId?.trim() ?? "";
+  const paymentMethod = sp.paymentMethod?.trim() ?? "";
   const sortConfig = buildRegistrationOrderBy(sp.sort?.trim() ?? "", sp.dir?.trim() ?? "");
 
   const event = await db.event.findFirst({
     where: { id, organizer: { userId: session.user.id } },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      title: true,
+      categories: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+      routes: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+      ticketBatches: { select: { id: true, name: true }, orderBy: { startAt: "asc" } },
+      coupons: { select: { id: true, code: true }, orderBy: { code: "asc" } },
+    },
   });
   if (!event) notFound();
 
   const registrations = await db.registration.findMany({
-    where: buildRegistrationWhere(id, status, q),
+    where: buildRegistrationWhere(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod }),
     include: {
       athlete: {
         select: {
@@ -151,10 +187,55 @@ export default async function InscritosPage({
             ))}
           </select>
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Categoria</label>
+          <select name="categoryId" defaultValue={categoryId} className="input-field text-sm py-1.5">
+            <option value="">Todas</option>
+            {event.categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Percurso</label>
+          <select name="routeId" defaultValue={routeId} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            {event.routes.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Lote</label>
+          <select name="ticketBatchId" defaultValue={ticketBatchId} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            {event.ticketBatches.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Cupom</label>
+          <select name="couponId" defaultValue={couponId} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            {event.coupons.map((c) => (
+              <option key={c.id} value={c.id}>{c.code}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Tipo de pagamento</label>
+          <select name="paymentMethod" defaultValue={paymentMethod} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            {Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
         <input type="hidden" name="sort" value={sortConfig.normalizedSort} />
         <input type="hidden" name="dir" value={sortConfig.normalizedDir} />
         <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
-        {status || q ? (
+        {status || q || categoryId || routeId || ticketBatchId || couponId || paymentMethod ? (
           <Link
             href={buildInscritosUrl(id, { sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir })}
             className="btn-secondary py-1.5 px-4 text-sm"
@@ -166,13 +247,13 @@ export default async function InscritosPage({
 
       <div className="flex gap-2">
         <Link
-          href={buildInscritosUrl(id, { status, q, sort: "name", dir: nameDir })}
+          href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, sort: "name", dir: nameDir })}
           className={sortConfig.normalizedSort === "name" ? activeButtonClass : inactiveButtonClass}
         >
           Ordem alfabética {sortConfig.normalizedSort === "name" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}
         </Link>
         <Link
-          href={buildInscritosUrl(id, { status, q, sort: "date", dir: dateDir })}
+          href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, sort: "date", dir: dateDir })}
           className={sortConfig.normalizedSort === "date" ? activeButtonClass : inactiveButtonClass}
         >
           Ordem cronológica {sortConfig.normalizedSort === "date" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}
