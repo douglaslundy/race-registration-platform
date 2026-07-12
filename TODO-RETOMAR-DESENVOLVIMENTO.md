@@ -25,15 +25,23 @@ não versionado) em `.superpowers/sdd/progress.md`.
   de pagamento somava valor bruto com taxas enquanto os outros cards somavam valor líquido — dois
   números rotulados "receita" que não batiam; corrigido por relabeling, não mudança de valor).
   439/439 testes, build limpo.
-- [ ] **3. Verificar página de resultados + import CSV** — EM ANDAMENTO. Já existia de ponta a ponta
-  (upload CSV → parse → publicar → página pública com busca). Verificação encontrou 3 lacunas reais,
-  usuário pediu pra corrigir todas: (a) parser de CSV manual frágil (quebra com vírgula dentro de
-  campo) — trocar por `papaparse`, que já é dependência instalada mas nunca usada; (b) zero testes
-  automatizados na rota de import/publish; (c) filtro de categoria na página pública lê o query param
-  mas não tem `<select>` na UI pra defini-lo. Spec escrita e commitada
-  (`docs/superpowers/specs/2026-07-12-resultados-hardening-design.md`, commit `5899d58`) — **plano
-  de implementação ainda não escrito**. Próximo passo ao retomar: pedir aprovação da spec (ou seguir
-  direto se já aprovada) e invocar writing-plans.
+- [x] **3. Verificar página de resultados + import CSV** — DONE. Spec:
+  `docs/superpowers/specs/2026-07-12-resultados-hardening-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-12-resultados-hardening.md`. Commits `06bcd61..42550b4` (4
+  commits) on main, via subagent-driven-development (3 tasks + review final). Corrigidas as 3
+  lacunas: (a) parser CSV trocado por `papaparse` (corrige bug real: nome de atleta com vírgula
+  entre aspas, tipo "Silva, João", quebrava o parser antigo e deslocava as colunas seguintes);
+  (b) `tests/event-results-route.test.ts` criado do zero (rota não tinha nenhum teste antes) —
+  10 testes cobrindo POST (auth/role, arquivo ausente, CSV vazio, coluna obrigatória ausente, 404
+  fora de escopo, parsing de vírgula entre aspas, sucesso completo) e PATCH (auth/role, publicação);
+  (c) `<select name="categoria">` adicionado à página pública de resultados, populado pelas
+  categorias realmente presentes no import publicado mais recente. Review final (opus) encontrou 1
+  problema Minor que virou fix: o filtro de categoria usava `contains` (substring), o que o novo
+  `<select>` de valores exatos tornou alcançável como bug real (selecionar "M30" também retornava
+  "M30-39") — corrigido para `equals` (commit `42550b4`). 449/449 testes, build limpo.
+  **Verificação manual no navegador NÃO foi feita** — o banco de dados (Supabase) não está acessível
+  a partir deste ambiente sandboxed; pedir para o usuário verificar visualmente na próxima vez que
+  abrir o app, ou verificar em produção após o próximo deploy.
 - [ ] **4. Investigar e corrigir bug de expiração de pagamentos pendentes** — NÃO INICIADA.
   `/api/cron/expire-payments` já existe (`lib/payment/expire-payments.ts`) com páginas "pedidos
   vencidos" pro admin/organizador. Usuário reporta pedidos presos em PENDING há dias sem expirar
@@ -61,7 +69,8 @@ não versionado) em `.superpowers/sdd/progress.md`.
   dados obrigatórios, substituindo o modal atual que força esse preenchimento).
 
 > Pra retomar amanhã: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto
-> têm o estado completo. Comece pela tarefa 3 (spec já escrita, falta o plano).
+> têm o estado completo. Próxima tarefa: 4 (bug de expiração de pagamentos) — nenhuma spec escrita
+> ainda, começar pelo brainstorming.
 
 ## Lote anterior (12 itens) — concluído
 
