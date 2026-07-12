@@ -75,6 +75,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     statusCounts.map((s) => ({ status: s.status, count: s._count.id }))
   );
 
+  // Attributes the full order subtotal to each registration — correct only because checkout is
+  // strictly 1 registration per order today; would double-count if that ever changes.
   const { byRoute, byCategory, byTicketBatch } = computeDimensionBreakdowns(
     dimensionRegistrations.map((r) => ({
       routeId: r.routeId,
@@ -244,10 +246,11 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
         </div>
         <div className="card space-y-2">
           <h2 className="font-semibold text-sm">Tipo de pagamento</h2>
+          <p className="text-xs text-gray-400">Valor total pago pelo atleta, incluindo taxas — não é a receita líquida do organizador.</p>
           {paymentMethodSummary.map((p) => (
             <div key={p.method} className="flex justify-between text-xs border-b pb-1 last:border-0">
               <span>{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
-              <span className="text-gray-500">{p.count} pagamento{p.count !== 1 ? "s" : ""} · {formatCurrency(p.revenue)}</span>
+              <span className="text-gray-500">{p.count} pagamento{p.count !== 1 ? "s" : ""} · {formatCurrency(p.revenue)} pago</span>
             </div>
           ))}
         </div>
