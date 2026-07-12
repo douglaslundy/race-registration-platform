@@ -1,6 +1,69 @@
 # TODO para retomada
 
-## Lote de tarefas atual (12 itens)
+## Lote de tarefas atual (8 itens) — sessão 2026-07-11/12
+
+Pedido em uma única mensagem em 2026-07-11: 8 tarefas em ordem, cada uma como seu próprio ciclo
+spec → plano → implementação (subagentes) → revisão → commit, trabalhando direto na `main` (usuário
+recusou isolamento por worktree nesta sessão). Após as 6 primeiras, perguntar sobre deploy antes de
+iniciar a 7ª (sistema de rating), que por sua vez exige pesquisa + prompt completo + autorização
+explícita antes de qualquer código.
+
+Histórico completo por tarefa (specs/planos/decisões de review) em
+`docs/superpowers/specs/2026-07-*` e `docs/superpowers/plans/2026-07-*`; ledger detalhado (local,
+não versionado) em `.superpowers/sdd/progress.md`.
+
+- [x] **1. Carrinhos abandonados (admin/organizador)** — página de envio manual (individual/em
+  massa) de alerta de carrinho abandonado, além do alerta automático que já existia via cron.
+  Commits `f87b770..c583799` (10 commits). Review final encontrou e corrigiu 2 bugs cross-task
+  (AlertLog não gravado em envio manual → risco de alerta duplicado; faltava paginação/ordenação na
+  UI). 425/425 testes, build limpo.
+- [x] **2. Filtros e resumo na página do evento** (categoria/percurso/lote/cupom/tipo de pagamento)
+  — filtros novos nas duas listas de inscritos (admin/organizador); cards de Percursos/Categorias/
+  Lotes ganharam contagem+receita; novo card "Tipo de pagamento"; página de evento do admin trazida
+  à paridade com a do organizador (ganhou seção de cupons e card de categorias que não existiam).
+  Commits `a7c0ce3..93509e7` (9 commits). Review final corrigiu 1 problema cross-task (card de tipo
+  de pagamento somava valor bruto com taxas enquanto os outros cards somavam valor líquido — dois
+  números rotulados "receita" que não batiam; corrigido por relabeling, não mudança de valor).
+  439/439 testes, build limpo.
+- [ ] **3. Verificar página de resultados + import CSV** — EM ANDAMENTO. Já existia de ponta a ponta
+  (upload CSV → parse → publicar → página pública com busca). Verificação encontrou 3 lacunas reais,
+  usuário pediu pra corrigir todas: (a) parser de CSV manual frágil (quebra com vírgula dentro de
+  campo) — trocar por `papaparse`, que já é dependência instalada mas nunca usada; (b) zero testes
+  automatizados na rota de import/publish; (c) filtro de categoria na página pública lê o query param
+  mas não tem `<select>` na UI pra defini-lo. Spec escrita e commitada
+  (`docs/superpowers/specs/2026-07-12-resultados-hardening-design.md`, commit `5899d58`) — **plano
+  de implementação ainda não escrito**. Próximo passo ao retomar: pedir aprovação da spec (ou seguir
+  direto se já aprovada) e invocar writing-plans.
+- [ ] **4. Investigar e corrigir bug de expiração de pagamentos pendentes** — NÃO INICIADA.
+  `/api/cron/expire-payments` já existe (`lib/payment/expire-payments.ts`) com páginas "pedidos
+  vencidos" pro admin/organizador. Usuário reporta pedidos presos em PENDING há dias sem expirar
+  conforme prazo do gateway (PIX 24h no Mercado Pago, ver seção de cron jobs abaixo). É uma tarefa de
+  debug — verificar se o crontab da VPS que chama essa rota ainda está configurado/rodando, e se a
+  lógica de janela de expiração por tipo de pagamento está correta.
+- [ ] **5. Verificar sistema de repasse ao organizador** — NÃO INICIADA, mas investigação prévia já
+  indica que `app/admin/repasses/page.tsx` + `lib/admin/payouts.ts` já existem com filtro/ordenação/
+  export CSV completos. Provavelmente só precisa de verificação, não de construção nova.
+- [ ] **6. Dashboards admin e organizador com gráficos de linha** — NÃO INICIADA. Confirmado que não
+  existe `app/admin/page.tsx` nem `app/organizador/page.tsx` como dashboard (só `/relatorio`
+  financeiro em cada papel). Precisa: dashboard do admin com gráfico de linha de novos cadastros de
+  usuário; dashboards de admin e organizador com gráfico de linha de inscrições (geral por padrão +
+  por evento) e cupons utilizados. Esta é a única construção genuinamente nova das 6 primeiras
+  tarefas.
+- [ ] **7. Perguntar sobre deploy** antes de iniciar a tarefa 8 — é um gate de decisão, não uma
+  tarefa de código.
+- [ ] **8. Sistema de rating (atletas + organizadores)** — NÃO INICIADA. Exige pesquisar um modelo
+  de pontuação real (tipo Elo ou similar) antes de propor valores de pontos, escrever o prompt de
+  implementação completo, e só então pedir autorização explícita do usuário antes de escrever
+  qualquer código. Escopo também inclui (adicionado no meio da conversa, antes da tarefa 1 começar):
+  pontuação por cadastro completo com barra de % de completude na frente de cada usuário nas listas;
+  rating do atleta sempre visível na área do atleta; upload de foto de perfil (avatar) em "meus
+  dados"; modal pós-login incentivando completar cadastro por pontos (só pra quem já preencheu os
+  dados obrigatórios, substituindo o modal atual que força esse preenchimento).
+
+> Pra retomar amanhã: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto
+> têm o estado completo. Comece pela tarefa 3 (spec já escrita, falta o plano).
+
+## Lote anterior (12 itens) — concluído
 
 ### Fase 1 — Correções rápidas (sem migração)
 - [x] **T1** Lote grátis (valor 0): `priceAmount` agora `.nonnegative()` na rota POST e PATCH; front exibe erro no submit.
@@ -30,6 +93,10 @@
 
 ### Fase 4 — Relatórios
 - [x] **T7** Card "Eventos do organizador" em `/admin/usuarios/[id]`: total/concluídos/em andamento/cancelados.
+
+### Cancelamento de inscrição pelo atleta (2026-07-08/09)
+- [x] **Motivo obrigatório no cancelamento:** API `POST /api/registrations/[id]/cancel` rejeita sem justificativa (400); motivo salvo em `cancellationReason` + `auditLog`. Front usa `CancellationReasonModal`. Verificado em produção em 2026-07-10.
+- [x] **Alerta a admins e organizador:** `lib/alerts/cancellation-requested.ts` (commit `5f14785`) notifica todos os admins + organizador do evento por e-mail e WhatsApp, com dedupe e respeito às configurações de canal. Canais confirmados habilitados pelo usuário. Verificado em produção em 2026-07-10 (imagem `corridas-app` buildada em 09/07 23:16 com o último commit `a106f8c`).
 
 ### Fase 5 — Análise
 - [ ] **T12** Login Google: relatório de viabilidade entregue (ver resumo da sessão). Viável e de baixo esforço (NextAuth v5 + PrismaAdapter + modelos Account/Session já prontos). Requisitos: projeto Google Cloud, OAuth Client ID, tela de consentimento, redirect URI `…/api/auth/callback/google`, envs `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`. Deixado para depois.
