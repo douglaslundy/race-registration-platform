@@ -75,3 +75,7 @@ export function buildAdminPayoutOrderBy(
 }
 
 export { escapeCsvValue };
+
+export function hasPostPayoutRefund(orders: { status: string }[]): boolean {
+  return orders.length > 0;
+}
