@@ -19,7 +19,7 @@ export interface CreatePaymentInput {
 
 export interface CreatePaymentResult {
   providerPaymentId: string;
-  status: "PENDING" | "PAID" | "EXPIRED";
+  status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED";
   pixQrCode?: string;
   pixQrCodeText?: string;
   boletoUrl?: string;

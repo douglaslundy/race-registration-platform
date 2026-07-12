@@ -186,10 +186,22 @@ export class MercadoPagoProvider implements PaymentProvider {
       requestOptions: { idempotencyKey: input.idempotencyKey },
     });
 
+    const CARD_CREATE_FALLBACK_EXPIRY_MS = 48 * 3600 * 1000; // 48h — pending_contingency/pending_review_manual resolvem "em até 2 dias úteis" por doc oficial da MP
+
+    if (resCC.status === "approved") {
+      return {
+        providerPaymentId: String(resCC.id),
+        status: "PAID",
+        gatewayFeeAmount: extractGatewayFeeAmount(resCC),
+      };
+    }
+    if (resCC.status === "rejected") {
+      return { providerPaymentId: String(resCC.id), status: "CANCELLED" };
+    }
     return {
       providerPaymentId: String(resCC.id),
-      status: resCC.status === "approved" ? "PAID" : "PENDING",
-      gatewayFeeAmount: resCC.status === "approved" ? extractGatewayFeeAmount(resCC) : undefined,
+      status: "PENDING",
+      expiresAt: new Date(Date.now() + CARD_CREATE_FALLBACK_EXPIRY_MS),
     };
   }
 
