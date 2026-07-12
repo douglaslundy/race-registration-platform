@@ -12,8 +12,8 @@ vi.mock("@/lib/db", () => ({
     payment: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
     coupon: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
     transferPayout: { findMany: vi.fn(), count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
-    resultImport: { count: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn() },
-    raceResult: { findMany: vi.fn() },
+    resultImport: { count: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), findFirst: vi.fn() },
+    raceResult: { findMany: vi.fn(), createMany: vi.fn() },
     refund: {
       aggregate: vi.fn(),
       findMany: vi.fn(),
