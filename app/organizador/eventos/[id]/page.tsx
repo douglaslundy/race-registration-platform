@@ -9,7 +9,13 @@ import ArchiveEventButton from "@/components/organizer/ArchiveEventButton";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import PrintButton from "@/components/ui/PrintButton";
 import type { Metadata } from "next";
-import { computeRegistrationStatusBreakdown, computeSlotsInfo } from "@/lib/organizer/event-metrics";
+import {
+  computeRegistrationStatusBreakdown,
+  computeSlotsInfo,
+  computeDimensionBreakdowns,
+  buildPaymentMethodSummary,
+} from "@/lib/organizer/event-metrics";
+import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
 export const dynamic = "force-dynamic";
@@ -45,7 +51,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
   if (!event) notFound();
 
   // Coupon usage stats grouped by couponId, plus registration status breakdown
-  const [couponStats, statusCounts] = await Promise.all([
+  const [couponStats, statusCounts, dimensionRegistrations, paymentGroups] = await Promise.all([
     event.coupons.length > 0
       ? db.order.groupBy({
           by: ["couponId"],
@@ -62,6 +68,16 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       by: ["status"],
       where: { eventId: id },
       _count: { id: true },
+    }),
+    db.registration.findMany({
+      where: { eventId: id, status: "CONFIRMED" },
+      select: { routeId: true, categoryId: true, ticketBatchId: true, order: { select: { subtotalAmount: true } } },
+    }),
+    db.payment.groupBy({
+      by: ["method"],
+      where: { status: "PAID", order: { eventId: id } },
+      _count: { id: true },
+      _sum: { amount: true },
     }),
   ]);
 
@@ -82,6 +98,18 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
     batchCapacityTotal: event.ticketBatches.reduce((s, b) => s + b.capacity, 0),
     batchSoldTotal: event.ticketBatches.reduce((s, b) => s + b.soldCount, 0),
   });
+
+  const { byRoute, byCategory, byTicketBatch } = computeDimensionBreakdowns(
+    dimensionRegistrations.map((r) => ({
+      routeId: r.routeId,
+      categoryId: r.categoryId,
+      ticketBatchId: r.ticketBatchId,
+      orderSubtotalAmount: r.order.subtotalAmount,
+    })),
+  );
+  const paymentMethodSummary = buildPaymentMethodSummary(
+    paymentGroups.map((g) => ({ method: g.method, count: g._count.id, revenue: g._sum.amount ?? 0 })),
+  );
 
   const revenue = event.orders.reduce((s, o) => s + o.subtotalAmount, 0);
   const statusInfo = STATUS_LABEL[event.status] ?? STATUS_LABEL.DRAFT;
@@ -240,12 +268,15 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
             <p className="text-sm text-gray-500">Nenhum lote criado</p>
           ) : (
             <div className="space-y-2">
-              {event.ticketBatches.map((b) => (
-                <div key={b.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-2 last:border-0">
-                  <span className="font-medium">{b.name}</span>
-                  <span className="text-gray-500">{b.soldCount}/{b.capacity} · {formatCurrency(b.priceAmount)}</span>
-                </div>
-              ))}
+              {event.ticketBatches.map((b) => {
+                const stats = byTicketBatch.get(b.id) ?? { count: 0, revenue: 0 };
+                return (
+                  <div key={b.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-2 last:border-0">
+                    <span className="font-medium">{b.name}</span>
+                    <span className="text-gray-500">{b.soldCount}/{b.capacity} · {formatCurrency(b.priceAmount)} · receita: {formatCurrency(stats.revenue)}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -262,12 +293,15 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
             <p className="text-sm text-gray-500">Nenhum percurso cadastrado</p>
           ) : (
             <div className="space-y-1">
-              {event.routes.map((r) => (
-                <div key={r.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
-                  <span>{r.name}</span>
-                  <span className="text-gray-500">{r.distanceKm}km</span>
-                </div>
-              ))}
+              {event.routes.map((r) => {
+                const stats = byRoute.get(r.id) ?? { count: 0, revenue: 0 };
+                return (
+                  <div key={r.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
+                    <span>{r.name} <span className="text-gray-400">({r.distanceKm}km)</span></span>
+                    <span className="text-gray-500">{stats.count} inscritos · {formatCurrency(stats.revenue)}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -283,10 +317,16 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           {event.categories.length === 0 ? (
             <p className="text-sm text-gray-500">Nenhuma categoria cadastrada</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {event.categories.map((c) => (
-                <span key={c.id} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded">{c.name}</span>
-              ))}
+            <div className="space-y-1">
+              {event.categories.map((c) => {
+                const stats = byCategory.get(c.id) ?? { count: 0, revenue: 0 };
+                return (
+                  <div key={c.id} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
+                    <span>{c.name}</span>
+                    <span className="text-gray-500">{stats.count} inscritos · {formatCurrency(stats.revenue)}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -314,6 +354,19 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
               ))}
             </div>
           )}
+        </div>
+
+        {/* Tipo de pagamento */}
+        <div className="card space-y-3">
+          <h2 className="font-semibold">Tipo de pagamento</h2>
+          <div className="space-y-1">
+            {paymentMethodSummary.map((p) => (
+              <div key={p.method} className="flex justify-between text-sm border-b dark:border-gray-700 pb-1 last:border-0">
+                <span>{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
+                <span className="text-gray-500">{p.count} pagamento{p.count !== 1 ? "s" : ""} · {formatCurrency(p.revenue)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
