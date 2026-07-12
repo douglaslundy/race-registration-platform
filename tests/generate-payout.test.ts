@@ -67,7 +67,7 @@ describe("generatePayout", () => {
           netAmount: 15000,
         }),
       },
-      order: { updateMany: vi.fn() },
+      order: { updateMany: vi.fn().mockResolvedValueOnce({ count: 2 }) },
       auditLog: { create: vi.fn() },
     };
     dbMock.$transaction = vi.fn(async (fn: any) => fn(txMock));
@@ -78,7 +78,7 @@ describe("generatePayout", () => {
       data: { eventId: "event-1", organizerId: "org-1", grossAmount: 16050, platformFee: 1050, netAmount: 15000 },
     });
     expect(txMock.order.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["order-1", "order-2"] } },
+      where: { id: { in: ["order-1", "order-2"] }, payoutId: null },
       data: { payoutId: "payout-1" },
     });
     expect(txMock.auditLog.create).toHaveBeenCalledWith(
@@ -95,5 +95,44 @@ describe("generatePayout", () => {
       ok: true,
       payout: { id: "payout-1", grossAmount: 16050, platformFee: 1050, netAmount: 15000 },
     });
+  });
+
+  it("returns 409 when a concurrent call already claimed some of the eligible orders", async () => {
+    dbMock.event.findUnique.mockResolvedValueOnce({ organizerId: "org-1" });
+    dbMock.order.findMany.mockResolvedValueOnce([
+      { id: "order-1", totalAmount: 10700, platformFeeAmount: 500, paymentFeeAmount: 200 },
+      { id: "order-2", totalAmount: 5350, platformFeeAmount: 250, paymentFeeAmount: 100 },
+    ]);
+
+    const txMock = {
+      transferPayout: {
+        create: vi.fn().mockResolvedValueOnce({
+          id: "payout-1",
+          grossAmount: 16050,
+          platformFee: 1050,
+          netAmount: 15000,
+        }),
+      },
+      // Simulates a concurrent call having already claimed order-2 before this updateMany ran:
+      // only 1 of the 2 requested rows actually match `payoutId: null` at claim time.
+      order: { updateMany: vi.fn().mockResolvedValueOnce({ count: 1 }) },
+      auditLog: { create: vi.fn() },
+    };
+    dbMock.$transaction = vi.fn(async (fn: any) => {
+      try {
+        return await fn(txMock);
+      } catch (err) {
+        throw err;
+      }
+    });
+
+    const result = await generatePayout("event-1");
+
+    expect(result).toEqual({
+      ok: false,
+      status: 409,
+      error: "Alguns pedidos já foram incluídos em outro repasse enquanto este era gerado. Tente novamente.",
+    });
+    expect(txMock.auditLog.create).not.toHaveBeenCalled();
   });
 });

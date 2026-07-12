@@ -38,27 +38,41 @@ export async function generatePayout(eventId: string): Promise<GeneratePayoutRes
   const platformFee = orders.reduce((sum, o) => sum + o.platformFeeAmount + o.paymentFeeAmount, 0);
   const netAmount = grossAmount - platformFee;
 
-  const payout = await db.$transaction(async (tx) => {
-    const created = await tx.transferPayout.create({
-      data: { eventId, organizerId: event.organizerId, grossAmount, platformFee, netAmount },
+  try {
+    const payout = await db.$transaction(async (tx) => {
+      const created = await tx.transferPayout.create({
+        data: { eventId, organizerId: event.organizerId, grossAmount, platformFee, netAmount },
+      });
+      const claimed = await tx.order.updateMany({
+        where: { id: { in: orders.map((o) => o.id) }, payoutId: null },
+        data: { payoutId: created.id },
+      });
+      if (claimed.count !== orders.length) {
+        throw new Error("PAYOUT_CONCURRENT_CLAIM");
+      }
+      await tx.auditLog.create({
+        data: {
+          action: "PAYOUT_GENERATED",
+          entityType: "TransferPayout",
+          entityId: created.id,
+          metadata: { eventId, orderCount: orders.length, grossAmount, netAmount },
+        },
+      });
+      return created;
     });
-    await tx.order.updateMany({
-      where: { id: { in: orders.map((o) => o.id) } },
-      data: { payoutId: created.id },
-    });
-    await tx.auditLog.create({
-      data: {
-        action: "PAYOUT_GENERATED",
-        entityType: "TransferPayout",
-        entityId: created.id,
-        metadata: { eventId, orderCount: orders.length, grossAmount, netAmount },
-      },
-    });
-    return created;
-  });
 
-  return {
-    ok: true,
-    payout: { id: payout.id, grossAmount: payout.grossAmount, platformFee: payout.platformFee, netAmount: payout.netAmount },
-  };
+    return {
+      ok: true,
+      payout: { id: payout.id, grossAmount: payout.grossAmount, platformFee: payout.platformFee, netAmount: payout.netAmount },
+    };
+  } catch (err) {
+    if (err instanceof Error && err.message === "PAYOUT_CONCURRENT_CLAIM") {
+      return {
+        ok: false,
+        status: 409,
+        error: "Alguns pedidos já foram incluídos em outro repasse enquanto este era gerado. Tente novamente.",
+      };
+    }
+    throw err;
+  }
 }
