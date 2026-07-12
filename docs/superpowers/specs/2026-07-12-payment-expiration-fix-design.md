@@ -141,73 +141,79 @@ return {
 `processing`/`pending` (os outros valores documentados pra criação de cobrança) caem no ramo
 `PENDING` com fallback de 1h.
 
-## 4. Extrair "cancelar pedido e liberar vaga" pra função compartilhada
+## 4. Reaproveitar `applyGatewayStatus` (já existe) em vez de duplicar a lógica de liberação de vaga
 
-Hoje essa sequência só existe dentro de `cancelExpiredPayment`
-(`lib/payment/expire-payments.ts:4-45`): marcar o pagamento como estado terminal, cancelar o
-`Order`, cancelar cada `Registration` que estava `PENDING_PAYMENT`, decrementar
-`TicketBatch.soldCount`, gravar `AuditLog`. O novo caminho do checkout (cartão recusado) precisa da
-mesma sequência de liberação de vaga, então extrai a parte "cancelar pedido + registrations +
-liberar vaga" pra uma função própria, reaproveitada pelos dois chamadores:
+**Correção em relação à primeira versão desta spec:** ao invés de extrair uma função nova
+(`cancelOrderAndReleaseInventory`), a checagem do código encontrou que **já existe** uma função
+genérica pra exatamente essa sequência — `applyGatewayStatus` em `lib/payment/sync-payment-status.ts`
+— usada hoje por webhook e reconciliação pra aplicar qualquer transição de status de gateway
+(`PAID`/`EXPIRED`/`CANCELLED`/`REFUNDED`/`CHARGEBACK`) a um pagamento: atualiza `Payment`, `Order`,
+cancela/confirma cada `Registration`, libera/restaura a vaga no `TicketBatch` conforme o status
+anterior, e grava `AuditLog`. Reaproveitá-la evita duplicar essa lógica pela segunda vez no código
+(a primeira duplicação, dentro de `cancelExpiredPayment`, já existe e **não** será tocada por esta
+tarefa — refatorá-la pra usar `applyGatewayStatus` também seria uma limpeza válida, mas está fora
+do escopo deste bug fix).
+
+`applyGatewayStatus` recebe um `source: "webhook" | "reconciliation" | "refund_check"` que decide a
+`action` gravada no `AuditLog`. Nenhum dos três descreve "cartão recusado na criação do checkout",
+então o tipo ganha um quarto valor:
 
 ```ts
-// lib/payment/expire-payments.ts
-async function cancelOrderAndReleaseInventory(
-  tx: Prisma.TransactionClient,
-  orderId: string,
-): Promise<void> {
-  const order = await tx.order.findUniqueOrThrow({
-    where: { id: orderId },
-    select: { registrations: { select: { id: true, ticketBatchId: true, status: true } } },
-  });
+// lib/payment/sync-payment-status.ts
+export type SyncSource = "webhook" | "reconciliation" | "refund_check" | "checkout";
 
-  await tx.order.update({ where: { id: orderId }, data: { status: "CANCELLED" } });
-
-  for (const r of order.registrations) {
-    if (r.status !== "PENDING_PAYMENT") continue;
-    await tx.registration.update({ where: { id: r.id }, data: { status: "CANCELLED" } });
-    await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { decrement: 1 } } });
-  }
-}
+const AUDIT_ACTION: Record<SyncSource, string> = {
+  webhook: "PAYMENT_WEBHOOK",
+  reconciliation: "PAYMENT_STATUS_SYNCED_RECONCILIATION",
+  refund_check: "PAYMENT_STATUS_SYNCED_REFUND_CHECK",
+  checkout: "PAYMENT_CARD_REJECTED",
+};
 ```
 
-`cancelExpiredPayment` passa a chamar essa função depois de marcar o `Payment` como `EXPIRED`, em
-vez de repetir a lógica inline. Exportar `cancelOrderAndReleaseInventory` do módulo pra
-`checkout/route.ts` importar.
+Nenhuma outra mudança em `sync-payment-status.ts` — a função em si já cobre a transição
+`PENDING → CANCELLED` corretamente (libera a vaga porque `payment.status === "PENDING"` e
+`newStatus === "CANCELLED"`; cancela a `Registration` que estiver `PENDING_PAYMENT`; marca o
+`Order` como `CANCELLED`).
 
 ## 5. `app/api/checkout/route.ts` — tratar `paymentResult.status === "CANCELLED"`
 
 Depois de obter `paymentResult` (linha ~118) e antes do `db.payment.create` atual (linha 137), um
-cartão recusado precisa de um caminho diferente do sucesso/pendente normal: gravar o `Payment` como
-`CANCELLED` (fica no histórico/auditoria), cancelar o pedido e a vaga via
-`cancelOrderAndReleaseInventory`, gravar `AuditLog`, e responder com erro — reaproveitando o fluxo
-de erro que o front **já trata hoje** (`CheckoutForm.tsx:282-284`: qualquer resposta não-OK vira
-`setError(body.error)`), sem precisar mexer no componente React.
+cartão recusado precisa de um caminho diferente do sucesso/pendente normal: criar o `Payment` como
+`PENDING` (reflete o que de fato aconteceu — o pagamento existiu como pendente por uma fração de
+segundo antes de ser recusado) e imediatamente aplicar a transição pra `CANCELLED` via
+`applyGatewayStatus`, dentro da mesma transação — isso grava o pagamento, cancela o pedido e a
+inscrição, libera a vaga, e grava o `AuditLog`, tudo com a função já existente e testada. Por fim,
+responde com erro — reaproveitando o fluxo de erro que o front **já trata hoje**
+(`CheckoutForm.tsx:282-284`: qualquer resposta não-OK vira `setError(body.error)`), sem precisar
+mexer no componente React.
+
+`applyGatewayStatus` só precisa de `{ id, status }` pro pedido e `{ id, ticketBatchId, status }`
+pras inscrições — não é preciso reconsultar o banco, porque `checkout` (retorno de `createCheckout`,
+linha ~53) e `checkoutData.ticketBatchId` (linha 45) já têm exatamente esses valores, recém-criados
+pela mesma requisição:
 
 ```ts
 if (paymentResult.status === "CANCELLED") {
   await db.$transaction(async (tx) => {
-    await tx.payment.create({
+    const payment = await tx.payment.create({
       data: {
         orderId: checkout.orderId,
         provider: providerKey,
         providerPaymentId: paymentResult.providerPaymentId,
         method: paymentMethod as PaymentMethod,
-        status: "CANCELLED",
+        status: "PENDING",
         amount: checkout.totalAmount,
         idempotencyKey,
       },
     });
-    await cancelOrderAndReleaseInventory(tx, checkout.orderId);
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "PAYMENT_CARD_REJECTED",
-        entityType: "Order",
-        entityId: checkout.orderId,
-        metadata: { paymentMethod, providerPaymentId: paymentResult.providerPaymentId },
-      },
-    });
+    await applyGatewayStatus(
+      tx,
+      payment,
+      { id: checkout.orderId, status: "PENDING" },
+      [{ id: checkout.registrationId, ticketBatchId: checkoutData.ticketBatchId, status: "PENDING_PAYMENT" }],
+      "CANCELLED",
+      "checkout",
+    );
   });
 
   return NextResponse.json(
@@ -230,11 +236,14 @@ O restante da rota (criação normal do `Payment` pra `PAID`/`PENDING`) fica ina
 - `tests/checkout-route.test.ts` ganha testes pro novo branch `CANCELLED`: `getPaymentProvider` já é
   mockado nesse arquivo, então o teste só precisa fazer `createPayment` resolver
   `{ status: "CANCELLED", providerPaymentId: "..." }` e verificar que a resposta é 402 com a
-  mensagem de erro, que `order.update`/`registration.update`/`ticketBatch.update` foram chamados
-  pra liberar a vaga, e que nenhuma confirmação de inscrição foi disparada.
-- `lib/payment/expire-payments.ts` já tem cobertura de `cancelExpiredPayment` — os testes existentes
-  precisam continuar passando depois da extração de `cancelOrderAndReleaseInventory` (é um
-  refactor interno, o comportamento observável de `cancelExpiredPayment` não muda).
+  mensagem de erro, que `payment.create` foi chamado com `status: "PENDING"` (estado transitório
+  correto antes de `applyGatewayStatus` assumir), que `order.update`/`registration.update`/
+  `ticketBatch.update` foram chamados pra cancelar e liberar a vaga, e que nenhuma confirmação de
+  inscrição foi disparada. `applyGatewayStatus` em si já tem cobertura própria em
+  `tests/sync-payment-status.test.ts` — não precisa duplicar os casos de transição PENDING→CANCELLED
+  ali, só verificar que a rota chama a função com os argumentos certos.
+- `lib/payment/sync-payment-status.ts` ganha 1 caso de teste novo (ou verificação de que os
+  existentes cobrem): `AUDIT_ACTION["checkout"]` resolve pra `"PAYMENT_CARD_REJECTED"`.
 
 ## Fora de escopo
 
