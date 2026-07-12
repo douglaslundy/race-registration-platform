@@ -47,7 +47,7 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
               { bibNumber: { contains: sp.q } },
             ],
           } : {}),
-          ...(sp.categoria ? { category: { contains: sp.categoria, mode: "insensitive" } } : {}),
+          ...(sp.categoria ? { category: { equals: sp.categoria, mode: "insensitive" } } : {}),
           ...(sp.genero ? { gender: sp.genero } : {}),
         },
         orderBy: { placementGeneral: "asc" },
