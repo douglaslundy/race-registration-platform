@@ -346,6 +346,7 @@ model Order {
   totalAmount       Int         // centavos
   currency          String      @default("BRL")
   couponId          String?
+  payoutId          String?
   discountAmount    Int         @default(0)
   status            OrderStatus @default(PENDING)
   expiresAt         DateTime?
@@ -353,14 +354,16 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  buyer         User           @relation(fields: [buyerUserId], references: [id])
-  event         Event          @relation(fields: [eventId], references: [id])
-  coupon        Coupon?        @relation(fields: [couponId], references: [id])
+  buyer         User            @relation(fields: [buyerUserId], references: [id])
+  event         Event           @relation(fields: [eventId], references: [id])
+  coupon        Coupon?         @relation(fields: [couponId], references: [id])
+  payout        TransferPayout? @relation(fields: [payoutId], references: [id])
   payments      Payment[]
   registrations Registration[]
 
   @@index([buyerUserId])
   @@index([eventId, status])
+  @@index([payoutId])
   @@map("orders")
 }
 
@@ -456,6 +459,7 @@ model TransferPayout {
 
   event     Event            @relation(fields: [eventId], references: [id])
   organizer OrganizerProfile @relation(fields: [organizerId], references: [id])
+  orders    Order[]
 
   @@map("transfer_payouts")
 }
