@@ -42,12 +42,24 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Verificação manual no navegador NÃO foi feita** — o banco de dados (Supabase) não está acessível
   a partir deste ambiente sandboxed; pedir para o usuário verificar visualmente na próxima vez que
   abrir o app, ou verificar em produção após o próximo deploy.
-- [ ] **4. Investigar e corrigir bug de expiração de pagamentos pendentes** — NÃO INICIADA.
-  `/api/cron/expire-payments` já existe (`lib/payment/expire-payments.ts`) com páginas "pedidos
-  vencidos" pro admin/organizador. Usuário reporta pedidos presos em PENDING há dias sem expirar
-  conforme prazo do gateway (PIX 24h no Mercado Pago, ver seção de cron jobs abaixo). É uma tarefa de
-  debug — verificar se o crontab da VPS que chama essa rota ainda está configurado/rodando, e se a
-  lógica de janela de expiração por tipo de pagamento está correta.
+- [x] **4. Investigar e corrigir bug de expiração de pagamentos pendentes** — DONE. Spec:
+  `docs/superpowers/specs/2026-07-12-payment-expiration-fix-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-12-payment-expiration-fix.md`. Commits `c39a97b..f4b0030` (3
+  commits, subagent-driven-development) + `ab081e3` (script de backfill). Causa raiz encontrada via
+  systematic-debugging: **não era o crontab** — pagamentos de cartão de crédito nunca recebiam
+  `expiresAt` (só PIX/boleto recebiam), então ficavam invisíveis pra sempre à query de
+  `expirePendingPayments()`, usada tanto pelo cron quanto pelos botões manuais do admin/organizador.
+  Cartão recusado também era gravado como `PENDING` em vez de estado terminal. Corrigido: Mercado
+  Pago e Pagar.me agora mapeiam `rejected`/`failed`/`canceled` → cancelamento imediato (dentro da
+  própria requisição de checkout, via `applyGatewayStatus` já existente) e status "em análise" →
+  `PENDING` com fallback de `expiresAt` (48h Mercado Pago, 1h Pagar.me, baseado na documentação
+  oficial de cada gateway). 458/458 testes, build limpo, review final sem achados críticos.
+  **Pendências que exigem ação manual do usuário (não são código):**
+  - Rodar `npm run db:backfill-stuck-card-payments -- --dry-run` (depois sem `--dry-run`) no
+    próximo deploy pra corrigir os pedidos que **já** estão presos em PENDING na produção — o fix
+    só vale daqui pra frente, não corrige retroativamente sozinho.
+  - Confirmar que o crontab da VPS ainda chama `/api/cron/expire-payments` a cada 6h (não foi
+    possível verificar deste ambiente sandboxed, sem acesso SSH).
 - [ ] **5. Verificar sistema de repasse ao organizador** — NÃO INICIADA, mas investigação prévia já
   indica que `app/admin/repasses/page.tsx` + `lib/admin/payouts.ts` já existem com filtro/ordenação/
   export CSV completos. Provavelmente só precisa de verificação, não de construção nova.
@@ -69,8 +81,8 @@ não versionado) em `.superpowers/sdd/progress.md`.
   dados obrigatórios, substituindo o modal atual que força esse preenchimento).
 
 > Pra retomar amanhã: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto
-> têm o estado completo. Próxima tarefa: 4 (bug de expiração de pagamentos) — nenhuma spec escrita
-> ainda, começar pelo brainstorming.
+> têm o estado completo. Próxima tarefa: 5 (verificar sistema de repasse ao organizador) — spec
+> ainda não escrita, começar pelo brainstorming.
 
 ## Lote anterior (12 itens) — concluído
 
