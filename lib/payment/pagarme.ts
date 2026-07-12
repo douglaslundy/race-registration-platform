@@ -132,10 +132,19 @@ export class PagarMeProvider implements PaymentProvider {
         input.idempotencyKey,
       );
 
+      const CARD_CREATE_FALLBACK_EXPIRY_MS = 3600 * 1000; // 1h — Pagar.me "Cancelamento Garantido" já resolve `processing` quase em tempo real
+
       const chargeStatus = String(data.status ?? "");
+      if (chargeStatus === "paid") {
+        return { providerPaymentId: String(data.id), status: "PAID" };
+      }
+      if (chargeStatus === "failed" || chargeStatus === "canceled") {
+        return { providerPaymentId: String(data.id), status: "CANCELLED" };
+      }
       return {
         providerPaymentId: String(data.id),
-        status: chargeStatus === "paid" ? "PAID" : "PENDING",
+        status: "PENDING",
+        expiresAt: new Date(Date.now() + CARD_CREATE_FALLBACK_EXPIRY_MS),
       };
     }
 
