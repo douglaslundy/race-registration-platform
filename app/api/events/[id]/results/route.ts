@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import Papa from "papaparse";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const REQUIRED_COLUMNS = ["bib_number", "athlete_name"];
 
 function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) throw new Error("CSV vazio ou sem dados");
-  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase());
-  return lines.slice(1).map((line) => {
-    const values = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
-    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""]));
+  const result = Papa.parse<Record<string, string>>(text.trim(), {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.trim().toLowerCase(),
+    transform: (v) => v.trim(),
   });
+  if (result.data.length === 0) throw new Error("CSV vazio ou sem dados");
+  return result.data;
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
