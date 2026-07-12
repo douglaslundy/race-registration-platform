@@ -28,6 +28,15 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
     orderBy: { publishedAt: "desc" },
   });
 
+  const availableCategories = latestImport
+    ? await db.raceResult.findMany({
+        where: { importId: latestImport.id, category: { not: null } },
+        select: { category: true },
+        distinct: ["category"],
+        orderBy: { category: "asc" },
+      })
+    : [];
+
   const results = latestImport
     ? await db.raceResult.findMany({
         where: {
@@ -57,6 +66,14 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
         <>
           <form className="flex gap-3 mb-6">
             <input name="q" defaultValue={sp.q} className="input-field flex-1" placeholder="Buscar por nome ou número..." />
+            <select name="categoria" defaultValue={sp.categoria} className="input-field w-40">
+              <option value="">Todas as categorias</option>
+              {availableCategories.map((c) => (
+                <option key={c.category} value={c.category ?? ""}>
+                  {c.category}
+                </option>
+              ))}
+            </select>
             <select name="genero" defaultValue={sp.genero} className="input-field w-32">
               <option value="">Gênero</option>
               <option value="M">Masculino</option>
