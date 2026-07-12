@@ -173,4 +173,60 @@ describe("checkout api", () => {
     expect(res.status).toBe(200);
     expect(createCheckout).toHaveBeenCalledWith(expect.objectContaining({ notes: "Chegarei atrasado" }));
   });
+
+  it("cancela o pedido e libera a vaga quando o cartão é recusado na criação", async () => {
+    enabledMethodsMock.mockResolvedValue(["CREDIT_CARD"]);
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 10000,
+      discountAmount: 0,
+      platformFeeAmount: 0,
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      createPayment: vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-rejected", status: "CANCELLED" }),
+    } as any);
+
+    const paymentRow = { id: "payment-1", status: "PENDING" };
+    const txMock = {
+      payment: { create: vi.fn().mockResolvedValueOnce(paymentRow), update: vi.fn() },
+      order: { update: vi.fn() },
+      registration: { update: vi.fn() },
+      ticketBatch: { update: vi.fn() },
+      auditLog: { create: vi.fn() },
+    };
+    dbMock.$transaction = vi.fn(async (fn: any) => fn(txMock));
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "CREDIT_CARD",
+          cardToken: "tok-1",
+          cardBrand: "visa",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(402);
+    const body = await res.json();
+    expect(body.error).toMatch(/recusado/i);
+
+    expect(txMock.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ orderId: "order-1", status: "PENDING", providerPaymentId: "pay-rejected" }),
+      }),
+    );
+    expect(txMock.order.update).toHaveBeenCalledWith({ where: { id: "order-1" }, data: { status: "CANCELLED" } });
+    expect(txMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: { status: "CANCELLED" } });
+    expect(txMock.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-1" }, data: { soldCount: { decrement: 1 } } });
+    expect(txMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "PAYMENT_CARD_REJECTED" }) }),
+    );
+  });
 });

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
+import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { getPaymentProviderSetting, getMercadoPagoAccessToken, getPagarMeApiKey } from "@/lib/payment-settings";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
@@ -132,6 +133,35 @@ export async function POST(req: NextRequest) {
     }
     console.error("[checkout] payment gateway error:", payErr);
     return NextResponse.json({ error: msg }, { status: 502 });
+  }
+
+  if (paymentResult.status === "CANCELLED") {
+    await db.$transaction(async (tx) => {
+      const payment = await tx.payment.create({
+        data: {
+          orderId: checkout.orderId,
+          provider: providerKey,
+          providerPaymentId: paymentResult.providerPaymentId,
+          method: paymentMethod as PaymentMethod,
+          status: "PENDING",
+          amount: checkout.totalAmount,
+          idempotencyKey,
+        },
+      });
+      await applyGatewayStatus(
+        tx,
+        payment,
+        { id: checkout.orderId, status: "PENDING" },
+        [{ id: checkout.registrationId, ticketBatchId: checkoutData.ticketBatchId, status: "PENDING_PAYMENT" }],
+        "CANCELLED",
+        "checkout",
+      );
+    });
+
+    return NextResponse.json(
+      { error: "Pagamento recusado pela operadora do cartão. Verifique os dados ou tente outro cartão." },
+      { status: 402 },
+    );
   }
 
   const payment = await db.payment.create({
