@@ -59,8 +59,8 @@ export default async function OrganizerDashboard({
   const to = parseDateInput(ate, true) ?? new Date();
   const from = parseDateInput(de, false) ?? (() => {
     const d = new Date();
-    d.setDate(d.getDate() - 29);
-    d.setHours(0, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() - 29);
+    d.setUTCHours(0, 0, 0, 0);
     return d;
   })();
 
