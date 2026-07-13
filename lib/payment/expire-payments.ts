@@ -68,3 +68,56 @@ export async function expirePendingPayments(options?: { organizerUserId?: string
 
   return { checked: payments.length, expired };
 }
+
+export async function cancelAbandonedOrder(orderId: string): Promise<boolean> {
+  return db.$transaction(async (tx) => {
+    const result = await tx.order.updateMany({
+      where: { id: orderId, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+    if (result.count === 0) return false;
+
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      select: { registrations: { select: { id: true, ticketBatchId: true, status: true } } },
+    });
+
+    for (const r of order.registrations) {
+      if (r.status !== "PENDING_PAYMENT") continue;
+      await tx.registration.update({ where: { id: r.id }, data: { status: "CANCELLED" } });
+      await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { decrement: 1 } } });
+    }
+
+    await tx.auditLog.create({
+      data: { action: "ORDER_ABANDONED_EXPIRED", entityType: "Order", entityId: orderId, metadata: {} },
+    });
+
+    return true;
+  });
+}
+
+export async function expireAbandonedOrders(options?: { organizerUserId?: string }): Promise<{ checked: number; expired: number }> {
+  const orders = await db.order.findMany({
+    where: {
+      status: "PENDING",
+      expiresAt: { not: null, lt: new Date() },
+      payments: { none: {} },
+      ...(options?.organizerUserId
+        ? { event: { organizer: { userId: options.organizerUserId } } }
+        : {}),
+    },
+    select: { id: true },
+  });
+
+  let expired = 0;
+
+  for (const order of orders) {
+    try {
+      if (await cancelAbandonedOrder(order.id)) expired++;
+    } catch (err) {
+      console.error("[expireAbandonedOrders] failed to expire order", order.id, err);
+    }
+  }
+
+  return { checked: orders.length, expired };
+}
