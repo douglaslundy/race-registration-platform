@@ -4,8 +4,10 @@ import { db } from "@/lib/db";
 vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn(async () => "hashed-password") },
 }));
+vi.mock("@/lib/validate-email-domain", () => ({ hasValidMxRecord: vi.fn() }));
 
 import { POST } from "@/app/api/auth/register/route";
+import { hasValidMxRecord } from "@/lib/validate-email-domain";
 
 const dbMock = db as any;
 
@@ -28,6 +30,7 @@ const validAthleteBody = {
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(hasValidMxRecord).mockResolvedValue(true);
     dbMock.user.findUnique.mockResolvedValue(null);
     dbMock.athleteProfile.findFirst.mockResolvedValue(null);
     dbMock.user.create.mockResolvedValue({
@@ -96,5 +99,14 @@ describe("POST /api/auth/register", () => {
 
     expect(res.status).toBe(201);
     expect(dbMock.athleteProfile.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita e-mail cujo domínio não tem registro MX", async () => {
+    vi.mocked(hasValidMxRecord).mockResolvedValueOnce(false);
+
+    const res = await POST(makeRequest(validAthleteBody));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
   });
 });

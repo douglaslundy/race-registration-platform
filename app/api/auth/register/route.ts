@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { hasValidMxRecord } from "@/lib/validate-email-domain";
 
 const registerSchema = z
   .object({
@@ -50,6 +51,10 @@ export async function POST(req: NextRequest) {
     }
 
     const { name, email, password, role, birthDate, cpf } = parsed.data;
+
+    if (!(await hasValidMxRecord(email))) {
+      return NextResponse.json({ error: "Domínio de e-mail inválido ou inexistente" }, { status: 400 });
+    }
 
     const exists = await db.user.findUnique({ where: { email } });
     if (exists) {
