@@ -110,7 +110,7 @@ não versionado) em `.superpowers/sdd/progress.md`.
   retroativa de pontos pros atletas que já se cadastraram/já têm inscrições, usando os mesmos
   valores de pontuação definidos no desenho final (ver memória `rating_system_pending`).
 
-### Deploy 2026-07-13
+### Deploy 2026-07-13 (1ª leva — commits `b90e638..838d9ee`)
 - [x] Push de 54 commits locais pra `origin/main`.
 - [x] Deploy na VPS via `git pull` → `docker build` → `prisma db push` (aplicou a migração
   `Order.payoutId`) → `docker compose up -d --no-deps app`. Site verificado no ar (`/`, `/eventos`,
@@ -119,6 +119,35 @@ não versionado) em `.superpowers/sdd/progress.md`.
   encontrados, nada precisava de correção.
 - [ ] Verificar se o crontab da VPS ainda chama `/api/cron/expire-payments` a cada 6h — não
   verificado nesta passagem.
+
+### Pedidos órfãos sem pagamento (2026-07-13, achado ao investigar inscrições presas)
+- [x] Consulta em produção encontrou 12 inscrições `PENDING_PAYMENT` há mais de 3 dias, todas com
+  `Order` sem nenhum `Payment` associado (checkout abandonado antes de escolher forma de
+  pagamento) — o mecanismo de expiração da tarefa 4 só olha a tabela `Payment`, não pega esses.
+  Spec: `docs/superpowers/specs/2026-07-13-expirar-pedidos-orfaos-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-13-expirar-pedidos-orfaos.md`. Commits `c93d811..fe7b930` (2
+  commits). Construído: `expireAbandonedOrders`/`cancelAbandonedOrder` em
+  `lib/payment/expire-payments.ts` (mesmo padrão de `expirePendingPayments`, filtro
+  `payments: { none: {} }`), somado no cron e nos dois botões manuais existentes — nenhuma mudança
+  de UI necessária. 497/497 testes, review final: pronto pra merge.
+
+### Validação de e-mail + melhorias de dashboard (2026-07-13, pedido em lote)
+- [x] Validação de domínio de e-mail no cadastro via consulta DNS/MX real (timeout 4s, deixa
+  passar se travar) — pegava e-mails como "usuario@gmail.coml" que só passavam por validação de
+  formato. Renomeado "Painel Administrativo"/"Admin" → "Dashboard" (h1 + nav), igualando ao
+  organizador. Gráficos trocados do SVG próprio pra Recharts (biblioteca real, `^3.9.2`, compatível
+  com React 19) — mesma assinatura de props, nenhuma chamada precisou mudar. Layout dos dois
+  dashboards: filtros de data/evento inline e justificados (só quebram linha por
+  responsividade), gráficos um por linha (era grid de 2-3 colunas). Spec:
+  `docs/superpowers/specs/2026-07-13-validacao-email-e-dashboards-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-13-validacao-email-e-dashboards.md`. Commits `bdd4f67..6074acf`
+  (4 commits). 504/504 testes, review final: pronto pra merge. **Não verificado visualmente** —
+  recomendação do review final: conferir os dois dashboards em modo claro e escuro.
+
+### Deploy 2026-07-13 (2ª leva — commits `c93d811..6074acf`, sem migração de banco)
+- [x] Push + `git pull` → `docker build` (instalou `recharts`) → `docker compose up -d --no-deps
+  app` (sem `prisma db push`, nenhuma mudança de schema nesta leva). Site verificado no ar (`/`,
+  `/eventos` respondendo 200; `/admin` responde 307, esperado sem sessão logada).
 
 > Pra retomar: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto têm o
 > estado completo. As 6 primeiras tarefas e o deploy estão concluídos. **Não iniciar a tarefa 8
