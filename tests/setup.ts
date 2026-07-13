@@ -2,7 +2,7 @@ import { vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     event: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     eventRoute: { findMany: vi.fn() },
     eventCategory: { findMany: vi.fn() },
