@@ -3,10 +3,13 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/alerts/payment-error", () => ({ notifyPaymentError: vi.fn() }));
+vi.mock("@/lib/alerts/payment-error", () => ({
+  notifyPaymentError: vi.fn(),
+  notifyOrderCancelledWithoutPayment: vi.fn(),
+}));
 
 import { POST } from "@/app/api/organizer/registrations/[id]/resend-payment-notification/route";
-import { notifyPaymentError } from "@/lib/alerts/payment-error";
+import { notifyPaymentError, notifyOrderCancelledWithoutPayment } from "@/lib/alerts/payment-error";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
@@ -69,5 +72,39 @@ describe("POST /api/organizer/registrations/[id]/resend-payment-notification", (
         entityId: "payment-1",
       }),
     });
+  });
+
+  it("chama notifyOrderCancelledWithoutPayment quando não há payment e a inscrição está cancelada", async () => {
+    dbMock.registration.findFirst.mockResolvedValueOnce({
+      status: "CANCELLED",
+      orderId: "order-1",
+      order: { payments: [] },
+    });
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(notifyOrderCancelledWithoutPayment).toHaveBeenCalledWith("order-1", { bypassDedupe: true });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "organizer-1",
+        action: "PAYMENT_ERROR_NOTIFICATION_RESENT",
+        entityType: "Order",
+        entityId: "order-1",
+      }),
+    });
+  });
+
+  it("retorna 400 quando não há payment e a inscrição não está cancelada", async () => {
+    dbMock.registration.findFirst.mockResolvedValueOnce({
+      status: "PENDING_PAYMENT",
+      orderId: "order-1",
+      order: { payments: [] },
+    });
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(notifyOrderCancelledWithoutPayment).not.toHaveBeenCalled();
   });
 });

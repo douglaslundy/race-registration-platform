@@ -266,7 +266,7 @@ export default async function AdminInscritosPage({
             const payment = r.order.payments[0];
             return (
               <>
-                {(payment?.status === "EXPIRED" || payment?.status === "CANCELLED") && (
+                {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (
                   <ResendPaymentNotificationButton
                     endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}
                   />
