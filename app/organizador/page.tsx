@@ -6,6 +6,9 @@ import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import { BADGE } from "@/lib/badge-colors";
 import PrintButton from "@/components/ui/PrintButton";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
+import { parseDateInput } from "@/lib/admin/audit";
+import { getDailyRegistrations, getDailyCouponUsage } from "@/lib/dashboard-metrics";
+import LineChart from "@/components/ui/LineChart";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +23,13 @@ const EVENT_STATUS: Record<string, { label: string; cls: string }> = {
   CANCELLED:             { label: "Cancelado",            cls: BADGE.red },
 };
 
-export default async function OrganizerDashboard() {
+export default async function OrganizerDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ de?: string; ate?: string; eventId?: string }>;
+}) {
   const session = await requireOrganizer();
+  const { de, ate, eventId } = await searchParams;
 
   const organizer = await db.organizerProfile.findUnique({
     where: { userId: session.user.id },
@@ -48,6 +56,14 @@ export default async function OrganizerDashboard() {
     );
   }
 
+  const to = parseDateInput(ate, true) ?? new Date();
+  const from = parseDateInput(de, false) ?? (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 29);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
   const [eventCount, totalRegistrations, revenueAgg, confirmedRegistrations, pendingRegistrations, cancelledRegistrations, statusGroups] = await Promise.all([
     db.event.count({ where: { organizerId: organizer.id } }),
     db.registration.count({ where: { event: { organizerId: organizer.id } } }),
@@ -72,6 +88,12 @@ export default async function OrganizerDashboard() {
     arr.push({ status: g.status, count: g._count.id });
     statusCountsByEvent.set(g.eventId, arr);
   }
+
+  const [registrationsData, couponUsageData, chartEvents] = await Promise.all([
+    getDailyRegistrations(from, to, { organizerId: organizer.id, eventId: eventId || undefined }),
+    getDailyCouponUsage(from, to, { organizerId: organizer.id }),
+    db.event.findMany({ where: { organizerId: organizer.id }, select: { id: true, title: true }, orderBy: { title: "asc" } }),
+  ]);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -107,6 +129,32 @@ export default async function OrganizerDashboard() {
         <div className="card text-center">
           <p className="text-3xl font-bold text-red-600">{cancelledRegistrations}</p>
           <p className="text-gray-600 mt-1 text-sm">Inscrições canceladas</p>
+        </div>
+      </div>
+
+      <form method="GET" className="flex items-center gap-2 text-sm flex-wrap">
+        <label className="text-gray-600">De</label>
+        <input type="date" name="de" defaultValue={de ?? from.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+        <label className="text-gray-600">Até</label>
+        <input type="date" name="ate" defaultValue={ate ?? to.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+        <label className="text-gray-600">Evento (inscrições)</label>
+        <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
+          <option value="">Todos os eventos</option>
+          {chartEvents.map((e) => (
+            <option key={e.id} value={e.id}>{e.title}</option>
+          ))}
+        </select>
+        <button type="submit" className="btn-primary py-1 px-4 text-sm">Filtrar</button>
+      </form>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card">
+          <h2 className="text-sm font-semibold mb-3">Inscrições</h2>
+          <LineChart data={registrationsData} color="#0ea5e9" />
+        </div>
+        <div className="card">
+          <h2 className="text-sm font-semibold mb-3">Cupons utilizados</h2>
+          <LineChart data={couponUsageData} color="#f59e0b" />
         </div>
       </div>
 
