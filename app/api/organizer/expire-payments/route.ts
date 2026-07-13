@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { expirePendingPayments } from "@/lib/payment/expire-payments";
+import { expirePendingPayments, expireAbandonedOrders } from "@/lib/payment/expire-payments";
 
 export async function POST() {
   const session = await auth();
@@ -8,6 +8,9 @@ export async function POST() {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
-  const result = await expirePendingPayments({ organizerUserId: session.user.id });
-  return NextResponse.json(result);
+  const [payments, orders] = await Promise.all([
+    expirePendingPayments({ organizerUserId: session.user.id }),
+    expireAbandonedOrders({ organizerUserId: session.user.id }),
+  ]);
+  return NextResponse.json({ checked: payments.checked + orders.checked, expired: payments.expired + orders.expired });
 }

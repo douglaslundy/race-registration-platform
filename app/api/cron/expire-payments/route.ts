@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { expirePendingPayments } from "@/lib/payment/expire-payments";
+import { expirePendingPayments, expireAbandonedOrders } from "@/lib/payment/expire-payments";
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-cron-secret");
@@ -9,6 +9,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const result = await expirePendingPayments();
-  return NextResponse.json(result);
+  const [payments, orders] = await Promise.all([
+    expirePendingPayments(),
+    expireAbandonedOrders(),
+  ]);
+  return NextResponse.json({ checked: payments.checked + orders.checked, expired: payments.expired + orders.expired });
 }

@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/payment/expire-payments", () => ({ expirePendingPayments: vi.fn() }));
+vi.mock("@/lib/payment/expire-payments", () => ({
+  expirePendingPayments: vi.fn(),
+  expireAbandonedOrders: vi.fn(),
+}));
 
 import { POST } from "@/app/api/cron/expire-payments/route";
-import { expirePendingPayments } from "@/lib/payment/expire-payments";
+import { expirePendingPayments, expireAbandonedOrders } from "@/lib/payment/expire-payments";
 
 const ORIGINAL_SECRET = process.env.CRON_SECRET;
 
@@ -25,16 +28,19 @@ describe("POST /api/cron/expire-payments", () => {
     const res = await POST(makeRequest({ "x-cron-secret": "wrong" }));
     expect(res.status).toBe(401);
     expect(expirePendingPayments).not.toHaveBeenCalled();
+    expect(expireAbandonedOrders).not.toHaveBeenCalled();
   });
 
-  it("roda a expiração sem filtro e retorna o resultado", async () => {
+  it("roda os dois mecanismos sem filtro e soma o resultado", async () => {
     vi.mocked(expirePendingPayments).mockResolvedValueOnce({ checked: 2, expired: 1 });
+    vi.mocked(expireAbandonedOrders).mockResolvedValueOnce({ checked: 3, expired: 2 });
 
     const res = await POST(makeRequest({ "x-cron-secret": "test-secret" }));
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(expirePendingPayments).toHaveBeenCalledWith();
-    expect(body).toEqual({ checked: 2, expired: 1 });
+    expect(expireAbandonedOrders).toHaveBeenCalledWith();
+    expect(body).toEqual({ checked: 5, expired: 3 });
   });
 });
