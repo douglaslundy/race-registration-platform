@@ -184,6 +184,37 @@ não versionado) em `.superpowers/sdd/progress.md`.
   INDEX` sem `CONCURRENTLY` trava escritas durante o build).
   **Ainda não deployado.**
 
+### Resumo diário por e-mail e WhatsApp (2026-07-13, admin + organizador)
+- [x] Alerta diário enviado automaticamente às 07h (horário de Brasília) pra cada admin e cada
+  organizador, com o resumo do dia anterior — e-mail detalhado + WhatsApp condensado — respeitando
+  a preferência individual de cada usuário por canal (padrão: os dois ligados). **Decisão de
+  modelo de dados:** 2 colunas booleanas direto no `User` (`dailySummaryEmailEnabled`,
+  `dailySummaryWhatsappEnabled`), não uma tabela genérica de preferências — único alerta do
+  sistema que precisa de escopo por usuário até agora (YAGNI). Conteúdo do admin: novos
+  usuários/organizadores, eventos criados, inscrições pagas, receita bruta, taxas retidas,
+  repasses gerados, cancelamentos/estornos. Conteúdo do organizador (escopado aos seus eventos):
+  inscrições pagas, receita, cupons usados, cancelamentos solicitados, lotes esgotados. Dia sem
+  atividade envia mesmo assim (zerado), pra confirmar que o cron está rodando. Toggles adicionados
+  às rotas/páginas "Meus Dados" já existentes (`PUT /api/admin/profile`, `PUT
+  /api/organizer/account`) — sem rota nova. **Pedido do usuário de tornar o horário/janela
+  configurável via UI foi descartado a pedido dele mesmo, no meio da sessão** — ficou fixo (07h
+  Brasília, dia anterior completo).
+  Spec: `docs/superpowers/specs/2026-07-13-resumo-diario-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-13-resumo-diario.md`. Commits `af1bcfc..1dc8ccd` (6 commits, 5
+  tarefas + 1 fix pós-review-final, subagent-driven-development). Review final (opus) encontrou 1
+  problema Important (`unclaimAlert` nunca era chamado em falha de envio, ao contrário de todo
+  outro módulo de alerta do sistema — violava o contrato documentado no próprio `dedupe.ts`;
+  também tinha um bug composto: falha no e-mail impedia até a tentativa de WhatsApp pro mesmo
+  destinatário na mesma execução) — corrigido (commit `1dc8ccd`, try/catch por canal + 6 testes
+  novos), re-review: aprovado. 541/541 testes, `tsc --noEmit` limpo.
+  **Migração de banco:** 2 colunas booleanas aditivas com default constante — aplicação via
+  `prisma db push` é segura, sem necessidade de janela de baixo tráfego (diferente do índice do
+  lote anterior).
+  **Ação manual pós-deploy (não é código):** adicionar linha de crontab na VPS chamando `POST
+  /api/cron/daily-summary` com header `x-cron-secret` às 10h UTC (07h Brasília) diariamente —
+  mesmo padrão dos 3 crons já existentes, nenhum deles tem crontab-as-code neste repo.
+  **Ainda não deployado.**
+
 ## Lote anterior (12 itens) — concluído
 
 ### Fase 1 — Correções rápidas (sem migração)
