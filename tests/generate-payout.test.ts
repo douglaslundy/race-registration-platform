@@ -36,14 +36,14 @@ describe("generatePayout", () => {
 
   it("returns 404 when the event does not exist", async () => {
     dbMock.event.findUnique.mockResolvedValueOnce(null);
-    const result = await generatePayout("event-1");
+    const result = await generatePayout("event-1", "admin-1");
     expect(result).toEqual({ ok: false, status: 404, error: "Evento não encontrado" });
   });
 
   it("returns 400 when there are no eligible orders", async () => {
     dbMock.event.findUnique.mockResolvedValueOnce({ organizerId: "org-1" });
     dbMock.order.findMany.mockResolvedValueOnce([]);
-    const result = await generatePayout("event-1");
+    const result = await generatePayout("event-1", "admin-1");
     expect(result).toEqual({
       ok: false,
       status: 400,
@@ -72,7 +72,7 @@ describe("generatePayout", () => {
     };
     dbMock.$transaction = vi.fn(async (fn: any) => fn(txMock));
 
-    const result = await generatePayout("event-1");
+    const result = await generatePayout("event-1", "admin-1");
 
     expect(txMock.transferPayout.create).toHaveBeenCalledWith({
       data: { eventId: "event-1", organizerId: "org-1", grossAmount: 16050, platformFee: 1050, netAmount: 15000 },
@@ -84,6 +84,7 @@ describe("generatePayout", () => {
     expect(txMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          userId: "admin-1",
           action: "PAYOUT_GENERATED",
           entityType: "TransferPayout",
           entityId: "payout-1",
@@ -126,7 +127,7 @@ describe("generatePayout", () => {
       }
     });
 
-    const result = await generatePayout("event-1");
+    const result = await generatePayout("event-1", "admin-1");
 
     expect(result).toEqual({
       ok: false,

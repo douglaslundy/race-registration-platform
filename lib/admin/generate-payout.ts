@@ -22,7 +22,7 @@ export type GeneratePayoutResult =
   | { ok: true; payout: { id: string; grossAmount: number; platformFee: number; netAmount: number } }
   | { ok: false; status: number; error: string };
 
-export async function generatePayout(eventId: string): Promise<GeneratePayoutResult> {
+export async function generatePayout(eventId: string, actingUserId: string): Promise<GeneratePayoutResult> {
   const event = await db.event.findUnique({ where: { id: eventId }, select: { organizerId: true } });
   if (!event) return { ok: false, status: 404, error: "Evento não encontrado" };
 
@@ -52,6 +52,7 @@ export async function generatePayout(eventId: string): Promise<GeneratePayoutRes
       }
       await tx.auditLog.create({
         data: {
+          userId: actingUserId,
           action: "PAYOUT_GENERATED",
           entityType: "TransferPayout",
           entityId: created.id,

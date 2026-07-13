@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const { id } = await params;
-  const result = await generatePayout(id);
+  const result = await generatePayout(id, session.user.id);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json({ payout: result.payout }, { status: 201 });
 }
