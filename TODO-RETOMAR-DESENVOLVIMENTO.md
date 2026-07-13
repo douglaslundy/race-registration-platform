@@ -97,19 +97,32 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Verificação manual no navegador não foi feita** — sem acesso ao banco neste ambiente.
 - [ ] **7. Perguntar sobre deploy** antes de iniciar a tarefa 8 — é um gate de decisão, não uma
   tarefa de código.
-- [ ] **8. Sistema de rating (atletas + organizadores)** — NÃO INICIADA. Exige pesquisar um modelo
-  de pontuação real (tipo Elo ou similar) antes de propor valores de pontos, escrever o prompt de
-  implementação completo, e só então pedir autorização explícita do usuário antes de escrever
-  qualquer código. Escopo também inclui (adicionado no meio da conversa, antes da tarefa 1 começar):
-  pontuação por cadastro completo com barra de % de completude na frente de cada usuário nas listas;
-  rating do atleta sempre visível na área do atleta; upload de foto de perfil (avatar) em "meus
-  dados"; modal pós-login incentivando completar cadastro por pontos (só pra quem já preencheu os
-  dados obrigatórios, substituindo o modal atual que força esse preenchimento).
+- [ ] **8. Sistema de rating (atletas + organizadores)** — **NÃO INICIAR sem pedido explícito do
+  usuário** (instrução dada em 2026-07-13, mesmo que esta lista chegue nesse ponto). Quando
+  iniciar: exige pesquisar um modelo de pontuação real (tipo Elo ou similar) antes de propor valores
+  de pontos, escrever o prompt de implementação completo, e só então pedir autorização explícita do
+  usuário antes de escrever qualquer código. Escopo também inclui (adicionado no meio da conversa,
+  antes da tarefa 1 começar): pontuação por cadastro completo com barra de % de completude na frente
+  de cada usuário nas listas; rating do atleta sempre visível na área do atleta; upload de foto de
+  perfil (avatar) em "meus dados"; modal pós-login incentivando completar cadastro por pontos (só
+  pra quem já preencheu os dados obrigatórios, substituindo o modal atual que força esse
+  preenchimento). **Adicionado em 2026-07-13:** a implementação precisa incluir uma passagem
+  retroativa de pontos pros atletas que já se cadastraram/já têm inscrições, usando os mesmos
+  valores de pontuação definidos no desenho final (ver memória `rating_system_pending`).
 
-> Pra retomar amanhã: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto
-> têm o estado completo. As 6 primeiras tarefas estão concluídas. Próximo passo: perguntar ao
-> usuário sobre deploy antes de iniciar a tarefa 7 (sistema de rating — exige pesquisa de um
-> modelo de pontuação real + prompt completo + autorização explícita antes de qualquer código).
+### Deploy 2026-07-13
+- [x] Push de 54 commits locais pra `origin/main`.
+- [x] Deploy na VPS via `git pull` → `docker build` → `prisma db push` (aplicou a migração
+  `Order.payoutId`) → `docker compose up -d --no-deps app`. Site verificado no ar (`/`, `/eventos`,
+  `/auth/login` respondendo 200).
+- [x] `prisma/backfill-stuck-card-payments.ts` rodado contra produção — 0 pagamentos presos
+  encontrados, nada precisava de correção.
+- [ ] Verificar se o crontab da VPS ainda chama `/api/cron/expire-payments` a cada 6h — não
+  verificado nesta passagem.
+
+> Pra retomar: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto têm o
+> estado completo. As 6 primeiras tarefas e o deploy estão concluídos. **Não iniciar a tarefa 8
+> (rating) sem o usuário pedir explicitamente.**
 
 ## Lote anterior (12 itens) — concluído
 
