@@ -103,6 +103,8 @@ model User {
   cpf           String?
   role          UserRole  @default(ATHLETE)
   active        Boolean   @default(true)
+  dailySummaryEmailEnabled    Boolean   @default(true)
+  dailySummaryWhatsappEnabled Boolean   @default(true)
   uiDensity     String    @default("comfortable")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
