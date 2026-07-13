@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendDailySummaryEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { formatCurrency } from "@/lib/format";
-import { claimAlert } from "./dedupe";
+import { claimAlert, unclaimAlert } from "./dedupe";
 import {
   getAdminDailySummary,
   getOrganizerDailySummary,
@@ -84,23 +84,36 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
     const dateLabel = formatDateLabel(dayStart);
 
     for (const admin of admins) {
-      try {
-        if (admin.dailySummaryEmailEnabled && smtpReady) {
-          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, `${key}:${admin.id}`, "EMAIL")) {
+      const entityId = `${key}:${admin.id}`;
+      let hadFailure = false;
+
+      if (admin.dailySummaryEmailEnabled && smtpReady) {
+        try {
+          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "EMAIL")) {
             await sendDailySummaryEmail({ to: admin.email, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics) });
             sent++;
           }
+        } catch (err) {
+          hadFailure = true;
+          await unclaimAlert(ALERT_TYPE, entityId, "EMAIL");
+          console.error("[sendAdminDailySummaries] failed for", admin.email, err);
         }
-        if (admin.dailySummaryWhatsappEnabled && admin.phone) {
-          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, `${key}:${admin.id}`, "WHATSAPP")) {
+      }
+
+      if (admin.dailySummaryWhatsappEnabled && admin.phone) {
+        try {
+          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
             await sendWhatsAppMessage(admin.phone, buildAdminWhatsAppText(metrics));
             sent++;
           }
+        } catch (err) {
+          hadFailure = true;
+          await unclaimAlert(ALERT_TYPE, entityId, "WHATSAPP");
+          console.error("[sendAdminDailySummaries] failed for", admin.email, err);
         }
-      } catch (err) {
-        failed++;
-        console.error("[sendAdminDailySummaries] failed for", admin.email, err);
       }
+
+      if (hadFailure) failed++;
     }
   } catch (err) {
     console.error("[sendAdminDailySummaries] failed:", err);
@@ -130,11 +143,21 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
 
     for (const organizer of organizers) {
       const organizerId = organizer.organizerProfile!.id;
-      try {
-        const metrics = await getOrganizerDailySummary(organizerId, dayStart, dayEnd);
+      const entityId = `${key}:${organizer.id}`;
+      let hadFailure = false;
 
-        if (organizer.dailySummaryEmailEnabled && smtpReady) {
-          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, `${key}:${organizer.id}`, "EMAIL")) {
+      let metrics: OrganizerDailySummary;
+      try {
+        metrics = await getOrganizerDailySummary(organizerId, dayStart, dayEnd);
+      } catch (err) {
+        failed++;
+        console.error("[sendOrganizerDailySummaries] failed for", organizer.email, err);
+        continue;
+      }
+
+      if (organizer.dailySummaryEmailEnabled && smtpReady) {
+        try {
+          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "EMAIL")) {
             await sendDailySummaryEmail({
               to: organizer.email,
               role: "ORGANIZER",
@@ -143,17 +166,27 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
             });
             sent++;
           }
+        } catch (err) {
+          hadFailure = true;
+          await unclaimAlert(ALERT_TYPE, entityId, "EMAIL");
+          console.error("[sendOrganizerDailySummaries] failed for", organizer.email, err);
         }
-        if (organizer.dailySummaryWhatsappEnabled && organizer.organizerProfile!.phone) {
-          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, `${key}:${organizer.id}`, "WHATSAPP")) {
+      }
+
+      if (organizer.dailySummaryWhatsappEnabled && organizer.organizerProfile!.phone) {
+        try {
+          if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
             await sendWhatsAppMessage(organizer.organizerProfile!.phone, buildOrganizerWhatsAppText(metrics));
             sent++;
           }
+        } catch (err) {
+          hadFailure = true;
+          await unclaimAlert(ALERT_TYPE, entityId, "WHATSAPP");
+          console.error("[sendOrganizerDailySummaries] failed for", organizer.email, err);
         }
-      } catch (err) {
-        failed++;
-        console.error("[sendOrganizerDailySummaries] failed for", organizer.email, err);
       }
+
+      if (hadFailure) failed++;
     }
   } catch (err) {
     console.error("[sendOrganizerDailySummaries] failed:", err);

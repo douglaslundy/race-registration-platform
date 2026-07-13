@@ -13,6 +13,7 @@ vi.mock("@/lib/whatsapp", () => ({
 }));
 vi.mock("@/lib/alerts/dedupe", () => ({
   claimAlert: vi.fn(),
+  unclaimAlert: vi.fn(),
 }));
 vi.mock("@/lib/alerts/daily-summary-metrics", () => ({
   getAdminDailySummary: vi.fn(),
@@ -27,7 +28,7 @@ import {
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendDailySummaryEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { claimAlert } from "@/lib/alerts/dedupe";
+import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
 import { getAdminDailySummary, getOrganizerDailySummary } from "@/lib/alerts/daily-summary-metrics";
 
 const dbMock = db as any;
@@ -142,6 +143,50 @@ describe("sendAdminDailySummaries", () => {
     expect(sendDailySummaryEmail).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ sent: 1, failed: 1 });
   });
+
+  it("libera o claim de e-mail quando o envio falha, para permitir nova tentativa depois", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "admin-1", email: "admin1@example.com", phone: null, dailySummaryEmailEnabled: true, dailySummaryWhatsappEnabled: false },
+    ]);
+    vi.mocked(sendDailySummaryEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    const result = await sendAdminDailySummaries(dayStart, dayEnd);
+
+    expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:admin-1", "EMAIL");
+    expect(result).toEqual({ sent: 0, failed: 1 });
+  });
+
+  it("libera o claim de whatsapp quando o envio falha, para permitir nova tentativa depois", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "admin-1", email: "admin1@example.com", phone: "5511999999999", dailySummaryEmailEnabled: false, dailySummaryWhatsappEnabled: true },
+    ]);
+    vi.mocked(sendWhatsAppMessage).mockRejectedValueOnce(new Error("WhatsApp API down"));
+
+    const result = await sendAdminDailySummaries(dayStart, dayEnd);
+
+    expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:admin-1", "WHATSAPP");
+    expect(result).toEqual({ sent: 0, failed: 1 });
+  });
+
+  it("ainda tenta o whatsapp mesmo quando o e-mail falha para o mesmo admin", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "admin-1",
+        email: "admin1@example.com",
+        phone: "5511999999999",
+        dailySummaryEmailEnabled: true,
+        dailySummaryWhatsappEnabled: true,
+      },
+    ]);
+    vi.mocked(sendDailySummaryEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    const result = await sendAdminDailySummaries(dayStart, dayEnd);
+
+    expect(sendDailySummaryEmail).toHaveBeenCalledTimes(1);
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:admin-1", "EMAIL");
+    expect(result).toEqual({ sent: 1, failed: 1 });
+  });
 });
 
 describe("sendOrganizerDailySummaries", () => {
@@ -199,5 +244,61 @@ describe("sendOrganizerDailySummaries", () => {
 
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
     expect(result).toEqual({ sent: 0, failed: 0 });
+  });
+
+  it("libera o claim de e-mail quando o envio falha, para permitir nova tentativa depois", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "org-user-1",
+        email: "organizador@example.com",
+        dailySummaryEmailEnabled: true,
+        dailySummaryWhatsappEnabled: false,
+        organizerProfile: { id: "org-1", phone: null },
+      },
+    ]);
+    vi.mocked(sendDailySummaryEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    const result = await sendOrganizerDailySummaries(dayStart, dayEnd);
+
+    expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:org-user-1", "EMAIL");
+    expect(result).toEqual({ sent: 0, failed: 1 });
+  });
+
+  it("libera o claim de whatsapp quando o envio falha, para permitir nova tentativa depois", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "org-user-1",
+        email: "organizador@example.com",
+        dailySummaryEmailEnabled: false,
+        dailySummaryWhatsappEnabled: true,
+        organizerProfile: { id: "org-1", phone: "5511988888888" },
+      },
+    ]);
+    vi.mocked(sendWhatsAppMessage).mockRejectedValueOnce(new Error("WhatsApp API down"));
+
+    const result = await sendOrganizerDailySummaries(dayStart, dayEnd);
+
+    expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:org-user-1", "WHATSAPP");
+    expect(result).toEqual({ sent: 0, failed: 1 });
+  });
+
+  it("ainda tenta o whatsapp mesmo quando o e-mail falha para o mesmo organizador", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "org-user-1",
+        email: "organizador@example.com",
+        dailySummaryEmailEnabled: true,
+        dailySummaryWhatsappEnabled: true,
+        organizerProfile: { id: "org-1", phone: "5511988888888" },
+      },
+    ]);
+    vi.mocked(sendDailySummaryEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    const result = await sendOrganizerDailySummaries(dayStart, dayEnd);
+
+    expect(sendDailySummaryEmail).toHaveBeenCalledTimes(1);
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988888888", expect.any(String));
+    expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:org-user-1", "EMAIL");
+    expect(result).toEqual({ sent: 1, failed: 1 });
   });
 });
