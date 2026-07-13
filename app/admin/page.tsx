@@ -91,22 +91,26 @@ export default async function AdminDashboard({
         </div>
       )}
 
-      <form method="GET" className="flex items-center gap-2 text-sm flex-wrap">
-        <label className="text-gray-600">De</label>
-        <input type="date" name="de" defaultValue={de ?? from.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
-        <label className="text-gray-600">Até</label>
-        <input type="date" name="ate" defaultValue={ate ?? to.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
-        <label className="text-gray-600">Evento (inscrições)</label>
-        <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
-          <option value="">Todos os eventos</option>
-          {events.map((e) => (
-            <option key={e.id} value={e.id}>{e.title}</option>
-          ))}
-        </select>
+      <form method="GET" className="flex items-center justify-between flex-wrap gap-4 text-sm">
+        <div className="flex items-center gap-2">
+          <label className="text-gray-600">De</label>
+          <input type="date" name="de" defaultValue={de ?? from.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+          <label className="text-gray-600">Até</label>
+          <input type="date" name="ate" defaultValue={ate ?? to.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-gray-600">Evento (inscrições)</label>
+          <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
+            <option value="">Todos os eventos</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>{e.title}</option>
+            ))}
+          </select>
+        </div>
         <button type="submit" className="btn-primary py-1 px-4 text-sm">Filtrar</button>
       </form>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="space-y-6">
         <div className="card">
           <h2 className="text-sm font-semibold mb-3">Novos cadastros</h2>
           <LineChart data={signupsData} color="#7c3aed" />
