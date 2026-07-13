@@ -19,7 +19,7 @@ vi.mock("@/lib/alerts/dedupe", () => ({
   unclaimAlert: vi.fn(),
 }));
 
-import { notifyPaymentError } from "@/lib/alerts/payment-error";
+import { notifyPaymentError, notifyOrderCancelledWithoutPayment } from "@/lib/alerts/payment-error";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
@@ -144,5 +144,102 @@ describe("notifyPaymentError", () => {
 
     expect(claimAlert).not.toHaveBeenCalled();
     expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
+  });
+});
+
+const orderFixture = {
+  event: { title: "Corrida Teste", slug: "corrida-teste" },
+  buyer: { name: "Atleta", email: "atleta@example.com", athleteProfile: { phone: "5511988888888" } },
+};
+
+describe("notifyOrderCancelledWithoutPayment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+    vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
+    vi.mocked(claimAlert).mockResolvedValue(true);
+  });
+
+  it("não faz nada quando os dois canais estão desligados", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: false });
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    expect(dbMock.order.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("não faz nada quando o pedido não é encontrado", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.order.findUnique.mockResolvedValueOnce(null);
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
+  });
+
+  it("envia e-mail e reivindica o alerta com entityType Order", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    expect(claimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Order", "order-1", "EMAIL");
+    expect(sendPaymentErrorEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta@example.com", eventSlug: "corrida-teste" }),
+    );
+  });
+
+  it("envia WhatsApp quando o atleta tem telefone cadastrado", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    expect(claimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Order", "order-1", "WHATSAPP");
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      expect.stringContaining("Corrida Teste"),
+    );
+  });
+
+  it("pula o WhatsApp sem quebrar quando o atleta não tem telefone cadastrado", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
+    dbMock.order.findUnique.mockResolvedValueOnce({
+      ...orderFixture,
+      buyer: { ...orderFixture.buyer, athleteProfile: null },
+    });
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+  });
+
+  it("libera a reivindicação quando o envio de e-mail falha", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+    vi.mocked(sendPaymentErrorEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    expect(unclaimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "order-1", "EMAIL");
+  });
+
+  it("nunca lança exceção, mesmo se o e-mail falhar", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+    vi.mocked(sendPaymentErrorEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    await expect(notifyOrderCancelledWithoutPayment("order-1")).resolves.toBeUndefined();
+  });
+
+  it("com bypassDedupe: envia mesmo que claimAlert diria não (nem chama claimAlert)", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    vi.mocked(claimAlert).mockResolvedValue(false);
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+
+    await notifyOrderCancelledWithoutPayment("order-1", { bypassDedupe: true });
+
+    expect(claimAlert).not.toHaveBeenCalled();
+    expect(sendPaymentErrorEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "atleta@example.com" }));
   });
 });
