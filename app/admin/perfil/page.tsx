@@ -8,6 +8,8 @@ type ProfileData = {
   name?: string;
   phone?: string | null;
   cpf?: string | null;
+  dailySummaryEmailEnabled?: boolean;
+  dailySummaryWhatsappEnabled?: boolean;
 };
 
 export default function AdminPerfilPage() {
@@ -42,6 +44,8 @@ export default function AdminPerfilPage() {
           name: form.name?.trim() ?? "",
           phone: form.phone?.trim() || null,
           cpf: form.cpf?.trim() || null,
+          dailySummaryEmailEnabled: form.dailySummaryEmailEnabled ?? true,
+          dailySummaryWhatsappEnabled: form.dailySummaryWhatsappEnabled ?? true,
         }),
       });
       if (!res.ok) {
@@ -113,6 +117,27 @@ export default function AdminPerfilPage() {
             className="input-field w-full"
             placeholder="000.000.000-00"
           />
+        </div>
+
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notificações</h3>
+          <p className="text-xs text-gray-500">Resumo diário de atividade da plataforma, enviado toda manhã.</p>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={form.dailySummaryEmailEnabled ?? true}
+              onChange={(e) => setForm((prev) => ({ ...prev, dailySummaryEmailEnabled: e.target.checked }))}
+            />
+            Receber resumo diário por e-mail
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={form.dailySummaryWhatsappEnabled ?? true}
+              onChange={(e) => setForm((prev) => ({ ...prev, dailySummaryWhatsappEnabled: e.target.checked }))}
+            />
+            Receber resumo diário por WhatsApp
+          </label>
         </div>
 
         <button type="submit" disabled={saving} className="btn-primary w-full">

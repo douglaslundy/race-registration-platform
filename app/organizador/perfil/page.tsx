@@ -16,6 +16,8 @@ type AccountData = {
   name?: string;
   phone?: string | null;
   cpf?: string | null;
+  dailySummaryEmailEnabled?: boolean;
+  dailySummaryWhatsappEnabled?: boolean;
 };
 
 export default function OrganizerPerfilPage() {
@@ -66,6 +68,8 @@ export default function OrganizerPerfilPage() {
           name: accountForm.name?.trim() ?? "",
           phone: accountForm.phone?.trim() || null,
           cpf: accountForm.cpf?.trim() || null,
+          dailySummaryEmailEnabled: accountForm.dailySummaryEmailEnabled ?? true,
+          dailySummaryWhatsappEnabled: accountForm.dailySummaryWhatsappEnabled ?? true,
         }),
       });
       if (!res.ok) {
@@ -121,6 +125,28 @@ export default function OrganizerPerfilPage() {
             <input type="text" value={accountForm.cpf ?? ""} onChange={(e) => setAccount("cpf", e.target.value)} className="input w-full" placeholder="000.000.000-00" />
           </div>
         </div>
+
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notificações</h3>
+          <p className="text-xs text-gray-500">Resumo diário dos seus eventos, enviado toda manhã.</p>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={accountForm.dailySummaryEmailEnabled ?? true}
+              onChange={(e) => setAccountForm((prev) => ({ ...prev, dailySummaryEmailEnabled: e.target.checked }))}
+            />
+            Receber resumo diário por e-mail
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={accountForm.dailySummaryWhatsappEnabled ?? true}
+              onChange={(e) => setAccountForm((prev) => ({ ...prev, dailySummaryWhatsappEnabled: e.target.checked }))}
+            />
+            Receber resumo diário por WhatsApp
+          </label>
+        </div>
+
         <button type="submit" disabled={accountSaving} className="btn-primary w-full">
           {accountSaving ? "Salvando..." : accountSaved ? "Salvo!" : "Salvar dados pessoais"}
         </button>

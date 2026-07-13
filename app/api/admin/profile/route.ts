@@ -7,6 +7,8 @@ const schema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   phone: z.string().optional().nullable(),
   cpf: z.string().max(14).optional().nullable(),
+  dailySummaryEmailEnabled: z.boolean(),
+  dailySummaryWhatsappEnabled: z.boolean(),
 });
 
 export async function GET() {
@@ -17,7 +19,13 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, phone: true, cpf: true },
+    select: {
+      name: true,
+      phone: true,
+      cpf: true,
+      dailySummaryEmailEnabled: true,
+      dailySummaryWhatsappEnabled: true,
+    },
   });
 
   return NextResponse.json({ profile: user });
@@ -35,8 +43,20 @@ export async function PUT(req: NextRequest) {
 
   const user = await db.user.update({
     where: { id: session.user.id },
-    data: { name: parsed.data.name, phone: parsed.data.phone || null, cpf: parsed.data.cpf || null },
-    select: { name: true, phone: true, cpf: true },
+    data: {
+      name: parsed.data.name,
+      phone: parsed.data.phone || null,
+      cpf: parsed.data.cpf || null,
+      dailySummaryEmailEnabled: parsed.data.dailySummaryEmailEnabled,
+      dailySummaryWhatsappEnabled: parsed.data.dailySummaryWhatsappEnabled,
+    },
+    select: {
+      name: true,
+      phone: true,
+      cpf: true,
+      dailySummaryEmailEnabled: true,
+      dailySummaryWhatsappEnabled: true,
+    },
   });
 
   return NextResponse.json({ profile: user });

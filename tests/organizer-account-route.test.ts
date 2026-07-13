@@ -17,6 +17,14 @@ function makeRequest(body: unknown) {
   }) as any;
 }
 
+const validBody = {
+  name: "Organizador",
+  phone: "5511999999999",
+  cpf: "123.456.789-00",
+  dailySummaryEmailEnabled: true,
+  dailySummaryWhatsappEnabled: false,
+};
+
 describe("organizer account api", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,42 +38,89 @@ describe("organizer account api", () => {
       expect(res.status).toBe(401);
     });
 
-    it("retorna nome, telefone e cpf do organizador autenticado", async () => {
-      dbMock.user.findUnique.mockResolvedValueOnce({ name: "Organizador", phone: "5511999999999", cpf: "123.456.789-00" });
+    it("retorna nome, telefone, cpf e preferências de resumo diário do organizador autenticado", async () => {
+      dbMock.user.findUnique.mockResolvedValueOnce({
+        name: "Organizador",
+        phone: "5511999999999",
+        cpf: "123.456.789-00",
+        dailySummaryEmailEnabled: true,
+        dailySummaryWhatsappEnabled: true,
+      });
 
       const res = await GET();
       const body = await res.json();
 
-      expect(body).toEqual({ profile: { name: "Organizador", phone: "5511999999999", cpf: "123.456.789-00" } });
+      expect(body).toEqual({
+        profile: {
+          name: "Organizador",
+          phone: "5511999999999",
+          cpf: "123.456.789-00",
+          dailySummaryEmailEnabled: true,
+          dailySummaryWhatsappEnabled: true,
+        },
+      });
     });
   });
 
   describe("PUT", () => {
     it("retorna 401 para quem não está autenticado", async () => {
       authMock.mockResolvedValue(null as any);
-      const res = await PUT(makeRequest({ name: "Organizador" }));
+      const res = await PUT(makeRequest(validBody));
       expect(res.status).toBe(401);
       expect(dbMock.user.update).not.toHaveBeenCalled();
     });
 
     it("retorna 400 quando o nome está vazio", async () => {
-      const res = await PUT(makeRequest({ name: "" }));
+      const res = await PUT(makeRequest({ ...validBody, name: "" }));
       expect(res.status).toBe(400);
       expect(dbMock.user.update).not.toHaveBeenCalled();
     });
 
-    it("atualiza nome, telefone e cpf do organizador autenticado", async () => {
-      dbMock.user.update.mockResolvedValueOnce({ name: "Organizador", phone: "5511999999999", cpf: "123.456.789-00" });
+    it("retorna 400 quando as preferências de resumo diário estão ausentes", async () => {
+      const { dailySummaryEmailEnabled: _omit, ...bodyWithoutToggle } = validBody;
+      const res = await PUT(makeRequest(bodyWithoutToggle));
+      expect(res.status).toBe(400);
+      expect(dbMock.user.update).not.toHaveBeenCalled();
+    });
 
-      const res = await PUT(makeRequest({ name: "Organizador", phone: "5511999999999", cpf: "123.456.789-00" }));
+    it("atualiza nome, telefone, cpf e preferências de resumo diário do organizador autenticado", async () => {
+      dbMock.user.update.mockResolvedValueOnce({
+        name: "Organizador",
+        phone: "5511999999999",
+        cpf: "123.456.789-00",
+        dailySummaryEmailEnabled: true,
+        dailySummaryWhatsappEnabled: false,
+      });
+
+      const res = await PUT(makeRequest(validBody));
       const body = await res.json();
 
       expect(dbMock.user.update).toHaveBeenCalledWith({
         where: { id: "org-1" },
-        data: { name: "Organizador", phone: "5511999999999", cpf: "123.456.789-00" },
-        select: { name: true, phone: true, cpf: true },
+        data: {
+          name: "Organizador",
+          phone: "5511999999999",
+          cpf: "123.456.789-00",
+          dailySummaryEmailEnabled: true,
+          dailySummaryWhatsappEnabled: false,
+        },
+        select: {
+          name: true,
+          phone: true,
+          cpf: true,
+          dailySummaryEmailEnabled: true,
+          dailySummaryWhatsappEnabled: true,
+        },
       });
-      expect(body).toEqual({ profile: { name: "Organizador", phone: "5511999999999", cpf: "123.456.789-00" } });
+      expect(body).toEqual({
+        profile: {
+          name: "Organizador",
+          phone: "5511999999999",
+          cpf: "123.456.789-00",
+          dailySummaryEmailEnabled: true,
+          dailySummaryWhatsappEnabled: false,
+        },
+      });
     });
   });
 });
