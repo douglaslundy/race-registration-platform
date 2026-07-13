@@ -1,11 +1,28 @@
 import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
+import { parseDateInput } from "@/lib/admin/audit";
+import { getDailySignups, getDailyRegistrations, getDailyCouponUsage } from "@/lib/dashboard-metrics";
+import LineChart from "@/components/ui/LineChart";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ de?: string; ate?: string; eventId?: string }>;
+}) {
+  const { de, ate, eventId } = await searchParams;
+
+  const to = parseDateInput(ate, true) ?? new Date();
+  const from = parseDateInput(de, false) ?? (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 29);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
   const [totalUsers, totalEvents, totalOrders, pendingEvents, recentAuditLogs, confirmedRegistrations, pendingRegistrations, cancelledRegistrations, revenue] = await Promise.all([
     db.user.count(),
     db.event.count(),
@@ -16,6 +33,13 @@ export default async function AdminDashboard() {
     db.registration.count({ where: { status: "PENDING_PAYMENT" } }),
     db.registration.count({ where: { status: "CANCELLED" } }),
     db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }),
+  ]);
+
+  const [signupsData, registrationsData, couponUsageData, events] = await Promise.all([
+    getDailySignups(from, to),
+    getDailyRegistrations(from, to, { eventId: eventId || undefined }),
+    getDailyCouponUsage(from, to, {}),
+    db.event.findMany({ select: { id: true, title: true }, orderBy: { title: "asc" } }),
   ]);
 
   return (
@@ -66,6 +90,36 @@ export default async function AdminDashboard() {
           </Link>
         </div>
       )}
+
+      <form method="GET" className="flex items-center gap-2 text-sm flex-wrap">
+        <label className="text-gray-600">De</label>
+        <input type="date" name="de" defaultValue={de ?? from.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+        <label className="text-gray-600">Até</label>
+        <input type="date" name="ate" defaultValue={ate ?? to.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+        <label className="text-gray-600">Evento (inscrições)</label>
+        <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
+          <option value="">Todos os eventos</option>
+          {events.map((e) => (
+            <option key={e.id} value={e.id}>{e.title}</option>
+          ))}
+        </select>
+        <button type="submit" className="btn-primary py-1 px-4 text-sm">Filtrar</button>
+      </form>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="card">
+          <h2 className="text-sm font-semibold mb-3">Novos cadastros</h2>
+          <LineChart data={signupsData} color="#7c3aed" />
+        </div>
+        <div className="card">
+          <h2 className="text-sm font-semibold mb-3">Inscrições</h2>
+          <LineChart data={registrationsData} color="#0ea5e9" />
+        </div>
+        <div className="card">
+          <h2 className="text-sm font-semibold mb-3">Cupons utilizados</h2>
+          <LineChart data={couponUsageData} color="#f59e0b" />
+        </div>
+      </div>
 
       <div className="card">
         <h2 className="text-lg font-semibold mb-4">Atividade recente</h2>
