@@ -213,7 +213,20 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Ação manual pós-deploy (não é código):** adicionar linha de crontab na VPS chamando `POST
   /api/cron/daily-summary` com header `x-cron-secret` às 10h UTC (07h Brasília) diariamente —
   mesmo padrão dos 3 crons já existentes, nenhum deles tem crontab-as-code neste repo.
-  **Ainda não deployado.**
+
+### Deploy 2026-07-13 (3ª leva — commits `af1bcfc..13008ae`, com migração de banco)
+- [x] Push (26 commits) → `git pull` → `docker build` → `docker compose run --rm app sh -c
+  "npx prisma db push --skip-generate"` (aplicou as 2 migrações pendentes: índices createdAt +
+  colunas de resumo diário — 749ms, sem lock notável, confirmando a expectativa do review final)
+  → `docker compose up -d --no-deps app` (só recriou `corridas-app`; `corridas-db` e todos os
+  outros containers do host — Kong/Supabase — ficaram intocados). Site verificado no ar (`/`,
+  `/eventos` 200; `/admin` 307 redirecionando pra login, como esperado sem sessão).
+- [x] **Descoberto durante o deploy:** o fuso horário local da VPS já é `America/Sao_Paulo`
+  (UTC-3 fixo, confirmado via `timedatectl`) — os crontabs existentes já rodam em horário de
+  Brasília diretamente, não em UTC. Linha adicionada ao crontab: `0 7 * * *
+  /opt/corridas/cron-jobs.sh daily-summary` (usa o script `/opt/corridas/cron-jobs.sh` já
+  existente, que lê `CRON_SECRET` de `.env.production` e faz o POST — mesmo padrão dos 3 crons
+  anteriores). `0 7` local = 07h Brasília = 10h UTC, batendo com a suposição do código.
 
 ## Lote anterior (12 itens) — concluído
 
