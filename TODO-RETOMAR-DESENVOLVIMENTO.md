@@ -79,12 +79,22 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Pendências que exigem ação manual do usuário:** aplicar a migração (`Order.payoutId`) via
   `prisma db push` no próximo deploy; verificação visual no navegador não foi feita (sem acesso ao
   banco neste ambiente sandboxed).
-- [ ] **6. Dashboards admin e organizador com gráficos de linha** — NÃO INICIADA. Confirmado que não
-  existe `app/admin/page.tsx` nem `app/organizador/page.tsx` como dashboard (só `/relatorio`
-  financeiro em cada papel). Precisa: dashboard do admin com gráfico de linha de novos cadastros de
-  usuário; dashboards de admin e organizador com gráfico de linha de inscrições (geral por padrão +
-  por evento) e cupons utilizados. Esta é a única construção genuinamente nova das 6 primeiras
-  tarefas.
+- [x] **6. Dashboards admin e organizador com gráficos de linha** — DONE. Ao contrário do que a
+  memória indicava, `app/admin/page.tsx` e `app/organizador/page.tsx` **já existiam** (cards de KPI
+  + tabelas) — a lacuna real era nenhum gráfico de linha em lugar nenhum, e nenhuma lib de gráficos
+  instalada. Spec: `docs/superpowers/specs/2026-07-12-dashboards-graficos-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-12-dashboards-graficos.md`. Commits `2289df1..ac94262` (7
+  commits, 4 tarefas). Construído: `components/ui/LineChart.tsx` (SVG próprio, sem dependência
+  nova — usuário escolheu essa opção em vez de uma lib como Recharts); `lib/dashboard-metrics.ts`
+  (novos cadastros, inscrições, cupons usados, todos com um ponto por dia); filtro de/até/evento
+  (padrão 30 dias) nas duas páginas; admin ganha os 3 gráficos, organizador ganha 2 (sem novos
+  cadastros — dado da plataforma inteira, não do organizador). Dois bugs reais de fuso horário
+  pegos em revisão e corrigidos: (1) o loop de bucketing misturava UTC (extração da chave do dia)
+  com hora local (incremento do loop) — sob DST isso duplicaria/pularia um dia; (2) o intervalo
+  padrão de 30 dias também usava hora local, o que no deploy real (America/Sao_Paulo, UTC-3)
+  fazia inscrições feitas à noite (21h-23h59 local) desaparecerem do gráfico até o dia seguinte —
+  confirmado com simulação real pelo revisor final. 489/489 testes, build limpo.
+  **Verificação manual no navegador não foi feita** — sem acesso ao banco neste ambiente.
 - [ ] **7. Perguntar sobre deploy** antes de iniciar a tarefa 8 — é um gate de decisão, não uma
   tarefa de código.
 - [ ] **8. Sistema de rating (atletas + organizadores)** — NÃO INICIADA. Exige pesquisar um modelo
@@ -97,8 +107,9 @@ não versionado) em `.superpowers/sdd/progress.md`.
   dados obrigatórios, substituindo o modal atual que força esse preenchimento).
 
 > Pra retomar amanhã: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto
-> têm o estado completo. Próxima tarefa: 6 (dashboards admin/organizador com gráficos de linha) —
-> spec ainda não escrita, começar pelo brainstorming.
+> têm o estado completo. As 6 primeiras tarefas estão concluídas. Próximo passo: perguntar ao
+> usuário sobre deploy antes de iniciar a tarefa 7 (sistema de rating — exige pesquisa de um
+> modelo de pontuação real + prompt completo + autorização explícita antes de qualquer código).
 
 ## Lote anterior (12 itens) — concluído
 
