@@ -65,15 +65,15 @@ export default async function OrganizerDashboard({
   })();
 
   const [eventCount, totalRegistrations, revenueAgg, confirmedRegistrations, pendingRegistrations, cancelledRegistrations, statusGroups] = await Promise.all([
-    db.event.count({ where: { organizerId: organizer.id } }),
-    db.registration.count({ where: { event: { organizerId: organizer.id } } }),
+    db.event.count({ where: { organizerId: organizer.id, createdAt: { gte: from, lte: to } } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id }, createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.order.aggregate({
       _sum: { totalAmount: true },
-      where: { status: "PAID", event: { organizerId: organizer.id } },
+      where: { status: "PAID", event: { organizerId: organizer.id }, createdAt: { gte: from, lte: to } },
     }),
-    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED" } }),
-    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT" } }),
-    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CANCELLED" } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
+    db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CANCELLED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.groupBy({
       by: ["eventId", "status"],
       where: { event: { organizerId: organizer.id } },
@@ -102,36 +102,6 @@ export default async function OrganizerDashboard({
         <Link href="/organizador/eventos/novo" className="btn-primary">+ Novo Evento</Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-primary-600">{eventCount}</p>
-          <p className="text-gray-600 mt-1">Eventos</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-green-600">{totalRegistrations}</p>
-          <p className="text-gray-600 mt-1">Total de inscrições</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-blue-600">{formatCurrency(totalRevenue)}</p>
-          <p className="text-gray-600 mt-1">Receita total</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-6">
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-green-600">{confirmedRegistrations}</p>
-          <p className="text-gray-600 mt-1 text-sm">Inscrições efetivadas</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-yellow-600">{pendingRegistrations}</p>
-          <p className="text-gray-600 mt-1 text-sm">Inscrições pendentes</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-3xl font-bold text-red-600">{cancelledRegistrations}</p>
-          <p className="text-gray-600 mt-1 text-sm">Inscrições canceladas</p>
-        </div>
-      </div>
-
       <form method="GET" className="flex items-center justify-between flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
           <label className="text-gray-600">De</label>
@@ -151,14 +121,44 @@ export default async function OrganizerDashboard({
         <button type="submit" className="btn-primary py-1 px-4 text-sm">Filtrar</button>
       </form>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-primary-600">{eventCount}</p>
+          <p className="text-gray-600 mt-1">Novos eventos</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-green-600">{totalRegistrations}</p>
+          <p className="text-gray-600 mt-1">Inscrições no período</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-blue-600">{formatCurrency(totalRevenue)}</p>
+          <p className="text-gray-600 mt-1">Receita no período</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-green-600">{confirmedRegistrations}</p>
+          <p className="text-gray-600 mt-1 text-sm">Inscrições efetivadas</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-yellow-600">{pendingRegistrations}</p>
+          <p className="text-gray-600 mt-1 text-sm">Inscrições pendentes</p>
+        </div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold text-red-600">{cancelledRegistrations}</p>
+          <p className="text-gray-600 mt-1 text-sm">Inscrições canceladas</p>
+        </div>
+      </div>
+
       <div className="space-y-6">
         <div className="card">
           <h2 className="text-sm font-semibold mb-3">Inscrições</h2>
-          <LineChart data={registrationsData} color="#0ea5e9" />
+          <LineChart data={registrationsData} color="#0ea5e9" name="Inscrições" />
         </div>
         <div className="card">
           <h2 className="text-sm font-semibold mb-3">Cupons utilizados</h2>
-          <LineChart data={couponUsageData} color="#f59e0b" />
+          <LineChart data={couponUsageData} color="#f59e0b" name="Cupons utilizados" />
         </div>
       </div>
 

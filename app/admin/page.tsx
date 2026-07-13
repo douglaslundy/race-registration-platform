@@ -24,15 +24,15 @@ export default async function AdminDashboard({
   })();
 
   const [totalUsers, totalEvents, totalOrders, pendingEvents, recentAuditLogs, confirmedRegistrations, pendingRegistrations, cancelledRegistrations, revenue] = await Promise.all([
-    db.user.count(),
-    db.event.count(),
-    db.order.count({ where: { status: "PAID" } }),
+    db.user.count({ where: { createdAt: { gte: from, lte: to } } }),
+    db.event.count({ where: { createdAt: { gte: from, lte: to } } }),
+    db.order.count({ where: { status: "PAID", createdAt: { gte: from, lte: to } } }),
     db.event.count({ where: { status: "UNDER_REVIEW" } }),
     db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
-    db.registration.count({ where: { status: "CONFIRMED" } }),
-    db.registration.count({ where: { status: "PENDING_PAYMENT" } }),
-    db.registration.count({ where: { status: "CANCELLED" } }),
-    db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }),
+    db.registration.count({ where: { status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
+    db.registration.count({ where: { status: "PENDING_PAYMENT", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
+    db.registration.count({ where: { status: "CANCELLED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
+    db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", createdAt: { gte: from, lte: to } } }),
   ]);
 
   const [signupsData, registrationsData, couponUsageData, events] = await Promise.all([
@@ -46,22 +46,41 @@ export default async function AdminDashboard({
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
+      <form method="GET" className="flex items-center justify-between flex-wrap gap-4 text-sm">
+        <div className="flex items-center gap-2">
+          <label className="text-gray-600">De</label>
+          <input type="date" name="de" defaultValue={de ?? from.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+          <label className="text-gray-600">Até</label>
+          <input type="date" name="ate" defaultValue={ate ?? to.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-gray-600">Evento (inscrições)</label>
+          <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
+            <option value="">Todos os eventos</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>{e.title}</option>
+            ))}
+          </select>
+        </div>
+        <button type="submit" className="btn-primary py-1 px-4 text-sm">Filtrar</button>
+      </form>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card text-center">
           <p className="text-3xl font-bold text-primary-600">{totalUsers}</p>
-          <p className="text-gray-600 text-sm mt-1">Usuários</p>
+          <p className="text-gray-600 text-sm mt-1">Novos usuários</p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-blue-600">{totalEvents}</p>
-          <p className="text-gray-600 text-sm mt-1">Eventos</p>
+          <p className="text-gray-600 text-sm mt-1">Novos eventos</p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-green-600">{totalOrders}</p>
-          <p className="text-gray-600 text-sm mt-1">Pedidos pagos</p>
+          <p className="text-gray-600 text-sm mt-1">Pedidos pagos no período</p>
         </div>
         <div className="card text-center">
           <p className="text-3xl font-bold text-purple-600">{formatCurrency(revenue._sum.amount ?? 0)}</p>
-          <p className="text-gray-600 text-sm mt-1">Receita</p>
+          <p className="text-gray-600 text-sm mt-1">Receita no período</p>
         </div>
       </div>
 
@@ -91,37 +110,18 @@ export default async function AdminDashboard({
         </div>
       )}
 
-      <form method="GET" className="flex items-center justify-between flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <label className="text-gray-600">De</label>
-          <input type="date" name="de" defaultValue={de ?? from.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
-          <label className="text-gray-600">Até</label>
-          <input type="date" name="ate" defaultValue={ate ?? to.toISOString().slice(0, 10)} className="input-field py-1 text-sm" />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-gray-600">Evento (inscrições)</label>
-          <select name="eventId" defaultValue={eventId ?? ""} className="input-field py-1 text-sm">
-            <option value="">Todos os eventos</option>
-            {events.map((e) => (
-              <option key={e.id} value={e.id}>{e.title}</option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className="btn-primary py-1 px-4 text-sm">Filtrar</button>
-      </form>
-
       <div className="space-y-6">
         <div className="card">
           <h2 className="text-sm font-semibold mb-3">Novos cadastros</h2>
-          <LineChart data={signupsData} color="#7c3aed" />
+          <LineChart data={signupsData} color="#7c3aed" name="Novos cadastros" />
         </div>
         <div className="card">
           <h2 className="text-sm font-semibold mb-3">Inscrições</h2>
-          <LineChart data={registrationsData} color="#0ea5e9" />
+          <LineChart data={registrationsData} color="#0ea5e9" name="Inscrições" />
         </div>
         <div className="card">
           <h2 className="text-sm font-semibold mb-3">Cupons utilizados</h2>
-          <LineChart data={couponUsageData} color="#f59e0b" />
+          <LineChart data={couponUsageData} color="#f59e0b" name="Cupons utilizados" />
         </div>
       </div>
 
