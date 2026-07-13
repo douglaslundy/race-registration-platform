@@ -117,6 +117,7 @@ model User {
   createdCoupons   Coupon[]          @relation("CouponCreator")
   refundsInitiated Refund[]
 
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -331,6 +332,7 @@ model Registration {
 
   @@index([eventId, status])
   @@index([athleteUserId])
+  @@index([createdAt])
   @@map("registrations")
 }
 
@@ -364,6 +366,7 @@ model Order {
   @@index([buyerUserId])
   @@index([eventId, status])
   @@index([payoutId])
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -521,6 +524,7 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([userId])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
