@@ -80,7 +80,7 @@ function bucketByDay(dates: Date[], from: Date, to: Date): { label: string; valu
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   const days: { label: string; value: number }[] = [];
-  for (const cur = new Date(from); cur <= to; cur.setDate(cur.getDate() + 1)) {
+  for (const cur = new Date(from); cur <= to; cur.setUTCDate(cur.getUTCDate() + 1)) {
     const key = cur.toISOString().slice(0, 10);
     const [, month, day] = key.split("-");
     days.push({ label: `${day}/${month}`, value: counts.get(key) ?? 0 });
