@@ -225,3 +225,32 @@ export async function sendPasswordResetEmail(params: {
     ),
   });
 }
+
+/** E-mail com o resumo diário de atividade (admin ou organizador). */
+export async function sendDailySummaryEmail(params: {
+  to: string;
+  role: "ADMIN" | "ORGANIZER";
+  dateLabel: string;
+  rows: { label: string; value: string }[];
+}): Promise<void> {
+  const appName = await getAppName();
+  const roleLabel = params.role === "ADMIN" ? "administrador" : "organizador";
+  const tableRows = params.rows
+    .map(
+      (r) =>
+        `<tr><td style="padding:4px 8px">${r.label}</td><td style="padding:4px 8px;font-weight:bold">${r.value}</td></tr>`,
+    )
+    .join("");
+  await sendMail({
+    to: params.to,
+    subject: `Resumo diário — ${params.dateLabel}`,
+    html: layout(
+      appName,
+      `<p>Olá,</p>
+       <p>Este é o resumo de atividade do dia <strong>${params.dateLabel}</strong> (visão de ${roleLabel}):</p>
+       <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">
+         <tbody>${tableRows}</tbody>
+       </table>`,
+    ),
+  });
+}
