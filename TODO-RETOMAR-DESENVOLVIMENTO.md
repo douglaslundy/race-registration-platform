@@ -153,6 +153,37 @@ não versionado) em `.superpowers/sdd/progress.md`.
 > estado completo. As 6 primeiras tarefas e o deploy estão concluídos. **Não iniciar a tarefa 8
 > (rating) sem o usuário pedir explicitamente.**
 
+### Correções + performance + dashboard (2026-07-13, novo lote pós-dashboards — 4 tarefas)
+- [x] **Botão de reenvio de notificação para pedidos cancelados sem pagamento** — inscrições
+  canceladas pelo `cancelAbandonedOrder` (órfãs, zero `Payment`) não mostravam o botão de reenviar
+  notificação de cancelamento, ao contrário das outras inscrições canceladas. `lib/alerts/
+  payment-error.ts`: extraído helper interno `sendCancellationInviteNotification`, criada
+  `notifyOrderCancelledWithoutPayment(orderId)` reusando o mesmo toggle `PAYMENT_ERROR` (sem novo
+  tipo de alerta). Rotas `resend-payment-notification` (admin/organizador) ganharam branch: sem
+  `Payment` mas `Registration.status === "CANCELLED"` → chama a nova função. Condição do botão nas
+  duas páginas de inscritos ganhou o caso `(status === "CANCELLED" && !payment)`.
+- [x] **Lentidão de navegação** — causa raiz: faltavam índices `@@index([createdAt])` em
+  `AuditLog`/`User`/`Registration`/`Order`, consultadas sem índice pelos dashboards e pelo
+  `PageViewLogger` (grava 1 linha de auditoria a cada navegação, crescendo sem limite). Migração
+  `20260713000000_add_created_at_indexes` (puramente aditiva).
+- [x] **Tooltip genérico "value" nos gráficos** — `components/ui/LineChart.tsx` ganhou prop opcional
+  `name`; todas as chamadas nos dois dashboards passam um rótulo específico ("Novos cadastros",
+  "Inscrições", "Cupons utilizados").
+- [x] **Filtros do dashboard só afetavam os gráficos** — formulário de filtro movido pro topo (acima
+  dos KPIs) nas duas páginas; KPIs que antes eram "total histórico" agora são "total do período"
+  (`createdAt` no intervalo selecionado); os 3 cards de status de inscrição também respeitam
+  `eventId`, igualando o gráfico de inscrições; banner "aguardando aprovação" ficou deliberadamente
+  sem escopo (é estado atual, não histórico).
+  Spec: `docs/superpowers/specs/2026-07-13-correcoes-notificacao-performance-dashboard-design.md`.
+  Plano: `docs/superpowers/plans/2026-07-13-correcoes-notificacao-performance-dashboard.md`.
+  Commits `c662704..9f7dfd4` (4 tarefas, subagent-driven-development). Review final (opus): pronto
+  pra merge, 516/516 testes, `tsc --noEmit` limpo, nenhum achado crítico ou importante. Achados
+  Minor não aplicados (opcionais): `PAYMENT_ERROR_NOTIFICATION_RESENT` não tem `ACTION_LABEL`
+  (pré-existente, cosmético, mostra string crua); recomendação de rodar a migração de índice do
+  `audit_logs` em janela de baixo tráfego na VPS (tabela cresce rápido via `PageViewLogger`, `CREATE
+  INDEX` sem `CONCURRENTLY` trava escritas durante o build).
+  **Ainda não deployado.**
+
 ## Lote anterior (12 itens) — concluído
 
 ### Fase 1 — Correções rápidas (sem migração)
