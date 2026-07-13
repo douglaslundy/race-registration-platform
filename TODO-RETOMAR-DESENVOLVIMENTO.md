@@ -60,9 +60,25 @@ não versionado) em `.superpowers/sdd/progress.md`.
     só vale daqui pra frente, não corrige retroativamente sozinho.
   - Confirmar que o crontab da VPS ainda chama `/api/cron/expire-payments` a cada 6h (não foi
     possível verificar deste ambiente sandboxed, sem acesso SSH).
-- [ ] **5. Verificar sistema de repasse ao organizador** — NÃO INICIADA, mas investigação prévia já
-  indica que `app/admin/repasses/page.tsx` + `lib/admin/payouts.ts` já existem com filtro/ordenação/
-  export CSV completos. Provavelmente só precisa de verificação, não de construção nova.
+- [x] **5. Verificar sistema de repasse ao organizador** — DONE. Investigação revelou que o sistema
+  era só leitura: `/admin/repasses` tinha filtro/ordenação/export CSV completos, mas **nenhuma rota
+  em lugar nenhum do app criava ou atualizava um repasse** — a única forma de um `TransferPayout`
+  entrar no banco era restaurando um backup completo. Usuário pediu o fluxo completo. Spec:
+  `docs/superpowers/specs/2026-07-12-repasse-organizador-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-12-repasse-organizador.md`. Commits `b90e638..c6ee288` (6
+  commits, subagent-driven-development, 5 tarefas + review final). Construído: `Order.payoutId`
+  (evita contar o mesmo pedido em dois repasses); geração automática do repasse a partir dos
+  pedidos pagos do evento (bruto = total cobrado do comprador, taxa = taxa da plataforma + taxa de
+  serviço, líquido = bruto − taxa); máquina de estado `PENDENTE → PROCESSANDO/CONCLUÍDO/FALHOU`
+  (falhar libera os pedidos de volta pro pool, evitando o mesmo padrão de "dinheiro preso pra
+  sempre" corrigido na tarefa 4); aviso visual quando um pedido é estornado depois do repasse já
+  concluído; compatibilidade com backup import/export. Review de uma das tarefas encontrou e
+  corrigiu uma race condition real (duas gerações de repasse simultâneas podiam contar o mesmo
+  pedido duas vezes); review final encontrou e corrigiu 1 gap de auditoria (log de geração não
+  registrava qual admin gerou o repasse). 482/482 testes, build limpo.
+  **Pendências que exigem ação manual do usuário:** aplicar a migração (`Order.payoutId`) via
+  `prisma db push` no próximo deploy; verificação visual no navegador não foi feita (sem acesso ao
+  banco neste ambiente sandboxed).
 - [ ] **6. Dashboards admin e organizador com gráficos de linha** — NÃO INICIADA. Confirmado que não
   existe `app/admin/page.tsx` nem `app/organizador/page.tsx` como dashboard (só `/relatorio`
   financeiro em cada papel). Precisa: dashboard do admin com gráfico de linha de novos cadastros de
@@ -81,8 +97,8 @@ não versionado) em `.superpowers/sdd/progress.md`.
   dados obrigatórios, substituindo o modal atual que força esse preenchimento).
 
 > Pra retomar amanhã: uma mensagem "continue" é suficiente — este arquivo e a memória do projeto
-> têm o estado completo. Próxima tarefa: 5 (verificar sistema de repasse ao organizador) — spec
-> ainda não escrita, começar pelo brainstorming.
+> têm o estado completo. Próxima tarefa: 6 (dashboards admin/organizador com gráficos de linha) —
+> spec ainda não escrita, começar pelo brainstorming.
 
 ## Lote anterior (12 itens) — concluído
 
