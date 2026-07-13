@@ -92,10 +92,16 @@ describe("admin backup import api", () => {
             startAt: "2026-01-01T00:00:00.000Z", city: "X", state: "SP", createdAt: "2026-01-01T00:00:00.000Z",
           },
         ],
+        transferPayouts: [
+          {
+            id: "tp1", eventId: "e1", organizerId: "org-1", grossAmount: 100, platformFee: 10,
+            netAmount: 90, status: "PENDING", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
         orders: [
           {
             id: "o1", buyerUserId: "u1", eventId: "e1", subtotalAmount: 100, platformFeeAmount: 10,
-            paymentFeeAmount: 5, totalAmount: 115, status: "PAID", createdAt: "2026-01-01T00:00:00.000Z",
+            paymentFeeAmount: 5, totalAmount: 115, payoutId: "tp1", status: "PAID", createdAt: "2026-01-01T00:00:00.000Z",
           },
         ],
         registrations: [
@@ -117,16 +123,23 @@ describe("admin backup import api", () => {
     const data = await res.json();
     expect(data.tables.find((t: any) => t.table === "users").restored).toBe(1);
     expect(data.tables.find((t: any) => t.table === "events").restored).toBe(1);
-    expect(data.totalRestored).toBe(5);
+    expect(data.tables.find((t: any) => t.table === "transferPayouts").restored).toBe(1);
+    expect(data.totalRestored).toBe(6);
 
     expect(callOrder.indexOf("delete:registration")).toBeLessThan(callOrder.indexOf("delete:event"));
     expect(callOrder.indexOf("delete:payment")).toBeLessThan(callOrder.indexOf("delete:order"));
     expect(callOrder.indexOf("delete:raceResult")).toBeLessThan(callOrder.indexOf("delete:resultImport"));
     expect(callOrder.indexOf("delete:organizerProfile")).toBeLessThan(callOrder.indexOf("delete:user"));
+    expect(callOrder.indexOf("delete:order")).toBeLessThan(callOrder.indexOf("delete:transferPayout"));
     expect(callOrder.indexOf("delete:user")).toBeLessThan(callOrder.indexOf("create:user"));
     expect(callOrder.indexOf("create:user")).toBeLessThan(callOrder.indexOf("create:event"));
     expect(callOrder.indexOf("create:event")).toBeLessThan(callOrder.indexOf("create:registration"));
+    expect(callOrder.indexOf("create:transferPayout")).toBeLessThan(callOrder.indexOf("create:order"));
     expect(callOrder.indexOf("create:order")).toBeLessThan(callOrder.indexOf("create:payment"));
+
+    expect(tx.order.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.arrayContaining([expect.objectContaining({ payoutId: "tp1" })]) }),
+    );
   });
 
   it("rolls back and reports a single error when a table insert fails", async () => {

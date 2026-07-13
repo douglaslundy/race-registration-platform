@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
+import GeneratePayoutButton from "@/components/admin/GeneratePayoutButton";
 import { EVENT_STATUS_LABEL, MODALITY_LABEL } from "@/lib/admin/labels";
 import {
   computeRegistrationStatusBreakdown,
@@ -101,9 +102,12 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           <p className="text-sm text-gray-500 mt-1">{MODALITY_LABEL[event.modality] ?? event.modality} · {formatDate(event.startAt)} · {event.city}/{event.state}</p>
           <span className="text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded mt-1 inline-block">{EVENT_STATUS_LABEL[event.status] ?? event.status}</span>
         </div>
-        {event.status === "UNDER_REVIEW" && (
-          <ApproveEventButton eventId={event.id} />
-        )}
+        <div className="flex items-center gap-2">
+          <GeneratePayoutButton eventId={event.id} />
+          {event.status === "UNDER_REVIEW" && (
+            <ApproveEventButton eventId={event.id} />
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

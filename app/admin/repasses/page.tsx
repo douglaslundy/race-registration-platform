@@ -2,8 +2,9 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BADGE } from "@/lib/badge-colors";
-import { buildAdminPayoutOrderBy, buildAdminPayoutWhere } from "@/lib/admin/payouts";
+import { buildAdminPayoutOrderBy, buildAdminPayoutWhere, hasPostPayoutRefund } from "@/lib/admin/payouts";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
+import UpdatePayoutStatusButton from "@/components/admin/UpdatePayoutStatusButton";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -76,6 +77,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
       include: {
         event: { select: { title: true } },
         organizer: { include: { user: { select: { name: true } } } },
+        orders: { where: { status: "REFUNDED" }, select: { id: true, status: true } },
       },
     }),
     db.transferPayout.count({ where }),
@@ -231,6 +233,7 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
                 <th className="pb-2">
                   <SortLink label="Data" column="createdAt" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("createdAt")} />
                 </th>
+                <th className="pb-2">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -243,8 +246,14 @@ export default async function AdminRepassesPage({ searchParams }: { searchParams
                   <td className={cellPadding + " font-bold text-green-700"}>{formatCurrency(p.netAmount)}</td>
                   <td className={cellPadding}>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status] ?? ""}`}>{p.status}</span>
+                    {hasPostPayoutRefund(p.orders) && (
+                      <span className="ml-1 text-xs text-red-600" title="Um ou mais pedidos deste repasse foram estornados depois">⚠</span>
+                    )}
                   </td>
                   <td className={cellPadding + " text-gray-400 text-xs whitespace-nowrap"}>{formatDate(p.createdAt)}</td>
+                  <td className={cellPadding}>
+                    <UpdatePayoutStatusButton payoutId={p.id} status={p.status} />
+                  </td>
                 </tr>
               ))}
             </tbody>

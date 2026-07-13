@@ -183,6 +183,7 @@ function toOrderRow(row: Row): Prisma.OrderCreateManyInput {
     totalAmount: n(row.totalAmount),
     currency: s(row.currency) || "BRL",
     couponId: sn(row.couponId),
+    payoutId: sn(row.payoutId),
     discountAmount: n(row.discountAmount),
     status: s(row.status) as Prisma.OrderCreateManyInput["status"],
     expiresAt: dn(row.expiresAt),
