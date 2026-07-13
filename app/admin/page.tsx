@@ -44,7 +44,7 @@ export default async function AdminDashboard({
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Painel Administrativo</h1>
+      <h1 className="text-2xl font-bold">Dashboard</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card text-center">
