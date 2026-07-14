@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { decideRegistrationCancellation } from "@/lib/registrations/cancellation-decision-service";
 
 const schema = z.object({
@@ -8,10 +8,9 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdminOnlyApiPermission("registrations.cancellation-decision-any");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));

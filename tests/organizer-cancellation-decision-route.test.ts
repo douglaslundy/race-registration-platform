@@ -1,15 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { decideRegistrationCancellation } from "@/lib/registrations/cancellation-decision-service";
-import { POST } from "@/app/api/organizer/registrations/[id]/cancellation-decision/route";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/auth/rbac");
 vi.mock("@/lib/registrations/cancellation-decision-service", () => ({
   decideRegistrationCancellation: vi.fn(),
 }));
 
 const authMock = vi.mocked(auth);
+const dbMock = db as any;
 const decideMock = vi.mocked(decideRegistrationCancellation);
+
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { POST } from "@/app/api/organizer/registrations/[id]/cancellation-decision/route";
+
+const checkPermMock = vi.mocked(checkApiPermission);
+const resolveScope = vi.mocked(resolveActingScope);
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/organizer/registrations/reg-1/cancellation-decision", {
@@ -22,11 +30,12 @@ function makeRequest(body: unknown) {
 describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    checkPermMock.mockResolvedValue({ allowed: true, session: { user: { id: "organizer-1", role: "ORGANIZER" } } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "org-1" });
   });
 
-  it("retorna 403 para quem não é organizador nem admin", async () => {
-    authMock.mockResolvedValue({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
+  it("retorna 403 para quem não tem a permissão", async () => {
+    checkPermMock.mockResolvedValue({ allowed: false, response: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403 }) } as any);
 
     const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
 
@@ -42,6 +51,7 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
   });
 
   it("escopa a decisão às inscrições de eventos do organizador logado", async () => {
+    resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
     decideMock.mockResolvedValueOnce({ ok: true, refund: "processed" });
 
     const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
@@ -50,13 +60,14 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
     expect(res.status).toBe(200);
     expect(body).toEqual({ success: true, refund: "processed" });
     expect(decideMock).toHaveBeenCalledWith({
-      where: { id: "reg-1", event: { organizer: { userId: "organizer-1" } } },
+      where: { id: "reg-1", event: { organizerId: "org-1" } },
       decision: "APPROVE",
       actingUserId: "organizer-1",
     });
   });
 
   it("repassa erro e status quando o serviço falha", async () => {
+    resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
     decideMock.mockResolvedValueOnce({ ok: false, status: 404, error: "Inscrição não encontrada" });
 
     const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
@@ -64,5 +75,32 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
 
     expect(res.status).toBe(404);
     expect(body.error).toBe("Inscrição não encontrada");
+  });
+
+  it("assistente de organizador com a permissão decide o cancelamento escopado ao evento do criador", async () => {
+    checkPermMock.mockResolvedValueOnce({ allowed: true, session: { user: { id: "assistant-1", role: "ASSISTANT" } } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+    resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
+    decideMock.mockResolvedValueOnce({ ok: true, refund: "processed" });
+
+    const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(decideMock).toHaveBeenCalledWith({
+      where: { id: "reg-1", event: { organizerId: "org-1" } },
+      decision: "APPROVE",
+      actingUserId: "assistant-1",
+    });
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    checkPermMock.mockResolvedValueOnce({ allowed: false, response: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403 }) } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(decideMock).not.toHaveBeenCalled();
   });
 });

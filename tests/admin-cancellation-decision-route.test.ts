@@ -1,15 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { decideRegistrationCancellation } from "@/lib/registrations/cancellation-decision-service";
-import { POST } from "@/app/api/admin/registrations/[id]/cancellation-decision/route";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/auth/rbac");
 vi.mock("@/lib/registrations/cancellation-decision-service", () => ({
   decideRegistrationCancellation: vi.fn(),
 }));
 
 const authMock = vi.mocked(auth);
+const dbMock = db as any;
 const decideMock = vi.mocked(decideRegistrationCancellation);
+
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
+import { POST } from "@/app/api/admin/registrations/[id]/cancellation-decision/route";
+
+const checkAdminMock = vi.mocked(checkAdminOnlyApiPermission);
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/admin/registrations/reg-1/cancellation-decision", {
@@ -22,11 +29,11 @@ function makeRequest(body: unknown) {
 describe("POST /api/admin/registrations/[id]/cancellation-decision", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    checkAdminMock.mockResolvedValue({ allowed: true, session: { user: { id: "admin-1", role: "ADMIN" } } } as any);
   });
 
   it("retorna 403 para quem não é admin", async () => {
-    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
+    checkAdminMock.mockResolvedValue({ allowed: false, response: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403 }) } as any);
 
     const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
 
@@ -43,5 +50,28 @@ describe("POST /api/admin/registrations/[id]/cancellation-decision", () => {
     expect(res.status).toBe(200);
     expect(body).toEqual({ success: true, refund: "not_applicable" });
     expect(decideMock).toHaveBeenCalledWith({ where: { id: "reg-1" }, decision: "APPROVE", actingUserId: "admin-1" });
+  });
+
+  it("assistente de admin com a permissão decide o cancelamento (bypass também vale pra ele)", async () => {
+    checkAdminMock.mockResolvedValueOnce({ allowed: true, session: { user: { id: "assistant-1", role: "ASSISTANT" } } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    decideMock.mockResolvedValueOnce({ ok: true, refund: "not_applicable" });
+
+    const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(decideMock).toHaveBeenCalledWith({ where: { id: "reg-1" }, decision: "APPROVE", actingUserId: "assistant-1" });
+  });
+
+  it("assistente de organizador é barrado com 403 mesmo com a chave -any concedida por engano", async () => {
+    checkAdminMock.mockResolvedValueOnce({ allowed: false, response: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403 }) } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(decideMock).not.toHaveBeenCalled();
   });
 });
