@@ -70,4 +70,49 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
 
     expect(csv).toContain('"Bruno Costa","bruno@example.com","",');
   });
+
+  it("retorna 403 sem a permissão", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "u1", role: "ATHLETE" } } as any);
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+    expect(res.status).toBe(403);
+    expect(dbMock.registration.findMany).not.toHaveBeenCalled();
+  });
+
+  it("admin titular vê inscritos de qualquer evento (bypass)", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-9" });
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    const res = await GET(
+      new Request("http://localhost/api/events/event-9/registrations?format=csv") as any,
+      { params: Promise.resolve({ id: "event-9" }) },
+    );
+
+    expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-9" } });
+    expect(dbMock.event.findFirst).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente de organizador com a permissão vê inscritos do evento do criador", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "event-1" });
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.event.findFirst).not.toHaveBeenCalled();
+    expect(dbMock.event.findUnique).not.toHaveBeenCalled();
+  });
 });
