@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAuth, resolveActingScope } from "@/lib/auth/rbac";
 import { getMissingAthleteProfileFields } from "@/lib/auth/profile-completion";
 import CompletarCadastroForm from "./CompletarCadastroForm";
 
-const ROLE_HOME: Record<UserRole, string> = {
+const ROLE_HOME: Record<Exclude<UserRole, "ASSISTANT">, string> = {
   ATHLETE: "/dashboard",
   ORGANIZER: "/organizador",
   ADMIN: "/admin",
@@ -20,8 +20,12 @@ export default async function CompletarCadastroPage({
   const session = await requireAuth();
   const { callbackUrl } = await searchParams;
 
+  if (session.user.role === "ASSISTANT") {
+    const scope = await resolveActingScope(session);
+    redirect(scope.actingAsAdmin ? "/admin" : scope.organizerId ? "/organizador" : "/dashboard");
+  }
   if (session.user.role !== "ATHLETE") {
-    redirect(ROLE_HOME[session.user.role as UserRole] ?? "/dashboard");
+    redirect(ROLE_HOME[session.user.role as Exclude<UserRole, "ASSISTANT">] ?? "/dashboard");
   }
 
   const missing = await getMissingAthleteProfileFields(session.user.id);
