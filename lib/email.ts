@@ -226,6 +226,28 @@ export async function sendPasswordResetEmail(params: {
   });
 }
 
+/** E-mail de convite pra um novo usuário assistente definir a senha e acessar o sistema. */
+export async function sendAssistantInviteEmail(params: {
+  to: string;
+  name: string;
+  invitedByName: string;
+  resetUrl: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    subject: `Você foi convidado como assistente — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p><strong>${params.invitedByName}</strong> te convidou para acessar o ${appName} como usuário assistente.</p>
+       <p>Clique no botão abaixo para definir sua senha e acessar sua conta:</p>
+       <p><a href="${params.resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Definir senha e acessar</a></p>
+       <p style="font-size:13px;color:#6b7280">Se você não esperava este convite, ignore este e-mail. O link expira em 1 hora.</p>`
+    ),
+  });
+}
+
 /** E-mail com o resumo diário de atividade (admin ou organizador). */
 export async function sendDailySummaryEmail(params: {
   to: string;
