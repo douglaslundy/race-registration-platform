@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkApiPermission } from "@/lib/auth/rbac";
 
 const schema = z.object({
   platformFeePercent: z.number().int().min(0).max(5000),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("events.set-fee");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
   const body = await req.json();

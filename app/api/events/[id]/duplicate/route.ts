@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { slugify } from "@/lib/format";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("events.duplicate");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
+  const scope = await resolveActingScope(session);
 
   const event = await db.event.findFirst({
-    where: { id, organizer: { userId: session.user.id } },
+    where: { id, organizerId: scope.organizerId ?? "__none__" },
     include: {
       routes: true,
       categories: true,

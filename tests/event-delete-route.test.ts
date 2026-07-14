@@ -69,4 +69,52 @@ describe("event delete api", () => {
     expect(res.status).toBe(409);
     expect(dbMock.event.delete).not.toHaveBeenCalled();
   });
+
+  it("ASSISTANT criado por organizador com events.delete consegue excluir evento do organizerId do criador", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
+    });
+    dbMock.$transaction.mockImplementation(async (fn: any) =>
+      fn({
+        fileAsset: { deleteMany: dbMock.fileAsset.deleteMany },
+        event: { delete: dbMock.event.delete },
+        auditLog: { create: dbMock.auditLog.create },
+      }),
+    );
+
+    const res = await DELETE(
+      new Request("http://localhost/api/events/event-1", { method: "DELETE" }) as any,
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({ where: { id: "event-1", organizerId: "org-1" } });
+    expect(res.status).toBe(200);
+    expect(dbMock.event.delete).toHaveBeenCalledWith({ where: { id: "event-1" } });
+  });
+
+  it("ASSISTANT sem events.delete é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await DELETE(
+      new Request("http://localhost/api/events/event-1", { method: "DELETE" }) as any,
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(403);
+    expect(dbMock.event.delete).not.toHaveBeenCalled();
+  });
+
+  it("retorna 401 sem sessão", async () => {
+    authMock.mockResolvedValue(null as any);
+
+    const res = await DELETE(
+      new Request("http://localhost/api/events/event-1", { method: "DELETE" }) as any,
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(401);
+  });
 });

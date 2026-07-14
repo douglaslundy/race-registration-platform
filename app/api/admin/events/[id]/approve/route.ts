@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkApiPermission } from "@/lib/auth/rbac";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("events.approve");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
   const event = await db.event.findUnique({ where: { id } });

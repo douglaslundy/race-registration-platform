@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { deleteObject } from "@/lib/s3";
 
 const updateEventSchema = z.object({
@@ -27,19 +27,14 @@ const updateEventSchema = z.object({
   cancellationContactEmail: z.string().optional().nullable(),
 });
 
-async function getEventAndVerifyOwner(eventId: string, userId: string) {
-  const organizer = await db.organizerProfile.findUnique({ where: { userId } });
-  if (!organizer) return null;
-
-  const event = await db.event.findFirst({
-    where: { id: eventId, organizerId: organizer.id },
-  });
-  return event;
+async function getEventAndVerifyOwnerByOrganizerId(eventId: string, organizerId: string) {
+  return db.event.findFirst({ where: { id: eventId, organizerId } });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("events.edit");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
   const body = await req.json();
@@ -48,9 +43,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const event = session.user.role === "ADMIN"
+  const scope = await resolveActingScope(session);
+  const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id } })
-    : await getEventAndVerifyOwner(id, session.user.id);
+    : scope.organizerId
+      ? await getEventAndVerifyOwnerByOrganizerId(id, scope.organizerId)
+      : null;
 
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
@@ -79,14 +77,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("events.delete");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
 
-  const event = session.user.role === "ADMIN"
+  const scope = await resolveActingScope(session);
+  const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id } })
-    : await getEventAndVerifyOwner(id, session.user.id);
+    : scope.organizerId
+      ? await getEventAndVerifyOwnerByOrganizerId(id, scope.organizerId)
+      : null;
 
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
   if (!["DRAFT", "CANCELLED"].includes(event.status)) {

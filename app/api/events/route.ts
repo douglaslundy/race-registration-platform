@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { slugify } from "@/lib/format";
 
 const createEventSchema = z.object({
@@ -18,10 +18,9 @@ const createEventSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || !["ORGANIZER", "ADMIN"].includes(session.user.role)) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("events.create");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const body = await req.json();
   const parsed = createEventSchema.safeParse(body);
@@ -29,10 +28,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const organizer = await db.organizerProfile.findUnique({
-    where: { userId: session.user.id },
-  });
-  if (!organizer) {
+  const scope = await resolveActingScope(session);
+  if (!scope.organizerId) {
     return NextResponse.json({ error: "Perfil de organizador não encontrado" }, { status: 404 });
   }
 
@@ -43,7 +40,7 @@ export async function POST(req: NextRequest) {
       ...parsed.data,
       maxParticipants: parsed.data.maxParticipants === 0 ? null : parsed.data.maxParticipants ?? null,
       slug,
-      organizerId: organizer.id,
+      organizerId: scope.organizerId,
       startAt: new Date(parsed.data.startAt),
       kitPickupAt: parsed.data.kitPickupAt ? new Date(parsed.data.kitPickupAt) : undefined,
     },

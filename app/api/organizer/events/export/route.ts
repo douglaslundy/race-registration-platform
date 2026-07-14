@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { escapeCsvValue } from "@/lib/admin/events";
 import { formatCurrency } from "@/lib/format";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("events.view");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
-  const organizer = await db.organizerProfile.findUnique({ where: { userId: session.user.id } });
-  if (!organizer) return NextResponse.json({ error: "Perfil de organizador não encontrado" }, { status: 404 });
+  const scope = await resolveActingScope(session);
+  if (!scope.organizerId) return NextResponse.json({ error: "Perfil de organizador não encontrado" }, { status: 404 });
 
   const events = await db.event.findMany({
-    where: { organizerId: organizer.id },
+    where: { organizerId: scope.organizerId },
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { registrations: true } },

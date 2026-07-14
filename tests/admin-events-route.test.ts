@@ -50,4 +50,35 @@ describe("admin events export", () => {
     expect(csv).toContain('"Organizador Um"');
     expect(csv).toContain('"PUBLISHED"');
   });
+
+  it("retorna 401 sem sessão", async () => {
+    authMock.mockResolvedValue(null as any);
+
+    const res = await GET(new Request("http://localhost/api/admin/events/export", { method: "GET" }) as any);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("ASSISTANT com events.view concedido consegue exportar", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.event.findMany.mockResolvedValueOnce([]);
+
+    const res = await GET(new Request("http://localhost/api/admin/events/export", { method: "GET" }) as any);
+
+    expect(dbMock.assistantPermission.findUnique).toHaveBeenCalledWith({
+      where: { userId_actionKey: { userId: "assistant-1", actionKey: "events.view" } },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("ASSISTANT sem events.view é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await GET(new Request("http://localhost/api/admin/events/export", { method: "GET" }) as any);
+
+    expect(res.status).toBe(403);
+    expect(dbMock.event.findMany).not.toHaveBeenCalled();
+  });
 });

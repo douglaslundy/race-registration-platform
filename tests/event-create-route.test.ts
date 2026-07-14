@@ -47,4 +47,96 @@ describe("event create api", () => {
       }),
     );
   });
+
+  it("retorna 403 sem sessão autenticada com role permitida", async () => {
+    authMock.mockResolvedValue({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
+
+    const res = await POST(
+      new Request("http://localhost/api/events", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Corrida da Serra",
+          modality: "ROAD_RACE",
+          startAt: "2026-06-20T10:00:00.000Z",
+          city: "São Paulo",
+          state: "SP",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }) as any,
+    );
+
+    expect(res.status).toBe(403);
+    expect(dbMock.event.create).not.toHaveBeenCalled();
+  });
+
+  it("ASSISTANT criado por organizador com events.create consegue criar, escopado ao organizerId do criador", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-9" } },
+    });
+    dbMock.event.create.mockResolvedValueOnce({ id: "event-2" });
+
+    const res = await POST(
+      new Request("http://localhost/api/events", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Corrida da Serra",
+          modality: "ROAD_RACE",
+          startAt: "2026-06-20T10:00:00.000Z",
+          city: "São Paulo",
+          state: "SP",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }) as any,
+    );
+
+    expect(res.status).toBe(201);
+    expect(dbMock.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ organizerId: "org-9" }) }),
+    );
+  });
+
+  it("ASSISTANT sem events.create é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(
+      new Request("http://localhost/api/events", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Corrida da Serra",
+          modality: "ROAD_RACE",
+          startAt: "2026-06-20T10:00:00.000Z",
+          city: "São Paulo",
+          state: "SP",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }) as any,
+    );
+
+    expect(res.status).toBe(403);
+    expect(dbMock.event.create).not.toHaveBeenCalled();
+  });
+
+  it("ADMIN titular continua recebendo 404 (sem OrganizerProfile próprio)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await POST(
+      new Request("http://localhost/api/events", {
+        method: "POST",
+        body: JSON.stringify({
+          title: "Corrida da Serra",
+          modality: "ROAD_RACE",
+          startAt: "2026-06-20T10:00:00.000Z",
+          city: "São Paulo",
+          state: "SP",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }) as any,
+    );
+
+    expect(res.status).toBe(404);
+    expect(dbMock.event.create).not.toHaveBeenCalled();
+  });
 });
