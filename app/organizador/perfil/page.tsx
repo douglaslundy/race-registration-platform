@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import ChangePasswordForm from "@/components/profile/ChangePasswordForm";
+import DailySummaryRecipientsManager from "@/components/profile/DailySummaryRecipientsManager";
 
 type OrgProfileData = {
   companyName?: string | null;
@@ -151,6 +152,8 @@ export default function OrganizerPerfilPage() {
           {accountSaving ? "Salvando..." : accountSaved ? "Salvo!" : "Salvar dados pessoais"}
         </button>
       </form>
+
+      <DailySummaryRecipientsManager />
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <h2 className="font-semibold text-gray-900">Dados da organização</h2>

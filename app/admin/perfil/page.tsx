@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import ChangePasswordForm from "@/components/profile/ChangePasswordForm";
+import DailySummaryRecipientsManager from "@/components/profile/DailySummaryRecipientsManager";
 
 type ProfileData = {
   name?: string;
@@ -144,6 +145,8 @@ export default function AdminPerfilPage() {
           {saving ? "Salvando..." : saved ? "Salvo!" : "Salvar"}
         </button>
       </form>
+
+      <DailySummaryRecipientsManager />
 
       <ChangePasswordForm />
     </div>
