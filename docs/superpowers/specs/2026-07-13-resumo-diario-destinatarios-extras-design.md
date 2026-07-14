@@ -57,10 +57,18 @@ sem checagem de papel específica) — aqui adicionamos uma checagem de papel si
 - `GET /api/daily-summary-recipients` — lista os destinatários do usuário logado.
 - `POST /api/daily-summary-recipients` — cria um novo (`{name, type, value}`), validado por Zod:
   `name` obrigatório; se `type === "EMAIL"`, `value` validado com `z.string().email()` (mesma
-  regra usada em todo outro campo de e-mail do sistema); se `type === "WHATSAPP"`, `value` só
-  passa por checagem de tamanho mínimo (`min(8)`, mesma regra já usada em
-  `app/api/admin/whatsapp/test/route.ts` — não existe regex de telefone brasileiro em nenhum
-  lugar do sistema hoje, então não inventamos uma nova aqui).
+  regra usada em todo outro campo de e-mail do sistema); se `type === "WHATSAPP"`, `value` é
+  normalizado (remove tudo que não é dígito) e validado como **DDD + número, sem código do país**
+  (10 ou 11 dígitos — 2 de DDD + 8 ou 9 do número). O valor é **salvo já limpo (só dígitos, sem
+  DDI)**, ex. `"11999999999"`. Isso é uma exceção deliberada ao "não existe regex de telefone em
+  nenhum lugar do sistema" — os campos de telefone *existentes* (`User.phone`,
+  `OrganizerProfile.phone`) continuam sem validação de formato, meramente porque não fazem parte
+  deste pedido; mexer neles seria escopo não pedido e risco de regressão numa função já em
+  produção.
+- **Código do país no envio:** o usuário digita só DDD + número (sem `+55`). Na hora de enviar
+  (`lib/alerts/daily-summary.ts`), o sistema monta o destino final como `"55" + recipient.value`
+  antes de chamar `sendWhatsAppMessage` — o `+55` nunca é digitado nem armazenado, só adicionado
+  no momento do envio.
 - `DELETE /api/daily-summary-recipients/[id]` — remove, só se `recipient.userId ===
   session.user.id` (nunca permite remover destinatário de outro usuário).
 
@@ -82,8 +90,9 @@ Novo `components/profile/DailySummaryRecipientsManager.tsx` (client component), 
 páginas ("Meus Dados" do admin e do organizador), logo abaixo dos checkboxes de e-mail/WhatsApp já
 existentes. Lista os destinatários atuais (nome, tipo, valor, botão "Remover"), com um formulário
 de adicionar (nome, seletor de tipo, campo de valor que muda o placeholder/tipo de input conforme
-o tipo escolhido). Remoção usa `components/ui/ConfirmModal.tsx` (nunca `confirm()` nativo, por
-`CLAUDE.md`). Erros de validação usam `components/ui/ErrorModal.tsx`.
+o tipo escolhido — para WhatsApp, placeholder `"DDD + número, ex: 11999999999"`, sem `+55`).
+Remoção usa `components/ui/ConfirmModal.tsx` (nunca `confirm()` nativo, por `CLAUDE.md`). Erros de
+validação usam `components/ui/ErrorModal.tsx`.
 
 ## Testes
 
