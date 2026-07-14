@@ -214,6 +214,30 @@ não versionado) em `.superpowers/sdd/progress.md`.
   /api/cron/daily-summary` com header `x-cron-secret` às 10h UTC (07h Brasília) diariamente —
   mesmo padrão dos 3 crons já existentes, nenhum deles tem crontab-as-code neste repo.
 
+### Destinatários extras do resumo diário (2026-07-14, pequena adição ao resumo diário)
+- [x] Admin e organizador podem cadastrar destinatários extras (nome + e-mail ou nome +
+  WhatsApp) na mesma tela "Meus Dados" onde já existem os toggles de e-mail/WhatsApp — cadastrar
+  já é o opt-in (sem checkbox liga/desliga por item). Tabela nova `DailySummaryRecipient`
+  (não colunas de array no `User`, porque cada item precisa de nome associado). API única
+  compartilhada entre admin/organizador (`/api/daily-summary-recipients`), escopada por
+  `session.user.id`. **Telefone:** usuário digita só DDD + número (ex: `11999999999`, sem
+  `+55`); sistema valida 10-11 dígitos, salva só os dígitos (nunca com `+55` ou formatação), e
+  adiciona `"55"` na frente só no momento do envio (`toWhatsAppDestination`) — os campos de
+  telefone já existentes (`User.phone`, `OrganizerProfile.phone`) não foram tocados, continuam
+  sem essa normalização (fora de escopo, risco de regressão em função já em produção). Spec:
+  `docs/superpowers/specs/2026-07-13-resumo-diario-destinatarios-extras-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-14-resumo-diario-destinatarios-extras.md`. Commits
+  `c0c57de..da02de3` (4 tarefas + 1 fix pós-review, subagent-driven-development). Review final
+  (opus): pronto pra merge, 558/558 testes, `tsc --noEmit` limpo. 1 achado Important corrigido
+  durante a tarefa 4: exclusão de destinatário não checava `res.ok` — uma exclusão que falhasse
+  no servidor ainda sumia da UI, dando falsa confirmação (corrigido: mantém a linha e mostra erro
+  via `ErrorModal` em caso de falha). Confirmado pelo review final: FK `ON DELETE CASCADE`
+  remove corretamente os destinatários extras quando o usuário dono é excluído; as duas páginas
+  de perfil já são protegidas por papel via layout (`requireAdmin`/`requireOrganizer`), o check
+  de papel na API é defesa em profundidade, não o único gate.
+  **Migração de banco:** tabela + enum novos, nenhuma tabela existente alterada — segura pra
+  `prisma db push` sem sequenciamento especial.
+
 ### Deploy 2026-07-13 (3ª leva — commits `af1bcfc..13008ae`, com migração de banco)
 - [x] Push (26 commits) → `git pull` → `docker build` → `docker compose run --rm app sh -c
   "npx prisma db push --skip-generate"` (aplicou as 2 migrações pendentes: índices createdAt +
