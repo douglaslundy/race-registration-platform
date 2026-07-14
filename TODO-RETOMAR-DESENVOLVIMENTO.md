@@ -238,6 +238,12 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Migração de banco:** tabela + enum novos, nenhuma tabela existente alterada — segura pra
   `prisma db push` sem sequenciamento especial.
 
+### Deploy 2026-07-14 (4ª leva — commits `c0c57de..da02de3`, com migração de banco)
+- [x] Push → `git pull` → `docker build` → `docker compose run --rm app sh -c "npx prisma db push
+  --skip-generate"` (aplicou a migração `DailySummaryRecipient`, 496ms) → `docker compose up -d
+  --no-deps app` (só `corridas-app` recriado; `corridas-db` e todos os containers Supabase
+  intocados). Site verificado no ar (`/`, `/eventos` 200; `/admin` 307 → login, esperado).
+
 ### Deploy 2026-07-13 (3ª leva — commits `af1bcfc..13008ae`, com migração de banco)
 - [x] Push (26 commits) → `git pull` → `docker build` → `docker compose run --rm app sh -c
   "npx prisma db push --skip-generate"` (aplicou as 2 migrações pendentes: índices createdAt +
