@@ -238,6 +238,59 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Migração de banco:** tabela + enum novos, nenhuma tabela existente alterada — segura pra
   `prisma db push` sem sequenciamento especial.
 
+### Usuários assistentes — Fase 1: infraestrutura + domínio Eventos (2026-07-14)
+- [x] Admin e organizador podem criar/promover usuários assistentes com permissões granulares,
+  provado de ponta a ponta no domínio Eventos (escolhido como prova de conceito completa antes de
+  expandir pros demais domínios numa Fase 2 futura). Pedido em duas partes: primeiro uma análise
+  de **todas as ações do sistema** (feita e documentada em
+  `docs/superpowers/specs/2026-07-14-analise-acoes-sistema.md` — catálogo completo de ~16 áreas
+  admin/organizador, com rotas "multi-responsabilidade" sinalizadas: `admin/settings` atende 11+
+  tipos de credencial numa rota só; `admin/users/[id]` PATCH tanto edita perfil quanto promove a
+  admin quanto reseta senha), depois o desenho da Fase 1 em cima dessa análise.
+  Papel novo dedicado `ASSISTANT` (não reaproveita os papéis `SUPPORT`/`PARTNER`, que existiam no
+  enum mas nunca tiveram nenhuma lógica de gate — achado durante a pesquisa). Assistente nunca
+  vira ADMIN/ORGANIZER de verdade: carrega `createdByUserId` (aponta pro criador) e um conjunto de
+  `AssistantPermission` (chaves de ação, ex. `"events.approve"`). `resolveActingScope(session)`
+  resolve se a sessão "age como admin" (irrestrito) ou está confinada ao `organizerId` do criador.
+  Dois modos na tela de criação: "Somente visualização e exportação" (só chaves `.view`) ou "Ações
+  específicas" (checklist granular, escrita implica visualização automaticamente). Promoção de
+  e-mail já cadastrado: `ATHLETE` existente vira assistente preservando todo o histórico; conta
+  titular (`ADMIN`/`ORGANIZER`/etc.) é bloqueada com erro claro, nunca promovida. Convite por
+  e-mail reaproveita o mesmo padrão de token de "esqueci minha senha". Revogação reaproveita o
+  campo `active` já existente. Telas dedicadas `/admin/assistentes` e `/organizador/assistentes`.
+  Spec: `docs/superpowers/specs/2026-07-14-usuarios-assistentes-fase1-design.md`. Plano:
+  `docs/superpowers/plans/2026-07-14-usuarios-assistentes-fase1.md`. Commits `ae4c4b1..df24a04`
+  (6 tarefas + 1 fix de segurança pós-revisão, subagent-driven-development).
+  **Achado Crítico de segurança encontrado e corrigido durante a implementação** (pelo próprio
+  subagente implementador, que sinalizou sem tentar corrigir sozinho — comportamento correto): a
+  função central `checkApiPermission` liberava qualquer `ADMIN`/`ORGANIZER` **titular** pra
+  qualquer `actionKey`, sem distinção. Isso é correto pras ações que organizador titular já podia
+  fazer, mas 4 rotas eram estritamente admin-only antes (aprovar/rejeitar/definir taxa/exportar
+  CSV administrativo) — depois da troca, qualquer organizador titular comum passou a conseguir
+  aprovar/rejeitar qualquer evento e baixar dados financeiros de todos os organizadores. Agravante:
+  como a exportação admin usa a mesma `actionKey` (`"events.view"`) que a exportação legítima do
+  organizador, um assistente-de-organizador com essa permissão rotineira também conseguia passar.
+  Corrigido com uma nova função `checkAdminOnlyApiPermission` (só libera ADMIN titular real ou
+  assistente cujo criador é ADMIN, nunca organizador titular nem assistente-de-organizador),
+  aplicada só nas 4 rotas afetadas, sem alterar `checkApiPermission` (que continua correta pras
+  outras 5 rotas). Re-revisado com o mesmo rigor e confirmado fechado. Review final (opus): pronto
+  pra merge, 663/663 testes, `tsc --noEmit` 100% limpo. Achados Minor não corrigidos, relevantes
+  pra Fase 2: sem allowlist de `actionKey` nas rotas de criar assistente (inerte pra segurança);
+  `archive`/`duplicate` ganharam 1 query extra pra organizador titular (impacto desprezível);
+  página `/organizador/assistentes` fica com formulário quebrado se um assistente-de-organizador
+  acessá-la (nunca deveria ter acesso mesmo, só rough edge de UX); convite por e-mail falha
+  silenciosamente se SMTP não configurado; lógica de "escrita implica visualização" no componente
+  de UI funciona bem pro único domínio atual mas vai precisar de revisão ao adicionar mais domínios.
+  **Migração de banco:** enum novo + coluna nullable + tabela nova, nenhuma tabela existente
+  alterada — segura pra `prisma db push` sem sequenciamento especial (confirmado que o `ALTER TYPE
+  ... ADD VALUE` não é consumido na mesma operação, então a restrição de transação não se aplica).
+  **Ainda não deployado.**
+- [ ] **Fase 2** (não iniciada): aplicar o mesmo padrão já validado aos domínios restantes do
+  escopo v1 (lotes/categorias/percursos, inscrições/pedidos, cupons, pagamentos/estornos,
+  resultados, carrinhos abandonados, relatórios/exportações CSV). Nunca entram (nem na Fase 2):
+  Backup/Restauração, Configurações da Plataforma, Gestão de Usuários (trocar papel/redefinir
+  senha), WhatsApp/SMTP de plataforma, Auditoria, Repasses, Perfil/conta pessoal.
+
 ### Deploy 2026-07-14 (4ª leva — commits `c0c57de..da02de3`, com migração de banco)
 - [x] Push → `git pull` → `docker build` → `docker compose run --rm app sh -c "npx prisma db push
   --skip-generate"` (aplicou a migração `DailySummaryRecipient`, 496ms) → `docker compose up -d
