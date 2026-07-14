@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getBatchStatus } from "@/lib/batch-status";
 
@@ -15,10 +15,9 @@ const batchSchema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || !["ORGANIZER", "ADMIN"].includes(session.user.role)) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("batches.create");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id: eventId } = await params;
   const body = await req.json();
@@ -27,10 +26,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const organizer = await db.organizerProfile.findUnique({ where: { userId: session.user.id } });
-  const event = await db.event.findFirst({
-    where: { id: eventId, ...(session.user.role !== "ADMIN" ? { organizerId: organizer?.id } : {}) },
-  });
+  const scope = await resolveActingScope(session);
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id: eventId } })
+    : await db.event.findFirst({ where: { id: eventId, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const batch = await db.ticketBatch.create({
