@@ -18,6 +18,7 @@ enum UserRole {
   ADMIN
   SUPPORT
   PARTNER
+  ASSISTANT
 }
 
 enum EventStatus {
@@ -124,6 +125,10 @@ model User {
   createdCoupons   Coupon[]          @relation("CouponCreator")
   refundsInitiated Refund[]
   dailySummaryRecipients DailySummaryRecipient[]
+  createdByUserId String?
+  createdBy         User?   @relation("AssistantCreator", fields: [createdByUserId], references: [id])
+  createdAssistants User[]  @relation("AssistantCreator")
+  assistantPermissions AssistantPermission[]
 
   @@index([createdAt])
   @@map("users")
@@ -571,6 +576,18 @@ model AlertLog {
 
   @@unique([alertType, entityId, channel])
   @@map("alert_logs")
+}
+
+model AssistantPermission {
+  id        String   @id @default(cuid())
+  userId    String
+  actionKey String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, actionKey])
+  @@map("assistant_permissions")
 }
 
 model DailySummaryRecipient {

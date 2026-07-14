@@ -12,6 +12,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: "Admin",
   SUPPORT: "Suporte",
   PARTNER: "Parceiro",
+  ASSISTANT: "Assistente",
 };
 
 type Mode = "create" | "edit";

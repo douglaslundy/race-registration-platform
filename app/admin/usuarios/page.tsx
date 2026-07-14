@@ -20,6 +20,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: "Admin",
   SUPPORT: "Suporte",
   PARTNER: "Parceiro",
+  ASSISTANT: "Assistente",
 };
 
 const ROLE_COLOR: Record<UserRole, string> = {
@@ -28,6 +29,7 @@ const ROLE_COLOR: Record<UserRole, string> = {
   ADMIN: BADGE.red,
   SUPPORT: BADGE.yellow,
   PARTNER: BADGE.purple,
+  ASSISTANT: BADGE.green,
 };
 
 const ROLE_OPTIONS: Array<{ value: "ALL" | UserRole; label: string }> = [
