@@ -64,8 +64,20 @@ export default function DailySummaryRecipientsManager() {
   async function doDelete() {
     if (!deletingId) return;
     setDeleting(true);
+    setError(null);
     try {
-      await fetch(`/api/daily-summary-recipients/${deletingId}`, { method: "DELETE" });
+      const res = await fetch(`/api/daily-summary-recipients/${deletingId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (typeof data.error === "string") {
+          setError(data.error);
+        } else {
+          const fieldMessage = Object.values(data.error?.fieldErrors ?? {}).flat()[0];
+          const formMessage = data.error?.formErrors?.[0];
+          setError((fieldMessage as string) ?? formMessage ?? "Erro ao remover destinatário.");
+        }
+        return;
+      }
       setRecipients((prev) => prev.filter((r) => r.id !== deletingId));
     } finally {
       setDeleting(false);
