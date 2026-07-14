@@ -8,7 +8,13 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn(() => { throw new Error("NEX
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
 
-import { resolveActingScope, checkApiPermission, requireAdmin, requireOrganizer } from "@/lib/auth/rbac";
+import {
+  resolveActingScope,
+  checkApiPermission,
+  checkAdminOnlyApiPermission,
+  requireAdmin,
+  requireOrganizer,
+} from "@/lib/auth/rbac";
 import { redirect } from "next/navigation";
 
 describe("resolveActingScope", () => {
@@ -108,6 +114,52 @@ describe("checkApiPermission", () => {
     const result = await checkApiPermission("events.approve");
     expect(result.allowed).toBe(false);
     expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkAdminOnlyApiPermission", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("retorna 401 sem sessão", async () => {
+    authMock.mockResolvedValue(null as any);
+    const result = await checkAdminOnlyApiPermission("events.approve");
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(401);
+  });
+
+  it("ADMIN sempre permitido, sem consultar AssistantPermission", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    const result = await checkAdminOnlyApiPermission("events.approve");
+    expect(result.allowed).toBe(true);
+    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("ASSISTANT criado por ADMIN com a permissão concedida é permitido", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    const result = await checkAdminOnlyApiPermission("events.approve");
+    expect(result.allowed).toBe(true);
+  });
+
+  it("ASSISTANT criado por ORGANIZER com a permissão concedida (mas actingAsAdmin=false) é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
+    });
+    const result = await checkAdminOnlyApiPermission("events.approve");
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(403);
+  });
+
+  it("ORGANIZER titular é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
+    const result = await checkAdminOnlyApiPermission("events.approve");
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(403);
   });
 });
 

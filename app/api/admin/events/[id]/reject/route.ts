@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkApiPermission } from "@/lib/auth/rbac";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.reject");
+  const check = await checkAdminOnlyApiPermission("events.reject");
   if (!check.allowed) return check.response;
   const { session } = check;
 

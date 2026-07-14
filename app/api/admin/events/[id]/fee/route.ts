@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { checkApiPermission } from "@/lib/auth/rbac";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 
 const schema = z.object({
   platformFeePercent: z.number().int().min(0).max(5000),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.set-fee");
+  const check = await checkAdminOnlyApiPermission("events.set-fee");
   if (!check.allowed) return check.response;
   const { session } = check;
 

@@ -42,9 +42,10 @@ describe("admin event reject api", () => {
     expect(dbMock.event.update).not.toHaveBeenCalled();
   });
 
-  it("ASSISTANT com events.reject concedido consegue rejeitar", async () => {
+  it("ASSISTANT criado por ADMIN com events.reject concedido consegue rejeitar", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -57,6 +58,15 @@ describe("admin event reject api", () => {
   it("ASSISTANT sem events.reject é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.event.update).not.toHaveBeenCalled();
+  });
+
+  it("ORGANIZER titular é barrado com 403 (rota estritamente ADMIN)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 

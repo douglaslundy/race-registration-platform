@@ -56,9 +56,10 @@ describe("admin event approve api", () => {
     expect(dbMock.event.update).not.toHaveBeenCalled();
   });
 
-  it("ASSISTANT com events.approve concedido consegue aprovar", async () => {
+  it("ASSISTANT criado por ADMIN com events.approve concedido consegue aprovar", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -78,16 +79,12 @@ describe("admin event approve api", () => {
     expect(dbMock.event.update).not.toHaveBeenCalled();
   });
 
-  // Achado de auto-revisão (ver task-3-report.md): checkApiPermission trata qualquer
-  // ORGANIZER titular como sempre permitido, independente da actionKey — esta rota nunca
-  // teve escopo por organizador, então um ORGANIZER titular agora também consegue aprovar
-  // qualquer evento, o que não era possível antes desta tarefa (antes: 403 fixo pra
-  // não-ADMIN). Documentado aqui deliberadamente, não escondido.
-  it("[achado] ORGANIZER titular agora também consegue aprovar (não era possível antes desta tarefa)", async () => {
+  it("ORGANIZER titular é barrado com 403 (rota estritamente ADMIN)", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
+    expect(dbMock.event.update).not.toHaveBeenCalled();
   });
 });

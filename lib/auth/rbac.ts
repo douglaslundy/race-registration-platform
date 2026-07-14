@@ -79,6 +79,35 @@ export async function checkApiPermission(actionKey: string): Promise<PermissionC
   return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
 }
 
+/**
+ * Checagem de permissão estritamente ADMIN pra uso em Route Handlers. Diferente de
+ * checkApiPermission, NUNCA libera ORGANIZER titular, e só libera ASSISTANT quando
+ * resolveActingScope confirma que ele age como admin (criado por um ADMIN) — um
+ * ASSISTANT-de-organizador com a AssistantPermission gravada por engano continua barrado.
+ */
+export async function checkAdminOnlyApiPermission(actionKey: string): Promise<PermissionCheck> {
+  const session = await auth();
+  if (!session?.user) {
+    return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+
+  if (session.user.role === "ADMIN") {
+    return { allowed: true, session };
+  }
+
+  if (session.user.role === "ASSISTANT") {
+    const granted = await db.assistantPermission.findUnique({
+      where: { userId_actionKey: { userId: session.user.id, actionKey } },
+    });
+    if (granted) {
+      const scope = await resolveActingScope(session);
+      if (scope.actingAsAdmin) return { allowed: true, session };
+    }
+  }
+
+  return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
+}
+
 export async function requireAdmin() {
   const session = await requireAuth();
   if (session.user.role === "ADMIN") return session;

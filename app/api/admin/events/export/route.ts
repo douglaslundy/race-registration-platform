@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkApiPermission } from "@/lib/auth/rbac";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { buildAdminEventOrderBy, buildAdminEventWhere, escapeCsvValue } from "@/lib/admin/events";
 
 export async function GET(req: NextRequest) {
-  const check = await checkApiPermission("events.view");
+  const check = await checkAdminOnlyApiPermission("events.view");
   if (!check.allowed) return check.response;
 
   const { searchParams } = new URL(req.url);
