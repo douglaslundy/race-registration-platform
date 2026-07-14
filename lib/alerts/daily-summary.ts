@@ -35,6 +35,10 @@ function formatDateLabel(day: Date): string {
   return `${dd}/${mm}/${day.getUTCFullYear()}`;
 }
 
+function toWhatsAppDestination(localDigits: string): string {
+  return `55${localDigits}`;
+}
+
 function buildAdminEmailRows(m: AdminDailySummary): { label: string; value: string }[] {
   return [
     { label: "Novos usuários", value: String(m.newUsersCount) },
@@ -113,6 +117,41 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         }
       }
 
+      const extraRecipients = await db.dailySummaryRecipient.findMany({
+        where: { userId: admin.id },
+        select: { id: true, name: true, type: true, value: true },
+      });
+
+      for (const recipient of extraRecipients) {
+        const recipientEntityId = `${key}:recipient:${recipient.id}`;
+
+        if (recipient.type === "EMAIL" && smtpReady) {
+          try {
+            if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "EMAIL")) {
+              await sendDailySummaryEmail({ to: recipient.value, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics) });
+              sent++;
+            }
+          } catch (err) {
+            hadFailure = true;
+            await unclaimAlert(ALERT_TYPE, recipientEntityId, "EMAIL");
+            console.error("[sendAdminDailySummaries] failed for extra recipient", recipient.name, err);
+          }
+        }
+
+        if (recipient.type === "WHATSAPP") {
+          try {
+            if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
+              await sendWhatsAppMessage(toWhatsAppDestination(recipient.value), buildAdminWhatsAppText(metrics));
+              sent++;
+            }
+          } catch (err) {
+            hadFailure = true;
+            await unclaimAlert(ALERT_TYPE, recipientEntityId, "WHATSAPP");
+            console.error("[sendAdminDailySummaries] failed for extra recipient", recipient.name, err);
+          }
+        }
+      }
+
       if (hadFailure) failed++;
     }
   } catch (err) {
@@ -183,6 +222,46 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
           hadFailure = true;
           await unclaimAlert(ALERT_TYPE, entityId, "WHATSAPP");
           console.error("[sendOrganizerDailySummaries] failed for", organizer.email, err);
+        }
+      }
+
+      const extraRecipients = await db.dailySummaryRecipient.findMany({
+        where: { userId: organizer.id },
+        select: { id: true, name: true, type: true, value: true },
+      });
+
+      for (const recipient of extraRecipients) {
+        const recipientEntityId = `${key}:recipient:${recipient.id}`;
+
+        if (recipient.type === "EMAIL" && smtpReady) {
+          try {
+            if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "EMAIL")) {
+              await sendDailySummaryEmail({
+                to: recipient.value,
+                role: "ORGANIZER",
+                dateLabel,
+                rows: buildOrganizerEmailRows(metrics),
+              });
+              sent++;
+            }
+          } catch (err) {
+            hadFailure = true;
+            await unclaimAlert(ALERT_TYPE, recipientEntityId, "EMAIL");
+            console.error("[sendOrganizerDailySummaries] failed for extra recipient", recipient.name, err);
+          }
+        }
+
+        if (recipient.type === "WHATSAPP") {
+          try {
+            if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
+              await sendWhatsAppMessage(toWhatsAppDestination(recipient.value), buildOrganizerWhatsAppText(metrics));
+              sent++;
+            }
+          } catch (err) {
+            hadFailure = true;
+            await unclaimAlert(ALERT_TYPE, recipientEntityId, "WHATSAPP");
+            console.error("[sendOrganizerDailySummaries] failed for extra recipient", recipient.name, err);
+          }
         }
       }
 
