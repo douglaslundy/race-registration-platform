@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
@@ -19,18 +19,18 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ORGANIZER") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("registrations.edit-athlete");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  const scope = await resolveActingScope(session);
   const registration = await db.registration.findFirst({
-    where: { id, event: { organizer: { userId: session.user.id } } },
+    where: { id, event: { organizerId: scope.organizerId ?? "__none__" } },
     select: { athleteUserId: true },
   });
   if (!registration) {

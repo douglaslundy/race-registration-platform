@@ -21,6 +21,7 @@ describe("PATCH /api/organizer/registrations/[id]/athlete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "org-1" });
     dbMock.$transaction.mockImplementation(async (fn: any) =>
       fn({
         user: { update: vi.fn().mockResolvedValue({ id: "athlete-1", name: "Atleta", email: "atleta@exemplo.com" }) },
@@ -43,7 +44,7 @@ describe("PATCH /api/organizer/registrations/[id]/athlete", () => {
     expect(res.status).toBe(404);
     expect(dbMock.registration.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "reg-1", event: { organizer: { userId: "organizer-1" } } },
+        where: { id: "reg-1", event: { organizerId: "org-1" } },
       }),
     );
   });
@@ -187,5 +188,40 @@ describe("PATCH /api/organizer/registrations/[id]/athlete", () => {
     expect(callArgs.data).not.toHaveProperty("password");
     expect(callArgs.data).not.toHaveProperty("passwordHash");
     expect(callArgs.data).toEqual({ name: "Novo Nome" });
+  });
+
+  it("retorna 404 para admin titular (sem acesso funcional a esta rota, mesmo passando a checagem de permissão)", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.registration.findFirst.mockResolvedValueOnce(null);
+
+    const res = await PATCH(makeRequest({ name: "Novo Nome" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(dbMock.registration.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "reg-1", event: { organizerId: "__none__" } } }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("assistente de organizador com a permissão edita o atleta escopado ao evento do criador", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique
+      .mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } })
+      .mockResolvedValueOnce({ id: "athlete-1", email: "atleta@exemplo.com" });
+    dbMock.registration.findFirst.mockResolvedValueOnce({ athleteUserId: "athlete-1" });
+
+    const res = await PATCH(makeRequest({ name: "Nome Ajustado" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await PATCH(makeRequest({ name: "Nome Ajustado" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.registration.findFirst).not.toHaveBeenCalled();
   });
 });
