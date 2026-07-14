@@ -29,6 +29,7 @@ vi.mock("@/lib/db", () => ({
     athleteProfile: { upsert: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
     organizerProfile: { upsert: vi.fn(), findUnique: vi.fn(), findMany: vi.fn() },
     alertLog: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
+    dailySummaryRecipient: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
       ticketBatch: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
