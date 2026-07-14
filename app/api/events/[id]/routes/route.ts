@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -8,12 +8,6 @@ const routeSchema = z.object({
   distanceKm: z.number().positive(),
   description: z.string().optional().nullable(),
 });
-
-async function getOrganizerEvent(eventId: string, userId: string) {
-  return db.event.findFirst({
-    where: { id: eventId, organizer: { userId } },
-  });
-}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,11 +19,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("routes.create");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
-  const event = await getOrganizerEvent(id, session.user.id);
+  const scope = await resolveActingScope(session);
+  const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const body = await req.json();
