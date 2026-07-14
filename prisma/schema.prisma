@@ -91,6 +91,11 @@ enum ShirtSize {
   XGG
 }
 
+enum DailySummaryRecipientType {
+  EMAIL
+  WHATSAPP
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -118,6 +123,7 @@ model User {
   accounts         Account[]
   createdCoupons   Coupon[]          @relation("CouponCreator")
   refundsInitiated Refund[]
+  dailySummaryRecipients DailySummaryRecipient[]
 
   @@index([createdAt])
   @@map("users")
@@ -565,4 +571,18 @@ model AlertLog {
 
   @@unique([alertType, entityId, channel])
   @@map("alert_logs")
+}
+
+model DailySummaryRecipient {
+  id        String                     @id @default(cuid())
+  userId    String
+  name      String
+  type      DailySummaryRecipientType
+  value     String
+  createdAt DateTime                   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("daily_summary_recipients")
 }
