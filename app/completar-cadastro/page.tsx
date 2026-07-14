@@ -10,7 +10,6 @@ const ROLE_HOME: Record<UserRole, string> = {
   ADMIN: "/admin",
   SUPPORT: "/admin",
   PARTNER: "/dashboard",
-  ASSISTANT: "/dashboard",
 };
 
 export default async function CompletarCadastroPage({
