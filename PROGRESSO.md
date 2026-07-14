@@ -4,17 +4,19 @@
 2026-07-14
 
 ## Tarefa em andamento
-Nenhuma. O plano `docs/superpowers/plans/2026-07-14-usuarios-assistentes-fase1.md` (Fase 1 de
-usuários assistentes com permissões granulares) foi concluído: 6 tarefas implementadas, revisadas
-e aprovadas (com uma correção Crítica de segurança encontrada e fechada durante a Tarefa 3 —
-`checkApiPermission` liberava organizador titular pra ações admin-only; corrigido com
-`checkAdminOnlyApiPermission`). Revisão final de toda a branch: pronto pra merge, 663/663 testes,
-`tsc --noEmit` 100% limpo. Commits `ae4c4b1..df24a04`.
+Nenhuma. Fase 1 de usuários assistentes (infraestrutura + Eventos) E Fase 2 domínio 1
+(Lotes/Categorias/Percursos) concluídas, revisadas e aprovadas — **nenhuma das duas ainda foi
+deployada** (usuário decidiu seguir implementando antes de deployar).
 
-**Ainda não deployado na VPS.** Próximo passo: perguntar ao usuário se quer fazer o deploy agora
-antes de iniciar a Fase 2 (rollout do mesmo padrão pros demais domínios: lotes/categorias/
-percursos, inscrições/pedidos, cupons, pagamentos/estornos, resultados, carrinhos abandonados,
-relatórios).
+- Fase 1: commits `ae4c4b1..df24a04`. Tem migração de banco pendente (`ASSISTANT` enum,
+  `createdByUserId`, tabela `assistant_permissions`).
+- Fase 2 domínio 1: commits `faddd4c..3b9198b`. Sem migração própria (reusa o schema da Fase 1).
+
+Suíte completa: 705/705 testes, `tsc --noEmit` limpo.
+
+**Próximo passo concreto:** perguntar ao usuário se quer fazer deploy agora (Fase 1 + Fase 2
+domínio 1 juntas, já que a segunda depende da primeira) ou seguir pro próximo domínio da Fase 2
+(inscrições/pedidos, cupons, pagamentos/estornos, resultados, carrinhos abandonados, relatórios).
 
 ## Contexto necessário
 - `TODO-RETOMAR-DESENVOLVIMENTO.md` é o histórico completo e detalhado de toda a sessão (todos os

@@ -285,9 +285,31 @@ não versionado) em `.superpowers/sdd/progress.md`.
   alterada — segura pra `prisma db push` sem sequenciamento especial (confirmado que o `ALTER TYPE
   ... ADD VALUE` não é consumido na mesma operação, então a restrição de transação não se aplica).
   **Ainda não deployado.**
-- [ ] **Fase 2** (não iniciada): aplicar o mesmo padrão já validado aos domínios restantes do
-  escopo v1 (lotes/categorias/percursos, inscrições/pedidos, cupons, pagamentos/estornos,
-  resultados, carrinhos abandonados, relatórios/exportações CSV). Nunca entram (nem na Fase 2):
+### Usuários assistentes — Fase 2, domínio 1: Lotes/Categorias/Percursos (2026-07-14)
+- [x] Fase 2 decidida como rollout sequencial, um domínio por vez (não um plano único cobrindo os
+  ~50 ações restantes de uma vez). Primeiro domínio: Lotes/Categorias/Percursos, complementa
+  diretamente Eventos (mesmo fluxo de configuração de evento do organizador).
+  **Achados da pesquisa técnica que corrigiram a spec inicial** (antes de escrever o plano): os 3
+  `GET` (listar lotes/categorias/percursos) são públicos hoje, sem checagem de sessão nenhuma —
+  não existe chave `.view` neste domínio (diferente de Eventos); e só `POST` de criar lote já
+  tinha bypass de admin no código original, as outras 8 ações de escrita nunca tiveram — decisão
+  confirmada de preservar essa assimetria exatamente como está, sem uniformizar.
+  9 chaves de permissão: `batches.create/edit/delete`, `categories.create/edit/delete`,
+  `routes.create/edit/delete`. Spec:
+  `docs/superpowers/specs/2026-07-14-usuarios-assistentes-fase2-lotes-categorias-percursos-design.md`.
+  Plano: `docs/superpowers/plans/2026-07-14-usuarios-assistentes-fase2-lotes-categorias-percursos.md`.
+  Commits `faddd4c..3b9198b` (4 tarefas, subagent-driven-development, sem nenhum achado
+  Crítico/Importante em nenhuma revisão). Review final (opus): pronto pra merge, 705/705 testes,
+  `tsc --noEmit` limpo. Confirmado ponta a ponta: assimetria de bypass correta (só
+  `batches.create`), os 3 `GET` intocados, isolamento cross-organizador funcionando (assistente
+  de um organizador nunca edita recurso de outro). Não existia nenhum teste pras 6 rotas deste
+  domínio antes — todos escritos do zero.
+  **Sem migração de banco** — reaproveita 100% o schema da Fase 1 (`AssistantPermission.actionKey`
+  já era string livre).
+  **Ainda não deployado** (depende do deploy da Fase 1, que também está pendente).
+- [ ] **Domínios restantes da Fase 2** (não iniciados, cada um vira seu próprio ciclo
+  spec→plano→implementação→revisão): inscrições/pedidos, cupons, pagamentos/estornos, resultados,
+  carrinhos abandonados, relatórios/exportações CSV. Nunca entram (nem em fases futuras):
   Backup/Restauração, Configurações da Plataforma, Gestão de Usuários (trocar papel/redefinir
   senha), WhatsApp/SMTP de plataforma, Auditoria, Repasses, Perfil/conta pessoal.
 
