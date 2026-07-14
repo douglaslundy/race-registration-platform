@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { createOrPromoteAssistant } from "@/lib/assistants/create-or-promote";
 
 const schema = z.object({
@@ -29,4 +30,35 @@ export async function POST(req: NextRequest) {
 
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json({ userId: result.userId, isNew: result.isNew }, { status: 201 });
+}
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  const users = await db.user.findMany({
+    where: { role: "ASSISTANT" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      active: true,
+      createdAt: true,
+      assistantPermissions: { select: { actionKey: true } },
+    },
+  });
+
+  const assistants = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    active: u.active,
+    createdAt: u.createdAt,
+    permissions: u.assistantPermissions.map((p) => p.actionKey),
+  }));
+
+  return NextResponse.json({ assistants });
 }
