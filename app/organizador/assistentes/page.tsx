@@ -10,6 +10,15 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "events.delete", label: "Excluir meus eventos" },
   { key: "events.archive", label: "Arquivar/cancelar meus eventos" },
   { key: "events.duplicate", label: "Duplicar meus eventos" },
+  { key: "batches.create", label: "Criar lote de ingresso" },
+  { key: "batches.edit", label: "Editar lote de ingresso" },
+  { key: "batches.delete", label: "Excluir lote de ingresso" },
+  { key: "categories.create", label: "Criar categoria" },
+  { key: "categories.edit", label: "Editar categoria" },
+  { key: "categories.delete", label: "Excluir categoria" },
+  { key: "routes.create", label: "Criar percurso" },
+  { key: "routes.edit", label: "Editar percurso" },
+  { key: "routes.delete", label: "Excluir percurso" },
 ];
 
 export default function OrganizerAssistentesPage() {

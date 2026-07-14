@@ -11,6 +11,7 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "events.edit", label: "Editar evento (qualquer)" },
   { key: "events.delete", label: "Excluir evento (qualquer)" },
   { key: "events.archive", label: "Arquivar/cancelar evento (qualquer)" },
+  { key: "batches.create", label: "Criar lote de ingresso (qualquer evento)" },
 ];
 
 export default function AdminAssistentesPage() {
