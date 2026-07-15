@@ -60,9 +60,11 @@ de design, só aplicação consistente do padrão já validado.
    nesse serviço compartilhado — cada rota continua montando seu próprio `where`/parâmetro antes
    de chamar `refundPayment()`/`resolveRefundManually()`.
 
-6. **Nenhuma das 8 rotas tem teste hoje** — todos os testes deste domínio são escritos do zero
-   (mesma situação de Lotes/Categorias/Percursos e Cupons; diferente de Inscrições/Pedidos, onde
-   todas as 11 rotas já tinham teste).
+6. **6 das 8 rotas já têm teste hoje** (confirmado lendo `tests/` diretamente, não só o
+   catálogo) — `manual-resolve` (organizador e admin), `reconciliation` (organizador e admin) e
+   as 2 rotas de exportação de pagamento. Só as 2 rotas de `refund` (organizador e admin) não têm
+   teste nenhum. Mais parecido com Inscrições/Pedidos (a maioria já tinha teste) do que com
+   Lotes/Categorias/Percursos ou Cupons (nenhuma tinha).
 
 ## Decisões
 
@@ -128,8 +130,9 @@ Nenhuma peça de infraestrutura nova — reaproveita 100% do que a Fase 1 já co
 
 ## Testes
 
-Nenhuma das 8 rotas tem teste hoje — todos escritos do zero, seguindo a mesma estrutura já usada
-nos domínios anteriores: titular continua funcionando sem regressão, assistente com a permissão
+6 das 8 rotas já têm teste hoje e serão estendidas (lidas primeiro, casos novos adicionados sem
+tocar nos existentes) — só as 2 rotas de `refund` são escritas do zero. Mesma estrutura de casos
+usada nos domínios anteriores: titular continua funcionando sem regressão, assistente com a permissão
 certa funciona, assistente sem a permissão é barrado com 403; nas rotas admin `-any`/`export`,
 admin titular continua funcionando, assistente-de-admin com a permissão funciona,
 assistente-de-organizador mesmo com a chave errada concedida por engano é barrado (mesmo padrão
