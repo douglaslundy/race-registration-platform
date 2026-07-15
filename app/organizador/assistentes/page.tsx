@@ -34,6 +34,8 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "payments.refund", label: "Estornar pagamento" },
   { key: "payments.manual-resolve", label: "Resolver estorno manualmente" },
   { key: "payments.reconciliation", label: "Conciliar pagamentos com o gateway (meus eventos)" },
+  { key: "results.import", label: "Importar resultados via CSV" },
+  { key: "results.publish", label: "Publicar resultados" },
 ];
 
 export default function OrganizerAssistentesPage() {
