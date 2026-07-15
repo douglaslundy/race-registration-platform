@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { checkApiPermission } from "@/lib/auth/rbac";
 import { expirePendingPayments, expireAbandonedOrders } from "@/lib/payment/expire-payments";
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "ORGANIZER" && session.user.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  const check = await checkApiPermission("registrations.expire-payments");
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  let organizerUserId = session.user.id;
+  if (session.user.role === "ASSISTANT") {
+    const assistant = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { createdByUserId: true },
+    });
+    organizerUserId = assistant?.createdByUserId ?? "__none__";
   }
 
   const [payments, orders] = await Promise.all([
-    expirePendingPayments({ organizerUserId: session.user.id }),
-    expireAbandonedOrders({ organizerUserId: session.user.id }),
+    expirePendingPayments({ organizerUserId }),
+    expireAbandonedOrders({ organizerUserId }),
   ]);
   return NextResponse.json({ checked: payments.checked + orders.checked, expired: payments.expired + orders.expired });
 }

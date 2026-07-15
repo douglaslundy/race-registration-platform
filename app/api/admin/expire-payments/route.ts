@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { expirePendingPayments, expireAbandonedOrders } from "@/lib/payment/expire-payments";
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdminOnlyApiPermission("registrations.expire-payments-any");
+  if (!check.allowed) return check.response;
 
   const [payments, orders] = await Promise.all([
     expirePendingPayments(),
