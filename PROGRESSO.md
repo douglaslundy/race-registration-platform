@@ -4,30 +4,30 @@
 2026-07-15
 
 ## Tarefa em andamento
-Nenhuma. **Fase 2 domínio 3 (Cupons) concluída, revisada (7/7 tarefas + revisão final de branch
-inteira) e aprovada como pronta pra merge** — executada em modo piloto automático (usuário saiu,
-pediu decidir sempre pelo recomendado e não pausar por confirmação, exceto deploy). Commits
-`f8712bc..af01786`. **Ainda não foi deployada.**
+Nenhuma. **Fase 2 domínio 4 (Pagamentos/Estornos) concluída, revisada (6/6 tarefas + revisão
+final de branch inteira independente) e aprovada como pronta pra merge** — executada em modo
+piloto automático. Commits `8d2f018..9a1c10a`. **Ainda não foi deployada.**
 
-Duas correções de segurança preexistentes (não relacionadas a assistentes) corrigidas junto, com
-aprovação prévia do usuário: (1) `GET .../coupons` não tinha autenticação nenhuma — agora exige
-`coupons.view`; (2) `PATCH`/`DELETE .../coupons/[couponId]` tinham IDOR (qualquer organizador
-dono de 1 evento podia editar/excluir qualquer cupom do sistema, inclusive cupom global de admin)
-— agora verificam `eventId` do cupom antes de mutar. Revisor final confirmou as duas fechadas
-ponta-a-ponta.
+Particularidades deste domínio: as 3 rotas de organizador (refund, manual-resolve,
+reconciliation) filtram por `organizer: {userId}` (User.id), então usam resolução LOCAL de
+`organizerUserId` (padrão do expire-payments), não `resolveActingScope`. As tarefas foram
+executadas inline pelo controller (subagente caiu por limite de sessão na Task 1) com TDD
+red-green por tarefa; a revisão final (opus) foi o único olhar independente e aprovou sem achados
+Críticos/Importantes. Minor registrados no ledger: sem teste do fallback `createdByUserId` null;
+bloco de resolução duplicado 4x inline (extrair helper se uma 5ª rota precisar).
 
-Os 4 achados Minor da revisão final foram corrigidos a pedido do usuário (commit `d55d6a2`): (1)
-DELETE do organizador ganhou a guarda "cupom já usado em pedido" (409), igual ao admin; (2)+(3)
-testes novos de 401 e admin-sem-bypass em `event-coupon-detail-route.test.ts`; (4) `report-export`
-agora reusa `escapeCsvValue`. Suite 788/788, tsc limpo.
+Domínio 3 (Cupons) também concluído nesta sessão: commits `f8712bc..af01786` + fixup `d55d6a2`
+(4 achados Minor corrigidos a pedido do usuário). Inclui 2 correções de segurança preexistentes
+aprovadas pelo usuário (gap de auth no GET de cupons; IDOR no PATCH/DELETE de cupom).
 
-Agora são **quatro incrementos prontos, revisados, sem nenhum deployado ainda**:
+Agora são **cinco incrementos prontos, revisados, sem nenhum deployado ainda**:
 
 - Fase 1: commits `ae4c4b1..df24a04`. Tem migração de banco pendente (`ASSISTANT` enum,
   `createdByUserId`, tabela `assistant_permissions`).
 - Fase 2 domínio 1: commits `faddd4c..3b9198b`. Sem migração própria.
 - Fase 2 domínio 2: commits `3ab3aa3..0f2792c`. Sem migração própria (reusa a infra da Fase 1).
-- Fase 2 domínio 3: commits `f8712bc..af01786`. Sem migração própria (reusa a infra da Fase 1).
+- Fase 2 domínio 3: commits `f8712bc..af01786` + `d55d6a2`. Sem migração própria.
+- Fase 2 domínio 4: commits `8d2f018..9a1c10a`. Sem migração própria.
 
 **Deploy segue exigindo confirmação explícita do usuário**, não incluído no autopilot.
 
@@ -58,10 +58,10 @@ nesses 2 arquivos de teste, considerar alinhar ao padrão mais forte dos outros 
   `.superpowers/sdd/progress.md`.
 - Specs: `docs/superpowers/specs/2026-07-14-usuarios-assistentes-fase1-design.md`,
   `...-fase2-lotes-categorias-percursos-design.md`, `...-fase2-inscricoes-pedidos-design.md`,
-  `...-fase2-cupons-design.md` (2026-07-15).
+  `...-fase2-cupons-design.md`, `...-fase2-pagamentos-estornos-design.md` (2026-07-15).
 - Planos: `docs/superpowers/plans/2026-07-14-usuarios-assistentes-fase1.md`,
   `...-fase2-lotes-categorias-percursos.md`, `...-fase2-inscricoes-pedidos.md`,
-  `...-fase2-cupons.md` (2026-07-15).
+  `...-fase2-cupons.md`, `...-fase2-pagamentos-estornos.md` (2026-07-15).
 - Catálogo de ações do sistema (base pra qualquer trabalho futuro de permissões):
   `docs/superpowers/specs/2026-07-14-analise-acoes-sistema.md`.
 - Migração pendente de deploy: `prisma/migrations/20260714010000_add_assistant_users` — enum
@@ -78,18 +78,20 @@ nesses 2 arquivos de teste, considerar alinhar ao padrão mais forte dos outros 
   `3ab3aa3..0f2792c`, revisado tarefa-a-tarefa e em revisão final de branch inteira (pronto pra
   merge), não deployado ainda.
 - [x] Fase 2 domínio 3 (Cupons) — 9 chaves de permissão em 6 rotas + UI, commits
-  `f8712bc..af01786`, revisado tarefa-a-tarefa e em revisão final de branch inteira (pronto pra
-  merge), não deployado ainda. Corrigiu junto 2 achados de segurança preexistentes (gap de auth
-  + IDOR, ambos aprovados previamente pelo usuário).
+  `f8712bc..af01786` + fixup `d55d6a2`, revisado tarefa-a-tarefa e em revisão final de branch
+  inteira (pronto pra merge), não deployado ainda. Corrigiu junto 2 achados de segurança
+  preexistentes (gap de auth + IDOR, ambos aprovados previamente pelo usuário).
+- [x] Fase 2 domínio 4 (Pagamentos/Estornos) — 8 chaves de permissão em 7 rotas + UI, commits
+  `8d2f018..9a1c10a`, executado inline com TDD e revisão final independente (pronto pra merge),
+  não deployado ainda.
 - [x] Todos os lotes anteriores desta sessão (ver `TODO-RETOMAR-DESENVOLVIMENTO.md`): correções de
   notificação/performance/dashboard, resumo diário + destinatários extras — todos implementados,
   revisados e **já deployados em produção**.
 
 ## Próxima tarefa
-Usuário pediu explicitamente pra seguir em frente (modo automático) — próximo é o domínio
-Pagamentos/Estornos da Fase 2 (maior sensibilidade financeira: estornar pagamento, resolver
-estorno manual, conciliação, exportar CSV, admin + organizador), seu próprio ciclo
-spec→plano→implementação→revisão, seguindo o mesmo padrão dos 3 domínios anteriores. Ao final,
-apresentar resumo e perguntar sobre deploy conjunto das fases já prontas (envolve 1 migração de
-banco `20260714010000_add_assistant_users` + `git pull`/rebuild na VPS) — deploy continua fora do
-autopilot, exige confirmação explícita.
+Apresentar ao usuário o resumo da sessão (domínios 3 e 4 concluídos) e perguntar sobre deploy
+conjunto das 5 fases prontas (envolve 1 migração de banco `20260714010000_add_assistant_users` +
+`git pull`/rebuild na VPS) — deploy continua fora do autopilot, exige confirmação explícita. Se
+optar por seguir implementando: domínios restantes da Fase 2 são Resultados (importar/publicar
+CSV, pequeno), Carrinhos Abandonados, e Relatórios/Exportações (relatório financeiro admin +
+organizador) — cada um seu próprio ciclo spec→plano→implementação→revisão.
