@@ -70,4 +70,50 @@ describe("admin report export", () => {
       }),
     );
   });
+
+  it("retorna 403 pra organizador titular (não é admin)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+
+    const res = await GET(new Request("http://localhost/api/admin/report/export") as any);
+
+    expect(res.status).toBe(403);
+    expect(dbMock.payment.aggregate).not.toHaveBeenCalled();
+  });
+
+  it("assistente de admin com a permissão exporta o relatório", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    dbMock.payment.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
+      .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({ _count: { id: 0 }, _sum: { platformFeeAmount: 0 } });
+    dbMock.event.count.mockResolvedValueOnce(0);
+    dbMock.registration.count.mockResolvedValueOnce(0);
+
+    const res = await GET(new Request("http://localhost/api/admin/report/export") as any);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente de organizador com a chave concedida por engano é barrado", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await GET(new Request("http://localhost/api/admin/report/export") as any);
+
+    expect(res.status).toBe(403);
+    expect(dbMock.payment.aggregate).not.toHaveBeenCalled();
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await GET(new Request("http://localhost/api/admin/report/export") as any);
+
+    expect(res.status).toBe(403);
+  });
 });

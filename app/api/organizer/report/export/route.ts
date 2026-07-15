@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { escapeCsvValue, parseDateInput } from "@/lib/admin/audit";
 import { formatCurrency } from "@/lib/format";
 import { buildOrganizerOrderFeeWhere, buildOrganizerPaymentWhere, buildOrganizerPayoutWhere, buildOrganizerRefundWhere } from "@/lib/organizer/report";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+  const check = await checkApiPermission("reports.export");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
-  const organizer = await db.organizerProfile.findUnique({ where: { userId: session.user.id } });
-  if (!organizer) {
+  const scope = await resolveActingScope(session);
+  if (!scope.organizerId) {
     return NextResponse.json({ error: "Perfil de organizador não encontrado" }, { status: 404 });
   }
 
@@ -24,7 +23,7 @@ export async function GET(req: NextRequest) {
   const from = parseDateInput(de, false) ?? new Date(new Date().getFullYear(), 0, 1);
   const to = parseDateInput(ate, true) ?? new Date();
 
-  const filter = { organizerId: organizer.id, from, to, eventId };
+  const filter = { organizerId: scope.organizerId, from, to, eventId };
 
   const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg] = await Promise.all([
     db.payment.aggregate({
