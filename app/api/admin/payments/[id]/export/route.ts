@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { escapeCsvValue } from "@/lib/admin/payments";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdminOnlyApiPermission("payments.export");
+  if (!check.allowed) return check.response;
 
   const { id } = await params;
   const payment = await db.payment.findUnique({
