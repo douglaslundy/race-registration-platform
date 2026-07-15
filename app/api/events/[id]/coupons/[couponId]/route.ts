@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -9,12 +9,17 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; couponId: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("coupons.edit");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id, couponId } = await params;
-  const event = await db.event.findFirst({ where: { id, organizer: { userId: session.user.id } } });
+  const scope = await resolveActingScope(session);
+  const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  const existingCoupon = await db.coupon.findFirst({ where: { id: couponId, eventId: id } });
+  if (!existingCoupon) return NextResponse.json({ error: "Cupom não encontrado" }, { status: 404 });
 
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
@@ -32,15 +37,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; couponId: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const check = await checkApiPermission("coupons.delete");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id, couponId } = await params;
+  const scope = await resolveActingScope(session);
 
   const event = await db.event.findFirst({
-    where: { id, organizer: { userId: session.user.id } },
+    where: { id, organizerId: scope.organizerId ?? "__none__" },
   });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  const existingCoupon = await db.coupon.findFirst({ where: { id: couponId, eventId: id } });
+  if (!existingCoupon) return NextResponse.json({ error: "Cupom não encontrado" }, { status: 404 });
 
   await db.coupon.delete({ where: { id: couponId } });
   return NextResponse.json({ success: true });
