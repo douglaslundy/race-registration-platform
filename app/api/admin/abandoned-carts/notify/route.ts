@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { sendAbandonedCartAlert } from "@/lib/alerts/abandoned-cart";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
@@ -13,10 +13,9 @@ const ORDER_SELECT = {
 } as const;
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdminOnlyApiPermission("abandoned-carts.notify-any");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const body = await req.json().catch(() => ({}));
   const settings = await getAbandonedCartAlertSettings();

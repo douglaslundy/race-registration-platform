@@ -158,4 +158,35 @@ describe("POST /api/organizer/abandoned-carts/notify", () => {
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(400);
   });
+
+  it("assistente de organizador com a permissão notifica escopado ao userId do criador", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-user-1" });
+    dbMock.order.findFirst.mockResolvedValueOnce(orderFixture);
+    dbMock.auditLog.create.mockResolvedValueOnce({});
+    vi.mocked(sendAbandonedCartAlert).mockResolvedValueOnce({ sent: true });
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+    const body = await res.json();
+
+    expect(dbMock.order.findFirst).toHaveBeenCalledWith({
+      where: { id: "order-1", status: "PENDING", event: { organizer: { userId: "org-user-1" } } },
+      select: expect.any(Object),
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: "assistant-1" }),
+    });
+    expect(body).toEqual({ notified: 1, total: 1 });
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+
+    expect(res.status).toBe(403);
+    expect(dbMock.order.findFirst).not.toHaveBeenCalled();
+  });
 });

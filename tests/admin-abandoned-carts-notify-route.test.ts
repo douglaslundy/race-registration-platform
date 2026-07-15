@@ -104,4 +104,38 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
     expect(dbMock.auditLog.create).not.toHaveBeenCalled();
     expect(body).toEqual({ notified: 0, total: 1 });
   });
+
+  it("assistente de admin com a permissão notifica qualquer pedido", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    dbMock.order.findFirst.mockResolvedValueOnce(orderFixture);
+    dbMock.auditLog.create.mockResolvedValueOnce({});
+    vi.mocked(sendAbandonedCartAlert).mockResolvedValueOnce({ sent: true });
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+    const body = await res.json();
+
+    expect(body).toEqual({ notified: 1, total: 1 });
+  });
+
+  it("assistente de organizador com a chave concedida por engano é barrado", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+
+    expect(res.status).toBe(403);
+    expect(dbMock.order.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+
+    expect(res.status).toBe(403);
+  });
 });

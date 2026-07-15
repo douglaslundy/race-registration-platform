@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { sendAbandonedCartAlert } from "@/lib/alerts/abandoned-cart";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
@@ -13,19 +13,27 @@ const ORDER_SELECT = {
 } as const;
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "ORGANIZER" && session.user.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  const check = await checkApiPermission("abandoned-carts.notify");
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  let organizerUserId = session.user.id;
+  if (session.user.role === "ASSISTANT") {
+    const assistant = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { createdByUserId: true },
+    });
+    organizerUserId = assistant?.createdByUserId ?? "__none__";
   }
 
   const body = await req.json().catch(() => ({}));
   const settings = await getAbandonedCartAlertSettings();
-  const scope = { organizerUserId: session.user.id };
+  const scope = { organizerUserId };
 
   let orders;
   if (body.orderId) {
     const order = await db.order.findFirst({
-      where: { id: body.orderId, status: "PENDING", event: { organizer: { userId: session.user.id } } },
+      where: { id: body.orderId, status: "PENDING", event: { organizer: { userId: organizerUserId } } },
       select: ORDER_SELECT,
     });
     if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
