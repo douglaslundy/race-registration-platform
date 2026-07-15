@@ -116,4 +116,13 @@ describe("admin report export", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("retorna 401 sem sessão", async () => {
+    authMock.mockResolvedValue(null as any);
+
+    const res = await GET(new Request("http://localhost/api/admin/report/export") as any);
+
+    expect(res.status).toBe(401);
+    expect(dbMock.payment.aggregate).not.toHaveBeenCalled();
+  });
 });

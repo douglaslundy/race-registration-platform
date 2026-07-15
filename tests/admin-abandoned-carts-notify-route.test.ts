@@ -138,4 +138,13 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("retorna 401 sem sessão", async () => {
+    vi.mocked(auth).mockResolvedValue(null as any);
+
+    const res = await POST(makeRequest({ orderId: "order-1" }));
+
+    expect(res.status).toBe(401);
+    expect(dbMock.order.findFirst).not.toHaveBeenCalled();
+  });
 });

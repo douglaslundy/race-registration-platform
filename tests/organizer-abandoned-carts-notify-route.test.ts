@@ -189,4 +189,25 @@ describe("POST /api/organizer/abandoned-carts/notify", () => {
     expect(res.status).toBe(403);
     expect(dbMock.order.findFirst).not.toHaveBeenCalled();
   });
+
+  it("assistente de organizador envia em massa escopado ao userId do criador", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-user-1" });
+    dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
+    dbMock.auditLog.create.mockResolvedValueOnce({});
+    vi.mocked(sendAbandonedCartAlert).mockResolvedValueOnce({ sent: true });
+
+    const res = await POST(makeRequest({ all: true }));
+    const body = await res.json();
+
+    expect(dbMock.order.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([{ event: { organizer: { userId: "org-user-1" } } }]),
+        }),
+      }),
+    );
+    expect(body).toEqual({ notified: 1, total: 1 });
+  });
 });
