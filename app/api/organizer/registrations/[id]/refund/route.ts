@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { refundPayment } from "@/lib/payment/refund-service";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "ORGANIZER" && session.user.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  const check = await checkApiPermission("payments.refund");
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  let organizerUserId = session.user.id;
+  if (session.user.role === "ASSISTANT") {
+    const assistant = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { createdByUserId: true },
+    });
+    organizerUserId = assistant?.createdByUserId ?? "__none__";
   }
 
   const { id } = await params;
 
   const registration = await db.registration.findFirst({
-    where: { id, event: { organizer: { userId: session.user.id } } },
+    where: { id, event: { organizer: { userId: organizerUserId } } },
     include: {
       order: {
         include: {

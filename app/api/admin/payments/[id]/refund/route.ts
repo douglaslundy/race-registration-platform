@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { refundPayment } from "@/lib/payment/refund-service";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdminOnlyApiPermission("payments.refund-any");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
