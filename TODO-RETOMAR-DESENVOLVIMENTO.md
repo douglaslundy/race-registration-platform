@@ -307,11 +307,54 @@ não versionado) em `.superpowers/sdd/progress.md`.
   **Sem migração de banco** — reaproveita 100% o schema da Fase 1 (`AssistantPermission.actionKey`
   já era string livre).
   **Ainda não deployado** (depende do deploy da Fase 1, que também está pendente).
+### Usuários assistentes — Fase 2, domínio 2: Inscrições/Pedidos (2026-07-14/15)
+- [x] Segundo domínio da Fase 2, cobrindo as 11 ações do catálogo relacionadas a inscrições/
+  pedidos: decidir cancelamento, confirmar inscrição manualmente, editar dados do atleta, reenviar
+  e-mail de confirmação, reenviar notificação de erro de pagamento, expirar pagamentos pendentes,
+  ver/exportar inscritos. **Executado em modo autônomo** (piloto automático) durante a madrugada
+  de 2026-07-15, por pedido explícito do usuário antes de dormir — "decidir sempre pelo
+  recomendado", concluir todas as tarefas do plano e a revisão final, deixar resumo pra avaliação
+  de manhã. Deploy explicitamente excluído do autopilot (segue exigindo confirmação, como nas
+  fases anteriores).
+  **Achados da pesquisa técnica que corrigiram a spec inicial:** diferente do domínio anterior, o
+  `GET` de listar/exportar inscritos NÃO é público — tem chave `.view` de verdade
+  (`registrations.view`), com o mesmo padrão de bypass de admin de `batches.create`. 5 das 6 rotas
+  de organizador aceitam `ADMIN` no *role check* mas o filtro de dados nunca deixa isso funcionar
+  na prática (bug pré-existente) — decisão confirmada com o usuário: replicar exatamente como
+  está, não corrigir. Rotas admin/organizador que fazem a mesma operação de negócio mas são
+  arquivos físicos separados ganharam **chaves separadas** (sufixo `-any` do lado admin), diferente
+  de Eventos (mesmo arquivo, mesma chave). 11 chaves de permissão: `registrations.view`,
+  `registrations.cancellation-decision(-any)`, `registrations.manual-confirm`,
+  `registrations.edit-athlete`, `registrations.resend-confirmation-email(-any)`,
+  `registrations.resend-payment-notification(-any)`, `registrations.expire-payments(-any)`.
+  Todas as 11 rotas já tinham teste antes deste domínio (diferente do anterior) — o plano estendeu
+  os arquivos existentes em vez de criar do zero.
+  **Peça técnica própria deste domínio:** `registrations.expire-payments` precisa de
+  `organizerUserId` (um `User.id`), não `organizerId` (um `OrganizerProfile.id`, que é o que
+  `resolveActingScope` retorna) — a lib compartilhada `lib/payment/expire-payments.ts` já esperava
+  esse formato antes desta feature. Resolvido localmente dentro da rota organizer (sem tocar
+  `lib/auth/rbac.ts`, já revisado/fechado): titular usa `session.user.id`, assistente faz 1 query
+  extra pra ler `createdByUserId`, com fallback seguro `"__none__"` (verificado pelo revisor final:
+  produz varredura vazia, nunca varredura da plataforma inteira sem filtro).
+  Spec: `docs/superpowers/specs/2026-07-14-usuarios-assistentes-fase2-inscricoes-pedidos-design.md`.
+  Plano: `docs/superpowers/plans/2026-07-14-usuarios-assistentes-fase2-inscricoes-pedidos.md`.
+  Commits `3ab3aa3..0f2792c` (8 tarefas, subagent-driven-development, nenhum achado
+  Crítico/Importante em nenhuma revisão de tarefa). Review final (opus): pronto pra merge, 730/730
+  testes, `tsc --noEmit` limpo. Confirmado de forma independente pelo revisor final: padrão
+  uniforme nas 6 rotas organizer e nas 4 rotas admin `-any`; `lib/auth/rbac.ts` e
+  `lib/payment/expire-payments.ts` comprovadamente intocados; sentinel `"__none__"` seguro;
+  `edit-athlete` mantém ADMIN sem acesso funcional; nenhuma rota fora de escopo tocada por engano.
+  Achado Minor não corrigido: os 2 arquivos de teste de `cancellation-decision` mockam o módulo
+  `@/lib/auth/rbac` inteiro (diferente das outras 9 rotas do domínio, que mockam só `@/lib/auth` e
+  exercitam a lógica real) — os casos de assistente nesses 2 arquivos não pegariam uma regressão
+  real de chave/escopo.
+  **Sem migração de banco** — reaproveita 100% o schema da Fase 1.
+  **Ainda não deployado.**
 - [ ] **Domínios restantes da Fase 2** (não iniciados, cada um vira seu próprio ciclo
-  spec→plano→implementação→revisão): inscrições/pedidos, cupons, pagamentos/estornos, resultados,
-  carrinhos abandonados, relatórios/exportações CSV. Nunca entram (nem em fases futuras):
-  Backup/Restauração, Configurações da Plataforma, Gestão de Usuários (trocar papel/redefinir
-  senha), WhatsApp/SMTP de plataforma, Auditoria, Repasses, Perfil/conta pessoal.
+  spec→plano→implementação→revisão): cupons, pagamentos/estornos, resultados, carrinhos
+  abandonados, relatórios/exportações CSV. Nunca entram (nem em fases futuras): Backup/
+  Restauração, Configurações da Plataforma, Gestão de Usuários (trocar papel/redefinir senha),
+  WhatsApp/SMTP de plataforma, Auditoria, Repasses, Perfil/conta pessoal.
 
 ### Deploy 2026-07-14 (4ª leva — commits `c0c57de..da02de3`, com migração de banco)
 - [x] Push → `git pull` → `docker build` → `docker compose run --rm app sh -c "npx prisma db push
