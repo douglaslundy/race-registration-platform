@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { escapeCsvValue } from "@/lib/admin/events";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const check = await checkApiPermission("coupons.report-export");
@@ -73,7 +74,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       (o.totalAmount / 100).toFixed(2),
       o.createdAt.toISOString().slice(0, 10),
     ]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      .map(escapeCsvValue)
       .join(",");
   });
 

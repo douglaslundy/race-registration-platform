@@ -52,6 +52,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const existingCoupon = await db.coupon.findFirst({ where: { id: couponId, eventId: id } });
   if (!existingCoupon) return NextResponse.json({ error: "Cupom não encontrado" }, { status: 404 });
 
+  // Não excluir cupom já utilizado em pedidos (mantém o histórico de rastreamento).
+  const usedInOrder = await db.order.findFirst({ where: { couponId }, select: { id: true } });
+  if (usedInOrder) {
+    return NextResponse.json(
+      { error: "Cupom já utilizado em pedidos. Ajuste o limite de usos ou a validade em vez de excluir." },
+      { status: 409 }
+    );
+  }
+
   await db.coupon.delete({ where: { id: couponId } });
   return NextResponse.json({ success: true });
 }
