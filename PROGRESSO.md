@@ -16,12 +16,10 @@ dono de 1 evento podia editar/excluir qualquer cupom do sistema, inclusive cupom
 — agora verificam `eventId` do cupom antes de mutar. Revisor final confirmou as duas fechadas
 ponta-a-ponta.
 
-Achados Minor registrados no ledger (não bloqueantes, não implementados por estarem fora do
-escopo pré-aprovado): (1) DELETE do organizador não tem a guarda "cupom já usado em pedido" que o
-DELETE do admin tem — provável 500 em vez de 409 amigável, bug pré-existente só ficou visível
-agora; (2) falta teste "admin sem bypass" nas rotas edit/delete do organizador (existe só em
-create); (3) `event-coupon-detail-route.test.ts` sem caso explícito de 401; (4) CSV do
-report-export não reusa o helper `escapeCsvValue` que o export do admin já usa.
+Os 4 achados Minor da revisão final foram corrigidos a pedido do usuário (commit `d55d6a2`): (1)
+DELETE do organizador ganhou a guarda "cupom já usado em pedido" (409), igual ao admin; (2)+(3)
+testes novos de 401 e admin-sem-bypass em `event-coupon-detail-route.test.ts`; (4) `report-export`
+agora reusa `escapeCsvValue`. Suite 788/788, tsc limpo.
 
 Agora são **quatro incrementos prontos, revisados, sem nenhum deployado ainda**:
 
@@ -88,11 +86,10 @@ nesses 2 arquivos de teste, considerar alinhar ao padrão mais forte dos outros 
   revisados e **já deployados em produção**.
 
 ## Próxima tarefa
-Apresentar ao usuário o resumo desta sessão (Fase 2 domínio 3 / Cupons concluída) e perguntar
-sobre deploy conjunto das 4 fases de usuários assistentes já prontas (Fase 1 + Fase 2 domínios 1,
-2 e 3) — envolve 1 migração de banco (`20260714010000_add_assistant_users`) e um `git pull` +
-rebuild na VPS. Se optar por seguir implementando em vez de deployar: próximos domínios da Fase 2
-(pagamentos/estornos, resultados, carrinhos abandonados, relatórios/exportações CSV) — cada um
-seu próprio ciclo spec→plano→implementação→revisão. Os 4 achados Minor do domínio Cupons (ver
-seção "Tarefa em andamento" acima) também podem virar tarefas próprias se o usuário quiser
-corrigi-los.
+Usuário pediu explicitamente pra seguir em frente (modo automático) — próximo é o domínio
+Pagamentos/Estornos da Fase 2 (maior sensibilidade financeira: estornar pagamento, resolver
+estorno manual, conciliação, exportar CSV, admin + organizador), seu próprio ciclo
+spec→plano→implementação→revisão, seguindo o mesmo padrão dos 3 domínios anteriores. Ao final,
+apresentar resumo e perguntar sobre deploy conjunto das fases já prontas (envolve 1 migração de
+banco `20260714010000_add_assistant_users` + `git pull`/rebuild na VPS) — deploy continua fora do
+autopilot, exige confirmação explícita.
