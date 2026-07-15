@@ -19,6 +19,13 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "routes.create", label: "Criar percurso" },
   { key: "routes.edit", label: "Editar percurso" },
   { key: "routes.delete", label: "Excluir percurso" },
+  { key: "registrations.view", label: "Ver e exportar meus inscritos" },
+  { key: "registrations.cancellation-decision", label: "Decidir cancelamento" },
+  { key: "registrations.manual-confirm", label: "Confirmar inscrição manualmente" },
+  { key: "registrations.edit-athlete", label: "Editar dados do atleta" },
+  { key: "registrations.resend-confirmation-email", label: "Reenviar e-mail de confirmação" },
+  { key: "registrations.resend-payment-notification", label: "Reenviar notificação de erro de pagamento" },
+  { key: "registrations.expire-payments", label: "Expirar pagamentos pendentes (meus eventos)" },
 ];
 
 export default function OrganizerAssistentesPage() {
