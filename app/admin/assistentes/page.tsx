@@ -17,6 +17,12 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "registrations.resend-confirmation-email-any", label: "Reenviar e-mail de confirmação (qualquer inscrição)" },
   { key: "registrations.resend-payment-notification-any", label: "Reenviar notificação de erro de pagamento (qualquer inscrição)" },
   { key: "registrations.expire-payments-any", label: "Expirar pagamentos pendentes (plataforma inteira)" },
+  { key: "coupons.view", label: "Ver cupons de um evento" },
+  { key: "coupons.report-export", label: "Exportar relatório de uso de cupons de um evento" },
+  { key: "coupons.create-any", label: "Criar cupom (qualquer evento ou global)" },
+  { key: "coupons.edit-any", label: "Editar cupom (qualquer)" },
+  { key: "coupons.delete-any", label: "Excluir cupom (qualquer)" },
+  { key: "coupons.export-all", label: "Exportar CSV de todos os cupons (plataforma inteira)" },
 ];
 
 export default function AdminAssistentesPage() {

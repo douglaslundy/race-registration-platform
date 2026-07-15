@@ -26,6 +26,11 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "registrations.resend-confirmation-email", label: "Reenviar e-mail de confirmação" },
   { key: "registrations.resend-payment-notification", label: "Reenviar notificação de erro de pagamento" },
   { key: "registrations.expire-payments", label: "Expirar pagamentos pendentes (meus eventos)" },
+  { key: "coupons.view", label: "Ver cupons de um evento" },
+  { key: "coupons.create", label: "Criar cupom" },
+  { key: "coupons.edit", label: "Editar cupom" },
+  { key: "coupons.delete", label: "Excluir cupom" },
+  { key: "coupons.report-export", label: "Exportar relatório de uso de cupons" },
 ];
 
 export default function OrganizerAssistentesPage() {
