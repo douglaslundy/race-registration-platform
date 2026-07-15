@@ -4,12 +4,15 @@
 2026-07-15
 
 ## Tarefa em andamento
-Nenhuma. **Fase 2 domínios 4 (Pagamentos/Estornos) e 5 (Resultados) concluídos, revisados e
-aprovados como prontos pra merge** — executados em modo piloto automático. Domínio 4: commits
-`8d2f018..9a1c10a`. Domínio 5: commits `7cb62f1, 32ab426, 09f2e0f` (inclui fix de segurança: o
-PATCH de publicar resultados não verificava posse do evento — qualquer organizador podia
-publicar import de qualquer evento; corrigido com a mesma resolução de escopo do POST). **Nada
-deployado ainda.**
+Nenhuma. **FASE 2 COMPLETA** — todos os 6 domínios do rollout de usuários assistentes
+implementados, testados (843/843, tsc limpo) e revisados, em modo piloto automático. Nesta
+sessão foram concluídos os domínios 3 (Cupons), 4 (Pagamentos/Estornos), 5 (Resultados) e 6
+(Carrinhos Abandonados + Relatórios). **Nada deployado ainda.**
+
+Fixes de segurança preexistentes embutidos nesta sessão (todos revisados e confirmados
+fechados): gap de auth no GET de cupons; IDOR no PATCH/DELETE de cupom; falta de verificação de
+posse no PATCH de publicar resultados. Fora do rollout por decisão de escopo (registrado nos
+specs): Usuários, Configurações da Plataforma, WhatsApp, Auditoria, Backup/Restore, Repasses.
 
 Particularidades deste domínio: as 3 rotas de organizador (refund, manual-resolve,
 reconciliation) filtram por `organizer: {userId}` (User.id), então usam resolução LOCAL de
@@ -23,7 +26,7 @@ Domínio 3 (Cupons) também concluído nesta sessão: commits `f8712bc..af01786`
 (4 achados Minor corrigidos a pedido do usuário). Inclui 2 correções de segurança preexistentes
 aprovadas pelo usuário (gap de auth no GET de cupons; IDOR no PATCH/DELETE de cupom).
 
-Agora são **seis incrementos prontos, revisados, sem nenhum deployado ainda**:
+Agora são **sete incrementos prontos, revisados, sem nenhum deployado ainda**:
 
 - Fase 1: commits `ae4c4b1..df24a04`. Tem migração de banco pendente (`ASSISTANT` enum,
   `createdByUserId`, tabela `assistant_permissions`).
@@ -32,6 +35,7 @@ Agora são **seis incrementos prontos, revisados, sem nenhum deployado ainda**:
 - Fase 2 domínio 3: commits `f8712bc..af01786` + `d55d6a2`. Sem migração própria.
 - Fase 2 domínio 4: commits `8d2f018..9a1c10a`. Sem migração própria.
 - Fase 2 domínio 5: commits `7cb62f1, 32ab426, 09f2e0f`. Sem migração própria.
+- Fase 2 domínio 6: commits `e6e0837, f991965, 5ec7b2d, becb964`. Sem migração própria.
 
 **Deploy segue exigindo confirmação explícita do usuário**, não incluído no autopilot.
 
@@ -88,14 +92,20 @@ nesses 2 arquivos de teste, considerar alinhar ao padrão mais forte dos outros 
 - [x] Fase 2 domínio 4 (Pagamentos/Estornos) — 8 chaves de permissão em 7 rotas + UI, commits
   `8d2f018..9a1c10a`, executado inline com TDD e revisão final independente (pronto pra merge),
   não deployado ainda.
+- [x] Fase 2 domínio 5 (Resultados) — 2 chaves + fix de posse no publicar, commits `7cb62f1,
+  32ab426, 09f2e0f`, revisado (pronto pra merge), não deployado ainda.
+- [x] Fase 2 domínio 6 (Carrinhos Abandonados + Relatórios) — 4 chaves em 4 rotas + UI, commits
+  `e6e0837, f991965, 5ec7b2d, becb964`, revisado (pronto pra merge), não deployado ainda.
+  **FASE 2 COMPLETA.**
 - [x] Todos os lotes anteriores desta sessão (ver `TODO-RETOMAR-DESENVOLVIMENTO.md`): correções de
   notificação/performance/dashboard, resumo diário + destinatários extras — todos implementados,
   revisados e **já deployados em produção**.
 
 ## Próxima tarefa
-Apresentar ao usuário o resumo da sessão (domínios 3 e 4 concluídos) e perguntar sobre deploy
-conjunto das 5 fases prontas (envolve 1 migração de banco `20260714010000_add_assistant_users` +
-`git pull`/rebuild na VPS) — deploy continua fora do autopilot, exige confirmação explícita. Se
-optar por seguir implementando: domínios restantes da Fase 2 são Resultados (importar/publicar
-CSV, pequeno), Carrinhos Abandonados, e Relatórios/Exportações (relatório financeiro admin +
-organizador) — cada um seu próprio ciclo spec→plano→implementação→revisão.
+**A Fase 2 do sistema de usuários assistentes está completa** — não há mais domínios pendentes
+do rollout. Próximo passo é a decisão de deploy conjunto dos 7 incrementos prontos (envolve 1
+migração de banco `20260714010000_add_assistant_users` + `git pull`/rebuild na VPS) — deploy
+exige confirmação explícita do usuário, fora do autopilot. Alternativas de trabalho futuro (se o
+usuário quiser): estender o modelo de permissões aos grupos admin-only de alto risco deixados
+fora do rollout (Usuários, Configurações, WhatsApp, Auditoria, Backup/Restore, Repasses); ou o
+sistema de rating (pendente, só com pedido explícito — ver memória).
