@@ -31,6 +31,9 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "coupons.edit", label: "Editar cupom" },
   { key: "coupons.delete", label: "Excluir cupom" },
   { key: "coupons.report-export", label: "Exportar relatório de uso de cupons" },
+  { key: "payments.refund", label: "Estornar pagamento" },
+  { key: "payments.manual-resolve", label: "Resolver estorno manualmente" },
+  { key: "payments.reconciliation", label: "Conciliar pagamentos com o gateway (meus eventos)" },
 ];
 
 export default function OrganizerAssistentesPage() {

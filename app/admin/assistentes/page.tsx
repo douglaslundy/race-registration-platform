@@ -23,6 +23,11 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "coupons.edit-any", label: "Editar cupom (qualquer)" },
   { key: "coupons.delete-any", label: "Excluir cupom (qualquer)" },
   { key: "coupons.export-all", label: "Exportar CSV de todos os cupons (plataforma inteira)" },
+  { key: "payments.refund-any", label: "Estornar pagamento (qualquer)" },
+  { key: "payments.manual-resolve-any", label: "Resolver estorno manualmente (qualquer)" },
+  { key: "payments.reconciliation-any", label: "Conciliar pagamentos com o gateway (plataforma inteira)" },
+  { key: "payments.export", label: "Exportar CSV de um pagamento específico" },
+  { key: "payments.export-all", label: "Exportar CSV de todos os pagamentos" },
 ];
 
 export default function AdminAssistentesPage() {
