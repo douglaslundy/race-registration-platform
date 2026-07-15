@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || !["ORGANIZER", "ADMIN"].includes(session.user.role)) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("coupons.report-export");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
-
-  const organizer = await db.organizerProfile.findUnique({ where: { userId: session.user.id } });
-  const event = await db.event.findFirst({
-    where: { id, ...(session.user.role !== "ADMIN" ? { organizerId: organizer?.id } : {}) },
-    select: { id: true, title: true },
-  });
+  const scope = await resolveActingScope(session);
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id }, select: { id: true, title: true } })
+    : await db.event.findFirst({
+        where: { id, organizerId: scope.organizerId ?? "__none__" },
+        select: { id: true, title: true },
+      });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const coupons = await db.coupon.findMany({
