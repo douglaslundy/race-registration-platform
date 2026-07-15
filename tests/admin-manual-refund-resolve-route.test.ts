@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { resolveRefundManually } from "@/lib/payment/manual-refund-resolution";
 import { POST } from "@/app/api/admin/refunds/[paymentId]/manual-resolve/route";
 
@@ -7,6 +8,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/payment/manual-refund-resolution", () => ({ resolveRefundManually: vi.fn() }));
 
 const authMock = vi.mocked(auth);
+const dbMock = db as any;
 const resolveMock = vi.mocked(resolveRefundManually);
 
 function makeRequest(body: unknown) {
@@ -45,5 +47,36 @@ describe("POST /api/admin/refunds/[paymentId]/manual-resolve", () => {
       resolvedByUserId: "admin-1",
       resolutionNote: "Estorno feito via PIX manual",
     });
+  });
+
+  it("assistente de admin com a permissão resolve qualquer estorno", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    resolveMock.mockResolvedValueOnce({ ok: true });
+
+    const res = await POST(makeRequest({ resolutionNote: "x" }), { params: Promise.resolve({ paymentId: "pay-1" }) });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente de organizador com a chave concedida por engano é barrado", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await POST(makeRequest({ resolutionNote: "x" }), { params: Promise.resolve({ paymentId: "pay-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(resolveMock).not.toHaveBeenCalled();
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest({ resolutionNote: "x" }), { params: Promise.resolve({ paymentId: "pay-1" }) });
+
+    expect(res.status).toBe(403);
   });
 });
