@@ -283,10 +283,10 @@ export default async function InscritosPage({
                     endpoint={`/api/organizer/registrations/${r.id}/resend-payment-notification`}
                   />
                 )}
-                {r.status === "CONFIRMED" && !r.order.confirmationEmailSentAt && (
+                {r.status === "CONFIRMED" && (
                   <ResendPaymentNotificationButton
                     endpoint={`/api/organizer/registrations/${r.id}/resend-confirmation-email`}
-                    label="Enviar e-mail de confirmação"
+                    label={r.order.confirmationEmailSentAt ? "Reenviar e-mail de confirmação" : "Enviar e-mail de confirmação"}
                     loadingLabel="Enviando..."
                   />
                 )}
