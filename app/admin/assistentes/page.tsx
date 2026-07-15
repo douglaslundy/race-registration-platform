@@ -30,6 +30,8 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "payments.export-all", label: "Exportar CSV de todos os pagamentos" },
   { key: "results.import", label: "Importar resultados via CSV (qualquer evento)" },
   { key: "results.publish", label: "Publicar resultados (qualquer evento)" },
+  { key: "abandoned-carts.notify-any", label: "Reenviar alerta de carrinho abandonado (plataforma inteira)" },
+  { key: "reports.export-all", label: "Exportar relatório financeiro da plataforma" },
 ];
 
 export default function AdminAssistentesPage() {

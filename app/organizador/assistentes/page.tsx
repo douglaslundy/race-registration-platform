@@ -36,6 +36,8 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "payments.reconciliation", label: "Conciliar pagamentos com o gateway (meus eventos)" },
   { key: "results.import", label: "Importar resultados via CSV" },
   { key: "results.publish", label: "Publicar resultados" },
+  { key: "abandoned-carts.notify", label: "Reenviar alerta de carrinho abandonado (meus eventos)" },
+  { key: "reports.export", label: "Exportar relatório financeiro (meus eventos)" },
 ];
 
 export default function OrganizerAssistentesPage() {
