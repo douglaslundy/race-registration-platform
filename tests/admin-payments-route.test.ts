@@ -54,4 +54,44 @@ describe("admin payments export", () => {
     expect(csv).toContain('"Ana Silva"');
     expect(csv).toContain('"PAID"');
   });
+
+  it("retorna 403 pra organizador titular (não é admin)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+
+    const res = await GET(new Request("http://localhost/api/admin/payments/export") as any);
+
+    expect(res.status).toBe(403);
+    expect(dbMock.payment.findMany).not.toHaveBeenCalled();
+  });
+
+  it("assistente de admin com a permissão exporta todos os pagamentos", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    dbMock.payment.findMany.mockResolvedValueOnce([]);
+
+    const res = await GET(new Request("http://localhost/api/admin/payments/export") as any);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente de organizador com a chave concedida por engano é barrado", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await GET(new Request("http://localhost/api/admin/payments/export") as any);
+
+    expect(res.status).toBe(403);
+    expect(dbMock.payment.findMany).not.toHaveBeenCalled();
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await GET(new Request("http://localhost/api/admin/payments/export") as any);
+
+    expect(res.status).toBe(403);
+  });
 });
