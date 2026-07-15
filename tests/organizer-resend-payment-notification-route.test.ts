@@ -29,9 +29,10 @@ describe("POST /api/organizer/registrations/[id]/resend-payment-notification", (
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "org-1" });
   });
 
-  it("retorna 403 para quem não é organizador nem admin", async () => {
+  it("retorna 403 para quem não tem a permissão", async () => {
     authMock.mockResolvedValue({ user: { id: "u1", role: "ATHLETE" } } as any);
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(403);
@@ -60,7 +61,7 @@ describe("POST /api/organizer/registrations/[id]/resend-payment-notification", (
     expect(res.status).toBe(200);
     expect(dbMock.registration.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "reg-1", event: { organizer: { userId: "organizer-1" } } },
+        where: { id: "reg-1", event: { organizerId: "org-1" } },
       }),
     );
     expect(notifyPaymentError).toHaveBeenCalledWith("payment-1", { bypassDedupe: true });
@@ -106,5 +107,26 @@ describe("POST /api/organizer/registrations/[id]/resend-payment-notification", (
 
     expect(res.status).toBe(400);
     expect(notifyOrderCancelledWithoutPayment).not.toHaveBeenCalled();
+  });
+
+  it("assistente de organizador com a permissão reenvia a notificação escopada ao evento do criador", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+    dbMock.registration.findFirst.mockResolvedValueOnce(registrationFixture);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente sem a permissão é barrado com 403", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.registration.findFirst).not.toHaveBeenCalled();
   });
 });

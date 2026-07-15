@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notifyPaymentError, notifyOrderCancelledWithoutPayment } from "@/lib/alerts/payment-error";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || (session.user.role !== "ORGANIZER" && session.user.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("registrations.resend-payment-notification");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id } = await params;
+  const scope = await resolveActingScope(session);
 
   const registration = await db.registration.findFirst({
-    where: { id, event: { organizer: { userId: session.user.id } } },
+    where: { id, event: { organizerId: scope.organizerId ?? "__none__" } },
     select: {
       status: true,
       orderId: true,

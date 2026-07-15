@@ -31,7 +31,7 @@ describe("POST /api/admin/registrations/[id]/resend-payment-notification", () =>
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
   });
 
-  it("retorna 403 para quem não é admin (inclusive organizador)", async () => {
+  it("retorna 403 para quem não tem a permissão (inclusive organizador titular)", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(403);
@@ -104,5 +104,27 @@ describe("POST /api/admin/registrations/[id]/resend-payment-notification", () =>
 
     expect(res.status).toBe(400);
     expect(notifyOrderCancelledWithoutPayment).not.toHaveBeenCalled();
+  });
+
+  it("assistente de admin com a permissão reenvia a notificação (bypass também vale pra ele)", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    dbMock.registration.findFirst.mockResolvedValueOnce(registrationFixture);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("assistente de organizador é barrado com 403 mesmo com a chave -any concedida por engano", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.registration.findFirst).not.toHaveBeenCalled();
   });
 });
