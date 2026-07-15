@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
-import { auth } from "@/lib/auth";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 
 const REQUIRED_COLUMNS = ["bib_number", "athlete_name"];
@@ -17,10 +17,9 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || !["ORGANIZER", "ADMIN"].includes(session.user.role)) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("results.import");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id: eventId } = await params;
 
@@ -41,10 +40,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: `Colunas obrigatórias ausentes: ${missingCols.join(", ")}` }, { status: 400 });
   }
 
-  const organizer = await db.organizerProfile.findUnique({ where: { userId: session.user.id } });
-  const event = await db.event.findFirst({
-    where: { id: eventId, ...(session.user.role !== "ADMIN" ? { organizerId: organizer?.id } : {}) },
-  });
+  const scope = await resolveActingScope(session);
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id: eventId } })
+    : await db.event.findFirst({ where: { id: eventId, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const importRecord = await db.resultImport.create({
@@ -87,13 +86,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user || !["ORGANIZER", "ADMIN"].includes(session.user.role)) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkApiPermission("results.publish");
+  if (!check.allowed) return check.response;
+  const { session } = check;
 
   const { id: eventId } = await params;
   const { importId } = await req.json();
+
+  const scope = await resolveActingScope(session);
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id: eventId } })
+    : await db.event.findFirst({ where: { id: eventId, organizerId: scope.organizerId ?? "__none__" } });
+  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   await db.resultImport.update({
     where: { id: importId, eventId },

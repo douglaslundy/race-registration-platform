@@ -50,7 +50,7 @@ describe("event results import/publish api", () => {
     it("rejects when there is no session", async () => {
       authMock.mockResolvedValueOnce(null as any);
       const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
     });
 
     it("rejects when the caller role is not organizer or admin", async () => {
@@ -154,13 +154,43 @@ describe("event results import/publish api", () => {
       const data = await res.json();
       expect(data).toEqual({ importId: "import-1", rowCount: 2 });
     });
+
+    it("admin titular importa em qualquer evento (bypass)", async () => {
+      authMock.mockResolvedValueOnce({ user: { id: "admin-1", role: "ADMIN" } } as any);
+      dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1", organizerId: "org-99" });
+
+      const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
+
+      expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
+      expect(res.status).toBe(200);
+    });
+
+    it("assistente de organizador com a permissão importa no evento do criador", async () => {
+      authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+      dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+      dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+      const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("assistente sem a permissão é barrado com 403", async () => {
+      authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+      dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+      const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
+
+      expect(res.status).toBe(403);
+      expect(dbMock.resultImport.create).not.toHaveBeenCalled();
+    });
   });
 
   describe("PATCH (publish)", () => {
     it("rejects when there is no session or an invalid role", async () => {
       authMock.mockResolvedValueOnce(null as any);
       const res = await PATCH(makePublishRequest("import-1"), ctx);
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
     });
 
     it("marks the import as published", async () => {
@@ -172,6 +202,44 @@ describe("event results import/publish api", () => {
         data: { published: true, publishedAt: expect.any(Date) },
       });
       expect(await res.json()).toEqual({ ok: true });
+    });
+
+    it("organizador titular recebe 404 ao tentar publicar import de evento de outro organizador (fix de posse)", async () => {
+      dbMock.event.findFirst.mockResolvedValueOnce(null);
+
+      const res = await PATCH(makePublishRequest("import-1"), ctx);
+
+      expect(res.status).toBe(404);
+      expect(dbMock.resultImport.update).not.toHaveBeenCalled();
+    });
+
+    it("admin titular publica em qualquer evento (bypass)", async () => {
+      authMock.mockResolvedValueOnce({ user: { id: "admin-1", role: "ADMIN" } } as any);
+      dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1", organizerId: "org-99" });
+
+      const res = await PATCH(makePublishRequest("import-1"), ctx);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("assistente de organizador com a permissão publica no evento do criador", async () => {
+      authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+      dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+      dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+      const res = await PATCH(makePublishRequest("import-1"), ctx);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("assistente sem a permissão é barrado com 403", async () => {
+      authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+      dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+
+      const res = await PATCH(makePublishRequest("import-1"), ctx);
+
+      expect(res.status).toBe(403);
+      expect(dbMock.resultImport.update).not.toHaveBeenCalled();
     });
   });
 });
