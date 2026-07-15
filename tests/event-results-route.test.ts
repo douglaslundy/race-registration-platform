@@ -172,6 +172,7 @@ describe("event results import/publish api", () => {
 
       const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
 
+      expect(dbMock.event.findFirst).toHaveBeenCalledWith({ where: { id: "event-1", organizerId: "org-1" } });
       expect(res.status).toBe(200);
     });
 
@@ -219,6 +220,7 @@ describe("event results import/publish api", () => {
 
       const res = await PATCH(makePublishRequest("import-1"), ctx);
 
+      expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
       expect(res.status).toBe(200);
     });
 
@@ -229,6 +231,7 @@ describe("event results import/publish api", () => {
 
       const res = await PATCH(makePublishRequest("import-1"), ctx);
 
+      expect(dbMock.event.findFirst).toHaveBeenCalledWith({ where: { id: "event-1", organizerId: "org-1" } });
       expect(res.status).toBe(200);
     });
 
