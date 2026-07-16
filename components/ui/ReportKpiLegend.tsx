@@ -9,12 +9,13 @@ const ENTRIES: Array<[string, string]> = [
   ["Repasse líquido", "Valor líquido já repassado ao organizador, depois de descontadas as taxas."],
 ];
 
-export default function ReportKpiLegend() {
+export default function ReportKpiLegend({ hide = [] }: { hide?: string[] }) {
+  const entries = ENTRIES.filter(([term]) => !hide.includes(term));
   return (
     <details className="card text-sm">
       <summary className="font-semibold cursor-pointer select-none">O que significa cada KPI?</summary>
       <dl className="mt-3 space-y-2">
-        {ENTRIES.map(([term, description]) => (
+        {entries.map(([term, description]) => (
           <div key={term} className="flex flex-col sm:flex-row sm:gap-2">
             <dt className="font-medium text-gray-700 dark:text-gray-300 sm:w-48 shrink-0">{term}</dt>
             <dd className="text-gray-500">{description}</dd>

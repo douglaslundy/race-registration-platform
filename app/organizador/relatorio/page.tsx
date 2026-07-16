@@ -46,13 +46,8 @@ export default async function OrganizerRelatorioPage({
 
   const filter = { organizerId: organizer.id, from, to, eventId: eventId || undefined };
 
-  const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg, payoutsByStatus, payouts, nonPaidOrdersAgg, events] =
+  const [cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg, payoutsByStatus, payouts, nonPaidOrdersAgg, events] =
     await Promise.all([
-      db.payment.aggregate({
-        _sum: { amount: true, gatewayFeeAmount: true },
-        _count: { id: true },
-        where: buildOrganizerPaymentWhere(filter, "PAID"),
-      }),
       db.payment.aggregate({
         _sum: { amount: true },
         _count: { id: true },
@@ -65,7 +60,7 @@ export default async function OrganizerRelatorioPage({
       }),
       db.order.aggregate({
         _count: { id: true },
-        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true, totalAmount: true },
+        _sum: { subtotalAmount: true, totalAmount: true },
         where: buildOrganizerOrderFeeWhere(filter),
       }),
       db.transferPayout.aggregate({
@@ -101,14 +96,10 @@ export default async function OrganizerRelatorioPage({
     { status: "PAID" as const, _count: { id: orderFeeAgg._count.id }, _sum: { totalAmount: orderFeeAgg._sum.totalAmount } },
   ];
 
-  const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
   const payoutNetTotal = payoutTotalAgg._sum.netAmount ?? 0;
-  const platformFeeActual = orderFeeAgg._sum.platformFeeAmount ?? 0;
-  const serviceFeeActual = orderFeeAgg._sum.paymentFeeAmount ?? 0;
   const eventRevenue = orderFeeAgg._sum.subtotalAmount ?? 0;
-  const gatewayFeeActual = paymentsAgg._sum.gatewayFeeAmount ?? 0;
 
   const payoutStatusMap = new Map(
     payoutsByStatus.map((row) => [row.status, { count: row._count.id, net: row._sum.netAmount ?? 0 }])
@@ -159,22 +150,6 @@ export default async function OrganizerRelatorioPage({
           <p className="text-gray-500 text-sm mt-1">Receita do evento</p>
         </div>
         <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Taxa da plataforma</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(serviceFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Taxa de serviço</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(gatewayFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Comissão do gateway</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
-          <p className="text-gray-500 text-sm mt-1">Receita bruta</p>
-        </div>
-        <div className="card text-center">
           <p className="text-2xl font-bold text-orange-500">{formatCurrency(cancelledAmount)}</p>
           <p className="text-gray-500 text-sm mt-1">Pagamentos cancelados ({cancelledPaymentsAgg._count.id})</p>
         </div>
@@ -188,7 +163,7 @@ export default async function OrganizerRelatorioPage({
         </div>
       </div>
 
-      <ReportKpiLegend />
+      <ReportKpiLegend hide={["Taxa da plataforma", "Taxa de serviço", "Comissão do gateway", "Receita bruta"]} />
 
       <div className="card space-y-3">
         <h2 className="font-semibold">Pedidos por status</h2>

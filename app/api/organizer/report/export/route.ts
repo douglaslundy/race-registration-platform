@@ -27,7 +27,6 @@ export async function GET(req: NextRequest) {
 
   const [paymentsAgg, cancelledPaymentsAgg, refundsAgg, orderFeeAgg, payoutTotalAgg] = await Promise.all([
     db.payment.aggregate({
-      _sum: { amount: true, gatewayFeeAmount: true },
       _count: { id: true },
       where: buildOrganizerPaymentWhere(filter, "PAID"),
     }),
@@ -42,7 +41,7 @@ export async function GET(req: NextRequest) {
       where: buildOrganizerRefundWhere(filter),
     }),
     db.order.aggregate({
-      _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
+      _sum: { subtotalAmount: true },
       where: buildOrganizerOrderFeeWhere(filter),
     }),
     db.transferPayout.aggregate({
@@ -51,22 +50,14 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
   const payoutNetTotal = payoutTotalAgg._sum.netAmount ?? 0;
-  const platformFeeActual = orderFeeAgg._sum.platformFeeAmount ?? 0;
-  const serviceFeeActual = orderFeeAgg._sum.paymentFeeAmount ?? 0;
   const eventRevenue = orderFeeAgg._sum.subtotalAmount ?? 0;
-  const gatewayFeeActual = paymentsAgg._sum.gatewayFeeAmount ?? 0;
 
   const rows: Array<[string, string]> = [
     ["Período", `${from.toISOString()} - ${to.toISOString()}`],
     ["Receita do evento", formatCurrency(eventRevenue)],
-    ["Taxa da plataforma", formatCurrency(platformFeeActual)],
-    ["Taxa de serviço", formatCurrency(serviceFeeActual)],
-    ["Comissão do gateway", formatCurrency(gatewayFeeActual)],
-    ["Receita bruta", formatCurrency(grossRevenue)],
     ["Pagamentos cancelados", formatCurrency(cancelledAmount)],
     ["Estornos", formatCurrency(refunds)],
     ["Repasse líquido", formatCurrency(payoutNetTotal)],

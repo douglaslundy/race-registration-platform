@@ -68,7 +68,9 @@ export default async function OrganizerDashboard({
     db.event.count({ where: { organizerId: organizer.id, createdAt: { gte: from, lte: to } } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.order.aggregate({
-      _sum: { totalAmount: true },
+      // Receita do organizador = valor das inscrições (subtotal). totalAmount inclui
+      // taxa da plataforma e taxa de serviço, que são receita da plataforma, não dele.
+      _sum: { subtotalAmount: true },
       where: { status: "PAID", event: { organizerId: organizer.id }, createdAt: { gte: from, lte: to } },
     }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
@@ -80,7 +82,7 @@ export default async function OrganizerDashboard({
       _count: { id: true },
     }),
   ]);
-  const totalRevenue = revenueAgg._sum.totalAmount ?? 0;
+  const totalRevenue = revenueAgg._sum.subtotalAmount ?? 0;
 
   const statusCountsByEvent = new Map<string, { status: string; count: number }[]>();
   for (const g of statusGroups) {
