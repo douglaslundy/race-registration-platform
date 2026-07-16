@@ -44,18 +44,94 @@ export async function getDailyRegistrations(
   return bucketByDay(registrations.map((r) => r.createdAt), from, to);
 }
 
-export async function getDailyCouponUsage(
+export interface MultiSeriesDay {
+  label: string;
+  [series: string]: string | number;
+}
+
+function dayLabels(from: Date, to: Date): string[] {
+  const labels: string[] = [];
+  for (const cur = new Date(from); cur <= to; cur.setUTCDate(cur.getUTCDate() + 1)) {
+    const [, month, day] = cur.toISOString().slice(0, 10).split("-");
+    labels.push(`${day}/${month}`);
+  }
+  return labels;
+}
+
+function bucketSeriesByDay(
+  entries: Array<{ date: Date; series: string }>,
+  seriesNames: string[],
+  from: Date,
+  to: Date,
+): MultiSeriesDay[] {
+  const counts = new Map<string, number>();
+  for (const e of entries) {
+    const [, month, day] = e.date.toISOString().slice(0, 10).split("-");
+    const key = `${day}/${month}|${e.series}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return dayLabels(from, to).map((label) => {
+    const row: MultiSeriesDay = { label };
+    for (const name of seriesNames) row[name] = counts.get(`${label}|${name}`) ?? 0;
+    return row;
+  });
+}
+
+/** Uso diário por cupom, restrito aos 5 códigos mais usados no período. */
+export async function getDailyCouponUsageByCode(
   from: Date,
   to: Date,
   scope: { organizerId?: string },
-): Promise<DailyPoint[]> {
+): Promise<{ data: MultiSeriesDay[]; series: string[] }> {
   const orders = await db.order.findMany({
     where: {
       createdAt: { gte: from, lte: to },
       couponId: { not: null },
       ...(scope.organizerId ? { event: { organizerId: scope.organizerId } } : {}),
     },
-    select: { createdAt: true },
+    select: { createdAt: true, coupon: { select: { code: true } } },
   });
-  return bucketByDay(orders.map((o) => o.createdAt), from, to);
+
+  const totals = new Map<string, number>();
+  for (const o of orders) {
+    const code = o.coupon?.code;
+    if (code) totals.set(code, (totals.get(code) ?? 0) + 1);
+  }
+  const series = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([code]) => code);
+  const topSet = new Set(series);
+
+  const entries = orders
+    .filter((o) => o.coupon && topSet.has(o.coupon.code))
+    .map((o) => ({ date: o.createdAt, series: o.coupon!.code }));
+
+  return { data: bucketSeriesByDay(entries, series, from, to), series };
+}
+
+export const COUPON_PRESENCE_SERIES = ["Com cupom", "Sem cupom"] as const;
+
+/** Inscrições diárias divididas entre pedidos com e sem cupom. */
+export async function getDailyRegistrationsByCouponPresence(
+  from: Date,
+  to: Date,
+  scope: { organizerId?: string; eventId?: string },
+): Promise<{ data: MultiSeriesDay[]; series: string[] }> {
+  const registrations = await db.registration.findMany({
+    where: {
+      createdAt: { gte: from, lte: to },
+      ...(scope.eventId ? { eventId: scope.eventId } : {}),
+      ...(scope.organizerId ? { event: { organizerId: scope.organizerId } } : {}),
+    },
+    select: { createdAt: true, order: { select: { couponId: true } } },
+  });
+
+  const series = [...COUPON_PRESENCE_SERIES];
+  const entries = registrations.map((r) => ({
+    date: r.createdAt,
+    series: r.order.couponId ? series[0] : series[1],
+  }));
+
+  return { data: bucketSeriesByDay(entries, series, from, to), series };
 }

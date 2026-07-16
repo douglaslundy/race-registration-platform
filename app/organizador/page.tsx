@@ -7,8 +7,9 @@ import { BADGE } from "@/lib/badge-colors";
 import PrintButton from "@/components/ui/PrintButton";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 import { parseDateInput } from "@/lib/admin/audit";
-import { getDailyRegistrations, getDailyCouponUsage } from "@/lib/dashboard-metrics";
+import { getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence } from "@/lib/dashboard-metrics";
 import LineChart from "@/components/ui/LineChart";
+import MultiLineChart from "@/components/ui/MultiLineChart";
 
 export const dynamic = "force-dynamic";
 
@@ -91,9 +92,10 @@ export default async function OrganizerDashboard({
     statusCountsByEvent.set(g.eventId, arr);
   }
 
-  const [registrationsData, couponUsageData, chartEvents] = await Promise.all([
+  const [registrationsData, couponUsage, couponPresence, chartEvents] = await Promise.all([
     getDailyRegistrations(from, to, { organizerId: organizer.id, eventId: eventId || undefined }),
-    getDailyCouponUsage(from, to, { organizerId: organizer.id }),
+    getDailyCouponUsageByCode(from, to, { organizerId: organizer.id }),
+    getDailyRegistrationsByCouponPresence(from, to, { organizerId: organizer.id, eventId: eventId || undefined }),
     db.event.findMany({ where: { organizerId: organizer.id }, select: { id: true, title: true }, orderBy: { title: "asc" } }),
   ]);
 
@@ -159,8 +161,12 @@ export default async function OrganizerDashboard({
           <LineChart data={registrationsData} color="#0ea5e9" name="Inscrições" />
         </div>
         <div className="card">
-          <h2 className="text-sm font-semibold mb-3">Cupons utilizados</h2>
-          <LineChart data={couponUsageData} color="#f59e0b" name="Cupons utilizados" />
+          <h2 className="text-sm font-semibold mb-3">Cupons mais utilizados (top 5)</h2>
+          <MultiLineChart data={couponUsage.data} series={couponUsage.series} />
+        </div>
+        <div className="card">
+          <h2 className="text-sm font-semibold mb-3">Inscrições com e sem cupom</h2>
+          <MultiLineChart data={couponPresence.data} series={couponPresence.series} />
         </div>
       </div>
 

@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getDailySignups, getDailyRegistrations, getDailyCouponUsage } from "@/lib/dashboard-metrics";
+import {
+  getDailySignups,
+  getDailyRegistrations,
+  getDailyCouponUsageByCode,
+  getDailyRegistrationsByCouponPresence,
+} from "@/lib/dashboard-metrics";
 import { db } from "@/lib/db";
 
 const dbMock = db as any;
@@ -66,24 +71,74 @@ describe("getDailyRegistrations", () => {
   });
 });
 
-describe("getDailyCouponUsage", () => {
+describe("getDailyCouponUsageByCode", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("filters to orders with a coupon applied, unscoped", async () => {
+  it("filters to orders with a coupon applied and scopes by organizerId", async () => {
     dbMock.order.findMany.mockResolvedValueOnce([]);
-    await getDailyCouponUsage(from, to, {});
+    await getDailyCouponUsageByCode(from, to, { organizerId: "org-1" });
     expect(dbMock.order.findMany).toHaveBeenCalledWith({
-      where: { createdAt: { gte: from, lte: to }, couponId: { not: null } },
-      select: { createdAt: true },
+      where: { createdAt: { gte: from, lte: to }, couponId: { not: null }, event: { organizerId: "org-1" } },
+      select: { createdAt: true, coupon: { select: { code: true } } },
     });
   });
 
-  it("scopes by organizerId", async () => {
+  function order(day: string, code: string) {
+    return { createdAt: new Date(`2026-01-0${day}T10:00:00.000Z`), coupon: { code } };
+  }
+
+  it("returns the 5 most used codes as series, most used first, and buckets per day", async () => {
+    dbMock.order.findMany.mockResolvedValueOnce([
+      order("1", "A"), order("1", "A"), order("2", "A"),
+      order("1", "B"), order("2", "B"),
+      order("2", "C"),
+      order("3", "D"),
+      order("3", "E"),
+      order("3", "F"),
+    ]);
+
+    const { data, series } = await getDailyCouponUsageByCode(from, to, {});
+
+    expect(series).toHaveLength(5);
+    expect(series[0]).toBe("A");
+    expect(series).not.toContain(series.includes("F") ? "E" : "F"); // só 5 dos 6 códigos entram
+    expect(data).toHaveLength(3);
+    expect(data[0]).toMatchObject({ label: "01/01", A: 2, B: 1 });
+    expect(data[1]).toMatchObject({ label: "02/01", A: 1, B: 1, C: 1 });
+  });
+
+  it("returns empty series when no coupon was used", async () => {
     dbMock.order.findMany.mockResolvedValueOnce([]);
-    await getDailyCouponUsage(from, to, { organizerId: "org-1" });
-    expect(dbMock.order.findMany).toHaveBeenCalledWith({
-      where: { createdAt: { gte: from, lte: to }, couponId: { not: null }, event: { organizerId: "org-1" } },
-      select: { createdAt: true },
+    const { data, series } = await getDailyCouponUsageByCode(from, to, {});
+    expect(series).toEqual([]);
+    expect(data).toHaveLength(3);
+  });
+});
+
+describe("getDailyRegistrationsByCouponPresence", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("splits registrations by whether the order used a coupon", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      { createdAt: new Date("2026-01-01T10:00:00.000Z"), order: { couponId: "c1" } },
+      { createdAt: new Date("2026-01-01T11:00:00.000Z"), order: { couponId: null } },
+      { createdAt: new Date("2026-01-02T09:00:00.000Z"), order: { couponId: null } },
+    ]);
+
+    const { data, series } = await getDailyRegistrationsByCouponPresence(from, to, {});
+
+    expect(series).toEqual(["Com cupom", "Sem cupom"]);
+    expect(data[0]).toMatchObject({ label: "01/01", "Com cupom": 1, "Sem cupom": 1 });
+    expect(data[1]).toMatchObject({ label: "02/01", "Com cupom": 0, "Sem cupom": 1 });
+    expect(data[2]).toMatchObject({ label: "03/01", "Com cupom": 0, "Sem cupom": 0 });
+  });
+
+  it("scopes by organizerId and eventId", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+    await getDailyRegistrationsByCouponPresence(from, to, { organizerId: "org-1", eventId: "event-1" });
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith({
+      where: { createdAt: { gte: from, lte: to }, eventId: "event-1", event: { organizerId: "org-1" } },
+      select: { createdAt: true, order: { select: { couponId: true } } },
     });
   });
 });

@@ -218,6 +218,7 @@ export default async function InscritosPage({
           <label className="block text-xs text-gray-500 mb-1">Cupom</label>
           <select name="couponId" defaultValue={couponId} className="input-field text-sm py-1.5">
             <option value="">Todos</option>
+            <option value="none">Sem cupom</option>
             {event.coupons.map((c) => (
               <option key={c.id} value={c.id}>{c.code}</option>
             ))}

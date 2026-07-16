@@ -63,7 +63,9 @@ export function buildRegistrationWhere(
   }
 
   const orderFilter: Prisma.OrderWhereInput = {};
-  if (couponId) orderFilter.couponId = couponId;
+  // Sentinela "none" = inscrições cujo pedido não usou cupom nenhum.
+  if (couponId === "none") orderFilter.couponId = null;
+  else if (couponId) orderFilter.couponId = couponId;
   if (Object.keys(paymentSomeFilter).length > 0) {
     orderFilter.payments = { some: paymentSomeFilter };
   }

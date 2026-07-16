@@ -109,6 +109,22 @@ describe("buildRegistrationWhere", () => {
     });
   });
 
+  it("filters registrations without coupon when couponId is the 'none' sentinel", () => {
+    expect(buildRegistrationWhere("evt-1", { couponId: "none" })).toEqual({
+      eventId: "evt-1",
+      order: { couponId: null },
+    });
+  });
+
+  it("merges the 'none' coupon sentinel with paymentMethod into a single order filter", () => {
+    expect(
+      buildRegistrationWhere("evt-1", { couponId: "none", paymentMethod: "PIX" }),
+    ).toEqual({
+      eventId: "evt-1",
+      order: { couponId: null, payments: { some: { method: "PIX" } } },
+    });
+  });
+
   it("filters by paymentMethod via any payment on the order", () => {
     expect(buildRegistrationWhere("evt-1", { paymentMethod: "PIX" })).toEqual({
       eventId: "evt-1",
