@@ -5,13 +5,30 @@
 
 ## Tarefa em andamento
 4 sub-projetos pedidos pelo usuário nesta sessão, ordem confirmada: **filtros de eventos**
-(spec pronta, aguardando plano) → caixa de entrada de alertas (WhatsApp/E-mail) → anúncios —
-posições e Google/Meta Ads → anúncios — marketplace de anunciantes privados (depende do anterior).
+(implementado, aguardando revisão final de branch) → caixa de entrada de alertas (WhatsApp/
+E-mail) → anúncios — posições e Google/Meta Ads → anúncios — marketplace de anunciantes privados
+(depende do anterior).
 
-Spec do 1º sub-projeto escrita e aprovada pelo usuário:
-`docs/superpowers/specs/2026-07-17-filtros-eventos-publicos-design.md` (commit `a4c669f`) — filtro
-de status ativa/encerrada e estado (UF, em cascata com cidade) na página pública `/eventos`.
-Próximo passo: plano de implementação (`writing-plans`).
+**1º sub-projeto (filtros de eventos) implementado via subagent-driven-development, direto na
+main** — spec `docs/superpowers/specs/2026-07-17-filtros-eventos-publicos-design.md` (commit
+`a4c669f`), plano `docs/superpowers/plans/2026-07-17-filtros-eventos-publicos.md` (commit
+`feabae0`). 5 tasks, todas implementadas e revisadas (spec ✅ + qualidade ✅ em cada uma, sem
+achados Critical/Important):
+- Task 1 (`f19b817`): `listPublicEvents` ganha filtro `status` (ativa/encerrada) + `state`,
+  ordenação condicional asc/desc.
+- Task 2 (`ec1192f`): `listDistinctCities` → `listDistinctLocations`, cobre status encerrados.
+- Task 3 (`0b8355a`): badge "Realizado" pro status `COMPLETED` no `EventCard`.
+- Task 4 (`659cf28`): `EventFilters` reescrito — selects Status/Estado, cascata Estado→Cidade.
+- Task 5 (`ca0ef73`): wiring final em `app/(public)/eventos/page.tsx`.
+
+tsc limpo, suíte 855/855. **Verificação manual no navegador pulada** (decisão do usuário): o
+banco de dev local (`db.usgslzpuovvrkvvrhljt.supabase.co`, referenciado em `DATABASE_URL`/
+`DIRECT_URL` do `.env`) não resolve DNS — parece offline/descontinuado. Fica pendente testar
+manualmente no navegador (filtro Status/Estado, cascata, badge "Realizado") quando o banco de dev
+estiver acessível de novo, antes ou depois do deploy.
+
+Próximo passo: revisão final de branch inteira (`requesting-code-review`), depois decisão de
+merge/deploy (`finishing-a-development-branch`).
 
 Corrigido no meio do brainstorm (achado pelo usuário, não fazia parte dos 4 sub-projetos): resumo
 diário do organizador (`lib/alerts/daily-summary-metrics.ts`) somava `order.totalAmount` (com taxa
