@@ -129,6 +129,7 @@ model User {
   createdBy         User?   @relation("AssistantCreator", fields: [createdByUserId], references: [id])
   createdAssistants User[]  @relation("AssistantCreator")
   assistantPermissions AssistantPermission[]
+  messageLogs MessageLog[]
 
   @@index([createdAt])
   @@map("users")
@@ -576,6 +577,30 @@ model AlertLog {
 
   @@unique([alertType, entityId, channel])
   @@map("alert_logs")
+}
+
+model MessageLog {
+  id                String    @id @default(cuid())
+  channel           String
+  subject           String
+  recipientAddress  String
+  recipientUserId   String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  status            String
+  providerMessageId String?
+  errorMessage      String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  recipientUser User? @relation(fields: [recipientUserId], references: [id])
+
+  @@index([channel, createdAt])
+  @@index([recipientUserId, channel, createdAt])
+  @@index([providerMessageId])
+  @@map("message_logs")
 }
 
 model AssistantPermission {
