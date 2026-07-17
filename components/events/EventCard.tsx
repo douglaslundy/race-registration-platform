@@ -115,14 +115,16 @@ export default function EventCard({ event }: EventCardProps) {
         )}
 
         {/* Inscreva-se button — z-10 to sit above the overlay link */}
-        <div className="relative z-10 mt-3">
-          <Link
-            href={`/inscricao/${event.slug}`}
-            className="btn-primary block text-center text-sm py-2"
-          >
-            Inscreva-se
-          </Link>
-        </div>
+        {event.status !== "REGISTRATIONS_CLOSED" && event.status !== "COMPLETED" && (
+          <div className="relative z-10 mt-3">
+            <Link
+              href={`/inscricao/${event.slug}`}
+              className="btn-primary block text-center text-sm py-2"
+            >
+              Inscreva-se
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
