@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { listPublicEvents, listDistinctCities } from "@/lib/events";
+import { listPublicEvents, listDistinctLocations } from "@/lib/events";
 import EventCard from "@/components/events/EventCard";
 import EventFilters from "@/components/events/EventFilters";
 import EventsBanner from "@/components/events/EventsBanner";
@@ -12,7 +12,9 @@ export const revalidate = 60;
 
 interface SearchParams {
   cidade?: string;
+  estado?: string;
   modalidade?: string;
+  status?: string;
   de?: string;
   ate?: string;
   pagina?: string;
@@ -21,15 +23,17 @@ interface SearchParams {
 export default async function EventosPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
 
-  const [{ events, total, totalPages, page }, cities, bannerInterval, appName] = await Promise.all([
+  const [{ events, total, totalPages, page }, locations, bannerInterval, appName] = await Promise.all([
     listPublicEvents({
       city: params.cidade,
+      state: params.estado,
       modality: params.modalidade as EventModality | undefined,
+      status: params.status === "encerrada" ? "encerrada" : undefined,
       from: params.de ? new Date(params.de) : undefined,
       to: params.ate ? new Date(params.ate) : undefined,
       page: params.pagina ? Number(params.pagina) : 1,
     }),
-    listDistinctCities(),
+    listDistinctLocations(),
     getBannerInterval(),
     getAppName(),
   ]);
@@ -46,7 +50,7 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <aside>
-          <EventFilters cities={cities} />
+          <EventFilters locations={locations} />
         </aside>
 
         <div className="lg:col-span-3">
