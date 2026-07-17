@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { getSmtpConfig, isSmtpReady, type SmtpConfig } from "./smtp-settings";
 import { getAppName } from "./settings";
+import { recordMessageLog } from "./message-logs";
 
 function buildTransport(cfg: SmtpConfig) {
   return nodemailer.createTransport({
@@ -18,11 +19,30 @@ export async function sendMail(opts: { to: string; subject: string; html: string
     throw new Error("SMTP não configurado. Configure em Admin → Configurações.");
   }
   const transporter = buildTransport(cfg);
-  await transporter.sendMail({
-    from: cfg.from,
-    to: opts.to,
+
+  try {
+    await transporter.sendMail({
+      from: cfg.from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    });
+  } catch (err) {
+    await recordMessageLog({
+      channel: "EMAIL",
+      subject: opts.subject,
+      recipientAddress: opts.to,
+      status: "FAILED",
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+
+  await recordMessageLog({
+    channel: "EMAIL",
     subject: opts.subject,
-    html: opts.html,
+    recipientAddress: opts.to,
+    status: "SENT",
   });
 }
 
