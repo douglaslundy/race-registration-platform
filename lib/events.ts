@@ -1,21 +1,28 @@
 import { db } from "./db";
 import type { EventModality, EventStatus } from "@prisma/client";
 
+const ACTIVE_STATUSES: EventStatus[] = ["PUBLISHED", "REGISTRATIONS_OPEN", "SOLD_OUT"];
+const CLOSED_STATUSES: EventStatus[] = ["REGISTRATIONS_CLOSED", "COMPLETED"];
+
 export interface EventFilters {
   city?: string;
+  state?: string;
   modality?: EventModality;
   from?: Date;
   to?: Date;
+  status?: "ativa" | "encerrada";
   page?: number;
   pageSize?: number;
 }
 
 export async function listPublicEvents(filters: EventFilters = {}) {
-  const { city, modality, from, to, page = 1, pageSize = 12 } = filters;
+  const { city, state, modality, from, to, status, page = 1, pageSize = 12 } = filters;
+  const isClosed = status === "encerrada";
 
   const where = {
-    status: { in: ["PUBLISHED", "REGISTRATIONS_OPEN", "SOLD_OUT"] as EventStatus[] },
+    status: { in: isClosed ? CLOSED_STATUSES : ACTIVE_STATUSES },
     ...(city ? { city: { contains: city, mode: "insensitive" as const } } : {}),
+    ...(state ? { state: { equals: state, mode: "insensitive" as const } } : {}),
     ...(modality ? { modality } : {}),
     ...(from || to
       ? {
@@ -30,7 +37,7 @@ export async function listPublicEvents(filters: EventFilters = {}) {
   const [events, total] = await Promise.all([
     db.event.findMany({
       where,
-      orderBy: { startAt: "asc" },
+      orderBy: { startAt: isClosed ? "desc" : "asc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
       select: {
