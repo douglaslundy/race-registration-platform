@@ -21,14 +21,19 @@ achados Critical/Important):
 - Task 4 (`659cf28`): `EventFilters` reescrito — selects Status/Estado, cascata Estado→Cidade.
 - Task 5 (`ca0ef73`): wiring final em `app/(public)/eventos/page.tsx`.
 
-tsc limpo, suíte 855/855. **Verificação manual no navegador pulada** (decisão do usuário): o
-banco de dev local (`db.usgslzpuovvrkvvrhljt.supabase.co`, referenciado em `DATABASE_URL`/
-`DIRECT_URL` do `.env`) não resolve DNS — parece offline/descontinuado. Fica pendente testar
-manualmente no navegador (filtro Status/Estado, cascata, badge "Realizado") quando o banco de dev
-estiver acessível de novo, antes ou depois do deploy.
+tsc limpo, suíte 855/855. Revisão final de branch inteira (opus): **pronto pra merge**, sem
+achado Crítico/Importante. 2 Minor: (1) corrigido a pedido do usuário — botão "Inscreva-se"
+escondido nos cards de eventos `REGISTRATIONS_CLOSED`/`COMPLETED` (commit `b33f718`); (2) dropdown
+de estado pode duplicar por variação de caixa (SP/sp) — explicitamente fora de escopo no spec,
+sem ação.
 
-Próximo passo: revisão final de branch inteira (`requesting-code-review`), depois decisão de
-merge/deploy (`finishing-a-development-branch`).
+**Verificação manual no navegador pulada** (decisão do usuário): o banco de dev local
+(`db.usgslzpuovvrkvvrhljt.supabase.co`, referenciado em `DATABASE_URL`/`DIRECT_URL` do `.env`) não
+resolve DNS — parece offline/descontinuado. Fica pendente testar manualmente no navegador (filtro
+Status/Estado, cascata, badge "Realizado", botão escondido) quando o banco de dev estiver
+acessível de novo, antes ou depois do deploy.
+
+Próximo passo: decisão de merge/deploy (`finishing-a-development-branch`).
 
 Corrigido no meio do brainstorm (achado pelo usuário, não fazia parte dos 4 sub-projetos): resumo
 diário do organizador (`lib/alerts/daily-summary-metrics.ts`) somava `order.totalAmount` (com taxa
