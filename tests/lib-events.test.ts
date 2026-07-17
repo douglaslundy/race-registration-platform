@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
-import { listPublicEvents } from "@/lib/events";
+import { listPublicEvents, listDistinctLocations } from "@/lib/events";
 
 const dbMock = db as any;
 
@@ -81,5 +81,27 @@ describe("listPublicEvents", () => {
         }),
       })
     );
+  });
+});
+
+describe("listDistinctLocations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.event.findMany.mockResolvedValue([]);
+  });
+
+  it("busca cidades/estados cobrindo tanto status ativos quanto encerrados", async () => {
+    await listDistinctLocations();
+
+    expect(dbMock.event.findMany).toHaveBeenCalledWith({
+      where: {
+        status: {
+          in: ["PUBLISHED", "REGISTRATIONS_OPEN", "SOLD_OUT", "REGISTRATIONS_CLOSED", "COMPLETED"],
+        },
+      },
+      select: { city: true, state: true },
+      distinct: ["city"],
+      orderBy: { city: "asc" },
+    });
   });
 });

@@ -87,9 +87,9 @@ export async function getEventBySlug(slug: string) {
   });
 }
 
-export async function listDistinctCities() {
+export async function listDistinctLocations() {
   const results = await db.event.findMany({
-    where: { status: { in: ["PUBLISHED", "REGISTRATIONS_OPEN"] } },
+    where: { status: { in: [...ACTIVE_STATUSES, ...CLOSED_STATUSES] } },
     select: { city: true, state: true },
     distinct: ["city"],
     orderBy: { city: "asc" },
