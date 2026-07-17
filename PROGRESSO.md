@@ -1,10 +1,34 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-15
+2026-07-17
 
 ## Tarefa em andamento
-Nenhuma. **FASE 2 COMPLETA E DEPLOYADA EM PRODUÇÃO (2026-07-15)** — todos os 6 domínios do
+4 sub-projetos pedidos pelo usuário nesta sessão, ordem confirmada: **filtros de eventos**
+(spec pronta, aguardando plano) → caixa de entrada de alertas (WhatsApp/E-mail) → anúncios —
+posições e Google/Meta Ads → anúncios — marketplace de anunciantes privados (depende do anterior).
+
+Spec do 1º sub-projeto escrita e aprovada pelo usuário:
+`docs/superpowers/specs/2026-07-17-filtros-eventos-publicos-design.md` (commit `a4c669f`) — filtro
+de status ativa/encerrada e estado (UF, em cascata com cidade) na página pública `/eventos`.
+Próximo passo: plano de implementação (`writing-plans`).
+
+Corrigido no meio do brainstorm (achado pelo usuário, não fazia parte dos 4 sub-projetos): resumo
+diário do organizador (`lib/alerts/daily-summary-metrics.ts`) somava `order.totalAmount` (com taxa
+de plataforma embutida) em vez de `order.subtotalAmount` — mesmo bug que já tinha sido corrigido
+no dashboard do organizador (commit `2fa5e66`), só que não foi replicado aqui na época. Rótulo
+"Receita bruta" também virou "Receita" nas linhas do organizador (e-mail/WhatsApp), já que não
+inclui mais taxa. TDD (teste vermelho confirmado antes da correção), 25/25 testes do arquivo,
+`tsc --noEmit` limpo. Não deployado ainda.
+
+Sessão anterior (2026-07-17, já resolvida): encontrados 3 commits pós-deploy (`08e6f85`, `2fa5e66`,
+`a8c9168` — reenvio de e-mail de confirmação mesmo já enviado, receita do organizador mostrando só
+subtotal sem taxas da plataforma, filtro "sem cupom" + gráficos multi-linha por cupom nos
+dashboards) que não tinham sido registrados aqui. Verificado direto na VPS: já estavam deployados
+(commit `a8c9168` rodando em `/opt/corridas/src`, imagem `corridas-app:latest` buildada em
+2026-07-17 01:17, container `Up`, site 200 em `/` e `/eventos`). Nada a fazer, só documentar.
+
+**FASE 2 COMPLETA E DEPLOYADA EM PRODUÇÃO (2026-07-15)** — todos os 6 domínios do
 rollout de usuários assistentes implementados, testados (843/843, tsc limpo), revisados e no ar.
 Deploy feito na ordem segura: git push → git pull na VPS → docker build → `prisma db push` com a
 imagem nova (aplicou enum `ASSISTANT`, tabela `assistant_permissions`, coluna

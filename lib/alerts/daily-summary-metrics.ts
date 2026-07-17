@@ -72,7 +72,7 @@ export async function getOrganizerDailySummary(
     await Promise.all([
       db.registration.count({ where: { event: { organizerId }, status: "CONFIRMED", createdAt: period } }),
       db.order.aggregate({
-        _sum: { totalAmount: true },
+        _sum: { subtotalAmount: true },
         where: { status: "PAID", event: { organizerId }, createdAt: period },
       }),
       db.order.count({ where: { event: { organizerId }, couponId: { not: null }, createdAt: period } }),
@@ -101,7 +101,7 @@ export async function getOrganizerDailySummary(
 
   return {
     paidRegistrationsCount,
-    grossRevenue: revenueAgg._sum.totalAmount ?? 0,
+    grossRevenue: revenueAgg._sum.subtotalAmount ?? 0,
     couponsUsedCount,
     cancellationsRequestedCount,
     soldOutBatchesCount,

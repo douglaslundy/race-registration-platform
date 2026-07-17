@@ -71,15 +71,15 @@ describe("getOrganizerDailySummary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMock.registration.count.mockResolvedValue(0);
-    dbMock.order.aggregate.mockResolvedValue({ _sum: { totalAmount: null } });
+    dbMock.order.aggregate.mockResolvedValue({ _sum: { subtotalAmount: null } });
     dbMock.order.count.mockResolvedValue(0);
     dbMock.ticketBatch.findMany.mockResolvedValue([]);
     dbMock.registration.findMany.mockResolvedValue([]);
   });
 
-  it("escopa inscrições pagas e receita ao organizerId informado", async () => {
+  it("escopa inscrições pagas e receita ao organizerId informado, somando só o subtotal (sem taxas)", async () => {
     dbMock.registration.count.mockResolvedValueOnce(4);
-    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { totalAmount: 40000 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { subtotalAmount: 40000 } });
 
     const result = await getOrganizerDailySummary("org-1", dayStart, dayEnd);
 
@@ -87,7 +87,7 @@ describe("getOrganizerDailySummary", () => {
       where: { event: { organizerId: "org-1" }, status: "CONFIRMED", createdAt: { gte: dayStart, lt: dayEnd } },
     });
     expect(dbMock.order.aggregate).toHaveBeenCalledWith({
-      _sum: { totalAmount: true },
+      _sum: { subtotalAmount: true },
       where: { status: "PAID", event: { organizerId: "org-1" }, createdAt: { gte: dayStart, lt: dayEnd } },
     });
     expect(result.paidRegistrationsCount).toBe(4);

@@ -55,7 +55,7 @@ function buildAdminEmailRows(m: AdminDailySummary): { label: string; value: stri
 function buildOrganizerEmailRows(m: OrganizerDailySummary): { label: string; value: string }[] {
   return [
     { label: "Inscrições pagas", value: String(m.paidRegistrationsCount) },
-    { label: "Receita bruta", value: formatCurrency(m.grossRevenue) },
+    { label: "Receita", value: formatCurrency(m.grossRevenue) },
     { label: "Cupons usados", value: String(m.couponsUsedCount) },
     { label: "Cancelamentos solicitados", value: String(m.cancellationsRequestedCount) },
     { label: "Lotes esgotados", value: String(m.soldOutBatchesCount) },
@@ -69,7 +69,7 @@ function buildAdminWhatsAppText(m: AdminDailySummary): string {
 
 function buildOrganizerWhatsAppText(m: OrganizerDailySummary): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  return `Resumo de ontem: ${m.paidRegistrationsCount} inscrições pagas, ${formatCurrency(m.grossRevenue)} em receita bruta, ${m.couponsUsedCount} cupons usados. Veja mais em ${baseUrl}/organizador.`;
+  return `Resumo de ontem: ${m.paidRegistrationsCount} inscrições pagas, ${formatCurrency(m.grossRevenue)} em receita, ${m.couponsUsedCount} cupons usados. Veja mais em ${baseUrl}/organizador.`;
 }
 
 export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Promise<{ sent: number; failed: number }> {
