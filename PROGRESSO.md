@@ -5,9 +5,9 @@
 
 ## Tarefa em andamento
 4 sub-projetos pedidos pelo usuário nesta sessão, ordem confirmada: **filtros de eventos**
-(implementado, aguardando revisão final de branch) → caixa de entrada de alertas (WhatsApp/
-E-mail) → anúncios — posições e Google/Meta Ads → anúncios — marketplace de anunciantes privados
-(depende do anterior).
+(✅ implementado, revisado E DEPLOYADO) → caixa de entrada de alertas (WhatsApp/E-mail, próximo —
+ainda não brainstormado) → anúncios — posições e Google/Meta Ads → anúncios — marketplace de
+anunciantes privados (depende do anterior).
 
 **1º sub-projeto (filtros de eventos) implementado via subagent-driven-development, direto na
 main** — spec `docs/superpowers/specs/2026-07-17-filtros-eventos-publicos-design.md` (commit
@@ -29,11 +29,18 @@ sem ação.
 
 **Verificação manual no navegador pulada** (decisão do usuário): o banco de dev local
 (`db.usgslzpuovvrkvvrhljt.supabase.co`, referenciado em `DATABASE_URL`/`DIRECT_URL` do `.env`) não
-resolve DNS — parece offline/descontinuado. Fica pendente testar manualmente no navegador (filtro
-Status/Estado, cascata, badge "Realizado", botão escondido) quando o banco de dev estiver
-acessível de novo, antes ou depois do deploy.
+resolve DNS — parece offline/descontinuado. **Fica pendente testar manualmente em produção**
+(filtro Status/Estado, cascata, badge "Realizado", botão escondido) na próxima vez que mexer
+nessa página — smoke test automatizado (curl) já confirmou as rotas no ar, mas ninguém olhou a
+UI com os próprios olhos ainda.
 
-Próximo passo: decisão de merge/deploy (`finishing-a-development-branch`).
+**Deploy feito em 2026-07-17**: `git push origin main` (`a8c9168..14d84dd`) → `deploy.sh` na VPS
+(git pull + docker build + `docker compose up -d --no-deps app`, sem migração — mudança só de
+query/UI). Smoke test pós-deploy: `/`, `/eventos`, `/eventos?status=encerrada`,
+`/eventos?estado=SP` todos 200; `docker logs corridas-app` sem erros nos primeiros 3 minutos.
+
+Sub-projeto 1 (filtros de eventos) **completo e no ar**. Próximo passo: brainstorm do
+sub-projeto 2 (caixa de entrada de alertas WhatsApp/E-mail).
 
 Corrigido no meio do brainstorm (achado pelo usuário, não fazia parte dos 4 sub-projetos): resumo
 diário do organizador (`lib/alerts/daily-summary-metrics.ts`) somava `order.totalAmount` (com taxa
