@@ -2,7 +2,7 @@ import { vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   db: {
-    user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
+    user: { findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     event: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), count: vi.fn() },
     eventRoute: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     eventCategory: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -31,6 +31,7 @@ vi.mock("@/lib/db", () => ({
     alertLog: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
     dailySummaryRecipient: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
     assistantPermission: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
+    messageLog: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     verificationToken: { create: vi.fn(), deleteMany: vi.fn(), findUnique: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
