@@ -19,6 +19,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
             <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>
             <Link href="/organizador/pedidos-vencidos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Pedidos vencidos</Link>
             <Link href="/organizador/carrinhos-abandonados" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Carrinhos abandonados</Link>
+            <Link href="/organizador/mensagens" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Mensagens</Link>
             <Link href="/organizador/reembolsos-pendentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Cancelamentos pendentes</Link>
             <Link href="/organizador/assistentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Assistentes</Link>
           </div>
@@ -47,6 +48,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
           <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>
           <Link href="/organizador/pedidos-vencidos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Pedidos vencidos</Link>
           <Link href="/organizador/carrinhos-abandonados" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Carrinhos abandonados</Link>
+          <Link href="/organizador/mensagens" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Mensagens</Link>
           <Link href="/organizador/reembolsos-pendentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Cancelamentos pendentes</Link>
           <Link href="/organizador/assistentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Assistentes</Link>
           <Link href="/eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Área do atleta</Link>

@@ -23,6 +23,7 @@ export default function AdminNav() {
           <Link href="/admin/auditoria" className="hover:text-gray-300">Auditoria</Link>
           <Link href="/admin/whatsapp" className="hover:text-gray-300">WhatsApp</Link>
           <Link href="/admin/alertas" className="hover:text-gray-300">Alertas</Link>
+          <Link href="/admin/mensagens" className="hover:text-gray-300">Mensagens</Link>
           <Link href="/admin/configuracoes" className="hover:text-gray-300">Config.</Link>
           <Link href="/admin/conteudo-legal" className="hover:text-gray-300">Legal</Link>
           <Link href="/admin/backup" className="hover:text-gray-300">Backup</Link>
