@@ -6,6 +6,7 @@ import {
   logoutInstance,
   deleteInstance,
   sendTextMessage,
+  setWebhook,
 } from "@/lib/whatsapp/evolution-client";
 
 const config = { apiUrl: "https://evo.example.com", apiKey: "test-key", instanceName: "corridas-app" };
@@ -111,9 +112,9 @@ describe("evolution-client", () => {
   });
 
   describe("sendTextMessage", () => {
-    it("envia o telefone e o texto para /message/sendText/{instance}", async () => {
-      (global.fetch as any).mockResolvedValueOnce({ status: 200, json: async () => ({ key: { id: "abc" } }) });
-      await sendTextMessage(config, "5511999999999", "Olá!");
+    it("envia o telefone e o texto para /message/sendText/{instance} e retorna o providerMessageId", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 200, json: async () => ({ key: { id: "wamid.abc" } }) });
+      const result = await sendTextMessage(config, "5511999999999", "Olá!");
       expect(global.fetch).toHaveBeenCalledWith(
         "https://evo.example.com/message/sendText/corridas-app",
         expect.objectContaining({
@@ -121,11 +122,43 @@ describe("evolution-client", () => {
           body: JSON.stringify({ number: "5511999999999", text: "Olá!" }),
         }),
       );
+      expect(result).toEqual({ providerMessageId: "wamid.abc" });
+    });
+
+    it("retorna providerMessageId null quando a resposta não traz key.id", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 200, json: async () => ({}) });
+      const result = await sendTextMessage(config, "5511999999999", "Olá!");
+      expect(result).toEqual({ providerMessageId: null });
     });
 
     it("lança erro quando o envio falha", async () => {
       (global.fetch as any).mockResolvedValueOnce({ status: 400, json: async () => ({ error: "invalid number" }) });
       await expect(sendTextMessage(config, "invalid", "Olá!")).rejects.toThrow("Evolution API 400");
+    });
+  });
+
+  describe("setWebhook", () => {
+    it("faz POST em /webhook/set/{instance} inscrevendo em MESSAGES_UPDATE", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 201, json: async () => ({}) });
+      await setWebhook(config, "https://app.example.com/api/webhooks/whatsapp?secret=abc");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://evo.example.com/webhook/set/corridas-app",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            webhook: {
+              url: "https://app.example.com/api/webhooks/whatsapp?secret=abc",
+              enabled: true,
+              events: ["MESSAGES_UPDATE"],
+            },
+          }),
+        }),
+      );
+    });
+
+    it("lança erro quando a Evolution API rejeita a configuração do webhook", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 500, json: async () => ({}) });
+      await expect(setWebhook(config, "https://app.example.com/x")).rejects.toThrow("Evolution API 500");
     });
   });
 });

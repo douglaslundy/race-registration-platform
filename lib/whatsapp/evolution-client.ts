@@ -93,7 +93,11 @@ export async function deleteInstance(config: WhatsAppConfig): Promise<void> {
   }
 }
 
-export async function sendTextMessage(config: WhatsAppConfig, phone: string, text: string): Promise<void> {
+export async function sendTextMessage(
+  config: WhatsAppConfig,
+  phone: string,
+  text: string,
+): Promise<{ providerMessageId: string | null }> {
   const { status, body } = await evolutionFetch(config, `/message/sendText/${config.instanceName}`, {
     method: "POST",
     body: { number: phone, text },
@@ -101,5 +105,19 @@ export async function sendTextMessage(config: WhatsAppConfig, phone: string, tex
 
   if (status >= 400) {
     throw new Error(`Evolution API ${status} ao enviar mensagem: ${JSON.stringify(body).slice(0, 300)}`);
+  }
+
+  const messageId = (body as { key?: { id?: string } } | null)?.key?.id;
+  return { providerMessageId: typeof messageId === "string" ? messageId : null };
+}
+
+export async function setWebhook(config: WhatsAppConfig, url: string): Promise<void> {
+  const { status, body } = await evolutionFetch(config, `/webhook/set/${config.instanceName}`, {
+    method: "POST",
+    body: { webhook: { url, enabled: true, events: ["MESSAGES_UPDATE"] } },
+  });
+
+  if (status >= 400) {
+    throw new Error(`Evolution API ${status} ao configurar webhook: ${JSON.stringify(body).slice(0, 300)}`);
   }
 }
