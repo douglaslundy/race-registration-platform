@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import OrganizerInfo from "@/components/events/OrganizerInfo";
 import EventDisclaimer from "@/components/events/EventDisclaimer";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getAppName, getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin } from "@/lib/settings";
 import { MODALITY_LABEL } from "@/lib/admin/labels";
 
@@ -74,6 +75,10 @@ export default async function EventoPage({ params }: Props) {
           </div>
         </div>
       )}
+
+      <div className="mb-8">
+        <AdSlotRenderer position="EVENTO_DETALHE_ABAIXO_BANNER" />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-6">
@@ -190,6 +195,10 @@ export default async function EventoPage({ params }: Props) {
               </button>
             )}
 
+          </div>
+
+          <div className="mt-4">
+            <AdSlotRenderer position="EVENTO_DETALHE_COLUNA_DIREITA" />
           </div>
         </aside>
       </div>
