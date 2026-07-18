@@ -32,7 +32,7 @@ export default async function AdminMensagensPage({ searchParams }: { searchParam
     status: status as MessageLogStatus | undefined,
     q,
     from: dateFrom ? new Date(dateFrom) : undefined,
-    to: dateTo ? new Date(dateTo) : undefined,
+    to: dateTo ? new Date(`${dateTo}T23:59:59.999Z`) : undefined,
     page,
   });
 
