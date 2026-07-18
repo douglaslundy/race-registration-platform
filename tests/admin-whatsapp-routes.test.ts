@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
@@ -15,6 +15,7 @@ vi.mock("@/lib/whatsapp/evolution-client", () => ({
   getConnectionState: vi.fn(),
   logoutInstance: vi.fn(),
   deleteInstance: vi.fn(),
+  setWebhook: vi.fn(),
 }));
 
 vi.mock("@/lib/whatsapp", () => ({
@@ -33,6 +34,7 @@ import {
   getConnectionState,
   logoutInstance,
   deleteInstance,
+  setWebhook,
 } from "@/lib/whatsapp/evolution-client";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
@@ -107,6 +109,12 @@ describe("admin whatsapp routes", () => {
   });
 
   describe("GET /api/admin/whatsapp/status", () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
     it("retorna 403 para quem não é admin", async () => {
       authMock.mockResolvedValue({ user: { id: "u1", role: "ATHLETE" } } as any);
       const res = await statusGet();
@@ -123,8 +131,57 @@ describe("admin whatsapp routes", () => {
 
     it("retorna o estado de conexão quando configurado", async () => {
       vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+      process.env.WHATSAPP_WEBHOOK_SECRET = "shh";
+      process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
       const res = await statusGet();
       const body = await res.json();
+      expect(body.state).toBe("open");
+    });
+
+    it("registra o webhook quando o estado é open e as env vars estão presentes", async () => {
+      vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+      process.env.WHATSAPP_WEBHOOK_SECRET = "shh";
+      process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+
+      await statusGet();
+
+      expect(setWebhook).toHaveBeenCalledWith(
+        configMock,
+        "https://app.example.com/api/webhooks/whatsapp?secret=shh",
+      );
+    });
+
+    it("não registra o webhook quando o estado não é open", async () => {
+      vi.mocked(getConnectionState).mockResolvedValueOnce("connecting");
+      process.env.WHATSAPP_WEBHOOK_SECRET = "shh";
+      process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+
+      await statusGet();
+
+      expect(setWebhook).not.toHaveBeenCalled();
+    });
+
+    it("não registra o webhook quando falta a env var do segredo, mas ainda retorna o estado normalmente", async () => {
+      vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+      delete process.env.WHATSAPP_WEBHOOK_SECRET;
+      process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+
+      const res = await statusGet();
+
+      expect(setWebhook).not.toHaveBeenCalled();
+      expect(res.status).toBe(200);
+    });
+
+    it("uma falha ao registrar o webhook não quebra a resposta de status", async () => {
+      vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+      process.env.WHATSAPP_WEBHOOK_SECRET = "shh";
+      process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+      vi.mocked(setWebhook).mockRejectedValueOnce(new Error("Evolution API 500"));
+
+      const res = await statusGet();
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
       expect(body.state).toBe("open");
     });
   });
