@@ -6,6 +6,7 @@ import EventsBanner from "@/components/events/EventsBanner";
 import OrganizerCTA from "@/components/events/OrganizerCTA";
 import { getBannerInterval, getAppName } from "@/lib/settings";
 import type { EventModality } from "@prisma/client";
+import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 
 export const metadata: Metadata = { title: "Eventos" };
 export const revalidate = 60;
@@ -43,6 +44,8 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
     <main className="max-w-7xl mx-auto px-4 py-8">
       <EventsBanner intervalSeconds={bannerInterval} />
 
+      <AdSlotRenderer position="EVENTOS_ABAIXO_BANNER" />
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Eventos</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">{total} evento{total !== 1 ? "s" : ""} encontrado{total !== 1 ? "s" : ""}</p>
@@ -51,6 +54,9 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <aside>
           <EventFilters locations={locations} />
+          <div className="mt-6">
+            <AdSlotRenderer position="EVENTOS_COLUNA_ESQUERDA" />
+          </div>
         </aside>
 
         <div className="lg:col-span-3">
@@ -65,6 +71,10 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
                 {events.map((event) => (
                   <EventCard key={event.id} event={event} />
                 ))}
+              </div>
+
+              <div className="my-6">
+                <AdSlotRenderer position="EVENTOS_ENTRE_RESULTADOS" />
               </div>
 
               {totalPages > 1 && (
