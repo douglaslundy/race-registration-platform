@@ -3,6 +3,15 @@
 ## Última atualização
 2026-07-18
 
+## Corrigido fora dos 4 sub-projetos (achado pelo usuário)
+Bug real confirmado e corrigido: lotes de inscrição em modo de ativação "Manual" (padrão do
+schema e do formulário) ignoravam completamente o campo `startAt` — só o toggle `active`
+controlava se o lote aceitava inscrições. Organizador configurava "início dia 5" mas, deixando o
+modo em Manual (padrão), inscrições abriam imediatamente. `lib/batch-status.ts`: `startAt` agora
+é limite absoluto em qualquer modo de ativação. TDD (13 testes novos, `tests/unit/batch-status.test.ts`,
+zero cobertura existia antes). Suíte 907/907, `tsc` limpo. Commit `11accd7`, não deployado ainda
+(decisão do usuário: bater tudo num deploy único no final da sessão).
+
 ## Tarefa em andamento
 4 sub-projetos pedidos pelo usuário nesta sessão, ordem confirmada: **filtros de eventos**
 (✅ implementado, revisado E DEPLOYADO) → **caixa de entrada de mensagens** (✅ implementado e
