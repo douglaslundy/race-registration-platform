@@ -51,8 +51,15 @@ documentados como limitação conhecida no spec.
 local inacessível). Fica pendente testar as duas telas, os filtros, e — assim que o WhatsApp for
 conectado — a evolução real do status SENT→DELIVERED→READ.
 
-Próximo passo: decisão de deploy (`finishing-a-development-branch`), depois brainstorm do
-sub-projeto 3 (anúncios — posições e Google/Meta Ads).
+**Decisão do usuário sobre deploy (2026-07-18): NÃO fazer deploy agora.** Quer o deploy completo
+(migração `MessageLog` + env var `WHATSAPP_WEBHOOK_SECRET`) mas pediu pra **continuar o
+desenvolvimento dos sub-projetos 3 e 4 até tudo estar pronto, e então fazer um único deploy
+batendo tudo de uma vez** — mudança do padrão anterior (deploy após cada sub-projeto). Sub-projeto
+2 fica commitado local/GitHub, não deployado, até essa decisão mudar.
+
+Próximo passo: brainstorm do sub-projeto 3 (anúncios — posições e Google/Meta Ads). Deploy fica
+para o final, depois do sub-projeto 4 (marketplace de anunciantes) — não esquecer de aplicar a
+migração do MessageLog E a env var do webhook nesse deploy único.
 
 **1º sub-projeto (filtros de eventos) implementado via subagent-driven-development, direto na
 main** — spec `docs/superpowers/specs/2026-07-17-filtros-eventos-publicos-design.md` (commit
