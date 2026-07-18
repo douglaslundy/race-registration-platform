@@ -15,8 +15,8 @@ zero cobertura existia antes). Suíte 907/907, `tsc` limpo. Commit `11accd7`, n�
 ## Tarefa em andamento
 4 sub-projetos pedidos pelo usuário nesta sessão, ordem confirmada: **filtros de eventos**
 (✅ implementado, revisado E DEPLOYADO) → **caixa de entrada de mensagens** (✅ implementado e
-revisado, aguardando decisão de deploy) → anúncios — posições e Google/Meta Ads → anúncios —
-marketplace de anunciantes privados (depende do anterior).
+revisado, deploy pendente) → **anúncios — posições e Google AdSense** (✅ implementado e revisado,
+deploy pendente) → anúncios — marketplace de anunciantes privados (depende do anterior, próximo).
 
 **2º sub-projeto (caixa de entrada de mensagens WhatsApp/E-mail) implementado via
 subagent-driven-development, direto na main** — spec
@@ -66,7 +66,53 @@ desenvolvimento dos sub-projetos 3 e 4 até tudo estar pronto, e então fazer um
 batendo tudo de uma vez** — mudança do padrão anterior (deploy após cada sub-projeto). Sub-projeto
 2 fica commitado local/GitHub, não deployado, até essa decisão mudar.
 
-Próximo passo: brainstorm do sub-projeto 3 (anúncios — posições e Google/Meta Ads). Deploy fica
+**3º sub-projeto (anúncios — posições + Google AdSense) implementado via
+subagent-driven-development, direto na main** — spec
+`docs/superpowers/specs/2026-07-18-anuncios-google-adsense-design.md` (commit `0019b94`), plano
+`docs/superpowers/plans/2026-07-18-anuncios-google-adsense.md` (commit `fbd9a01`). 17 tasks, todas
+implementadas e revisadas individualmente, sem nenhum achado Critical — resumo por área:
+- Schema: `AdSlot` (5 posições fixas, seed via migration.sql — **não roda automático no deploy**,
+  `db push` não executa `migration.sql`, precisa INSERT manual) + `AdMetricsSnapshot`.
+- 5 posições reais inseridas em `/eventos` (3) e `/eventos/[slug]` (2), via `<AdSlotRenderer>` —
+  só renderiza quando a posição está ativa, com fonte Google e `googleAdUnitId` configurado.
+- Script do AdSense carrega no layout público só quando há posição ativa — primeira exceção de JS
+  de terceiro no sistema (justificada, documentada no spec).
+- Admin `/admin/anuncios`: liga/desliga posição, define fonte, cola o ID do bloco do AdSense.
+  ADMIN-only (sem delegação a assistente, mesmo critério do WhatsApp/Configurações).
+- OAuth completo com o Google (`/admin/anuncios/conectar-google`): fluxo authorization-code sem
+  SDK, cron diário (`/api/cron/ad-metrics-sync`) puxa métricas via AdSense Management API v2,
+  painel de métricas com estado vazio explícito antes de conectar.
+- **2 bugs reais encontrados e corrigidos durante a implementação** (não no código deste
+  controller, no próprio texto do plano): rotas OAuth (`req.nextUrl` não existe em `Request` puro
+  nos testes; fallback de URL base terminava em string vazia e quebrava `redirect`) e um vazamento
+  de mock nos testes (`clearAllMocks` não limpa `mockResolvedValueOnce` não consumido). Ambos
+  verificados de forma independente pelos revisores.
+- **Bug de projeto encontrado no meio da implementação** (não específico desta feature):
+  `tsconfig.json` tinha `target: ES2017`, que não permite sintaxe de literal BigInt — quebrava o
+  `tsc` desde 2 tasks atrás sem ninguém perceber. Corrigido pra `ES2020` (commit `5d3d134`).
+
+Suíte final 944/944, `tsc --noEmit` limpo. Revisão final de branch inteira (opus, 1 desconexão por
+limite de sessão, resumida): **pronto pra merge, com ajustes**. Zero Critical. 1 Important
+corrigido a pedido do usuário — `google_adsense_client_id` nunca tinha um formulário/rota pra ser
+salvo (lacuna do próprio plano), então **nenhum anúncio jamais apareceria** mesmo com tudo
+configurado; corrigido com um campo simples em `/admin/anuncios` reaproveitando a rota genérica de
+configurações já existente (commit `f825303`). 3 Minor não corrigidos (settings órfãs em
+desconexão; moeda fixa em BRL na tela de métricas; variável não usada em 2 testes) — cosméticos.
+
+**Pendências reais, fora do nosso controle**: o fluxo OAuth/métricas nunca foi testado contra uma
+conta de verdade — falta (1) criar um projeto no Google Cloud, ativar a AdSense Management API, e
+gerar `GOOGLE_ADS_OAUTH_CLIENT_ID`/`SECRET`; (2) ter uma conta Google AdSense aprovada pro site.
+Sem isso, a infraestrutura está pronta mas os anúncios reais e as métricas não vão funcionar —
+mesmo padrão do WhatsApp nesta sessão (infraestrutura pronta, ativação real depende de aprovação
+externa).
+
+**Verificação manual no navegador ainda não feita** (mesmo motivo dos 2 sub-projetos anteriores:
+banco de dev local inacessível).
+
+Sub-projeto 3 completo e revisado, **não deployado** (mesma decisão de bater tudo num deploy único
+no final, junto com o sub-projeto 4).
+
+Próximo passo: brainstorm do sub-projeto 4 (marketplace de anunciantes privados). Deploy fica
 para o final, depois do sub-projeto 4 (marketplace de anunciantes) — não esquecer de aplicar a
 migração do MessageLog E a env var do webhook nesse deploy único.
 
