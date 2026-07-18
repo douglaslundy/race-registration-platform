@@ -2,14 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/rbac";
 import { listAdSlots } from "@/lib/ad-slots";
+import { getSetting } from "@/lib/settings";
 import AdSlotEditForm from "@/components/admin/AdSlotEditForm";
+import GoogleAdSenseClientIdForm from "@/components/admin/GoogleAdSenseClientIdForm";
 
 export const metadata: Metadata = { title: "Anúncios — Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminAnunciosPage() {
   await requireAdmin();
-  const slots = await listAdSlots();
+  const [slots, clientId] = await Promise.all([
+    listAdSlots(),
+    getSetting("google_adsense_client_id"),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -18,6 +23,15 @@ export default async function AdminAnunciosPage() {
         <div className="flex gap-2 text-sm">
           <Link href="/admin/anuncios/conectar-google" className="btn-secondary py-1.5 px-3">Conectar Google AdSense</Link>
           <Link href="/admin/anuncios/metricas" className="btn-secondary py-1.5 px-3">Métricas</Link>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Client ID do Google AdSense</label>
+            <GoogleAdSenseClientIdForm currentClientId={clientId ?? ""} />
+          </div>
         </div>
       </div>
 
