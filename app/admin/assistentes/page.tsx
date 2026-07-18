@@ -32,6 +32,7 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "results.publish", label: "Publicar resultados (qualquer evento)" },
   { key: "abandoned-carts.notify-any", label: "Reenviar alerta de carrinho abandonado (plataforma inteira)" },
   { key: "reports.export-all", label: "Exportar relatório financeiro da plataforma" },
+  { key: "messages.view", label: "Ver caixa de mensagens" },
 ];
 
 export default function AdminAssistentesPage() {

@@ -38,6 +38,7 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "results.publish", label: "Publicar resultados" },
   { key: "abandoned-carts.notify", label: "Reenviar alerta de carrinho abandonado (meus eventos)" },
   { key: "reports.export", label: "Exportar relatório financeiro (meus eventos)" },
+  { key: "messages.view", label: "Ver caixa de mensagens (minhas mensagens)" },
 ];
 
 export default function OrganizerAssistentesPage() {
