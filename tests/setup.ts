@@ -32,6 +32,8 @@ vi.mock("@/lib/db", () => ({
     dailySummaryRecipient: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
     assistantPermission: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
     messageLog: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
+    adSlot: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    adMetricsSnapshot: { findMany: vi.fn(), upsert: vi.fn(), aggregate: vi.fn() },
     verificationToken: { create: vi.fn(), deleteMany: vi.fn(), findUnique: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
