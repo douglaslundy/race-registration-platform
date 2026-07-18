@@ -603,6 +603,39 @@ model MessageLog {
   @@map("message_logs")
 }
 
+model AdSlot {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  label          String
+  width          Int
+  height         Int
+  enabled        Boolean  @default(false)
+  source         String?
+  googleAdUnitId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  metrics AdMetricsSnapshot[]
+
+  @@map("ad_slots")
+}
+
+model AdMetricsSnapshot {
+  id                     String   @id @default(cuid())
+  adSlotId               String
+  date                   DateTime
+  impressions            Int
+  clicks                 Int
+  estimatedRevenueMicros BigInt
+  currency               String
+  createdAt              DateTime @default(now())
+
+  adSlot AdSlot @relation(fields: [adSlotId], references: [id])
+
+  @@unique([adSlotId, date])
+  @@map("ad_metrics_snapshots")
+}
+
 model AssistantPermission {
   id        String   @id @default(cuid())
   userId    String
