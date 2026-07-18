@@ -31,3 +31,8 @@ export interface UpdateAdSlotData {
 export async function updateAdSlot(id: string, data: UpdateAdSlotData): Promise<void> {
   await db.adSlot.update({ where: { id }, data });
 }
+
+export async function hasActiveGoogleAdSlot(): Promise<boolean> {
+  const rows = await db.adSlot.findMany({ where: { enabled: true, source: "GOOGLE" }, take: 1 });
+  return rows.length > 0;
+}
