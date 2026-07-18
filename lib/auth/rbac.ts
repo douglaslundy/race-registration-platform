@@ -127,3 +127,23 @@ export async function requireOrganizer() {
   }
   redirect("/acesso-negado");
 }
+
+/** Checagem de permissão pra uso em Server Components (páginas) — redireciona em vez de
+ * retornar uma NextResponse. Mesma lógica de checkApiPermission: ADMIN/ORGANIZER titulares
+ * sempre passam; ASSISTANT precisa da AssistantPermission gravada pra essa actionKey. */
+export async function requirePermission(actionKey: string) {
+  const session = await requireAuth();
+
+  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
+    return session;
+  }
+
+  if (session.user.role === "ASSISTANT") {
+    const granted = await db.assistantPermission.findUnique({
+      where: { userId_actionKey: { userId: session.user.id, actionKey } },
+    });
+    if (granted) return session;
+  }
+
+  redirect("/acesso-negado");
+}
