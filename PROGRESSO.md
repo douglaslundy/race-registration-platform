@@ -1,13 +1,58 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-17
+2026-07-18
 
 ## Tarefa em andamento
 4 sub-projetos pedidos pelo usuário nesta sessão, ordem confirmada: **filtros de eventos**
-(✅ implementado, revisado E DEPLOYADO) → caixa de entrada de alertas (WhatsApp/E-mail, próximo —
-ainda não brainstormado) → anúncios — posições e Google/Meta Ads → anúncios — marketplace de
-anunciantes privados (depende do anterior).
+(✅ implementado, revisado E DEPLOYADO) → **caixa de entrada de mensagens** (✅ implementado e
+revisado, aguardando decisão de deploy) → anúncios — posições e Google/Meta Ads → anúncios —
+marketplace de anunciantes privados (depende do anterior).
+
+**2º sub-projeto (caixa de entrada de mensagens WhatsApp/E-mail) implementado via
+subagent-driven-development, direto na main** — spec
+`docs/superpowers/specs/2026-07-17-caixa-entrada-alertas-design.md` (commit `3bf8cb8`), plano
+`docs/superpowers/plans/2026-07-17-caixa-entrada-alertas.md` (commit `bf93a7a`). 15 tasks, todas
+implementadas e revisadas individualmente (spec ✅ + qualidade ✅), sem nenhum achado
+Critical/Important nas revisões de task — resumo por área:
+- Schema: novo modelo `MessageLog` (14 campos) + migração manual (banco de dev inacessível,
+  validado só por `prisma validate`/`generate`).
+- `lib/message-logs.ts`: módulo central (`recordMessageLog` best-effort, nunca lança;
+  `updateMessageLogStatusByProviderMessageId` nunca regride; `listMessageLogs`;
+  `resolveMessageOwnerUserId`).
+- Instrumentação centralizada: `sendMail()` (`lib/email.ts`) e `sendWhatsAppMessage()`
+  (`lib/whatsapp.ts`) logam todo envio real (SENT/FAILED) sem precisar tocar em nenhum dos ~15
+  chamadores existentes.
+- WhatsApp ganhou leitura real: `evolution-client.ts` captura `providerMessageId` +
+  `setWebhook`; rota de status registra o webhook automaticamente quando conectado (best-effort);
+  novo receptor `POST /api/webhooks/whatsapp` (secret via query param) atualiza
+  SENT→DELIVERED→READ.
+- Sistema de permissões: nova `requirePermission(actionKey)` em `rbac.ts`; chave `messages.view`
+  adicionada às 2 telas de gestão de assistentes (mesmo padrão dos 6 domínios anteriores).
+- UI: `MessageLogList` compartilhado (2 abas E-mail/WhatsApp, ícones de status, `<details>` pro
+  assunto); `/admin/mensagens` (vê tudo) e `/organizador/mensagens` (escopado por
+  `recipientUserId`, com sentinel `"__none__"` pra nunca vazar dados de outro organizador se a
+  resolução falhar).
+
+Suíte final 894/894, `tsc --noEmit` limpo. Revisão final de branch inteira (opus, com foco extra
+em segurança/isolamento de tenant): **pronto pra merge, com ajustes**. Zero Critical. 2 Important:
+(1) corrigido a pedido do usuário — filtro "Até" tinha off-by-one (excluía o próprio dia
+selecionado por causa de meia-noite UTC), commit `2259bfb`, nas 2 páginas; (2) **pendência
+conhecida, sem correção especulativa** — o payload real do webhook `MESSAGES_UPDATE` da Evolution
+API nunca foi validado contra uma entrega de verdade (sem WhatsApp conectado nesta sessão); o spec
+falava em ACK numérico, o código mapeia strings (`DELIVERY_ACK`/`READ`) — falha de forma segura
+(mensagem fica em SENT se o formato não bater), mas **a confirmação de leitura pode não funcionar
+até validar com um webhook real assim que o WhatsApp for conectado em produção**. 4 Minor não
+corrigidos (guard do admin genérico mas seguro por causa do layout; `<details>` do assunto mostra
+texto duplicado; paginação sem limite de links; lookup de telefone exact-match) — cosméticos ou já
+documentados como limitação conhecida no spec.
+
+**Verificação manual no navegador ainda não feita** (mesmo motivo do sub-projeto 1: banco de dev
+local inacessível). Fica pendente testar as duas telas, os filtros, e — assim que o WhatsApp for
+conectado — a evolução real do status SENT→DELIVERED→READ.
+
+Próximo passo: decisão de deploy (`finishing-a-development-branch`), depois brainstorm do
+sub-projeto 3 (anúncios — posições e Google/Meta Ads).
 
 **1º sub-projeto (filtros de eventos) implementado via subagent-driven-development, direto na
 main** — spec `docs/superpowers/specs/2026-07-17-filtros-eventos-publicos-design.md` (commit
