@@ -53,16 +53,19 @@ describe("POST /api/auth/register-advertiser", () => {
   });
 
   it("cria User(role=ADVERTISER) e AdvertiserProfile com sucesso", async () => {
-    dbMock.user.create.mockResolvedValueOnce({ id: "user-1", name: "Fulano", email: "empresa@example.com", role: "ADVERTISER" });
-    dbMock.advertiserProfile.create.mockResolvedValueOnce({ id: "adv-1" });
+    const txMock = {
+      user: { create: vi.fn().mockResolvedValueOnce({ id: "user-1", name: "Fulano", email: "empresa@example.com", role: "ADVERTISER" }) },
+      advertiserProfile: { create: vi.fn().mockResolvedValueOnce({ id: "adv-1" }) },
+    };
+    dbMock.$transaction = vi.fn(async (fn: any) => fn(txMock));
 
     const res = await POST(makeRequest(validBody));
 
-    expect(dbMock.user.create).toHaveBeenCalledWith({
+    expect(txMock.user.create).toHaveBeenCalledWith({
       data: { name: "Fulano", email: "empresa@example.com", passwordHash: "hashed", role: "ADVERTISER" },
       select: { id: true, name: true, email: true, role: true },
     });
-    expect(dbMock.advertiserProfile.create).toHaveBeenCalledWith({
+    expect(txMock.advertiserProfile.create).toHaveBeenCalledWith({
       data: {
         userId: "user-1",
         companyName: "Empresa LTDA",

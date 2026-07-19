@@ -39,13 +39,17 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const user = await db.user.create({
-    data: { name, email, passwordHash, role: "ADVERTISER" },
-    select: { id: true, name: true, email: true, role: true },
-  });
+  const user = await db.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: { name, email, passwordHash, role: "ADVERTISER" },
+      select: { id: true, name: true, email: true, role: true },
+    });
 
-  await db.advertiserProfile.create({
-    data: { userId: user.id, companyName, contactEmail, contactPhone },
+    await tx.advertiserProfile.create({
+      data: { userId: user.id, companyName, contactEmail, contactPhone },
+    });
+
+    return user;
   });
 
   return NextResponse.json({ user }, { status: 201 });
