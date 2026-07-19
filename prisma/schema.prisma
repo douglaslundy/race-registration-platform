@@ -19,6 +19,7 @@ enum UserRole {
   SUPPORT
   PARTNER
   ASSISTANT
+  ADVERTISER
 }
 
 enum EventStatus {
@@ -117,6 +118,7 @@ model User {
 
   athleteProfile   AthleteProfile?
   organizerProfile OrganizerProfile?
+  advertiserProfile AdvertiserProfile?
   orders           Order[]
   registrations    Registration[]
   auditLogs        AuditLog[]
@@ -386,7 +388,8 @@ model Order {
 
 model Payment {
   id                String        @id @default(cuid())
-  orderId           String
+  orderId           String?
+  adPurchaseId      String?
   provider          String
   providerPaymentId String?       @unique
   method            PaymentMethod
@@ -403,8 +406,9 @@ model Payment {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  order   Order    @relation(fields: [orderId], references: [id])
-  refunds Refund[]
+  order      Order?      @relation(fields: [orderId], references: [id])
+  adPurchase AdPurchase? @relation(fields: [adPurchaseId], references: [id])
+  refunds    Refund[]
 
   @@index([orderId])
   @@map("payments")
@@ -615,7 +619,8 @@ model AdSlot {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  metrics AdMetricsSnapshot[]
+  metrics    AdMetricsSnapshot[]
+  privateAds PrivateAd[]
 
   @@map("ad_slots")
 }
@@ -634,6 +639,71 @@ model AdMetricsSnapshot {
 
   @@unique([adSlotId, date])
   @@map("ad_metrics_snapshots")
+}
+
+model AdvertiserProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  companyName  String
+  contactEmail String
+  contactPhone String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id])
+  purchases AdPurchase[]
+
+  @@map("advertiser_profiles")
+}
+
+model AdPlan {
+  id                   String   @id @default(cuid())
+  name                 String
+  priceAmount          Int
+  durationDays         Int
+  maxSimultaneousSlots Int
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  purchases AdPurchase[]
+
+  @@map("ad_plans")
+}
+
+model AdPurchase {
+  id           String    @id @default(cuid())
+  advertiserId String
+  adPlanId     String
+  status       String
+  startAt      DateTime?
+  endAt        DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  advertiser AdvertiserProfile @relation(fields: [advertiserId], references: [id])
+  adPlan     AdPlan            @relation(fields: [adPlanId], references: [id])
+  payments   Payment[]
+  ads        PrivateAd[]
+
+  @@map("ad_purchases")
+}
+
+model PrivateAd {
+  id              String   @id @default(cuid())
+  adPurchaseId    String
+  adSlotId        String
+  imageUrl        String
+  targetUrl       String
+  status          String
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  adPurchase AdPurchase @relation(fields: [adPurchaseId], references: [id])
+  adSlot     AdSlot     @relation(fields: [adSlotId], references: [id])
+
+  @@map("private_ads")
 }
 
 model AssistantPermission {
