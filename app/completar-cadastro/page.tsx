@@ -10,6 +10,8 @@ const ROLE_HOME: Record<Exclude<UserRole, "ASSISTANT">, string> = {
   ADMIN: "/admin",
   SUPPORT: "/admin",
   PARTNER: "/dashboard",
+  // Painel do anunciante (app/anunciante) ainda não existe — cai no dashboard genérico até lá.
+  ADVERTISER: "/dashboard",
 };
 
 export default async function CompletarCadastroPage({

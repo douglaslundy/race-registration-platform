@@ -237,28 +237,35 @@ export default async function AdminPagamentosPage({ searchParams }: { searchPara
             </tr>
           </thead>
           <tbody>
-            {payments.map((p) => (
-              <tr key={p.id} className={rowClass}>
-                <td className={cellPadding + " max-w-xs truncate"}>{p.order.registrations[0]?.event.title ?? "—"}</td>
-                <td className={cellPadding + " text-gray-600"}>{METHOD_LABEL[p.method] ?? p.method}</td>
-                <td className={cellPadding + " font-medium"}>{formatCurrency(p.amount)}</td>
-                <td className={cellPadding}>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status] ?? ""}`}>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</span>
-                </td>
-                <td className={cellPadding + " text-gray-600"}>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-gray-700">{p.order.buyer.name}</span>
-                    <span className="text-xs text-gray-400">{p.order.buyer.email}</span>
-                  </div>
-                </td>
-                <td className={cellPadding + " text-gray-500 text-xs whitespace-nowrap"}>{formatDate(p.createdAt, "dd/MM/yyyy HH:mm")}</td>
-                <td className={cellPadding}>
-                  <Link href={`/admin/pagamentos/${p.id}`} className="text-xs text-primary-600 hover:underline">
-                    Detalhes
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {payments.map((p) => {
+              if (!p.order) {
+                // Pagamentos exibidos nesta lista são sempre de Order (checkout) — se algum dia um
+                // pagamento de AdPurchase aparecer aqui, falha alto em vez de quebrar silenciosamente.
+                throw new Error(`Payment ${p.id} sem order associado (admin pagamentos list)`);
+              }
+              return (
+                <tr key={p.id} className={rowClass}>
+                  <td className={cellPadding + " max-w-xs truncate"}>{p.order.registrations[0]?.event.title ?? "—"}</td>
+                  <td className={cellPadding + " text-gray-600"}>{METHOD_LABEL[p.method] ?? p.method}</td>
+                  <td className={cellPadding + " font-medium"}>{formatCurrency(p.amount)}</td>
+                  <td className={cellPadding}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[p.status] ?? ""}`}>{PAYMENT_STATUS_LABEL[p.status] ?? p.status}</span>
+                  </td>
+                  <td className={cellPadding + " text-gray-600"}>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-gray-700">{p.order.buyer.name}</span>
+                      <span className="text-xs text-gray-400">{p.order.buyer.email}</span>
+                    </div>
+                  </td>
+                  <td className={cellPadding + " text-gray-500 text-xs whitespace-nowrap"}>{formatDate(p.createdAt, "dd/MM/yyyy HH:mm")}</td>
+                  <td className={cellPadding}>
+                    <Link href={`/admin/pagamentos/${p.id}`} className="text-xs text-primary-600 hover:underline">
+                      Detalhes
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

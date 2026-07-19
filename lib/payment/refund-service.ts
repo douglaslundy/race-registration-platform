@@ -21,13 +21,16 @@ export async function refundPayment(params: RefundPaymentParams): Promise<Refund
   if (!payment) throw new Error("Pagamento não encontrado");
   if (payment.status !== "PAID") throw new Error("Só é possível estornar pagamentos com status Pago");
   if (!payment.providerPaymentId) throw new Error("Pagamento sem referência no gateway");
+  if (!payment.order || !payment.orderId) throw new Error("Pagamento sem pedido associado");
+  const order = payment.order;
+  const orderId = payment.orderId;
 
   const provider = await getPaymentProvider();
 
   const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId);
   if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
     await db.$transaction(async (tx) => {
-      await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "refund_check");
+      await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "refund_check");
     });
     return { alreadySynced: true };
   }
@@ -53,11 +56,11 @@ export async function refundPayment(params: RefundPaymentParams): Promise<Refund
     });
 
     await tx.order.update({
-      where: { id: payment.orderId },
+      where: { id: orderId },
       data: { status: "REFUNDED" },
     });
 
-    for (const registration of payment.order.registrations) {
+    for (const registration of order.registrations) {
       if (registration.status === "CONFIRMED") {
         await tx.registration.update({
           where: { id: registration.id },
@@ -76,7 +79,7 @@ export async function refundPayment(params: RefundPaymentParams): Promise<Refund
         action: "PAYMENT_REFUNDED",
         entityType: "Payment",
         entityId: payment.id,
-        metadata: { orderId: payment.orderId, amount: payment.amount, reason: params.reason ?? null },
+        metadata: { orderId, amount: payment.amount, reason: params.reason ?? null },
       },
     });
   });

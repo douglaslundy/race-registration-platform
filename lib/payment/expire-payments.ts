@@ -17,6 +17,12 @@ export async function cancelExpiredPayment(paymentId: string): Promise<boolean> 
       },
     });
 
+    if (!payment.orderId || !payment.order) {
+      // A expiração automática só cobre pagamentos de Order (checkout). Se um pagamento de
+      // AdPurchase pendente aparecer aqui, falha alto em vez de tentar cancelar um pedido inexistente.
+      throw new Error(`Payment ${paymentId} sem order associado (cancelExpiredPayment)`);
+    }
+
     await tx.order.update({ where: { id: payment.orderId }, data: { status: "CANCELLED" } });
 
     for (const r of payment.order.registrations) {

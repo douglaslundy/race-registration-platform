@@ -71,6 +71,12 @@ async function main() {
 
   for (const payment of stuck) {
     try {
+      if (!payment.order) {
+        // Este backfill só cobre pagamentos de cartão vinculados a um Order (checkout). Se um
+        // pagamento de AdPurchase aparecer aqui, cai no catch abaixo e loga alto sem travar os demais.
+        throw new Error(`Payment ${payment.id} sem order associado`);
+      }
+      const order = payment.order;
       const provider = providerFor(payment.provider);
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(
         payment.providerPaymentId as string,
@@ -85,8 +91,8 @@ async function main() {
             await applyGatewayStatus(
               tx,
               payment,
-              payment.order,
-              payment.order.registrations,
+              order,
+              order.registrations,
               gatewayStatus as GatewayPaymentStatus,
               "reconciliation",
               { gatewayFeeAmount, paidAt: paidAt ? new Date(paidAt) : undefined },

@@ -34,8 +34,13 @@ export async function GET(req: NextRequest) {
 
   const header = ["Evento", "Comprador", "Email", "Método", "Status", "Valor", "Cadastro"].map(escapeCsvValue).join(",") + "\n";
   const rows = payments
-    .map((payment) =>
-      [
+    .map((payment) => {
+      if (!payment.order) {
+        // Esta exportação só cobre pagamentos de Order (checkout). Se um pagamento de AdPurchase
+        // aparecer aqui, falha explicitamente em vez de exportar uma linha com dados incompletos.
+        throw new Error(`Payment ${payment.id} sem order associado (admin payments export)`);
+      }
+      return [
         payment.order.registrations[0]?.event.title ?? "—",
         payment.order.buyer.name,
         payment.order.buyer.email,
@@ -45,8 +50,8 @@ export async function GET(req: NextRequest) {
         payment.createdAt.toISOString(),
       ]
         .map(escapeCsvValue)
-        .join(","),
-    )
+        .join(",");
+    })
     .join("\n");
 
   return new NextResponse(header + rows, {

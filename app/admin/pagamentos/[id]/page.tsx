@@ -55,6 +55,7 @@ export default async function AdminPaymentDetailPage({
   });
 
   if (!payment) notFound();
+  if (!payment.order) notFound();
 
   const order = payment.order;
   const reg = order.registrations[0];

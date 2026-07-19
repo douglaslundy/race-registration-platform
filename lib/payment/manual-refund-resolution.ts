@@ -21,6 +21,12 @@ export async function resolveRefundManually(params: {
     return { ok: false, status: 400, error: "Nenhum registro de estorno pendente encontrado para este pagamento" };
   }
 
+  if (!payment.orderId) {
+    // Resolução manual de estorno só cobre pagamentos de Order (checkout).
+    return { ok: false, status: 500, error: "Pagamento sem pedido associado" };
+  }
+  const orderId = payment.orderId;
+
   await db.$transaction(async (tx) => {
     await tx.refund.update({
       where: { id: refund.id },
@@ -33,7 +39,7 @@ export async function resolveRefundManually(params: {
     });
 
     await tx.order.update({
-      where: { id: payment.orderId },
+      where: { id: orderId },
       data: { status: "REFUNDED" },
     });
 

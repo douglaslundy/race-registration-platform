@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   SUPPORT: "Suporte",
   PARTNER: "Parceiro",
   ASSISTANT: "Assistente",
+  ADVERTISER: "Anunciante",
 };
 
 const ROLE_COLOR: Record<UserRole, string> = {
@@ -30,6 +31,7 @@ const ROLE_COLOR: Record<UserRole, string> = {
   SUPPORT: BADGE.yellow,
   PARTNER: BADGE.purple,
   ASSISTANT: BADGE.green,
+  ADVERTISER: BADGE.orange,
 };
 
 const ROLE_OPTIONS: Array<{ value: "ALL" | UserRole; label: string }> = [

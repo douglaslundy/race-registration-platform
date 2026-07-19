@@ -6,7 +6,7 @@ import type { UserRole } from "@prisma/client";
 
 const ROLES: UserRole[] = ["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"];
 const ROLE_LABELS: Record<UserRole, string> = {
-  ATHLETE: "Atleta", ORGANIZER: "Organizador", ADMIN: "Admin", SUPPORT: "Suporte", PARTNER: "Parceiro", ASSISTANT: "Assistente",
+  ATHLETE: "Atleta", ORGANIZER: "Organizador", ADMIN: "Admin", SUPPORT: "Suporte", PARTNER: "Parceiro", ASSISTANT: "Assistente", ADVERTISER: "Anunciante",
 };
 
 export default function ChangeUserRoleButton({ userId, currentRole }: { userId: string; currentRole: UserRole }) {

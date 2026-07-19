@@ -79,6 +79,11 @@ export async function notifyPaymentError(
     });
 
     if (!payment) return;
+    if (!payment.order) {
+      // Este alerta só cobre pagamentos de Order (checkout). Cai no catch abaixo e loga alto em vez
+      // de silenciosamente deixar de notificar.
+      throw new Error(`Payment ${paymentId} sem order associado (notifyPaymentError)`);
+    }
 
     await sendCancellationInviteNotification(settings, {
       entityId: paymentId,

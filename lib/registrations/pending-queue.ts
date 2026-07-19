@@ -63,12 +63,19 @@ export async function listPendingRefunds(organizerUserId?: string): Promise<Pend
     },
   });
 
-  return payments.map((p) => ({
-    id: p.id,
-    amount: p.amount,
-    order: { id: p.order.id },
-    event: p.order.event,
-    athlete: p.order.buyer,
-    latestFailedRefund: p.refunds[0] ?? null,
-  }));
+  return payments.map((p) => {
+    if (!p.order) {
+      // Esta fila só cobre pagamentos de Order (checkout) com estorno pendente. Se um pagamento de
+      // AdPurchase aparecer aqui, falha alto em vez de omitir a linha silenciosamente.
+      throw new Error(`Payment ${p.id} sem order associado (listPendingRefunds)`);
+    }
+    return {
+      id: p.id,
+      amount: p.amount,
+      order: { id: p.order.id },
+      event: p.order.event,
+      athlete: p.order.buyer,
+      latestFailedRefund: p.refunds[0] ?? null,
+    };
+  });
 }

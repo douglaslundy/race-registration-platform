@@ -94,14 +94,25 @@ export async function POST(req: NextRequest) {
 
   if (!payment) return NextResponse.json({ ok: true });
 
+  if (!payment.order || !payment.orderId) {
+    // Este webhook só sabe sincronizar pagamentos de Order (checkout). Se um pagamento de
+    // AdPurchase disparar um webhook aqui, loga bem alto em vez de tentar sincronizar um pedido
+    // inexistente — mas ainda confirma o recebimento (ok:true) pro gateway não ficar reenviando.
+    console.error(`[webhooks/payment] payment ${payment.id} sem order associado — ignorando evento`);
+    return NextResponse.json({ ok: true });
+  }
+
+  const order = payment.order;
+  const orderId = payment.orderId;
+
   const newPaymentStatus = event.status;
 
   const result = await db.$transaction(async (tx) => {
     return applyGatewayStatus(
       tx,
       payment,
-      payment.order,
-      payment.order.registrations,
+      order,
+      order.registrations,
       newPaymentStatus,
       "webhook",
       {
@@ -116,7 +127,7 @@ export async function POST(req: NextRequest) {
 
   // Envia a confirmação de inscrição por e-mail quando o pagamento é aprovado
   if (newPaymentStatus === "PAID") {
-    void notifyOrderConfirmed(payment.orderId);
+    void notifyOrderConfirmed(orderId);
   }
 
   // Avisa o atleta quando o pagamento falha ou expira

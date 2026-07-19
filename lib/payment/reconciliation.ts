@@ -67,21 +67,27 @@ async function checkPendingMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
+      if (!payment.order) {
+        // Reconciliação de pendentes só cobre pagamentos de Order (checkout). Se um pagamento de
+        // AdPurchase aparecer aqui, cai no catch abaixo e loga alto sem travar os demais.
+        throw new Error(`Payment ${payment.id} sem order associado`);
+      }
+      const order = payment.order;
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === payment.status) continue;
 
       if (gatewayStatus === "PAID") {
         await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation", {
+          await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
             gatewayFeeAmount,
             paidAt: paidAt ? new Date(paidAt) : new Date(),
           });
         });
-        void notifyOrderConfirmed(payment.order.id);
+        void notifyOrderConfirmed(order.id);
         mismatches.push({
           paymentId: payment.id,
-          orderId: payment.order.id,
-          eventTitle: payment.order.event.title,
+          orderId: order.id,
+          eventTitle: order.event.title,
           localStatus: payment.status,
           gatewayStatus,
           corrected: true,
@@ -89,8 +95,8 @@ async function checkPendingMismatches(
       } else {
         mismatches.push({
           paymentId: payment.id,
-          orderId: payment.order.id,
-          eventTitle: payment.order.event.title,
+          orderId: order.id,
+          eventTitle: order.event.title,
           localStatus: payment.status,
           gatewayStatus,
           corrected: false,
@@ -135,15 +141,21 @@ async function checkPaidMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
+      if (!payment.order) {
+        // Reconciliação de pagos só cobre pagamentos de Order (checkout). Se um pagamento de
+        // AdPurchase aparecer aqui, cai no catch abaixo e loga alto sem travar os demais.
+        throw new Error(`Payment ${payment.id} sem order associado`);
+      }
+      const order = payment.order;
       const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
         await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation");
+          await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation");
         });
         mismatches.push({
           paymentId: payment.id,
-          orderId: payment.order.id,
-          eventTitle: payment.order.event.title,
+          orderId: order.id,
+          eventTitle: order.event.title,
           localStatus: payment.status,
           gatewayStatus,
           corrected: true,
@@ -188,19 +200,25 @@ async function checkLateApprovalMismatches(
   const mismatches: PaymentMismatch[] = [];
   for (const payment of payments) {
     try {
+      if (!payment.order) {
+        // Reconciliação de aprovações tardias só cobre pagamentos de Order (checkout). Se um
+        // pagamento de AdPurchase aparecer aqui, cai no catch abaixo e loga alto sem travar os demais.
+        throw new Error(`Payment ${payment.id} sem order associado`);
+      }
+      const order = payment.order;
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "PAID") {
         await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, payment.order, payment.order.registrations, gatewayStatus, "reconciliation", {
+          await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
             gatewayFeeAmount,
             paidAt: paidAt ? new Date(paidAt) : new Date(),
           });
         });
-        void notifyOrderConfirmed(payment.order.id);
+        void notifyOrderConfirmed(order.id);
         mismatches.push({
           paymentId: payment.id,
-          orderId: payment.order.id,
-          eventTitle: payment.order.event.title,
+          orderId: order.id,
+          eventTitle: order.event.title,
           localStatus: payment.status,
           gatewayStatus,
           corrected: true,

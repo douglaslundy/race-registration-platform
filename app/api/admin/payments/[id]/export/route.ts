@@ -27,6 +27,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Pagamento não encontrado" }, { status: 404 });
   }
 
+  if (!payment.order || !payment.orderId) {
+    // Este endpoint só exporta pagamentos vinculados a um Order (checkout). Se um pagamento de
+    // AdPurchase chegar aqui, falha explicitamente em vez de exportar dados incompletos.
+    return NextResponse.json({ error: "Pagamento sem pedido associado" }, { status: 500 });
+  }
+
   const lines: Array<[string, string]> = [
     ["Payment ID", payment.id],
     ["Order ID", payment.orderId],

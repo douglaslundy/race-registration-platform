@@ -18,6 +18,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   SUPPORT: "Suporte",
   PARTNER: "Parceiro",
   ASSISTANT: "Assistente",
+  ADVERTISER: "Anunciante",
 };
 
 const REGISTRATION_STATUS_LABEL: Record<string, string> = {
