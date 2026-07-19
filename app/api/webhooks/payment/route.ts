@@ -7,6 +7,7 @@ import { notifyPaymentError } from "@/lib/alerts/payment-error";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
 import { confirmAdPurchasePayment } from "@/lib/ads/ad-purchase-confirmation";
+import { sendAdPurchaseConfirmationEmail } from "@/lib/email";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -101,7 +102,20 @@ export async function POST(req: NextRequest) {
   if (payment.adPurchaseId) {
     // Pagamento de compra de plano de anúncio (AdPurchase) — não passa pelo fluxo de
     // Order/Registration abaixo, que assume payment.order não-nulo.
-    await confirmAdPurchasePayment(payment.id, event.status);
+    const adPurchase = payment.adPurchase;
+    if (!adPurchase) {
+      console.error(`[webhooks/payment] payment ${payment.id} tem adPurchaseId mas adPurchase não veio no include — ignorando evento`);
+      return NextResponse.json({ ok: true });
+    }
+    const result = await db.$transaction((tx) => confirmAdPurchasePayment(tx, { ...payment, adPurchase }, event.status));
+    if (result.changed && result.advertiserEmail && result.advertiserName && result.planName && result.endAt) {
+      await sendAdPurchaseConfirmationEmail({
+        to: result.advertiserEmail,
+        name: result.advertiserName,
+        planName: result.planName,
+        endAt: result.endAt,
+      });
+    }
     return NextResponse.json({ ok: true });
   }
 
