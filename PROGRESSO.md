@@ -1,7 +1,32 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-18
+2026-07-19
+
+## PRÓXIMA TAREFA (ponto de retomada — usuário vai reiniciar o computador)
+
+Executar o plano do **sub-projeto 4 (marketplace de anunciantes privados)** via
+`superpowers:subagent-driven-development` — usuário já escolheu explicitamente a opção
+"Subagent-Driven" (2026-07-19). Nenhuma tarefa foi dispatchada ainda — comece pela Task 1.
+
+**Contexto necessário para retomar:**
+- Plano: `docs/superpowers/plans/2026-07-18-marketplace-anunciantes.md` (commit `f4de0e8`), 20
+  tasks, self-review já feita e aplicada (3 pequenos ajustes de consistência de interface/edge
+  case já corrigidos no próprio arquivo).
+- Spec: `docs/superpowers/specs/2026-07-18-marketplace-anunciantes-design.md` (commit `ab5fe60`).
+- Ledger de progresso do subagent-driven-development: `.superpowers/sdd/progress.md` (git-ignored
+  — se não existir ainda, é porque nenhuma task foi concluída; criar do zero).
+- **Decisão de deploy do usuário**: NÃO fazer deploy a cada sub-projeto. Só ao final do
+  sub-projeto 4, um deploy único cobrindo os 3 sub-projetos pendentes (mensagens, AdSense,
+  marketplace) — ver Task 20 do plano pro checklist completo do que precisa ir junto (migrações,
+  seeds manuais, env vars, nova dependência `@react-pdf/renderer`).
+- Sub-projetos 1 (filtros) e 3 (AdSense) e 2 (mensagens) já implementados e revisados — ver seções
+  abaixo. Só falta o 4.
+- Memória relevante: `[[subagent_driven_execution_choice]]` (decisão salva no sistema de memória
+  persistente sobre a escolha de execução).
+
+Quando o usuário disser "vamos continuar" (ou similar), retome direto neste ponto sem pedir mais
+esclarecimentos — dispatch a Task 1 do plano.
 
 ## Corrigido fora dos 4 sub-projetos (achado pelo usuário)
 Bug real confirmado e corrigido: lotes de inscrição em modo de ativação "Manual" (padrão do
