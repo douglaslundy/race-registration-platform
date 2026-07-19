@@ -6,6 +6,7 @@ import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
+import { confirmAdPurchasePayment } from "@/lib/ads/ad-purchase-confirmation";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -89,15 +90,25 @@ export async function POST(req: NextRequest) {
 
   const payment = await db.payment.findFirst({
     where: { providerPaymentId: event.providerPaymentId },
-    include: { order: { include: { registrations: true, buyer: { select: { name: true, email: true } } } } },
+    include: {
+      order: { include: { registrations: true, buyer: { select: { name: true, email: true } } } },
+      adPurchase: { include: { advertiser: { include: { user: true } }, adPlan: true } },
+    },
   });
 
   if (!payment) return NextResponse.json({ ok: true });
 
+  if (payment.adPurchaseId) {
+    // Pagamento de compra de plano de anúncio (AdPurchase) — não passa pelo fluxo de
+    // Order/Registration abaixo, que assume payment.order não-nulo.
+    await confirmAdPurchasePayment(payment.id, event.status);
+    return NextResponse.json({ ok: true });
+  }
+
   if (!payment.order || !payment.orderId) {
-    // Este webhook só sabe sincronizar pagamentos de Order (checkout). Se um pagamento de
-    // AdPurchase disparar um webhook aqui, loga bem alto em vez de tentar sincronizar um pedido
-    // inexistente — mas ainda confirma o recebimento (ok:true) pro gateway não ficar reenviando.
+    // Chegou aqui um pagamento sem Order E sem AdPurchase associado (o branch de AdPurchase já
+    // retornou acima) — loga bem alto em vez de tentar sincronizar um pedido inexistente, mas
+    // ainda confirma o recebimento (ok:true) pro gateway não ficar reenviando.
     console.error(`[webhooks/payment] payment ${payment.id} sem order associado — ignorando evento`);
     return NextResponse.json({ ok: true });
   }

@@ -104,6 +104,27 @@ export async function sendRegistrationConfirmationEmail(params: {
   });
 }
 
+/** E-mail de confirmação de compra de plano de anúncio (enviado quando o pagamento é aprovado). */
+export async function sendAdPurchaseConfirmationEmail(params: {
+  to: string;
+  name: string;
+  planName: string;
+  endAt: Date;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    subject: `Plano de anúncio confirmado — ${params.planName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p>Seu plano <strong>${params.planName}</strong> foi confirmado! Já pode cadastrar seus
+       anúncios no painel do anunciante.</p>
+       <p>Validade até: <strong>${params.endAt.toLocaleDateString("pt-BR")}</strong></p>`
+    ),
+  });
+}
+
 /** E-mail avisando o organizador que um atleta solicitou cancelamento (requer aprovação). */
 export async function sendCancellationRequestedEmail(params: {
   to: string;
