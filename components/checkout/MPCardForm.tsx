@@ -125,7 +125,7 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
           type="text"
           className="input-field w-full"
           placeholder="Como aparece no cartão"
-          autoComplete="cc-name"
+          autoComplete="off"
         />
       </div>
 

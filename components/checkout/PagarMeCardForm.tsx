@@ -84,7 +84,7 @@ const PagarMeCardForm = forwardRef<PagarMeCardFormHandle, Props>(({ publicKey, a
           placeholder="0000 0000 0000 0000"
           maxLength={19}
           onChange={formatCardNumber}
-          autoComplete="cc-number"
+          autoComplete="off"
         />
       </div>
 
@@ -95,7 +95,7 @@ const PagarMeCardForm = forwardRef<PagarMeCardFormHandle, Props>(({ publicKey, a
           type="text"
           className="input-field w-full"
           placeholder="Como aparece no cartão"
-          autoComplete="cc-name"
+          autoComplete="off"
         />
       </div>
 
@@ -110,7 +110,7 @@ const PagarMeCardForm = forwardRef<PagarMeCardFormHandle, Props>(({ publicKey, a
             placeholder="MM/AA"
             maxLength={5}
             onChange={formatExpiry}
-            autoComplete="cc-exp"
+            autoComplete="off"
           />
         </div>
         <div>
@@ -122,7 +122,7 @@ const PagarMeCardForm = forwardRef<PagarMeCardFormHandle, Props>(({ publicKey, a
             className="input-field w-full"
             placeholder="123"
             maxLength={4}
-            autoComplete="cc-csc"
+            autoComplete="off"
           />
         </div>
       </div>

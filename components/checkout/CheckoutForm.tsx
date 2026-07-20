@@ -342,6 +342,7 @@ export default function CheckoutForm({
         setError(getFirstValidationError(formErrors as Record<string, unknown>));
       })}
       className="space-y-5"
+      autoComplete="off"
     >
       <input type="hidden" {...register("ticketBatchId")} />
       <input type="hidden" {...register("paymentMethod")} />
