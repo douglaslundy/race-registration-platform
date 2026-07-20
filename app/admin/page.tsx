@@ -33,7 +33,9 @@ export default async function AdminDashboard({
     db.registration.count({ where: { status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.count({ where: { status: "PENDING_PAYMENT", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.count({ where: { status: "CANCELLED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
-    db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", createdAt: { gte: from, lte: to } } }),
+    // Receita "no período" tem que refletir quando o dinheiro entrou (paidAt), não quando o
+    // pedido foi criado — pra Pix/boleto os dois podem cair em dias diferentes.
+    db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: from, lte: to } } }),
   ]);
 
   const [signupsData, registrationsData, couponUsage, couponPresence, events] = await Promise.all([

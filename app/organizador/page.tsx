@@ -71,8 +71,14 @@ export default async function OrganizerDashboard({
     db.order.aggregate({
       // Receita do organizador = valor das inscrições (subtotal). totalAmount inclui
       // taxa da plataforma e taxa de serviço, que são receita da plataforma, não dele.
+      // Filtra por Payment.paidAt (quando o dinheiro de fato entrou), não Order.createdAt —
+      // pra Pix/boleto os dois podem cair em dias diferentes.
       _sum: { subtotalAmount: true },
-      where: { status: "PAID", event: { organizerId: organizer.id }, createdAt: { gte: from, lte: to } },
+      where: {
+        status: "PAID",
+        event: { organizerId: organizer.id },
+        payments: { some: { status: "PAID", paidAt: { gte: from, lte: to } } },
+      },
     }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
