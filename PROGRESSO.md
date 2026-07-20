@@ -1,9 +1,52 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-20
+2026-07-21
 
-## Reconciliação de receita + bug de fuso horário nos filtros (2026-07-20) — commitado e pushado, NÃO deployado
+## DEPLOY ÚNICO FEITO (2026-07-21) — os 4 sub-projetos + correções de segurança/receita/último acesso estão no ar
+
+Deploy executado na VPS (`circuitodascorridas.com.br`, 144.91.92.70), commit `14d84dd` →
+`72fe095`, sem incidentes:
+1. `git pull origin main` em `/opt/corridas/src` — fast-forward, 175 arquivos.
+2. `WHATSAPP_WEBHOOK_SECRET` gerado e adicionado em `/opt/corridas/src/.env.prod.local`.
+   `GOOGLE_ADS_OAUTH_CLIENT_ID`/`SECRET` **não adicionados** — dependem do usuário criar o
+   projeto no Google Cloud primeiro (pendência já conhecida, sem isso a integração fica inerte).
+3. `docker build -t corridas-app:latest .` — build limpo (confirmado antes também com `npm run
+   build` local, `@react-pdf/renderer`/`sharp` corretamente empacotados no standalone).
+4. `docker compose run --rm app sh -c "npx prisma db push --skip-generate"` — aplicou de uma vez
+   `MessageLog`, `AdSlot`/`AdMetricsSnapshot`, todo o marketplace de anunciantes (`AdvertiserProfile`,
+   `AdPlan`, `AdPurchase`, `PrivateAd`, `Payment.orderId` opcional/`adPurchaseId`) e
+   `User.lastLoginAt`. Confirmado via `\dt` que todas as tabelas existem.
+5. Seed manual aplicado: 5 `ad_slots` (todas `enabled=false`) + 3 `ad_plans` (Básico/Intermediário/
+   Premium) — confirmado via `SELECT count(*)`.
+6. `docker compose up -d --no-deps app` — só o container da app recriado, `corridas-db` intocado
+   (rodando desde antes, sem recriação).
+7. Smoke test: `/` 200, `/eventos` 200, `/admin/mensagens`/`/organizador/mensagens`/
+   `/admin/anuncios`/`/anunciante` todos 307 (redirect de login, esperado sem sessão) — `docker
+   logs corridas-app` sem nenhum erro depois dos testes.
+
+**Pendências reais que sobraram (não bloqueiam nada, ação do usuário quando quiser):**
+- Configurar o segredo do webhook do gateway de pagamento ativo em Admin → Configurações
+  (Mercado Pago: "Webhook Secret"; Pagar.me: "Senha do Webhook") — sem isso os webhooks de
+  pagamento são rejeitados (falha fechada, proposital) e a confirmação de pagamento só acontece
+  via reconciliação automática (com atraso, não quebra nada).
+- Google AdSense OAuth: criar projeto no Google Cloud + ativar AdSense Management API antes de
+  configurar `GOOGLE_ADS_OAUTH_CLIENT_ID`/`SECRET`.
+- WhatsApp: o `WHATSAPP_WEBHOOK_SECRET` novo só funciona depois que a instância do Evolution API
+  registrar o webhook de novo (a rota de status já faz isso automaticamente/best-effort quando a
+  conexão for verificada em Admin → WhatsApp).
+
+## Limpeza: remoção de todas as referências à Vercel (2026-07-21)
+
+Usuário reafirmou (pela 2ª vez) que este projeto roda **só** na VPS própria, nunca em Vercel.
+Achados reais no repositório que causaram confusão real numa investigação de deploy:
+`vercel.json` (tracked), pasta `.vercel/` com projeto de fato vinculado
+(`race-registration-platform-cphz`), comentários em `.env`/`.env.example` mencionando "produção
+(Vercel)", e um `.env.prod.local` **local** (não confundir com o da VPS) criado pelo Vercel CLI
+contendo um token OIDC ativo. Tudo removido/corrigido, commit `72fe095`. Memória permanente salva
+(`never_mention_vercel`) pra nunca mais propor/assumir Vercel neste projeto.
+
+## Reconciliação de receita + bug de fuso horário nos filtros (2026-07-20) — DEPLOYADO
 
 Usuário reportou: valor de receita mostrado no dashboard/tela de evento não batia com o saldo
 real no Mercado Pago, e o filtro de data "10/7 a 20/7" trazia inscrição do dia 9. Análise
@@ -38,12 +81,11 @@ removido.
 
 Suíte final 1049/1049, `tsc --noEmit` limpo.
 
-## Auditoria de segurança do fluxo de pagamento com cartão (2026-07-20) — commitado e pushado, NÃO deployado
+## Auditoria de segurança do fluxo de pagamento com cartão (2026-07-20) — DEPLOYADO em 2026-07-21
 
 Usuário pediu análise do formulário de cartão (autocomplete/cache) + regras de negócio/segurança
 de pagamento. Achados e correções, todas commitadas na main (`9090d22`, `f8f28e2`, `23f9ff0`,
-`a0d01e5`, `a60c283`) e já com `git push` feito — **falta só o deploy**, que o usuário pediu pra
-deixar pra outro momento:
+`a0d01e5`, `a60c283`) e já no ar desde o deploy único de 2026-07-21:
 
 1. **Crítica**: `GET /api/payments/mp-return` marcava pedido como PAID/registration CONFIRMED
    direto de query string (`status=approved`) sem autenticação nem verificação nenhuma —
@@ -79,11 +121,12 @@ reconciliação automática (`/api/cron/reconciliation`, já configurada no cron
 atraso, não instantaneamente. Isso não bloqueia nada, mas deixar o segredo configurado é
 importante pra confirmação instantânea voltar a funcionar.
 
-## PRÓXIMA TAREFA: fazer o deploy único combinado (nenhum código pendente — só deploy)
+## PRÓXIMA TAREFA: nenhuma pendente — deploy único já feito em 2026-07-21
 
-Os **4 sub-projetos da sessão estão 100% implementados, revisados e commitados na main**
-(nada em branch separada). Falta só o deploy único já combinado com o usuário desde o início da
-sessão. Ver checklist completo logo abaixo, em "Deploy pendente — checklist".
+Os **4 sub-projetos da sessão + correções de segurança/receita/último acesso estão 100%
+implementados, revisados, commitados e DEPLOYADOS** (ver seção "DEPLOY ÚNICO FEITO" no topo
+deste arquivo). Só restam as pendências de configuração externa já listadas ali (webhook secret
+do gateway de pagamento, credenciais do Google AdSense) — nenhuma delas bloqueia o sistema.
 
 **Sub-projeto 4 (marketplace de anunciantes privados) — CONCLUÍDO nesta sessão** via
 `superpowers:subagent-driven-development`, direto na main — spec
@@ -144,7 +187,7 @@ construída por nenhuma task (dead link conhecido desde a revisão da Task 7).
 **Verificação manual no navegador não feita** (mesmo motivo dos 3 sub-projetos anteriores: banco
 de dev local inacessível na sessão inteira).
 
-## Deploy pendente — checklist (cobre os 4 sub-projetos da sessão, nenhum deployado ainda)
+## Checklist de deploy (histórico — EXECUTADO em 2026-07-21, ver seção "DEPLOY ÚNICO FEITO" no topo)
 
 Migrações (banco via `prisma db push` — **não roda `migration.sql`**, seeds abaixo precisam de
 INSERT manual):
