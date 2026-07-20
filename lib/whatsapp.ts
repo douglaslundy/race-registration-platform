@@ -1,5 +1,5 @@
 import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
-import { sendTextMessage } from "./whatsapp/evolution-client";
+import { sendTextMessage, sendMediaMessage } from "./whatsapp/evolution-client";
 import { recordMessageLog } from "./message-logs";
 
 function truncateForSubject(text: string): string {
@@ -34,4 +34,18 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
     });
     throw err;
   }
+}
+
+/** Envia um documento (PDF) por WhatsApp usando a configuração salva (Evolution API). */
+export async function sendWhatsAppDocument(
+  phone: string,
+  base64Pdf: string,
+  filename: string,
+  caption: string,
+): Promise<void> {
+  const config = await getWhatsAppConfig();
+  if (!isWhatsAppConfigured(config)) {
+    throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
+  }
+  await sendMediaMessage(config, phone, base64Pdf, filename, caption);
 }

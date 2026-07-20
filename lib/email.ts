@@ -13,7 +13,12 @@ function buildTransport(cfg: SmtpConfig) {
 }
 
 /** Envia um e-mail usando a configuração SMTP salva (ou variáveis de ambiente). */
-export async function sendMail(opts: { to: string; subject: string; html: string }): Promise<void> {
+export async function sendMail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments?: { filename: string; content: Buffer }[];
+}): Promise<void> {
   const cfg = await getSmtpConfig();
   if (!isSmtpReady(cfg)) {
     throw new Error("SMTP não configurado. Configure em Admin → Configurações.");
@@ -26,6 +31,7 @@ export async function sendMail(opts: { to: string; subject: string; html: string
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
+      attachments: opts.attachments,
     });
   } catch (err) {
     await recordMessageLog({

@@ -65,4 +65,20 @@ describe("sendMail", () => {
       errorMessage: "Connection timeout",
     });
   });
+
+  it("repassa attachments pro transporter.sendMail quando fornecidos", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    const attachments = [{ filename: "relatorio.pdf", content: Buffer.from("PDF") }];
+
+    await sendMail({
+      to: "atleta@example.com",
+      subject: "Relatório",
+      html: "<p>Oi</p>",
+      attachments,
+    });
+
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ attachments }),
+    );
+  });
 });

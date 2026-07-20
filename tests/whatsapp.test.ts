@@ -6,14 +6,15 @@ vi.mock("@/lib/whatsapp-settings", () => ({
 }));
 vi.mock("@/lib/whatsapp/evolution-client", () => ({
   sendTextMessage: vi.fn(),
+  sendMediaMessage: vi.fn(),
 }));
 vi.mock("@/lib/message-logs", () => ({
   recordMessageLog: vi.fn(),
 }));
 
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppDocument } from "@/lib/whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
-import { sendTextMessage } from "@/lib/whatsapp/evolution-client";
+import { sendTextMessage, sendMediaMessage } from "@/lib/whatsapp/evolution-client";
 import { recordMessageLog } from "@/lib/message-logs";
 
 describe("sendWhatsAppMessage", () => {
@@ -77,5 +78,51 @@ describe("sendWhatsAppMessage", () => {
       status: "FAILED",
       errorMessage: "Evolution API 400 ao enviar mensagem",
     });
+  });
+});
+
+describe("sendWhatsAppDocument", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("lança erro quando o WhatsApp não está configurado, sem chamar o cliente", async () => {
+    vi.mocked(getWhatsAppConfig).mockResolvedValue({ apiUrl: "", apiKey: "", instanceName: "" });
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
+
+    await expect(
+      sendWhatsAppDocument("5511999999999", "base64PdfContent", "relatorio.pdf", "Seu relatório"),
+    ).rejects.toThrow("WhatsApp não configurado");
+    expect(sendMediaMessage).not.toHaveBeenCalled();
+  });
+
+  it("em caso de sucesso, delega pro cliente com os parâmetros certos, sem registrar no MessageLog", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendMediaMessage).mockResolvedValueOnce(undefined);
+
+    await sendWhatsAppDocument("5511999999999", "base64PdfContent", "relatorio.pdf", "Seu relatório");
+
+    expect(sendMediaMessage).toHaveBeenCalledWith(
+      config,
+      "5511999999999",
+      "base64PdfContent",
+      "relatorio.pdf",
+      "Seu relatório",
+    );
+    expect(recordMessageLog).not.toHaveBeenCalled();
+  });
+
+  it("em caso de falha no envio, relança o erro original sem registrar no MessageLog", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendMediaMessage).mockRejectedValueOnce(new Error("Evolution API 400 ao enviar mídia"));
+
+    await expect(
+      sendWhatsAppDocument("invalid", "base64PdfContent", "relatorio.pdf", "Seu relatório"),
+    ).rejects.toThrow("Evolution API 400 ao enviar mídia");
+    expect(recordMessageLog).not.toHaveBeenCalled();
   });
 });

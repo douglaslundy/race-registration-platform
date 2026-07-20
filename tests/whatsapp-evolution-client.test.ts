@@ -6,6 +6,7 @@ import {
   logoutInstance,
   deleteInstance,
   sendTextMessage,
+  sendMediaMessage,
   setWebhook,
 } from "@/lib/whatsapp/evolution-client";
 
@@ -134,6 +135,33 @@ describe("evolution-client", () => {
     it("lança erro quando o envio falha", async () => {
       (global.fetch as any).mockResolvedValueOnce({ status: 400, json: async () => ({ error: "invalid number" }) });
       await expect(sendTextMessage(config, "invalid", "Olá!")).rejects.toThrow("Evolution API 400");
+    });
+  });
+
+  describe("sendMediaMessage", () => {
+    it("envia telefone, mediatype, media, fileName e caption para /message/sendMedia/{instance}", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 200, json: async () => ({ key: { id: "wamid.doc" } }) });
+      await sendMediaMessage(config, "5511999999999", "base64PdfContent", "relatorio.pdf", "Seu relatório");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://evo.example.com/message/sendMedia/corridas-app",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            number: "5511999999999",
+            mediatype: "document",
+            media: "base64PdfContent",
+            fileName: "relatorio.pdf",
+            caption: "Seu relatório",
+          }),
+        }),
+      );
+    });
+
+    it("lança erro quando o envio de mídia falha", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 400, json: async () => ({ error: "invalid media" }) });
+      await expect(
+        sendMediaMessage(config, "invalid", "base64PdfContent", "relatorio.pdf", "Seu relatório"),
+      ).rejects.toThrow("Evolution API 400");
     });
   });
 

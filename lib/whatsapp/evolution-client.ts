@@ -111,6 +111,23 @@ export async function sendTextMessage(
   return { providerMessageId: typeof messageId === "string" ? messageId : null };
 }
 
+export async function sendMediaMessage(
+  config: WhatsAppConfig,
+  phone: string,
+  base64Media: string,
+  fileName: string,
+  caption: string,
+): Promise<void> {
+  const { status, body } = await evolutionFetch(config, `/message/sendMedia/${config.instanceName}`, {
+    method: "POST",
+    body: { number: phone, mediatype: "document", media: base64Media, fileName, caption },
+  });
+
+  if (status >= 400) {
+    throw new Error(`Evolution API ${status} ao enviar mídia: ${JSON.stringify(body).slice(0, 300)}`);
+  }
+}
+
 export async function setWebhook(config: WhatsAppConfig, url: string): Promise<void> {
   const { status, body } = await evolutionFetch(config, `/webhook/set/${config.instanceName}`, {
     method: "POST",
