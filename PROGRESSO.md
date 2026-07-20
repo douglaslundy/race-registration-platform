@@ -1,7 +1,70 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-21
+2026-07-20 (sessão pós-deploy: correções WhatsApp + filtro de data + confirmação + compressão de imagem)
+
+## Correções pontuais pós-deploy (2026-07-20) — implementadas, testadas, AINDA NÃO deployadas
+
+Pedidos avulsos do usuário depois do deploy único de 2026-07-21 anterior (arquivo ficou com datas
+fora de ordem porque esses pedidos chegaram numa sessão datada 2026-07-20). Tudo com testes
+passando (1075+ testes) e `tsc --noEmit` limpo, mas **nada disso foi feito push/deploy ainda**.
+
+1. **Status do WhatsApp não atualizava sozinho** (`components/admin/WhatsAppConnectionPanel.tsx`):
+   só consultava status uma vez ao gerar o QR; agora faz polling a cada 3s enquanto o QR estiver
+   visível e o status não for "open", parando sozinho quando conecta (e limpa o QR da tela).
+2. **Normalização de telefone pro WhatsApp** (`lib/whatsapp.ts`, nova função
+   `normalizePhoneForWhatsApp`): aceita número com ou sem "+55"/formatação e sempre normaliza pro
+   formato que a Evolution API espera (só dígitos, DDI 55 sempre presente, nunca duplicado).
+   Aplicada dentro de `sendWhatsAppMessage`/`sendWhatsAppDocument`, então todos os ~9 call sites
+   ganharam o fix de graça. Removido o helper `toWhatsAppDestination` duplicado/inconsistente de
+   `lib/alerts/daily-summary.ts` (só prefixava "55" em 2 dos 4 pontos daquele arquivo).
+3. **Filtro de datas na lista de inscritos** (`/admin/eventos/[id]/inscritos` e
+   `/organizador/eventos/[id]/inscritos`): novos campos `dateFrom`/`dateTo` em
+   `buildRegistrationWhere` (`lib/organizer/registrations.ts`), reaproveitando o `parseDateInput`
+   já corrigido pro fuso de Brasília (mesma função usada nos relatórios).
+4. **"Reenviar confirmação" também manda WhatsApp** (`lib/notifications.ts`,
+   `notifyOrderConfirmed`): antes só mandava e-mail; agora também manda WhatsApp quando existe
+   conexão ativa (`getConnectionState === "open"`) e a inscrição tem telefone. Os dois canais são
+   independentes (falha de um não impede o outro) — isso vale pra TODA confirmação de pagamento
+   (checkout, webhook, reconciliação), não só pro botão de reenvio manual. Botão renomeado de
+   "Reenviar/Enviar e-mail de confirmação" pra simplesmente "Reenviar confirmação" nas 2 páginas
+   de inscritos.
+5. **Compressão de imagem no upload** (`app/api/upload/route.ts`): artes de evento grandes
+   (>1MB) atrasavam o carregamento da página E impediam o preview do link no WhatsApp (que busca
+   a URL crua direto, sem passar pelo otimizador do Next). Agora toda imagem (jpeg/png/webp, gif
+   fica intocado pra preservar animação) é redimensionada (máx. 1920px no maior lado, nunca
+   aumenta) e reencodada (qualidade 85) antes de subir pro Supabase Storage — mesmo formato
+   original, fallback silencioso pro arquivo original se a compressão falhar. **Não afeta banners
+   já enviados antes desta mudança** (só uploads novos).
+
+6. **Coluna "Canal" na lista de mensagens** (`components/messages/MessageLogList.tsx`): a tabela
+   já recebia `channel` (EMAIL/WHATSAPP) mas nunca mostrava — badge 📧/💬 adicionado.
+7. **Mensagens unificadas numa lista só** (`app/admin/mensagens/page.tsx`,
+   `app/organizador/mensagens/page.tsx`): usuário viu que existiam abas separadas E-mail/WhatsApp
+   e pediu pra virar 1 lista cronológica só, com filtro de canal opcional. Removidas as abas,
+   `listMessageLogs` (`lib/message-logs.ts`) ganhou `channel` opcional — sem filtro, mistura os
+   dois canais ordenados por `createdAt desc`.
+
+**Investigação de lentidão de navegação — concluída e correções aplicadas**: usuário relatou
+cliques em link/botão que às vezes não navegam ou demoram. Explore subagent (leitura estática, 51
+tool calls) achou causa principal: **nenhuma rota tem `loading.tsx`** e os dashboards/páginas
+admin são forçadamente dinâmicas (`force-dynamic` ou via `auth()`) — sem Suspense boundary, um
+clique fica sem nenhum feedback visual até o Server Component terminar TODAS as queries; quando o
+Postgres (pool via pgbouncer/Supabase) tem qualquer contenção, o clique "parece morto" por
+segundos (sintoma intermitente relatado). Aplicado:
+- `components/ui/PageLoading.tsx` (spinner) + `loading.tsx` em `app/admin`, `app/organizador`,
+  `app/dashboard`, `app/anunciante`.
+- Paralelizadas 3 queries sequenciais desnecessárias (`Promise.all`): `app/admin/usuarios/page.tsx`
+  (userSettings+total), `app/admin/eventos/page.tsx` (userSettings+organizers+total),
+  `app/admin/relatorio/page.tsx` (byMethod+byMonth).
+- `components/ads/AdSlotRenderer.tsx`: `<img>` cru → `next/image` (slot PRIVATE).
+
+**Não aplicado, fica de recomendação pro usuário** (infra/mais invasivo, fora do escopo de uma
+correção de código): checar `connection_limit` da `DATABASE_URL` de produção vs. plano do
+Supabase (hipótese média-alta de fila de conexões no pooler); `PageViewLogger`
+(`components/audit/PageViewLogger.tsx`) grava um `AuditLog` a CADA navegação client-side, disputando
+o pool de conexões — considerar `sendBeacon`/debounce; `recharts` (gráficos dos 2 dashboards)
+sem `next/dynamic({ssr:false})`, aumenta o bundle JS dessas páginas.
 
 ## DEPLOY ÚNICO FEITO (2026-07-21) — os 4 sub-projetos + correções de segurança/receita/último acesso estão no ar
 
@@ -121,12 +184,19 @@ reconciliação automática (`/api/cron/reconciliation`, já configurada no cron
 atraso, não instantaneamente. Isso não bloqueia nada, mas deixar o segredo configurado é
 importante pra confirmação instantânea voltar a funcionar.
 
-## PRÓXIMA TAREFA: nenhuma pendente — deploy único já feito em 2026-07-21
+## PRÓXIMA TAREFA: revisar achados da investigação de lentidão de navegação e decidir push/deploy
 
-Os **4 sub-projetos da sessão + correções de segurança/receita/último acesso estão 100%
-implementados, revisados, commitados e DEPLOYADOS** (ver seção "DEPLOY ÚNICO FEITO" no topo
-deste arquivo). Só restam as pendências de configuração externa já listadas ali (webhook secret
-do gateway de pagamento, credenciais do Google AdSense) — nenhuma delas bloqueia o sistema.
+Ver seção "Correções pontuais pós-deploy (2026-07-20)" no topo deste arquivo — 5 correções
+implementadas e testadas (WhatsApp status/normalização, filtro de data em inscritos, WhatsApp na
+confirmação, compressão de imagem), aguardando: (1) o relatório do Explore subagent sobre a causa
+da lentidão de navegação relatada pelo usuário, (2) autorização do usuário pra `git push`
+(nada foi commitado ainda) e depois deploy — não assumir aprovação automática, ele tem alternado
+entre autorizar e não autorizar push/deploy a cada pedido nesta sessão.
+
+Os **4 sub-projetos anteriores + correções de segurança/receita/último acesso continuam 100%
+implementados, revisados, commitados e DEPLOYADOS** (ver seção "DEPLOY ÚNICO FEITO" abaixo). Só
+restam as pendências de configuração externa já listadas lá (webhook secret do gateway de
+pagamento, credenciais do Google AdSense) — nenhuma delas bloqueia o sistema.
 
 **Sub-projeto 4 (marketplace de anunciantes privados) — CONCLUÍDO nesta sessão** via
 `superpowers:subagent-driven-development`, direto na main — spec
