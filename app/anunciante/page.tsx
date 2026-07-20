@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { BADGE } from "@/lib/badge-colors";
+import { ACTIVE_STATUSES } from "@/lib/ads/private-ads";
 
 export const metadata: Metadata = { title: "Painel do anunciante" };
 export const dynamic = "force-dynamic";
@@ -27,15 +28,16 @@ export default async function AdvertiserDashboardPage() {
   const purchases = advertiser
     ? await db.adPurchase.findMany({
         where: { advertiserId: advertiser.id },
-        include: { adPlan: true, _count: { select: { ads: true } } },
+        include: {
+          adPlan: true,
+          _count: { select: { ads: { where: { status: { in: ACTIVE_STATUSES } } } } },
+        },
         orderBy: { createdAt: "desc" },
       })
     : [];
 
-  // Contagem de vagas usadas/disponíveis é uma exibição simples (total de anúncios
-  // cadastrados na compra vs. limite do plano). A lógica real de vaga livre (que
-  // desconsidera anúncios rejeitados/expirados) é implementada em hasAvailableSlotInPurchase
-  // numa task futura — aqui só decide se mostra o link "Cadastrar anúncio".
+  // Contagem de vagas usadas/disponíveis usa a mesma definição de "ativo" (ACTIVE_STATUSES)
+  // aplicada em hasAvailableSlotInPurchase, para que os dois números nunca divirjam.
   const hasPaidPurchase = purchases.some((p) => p.status === "PAID");
 
   return (

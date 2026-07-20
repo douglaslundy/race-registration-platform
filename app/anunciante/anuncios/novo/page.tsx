@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { hasAvailableSlotInPurchase, listAvailableSlotsForAdvertiser } from "@/lib/ads/private-ads";
+import {
+  ACTIVE_STATUSES,
+  hasAvailableSlotInPurchase,
+  listAvailableSlotsForAdvertiser,
+} from "@/lib/ads/private-ads";
 import PrivateAdForm from "@/components/advertiser/PrivateAdForm";
 
 export const metadata: Metadata = { title: "Cadastrar anúncio — Anunciante" };
 export const dynamic = "force-dynamic";
-
-const ACTIVE_STATUSES = new Set(["APPROVED", "PENDING_APPROVAL"]);
 
 export default async function NewPrivateAdPage() {
   const session = await requireAuth();
@@ -30,7 +32,7 @@ export default async function NewPrivateAdPage() {
   for (const purchase of paidPurchases) {
     const hasSlot = await hasAvailableSlotInPurchase(purchase.id);
     if (!hasSlot) continue;
-    const activeCount = purchase.ads.filter((ad) => ACTIVE_STATUSES.has(ad.status)).length;
+    const activeCount = purchase.ads.filter((ad) => ACTIVE_STATUSES.includes(ad.status)).length;
     purchasesWithFreeSlot.push({
       id: purchase.id,
       planName: purchase.adPlan.name,

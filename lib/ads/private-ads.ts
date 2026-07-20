@@ -8,7 +8,7 @@ export async function listAvailableSlotsForAdvertiser() {
   });
 }
 
-const ACTIVE_STATUSES = ["APPROVED", "PENDING_APPROVAL"];
+export const ACTIVE_STATUSES = ["APPROVED", "PENDING_APPROVAL"];
 
 export async function hasAvailableSlotInPurchase(adPurchaseId: string): Promise<boolean> {
   const purchase = await db.adPurchase.findUnique({
