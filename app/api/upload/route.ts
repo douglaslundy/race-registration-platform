@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -12,6 +13,44 @@ const ALLOWED_MIME: Record<string, string> = {
 
 const ALLOWED_PURPOSES = new Set(["banner", "list_banner", "regulation", "kit_info"]);
 const MAX_SIZE = 10 * 1024 * 1024;
+
+// Teto de dimensão pra artes de evento: cobre até telas retina sem carregar peso desnecessário
+// (o arquivo aqui é o mesmo que o WhatsApp busca direto pra montar o preview do link — arquivos
+// grandes fazem o preview demorar ou nem aparecer).
+const MAX_IMAGE_DIMENSION = 1920;
+const IMAGE_QUALITY = 85;
+
+/**
+ * Reencoda no mesmo formato com teto de dimensão + qualidade ~85 (visualmente equivalente ao
+ * original pra fotos). GIF é preservado sem reprocessar (evita perder animação). Se a
+ * compressão falhar ou não conseguir reduzir o tamanho, devolve os bytes originais.
+ */
+async function compressImageIfPossible(input: Buffer, mimeType: string): Promise<Buffer> {
+  if (mimeType !== "image/jpeg" && mimeType !== "image/png" && mimeType !== "image/webp") {
+    return input;
+  }
+
+  try {
+    const resized = sharp(input).rotate().resize({
+      width: MAX_IMAGE_DIMENSION,
+      height: MAX_IMAGE_DIMENSION,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+
+    const compressed =
+      mimeType === "image/png"
+        ? await resized.png({ quality: IMAGE_QUALITY, compressionLevel: 9 }).toBuffer()
+        : mimeType === "image/webp"
+          ? await resized.webp({ quality: IMAGE_QUALITY }).toBuffer()
+          : await resized.jpeg({ quality: IMAGE_QUALITY, mozjpeg: true }).toBuffer();
+
+    return compressed.byteLength < input.byteLength ? compressed : input;
+  } catch (err) {
+    console.error("[upload] falha ao comprimir imagem, enviando arquivo original:", err);
+    return input;
+  }
+}
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL ?? "";
@@ -55,7 +94,8 @@ export async function POST(req: NextRequest) {
   }
 
   const key = `${purpose}/${randomUUID()}.${extension}`;
-  const bytes = await file.arrayBuffer();
+  const rawBytes = Buffer.from(await file.arrayBuffer());
+  const bytes = await compressImageIfPossible(rawBytes, file.type);
 
   const uploadRes = await fetch(
     `${cfg.url}/storage/v1/object/${cfg.bucket}/${key}`,
@@ -66,7 +106,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": file.type,
         "x-upsert": "true",
       },
-      body: bytes,
+      body: new Uint8Array(bytes),
     }
   );
 
