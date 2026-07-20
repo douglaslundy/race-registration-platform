@@ -15,7 +15,9 @@ import {
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
 } from "@/lib/organizer/event-metrics";
+import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
+import RevenueBreakdownCard from "@/components/ui/RevenueBreakdownCard";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
 export const dynamic = "force-dynamic";
@@ -44,14 +46,13 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       categories: { orderBy: { name: "asc" } },
       ticketBatches: { orderBy: { startAt: "asc" } },
       coupons: { orderBy: { createdAt: "asc" } },
-      orders: { where: { status: "PAID" }, select: { subtotalAmount: true } },
     },
   });
 
   if (!event) notFound();
 
   // Coupon usage stats grouped by couponId, plus registration status breakdown
-  const [couponStats, statusCounts, dimensionRegistrations, paymentGroups] = await Promise.all([
+  const [couponStats, statusCounts, dimensionRegistrations, paymentGroups, paymentsAgg, orderFeeAgg] = await Promise.all([
     event.coupons.length > 0
       ? db.order.groupBy({
           by: ["couponId"],
@@ -78,6 +79,14 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       where: { status: "PAID", order: { eventId: id } },
       _count: { id: true },
       _sum: { amount: true },
+    }),
+    db.payment.aggregate({
+      _sum: { amount: true, gatewayFeeAmount: true },
+      where: { status: "PAID", order: { eventId: id } },
+    }),
+    db.order.aggregate({
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true },
+      where: { status: "PAID", eventId: id },
     }),
   ]);
 
@@ -113,7 +122,13 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
     paymentGroups.map((g) => ({ method: g.method, count: g._count.id, revenue: g._sum.amount ?? 0 })),
   );
 
-  const revenue = event.orders.reduce((s, o) => s + o.subtotalAmount, 0);
+  const revenueBreakdown = computeRevenueBreakdown({
+    grossRevenue: paymentsAgg._sum.amount,
+    platformFeeAmount: orderFeeAgg._sum.platformFeeAmount,
+    serviceFeeAmount: orderFeeAgg._sum.paymentFeeAmount,
+    gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,
+  });
+  const revenue = revenueBreakdown.eventRevenue;
   const statusInfo = STATUS_LABEL[event.status] ?? STATUS_LABEL.DRAFT;
   const canPublish = event.status === "DRAFT";
   const canDelete = ["DRAFT", "CANCELLED"].includes(event.status);
@@ -168,6 +183,8 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           <p className="text-xs text-gray-400 mt-1">restantes: {slotsInfo.remaining}</p>
         </div>
       </div>
+
+      <RevenueBreakdownCard breakdown={revenueBreakdown} variant="organizer" />
 
       {/* Relatório de cupons — visão geral + agrupado por cupom */}
       {event.coupons.length > 0 && (

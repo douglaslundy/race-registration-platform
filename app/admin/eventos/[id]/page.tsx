@@ -11,7 +11,9 @@ import {
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
 } from "@/lib/organizer/event-metrics";
+import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
+import RevenueBreakdownCard from "@/components/ui/RevenueBreakdownCard";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe do Evento — Admin" };
@@ -28,15 +30,12 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
       categories: { orderBy: { name: "asc" } },
       ticketBatches: { orderBy: { startAt: "asc" } },
       coupons: { orderBy: { createdAt: "asc" } },
-      orders: { where: { status: "PAID" }, select: { totalAmount: true } },
     },
   });
 
   if (!event) notFound();
 
-  const revenue = event.orders.reduce((s, o) => s + o.totalAmount, 0);
-
-  const [couponStats, statusCounts, dimensionRegistrations, paymentGroups] = await Promise.all([
+  const [couponStats, statusCounts, dimensionRegistrations, paymentGroups, paymentsAgg, orderFeeAgg] = await Promise.all([
     event.coupons.length > 0
       ? db.order.groupBy({
           by: ["couponId"],
@@ -64,7 +63,23 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
       _count: { id: true },
       _sum: { amount: true },
     }),
+    db.payment.aggregate({
+      _sum: { amount: true, gatewayFeeAmount: true },
+      where: { status: "PAID", order: { eventId: id } },
+    }),
+    db.order.aggregate({
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true },
+      where: { status: "PAID", eventId: id },
+    }),
   ]);
+
+  const revenueBreakdown = computeRevenueBreakdown({
+    grossRevenue: paymentsAgg._sum.amount,
+    platformFeeAmount: orderFeeAgg._sum.platformFeeAmount,
+    serviceFeeAmount: orderFeeAgg._sum.paymentFeeAmount,
+    gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,
+  });
+  const revenue = revenueBreakdown.grossRevenue;
 
   const statsMap = new Map(
     couponStats.map((s) => [s.couponId, { uses: s._count.id, discount: s._sum.discountAmount ?? 0 }])
@@ -125,6 +140,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           <p className="text-gray-500 text-sm">Vagas totais</p>
         </div>
       </div>
+
+      <RevenueBreakdownCard breakdown={revenueBreakdown} variant="admin" />
 
       {event.coupons.length > 0 && (
         <div className="card space-y-5">
