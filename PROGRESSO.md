@@ -3,6 +3,47 @@
 ## Última atualização
 2026-07-20
 
+## Auditoria de segurança do fluxo de pagamento com cartão (2026-07-20) — commitado e pushado, NÃO deployado
+
+Usuário pediu análise do formulário de cartão (autocomplete/cache) + regras de negócio/segurança
+de pagamento. Achados e correções, todas commitadas na main (`9090d22`, `f8f28e2`, `23f9ff0`,
+`a0d01e5`, `a60c283`) e já com `git push` feito — **falta só o deploy**, que o usuário pediu pra
+deixar pra outro momento:
+
+1. **Crítica**: `GET /api/payments/mp-return` marcava pedido como PAID/registration CONFIRMED
+   direto de query string (`status=approved`) sem autenticação nem verificação nenhuma —
+   qualquer usuário conseguia confirmar a própria inscrição de graça com uma única URL. Corrigido:
+   exige sessão, checa posse do pedido, sempre reconsulta o status real via API do Mercado Pago
+   antes de gravar qualquer coisa (`lib/payment/check-mp-status.ts`, extraído e compartilhado com
+   `/api/orders/[id]/status`, que já fazia isso certo).
+2. **Crítica**: `verifyWebhookSignature` (Mercado Pago e Pagar.me) fazia `return true` (aceitava
+   qualquer coisa) quando o segredo do webhook não estava configurado — falha aberta. Corrigido
+   pra `return false` (falha fechada) nos dois. **Usuário confirmou que NUNCA configurou
+   `mp_webhook_secret`/`pagarme_webhook_password`** — ver seção "Configurar webhook secret" logo
+   abaixo, é a próxima ação real pendente (não é deploy, é config).
+3. Reforço: Pagar.me agora reconfirma o status real via `checkPaymentStatus` antes de aplicar
+   (mesma defesa que o Mercado Pago já tinha via `fetchMPPaymentStatus`), já que a autenticação do
+   Pagar.me é senha compartilhada (Basic auth), não assinatura por mensagem.
+4. `autoComplete="off"` em todos os campos de cartão (`PagarMeCardForm.tsx`,
+   `MPCardForm.tsx`, `CheckoutForm.tsx`) — antes tinha `cc-number`/`cc-exp`/`cc-csc`/`cc-name`
+   explícitos, convidando o navegador a oferecer salvar/autopreencher os dados do cartão.
+5. Rate limiting (`lib/rate-limit.ts`, já existia, nunca era chamado) ligado em
+   `POST /api/checkout` — 5 tentativas/minuto por usuário, mitiga card testing.
+
+Suíte final 1038/1038, `tsc --noEmit` limpo. Achados menores registrados mas não corrigidos
+(decisão de escopo, não pedidos pelo usuário): `rawPayload` do webhook armazenado sem expurgo
+(baixo risco — gateways não mandam PAN/CVV completo em webhook).
+
+### Configurar webhook secret — pendência real (não é deploy)
+
+Depois que o deploy acontecer, o admin precisa ir em **Admin → Configurações → Pagamentos** e
+preencher o segredo do webhook do gateway ativo (Mercado Pago: "Webhook Secret"; Pagar.me:
+"Senha do Webhook"). Sem isso, com a correção #2 acima, o site vai **rejeitar todos os
+webhooks de pagamento** (falha fechada) — os pagamentos legítimos ainda são confirmados pela
+reconciliação automática (`/api/cron/reconciliation`, já configurada no crontab), só que com
+atraso, não instantaneamente. Isso não bloqueia nada, mas deixar o segredo configurado é
+importante pra confirmação instantânea voltar a funcionar.
+
 ## PRÓXIMA TAREFA: fazer o deploy único combinado (nenhum código pendente — só deploy)
 
 Os **4 sub-projetos da sessão estão 100% implementados, revisados e commitados na main**
