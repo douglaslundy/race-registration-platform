@@ -11,6 +11,7 @@ import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
 import ServiceFeeForm from "@/components/admin/ServiceFeeForm";
 import BannerIntervalForm from "@/components/admin/BannerIntervalForm";
 import CancellationPolicyToggleForm from "@/components/admin/CancellationPolicyToggleForm";
+import AdsMarketplaceToggle from "@/components/admin/AdsMarketplaceToggle";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -59,7 +60,10 @@ export default async function ConfiguracoesPage() {
     getBannerInterval(),
     getSmtpConfig(),
     getCancellationPolicyEnabled(),
+    getSetting("ads_marketplace_enabled"),
   ]);
+
+  const adsMarketplaceEnabled = adsMarketplaceEnabledSetting === "true";
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
@@ -145,6 +149,15 @@ export default async function ConfiguracoesPage() {
           (livre até o início do evento, sempre imediato).
         </p>
         <CancellationPolicyToggleForm currentEnabled={cancellationPolicyEnabled} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Marketplace de anunciantes</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Quando ativado, a página de cadastro de anunciantes (<code>/auth/cadastro-anunciante</code>) fica
+          acessível e permite que novas empresas se registrem. Quando desativado, o cadastro é bloqueado.
+        </p>
+        <AdsMarketplaceToggle currentEnabled={adsMarketplaceEnabled} />
       </div>
 
       <div className="card space-y-4">
