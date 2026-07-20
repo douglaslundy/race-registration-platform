@@ -65,8 +65,39 @@ describe("POST /api/anunciante/ads", () => {
     expect(res.status).toBe(403);
   });
 
+  it("retorna 404 quando o usuário ADVERTISER não tem AdvertiserProfile", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(404);
+    expect(dbMock.privateAd.create).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando a compra não pertence ao anunciante autenticado (IDOR), sem vazar existência", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    dbMock.adPurchase.findFirst.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Esta compra não possui vaga disponível");
+    expect(dbMock.adPurchase.findFirst).toHaveBeenCalledWith({
+      where: { id: "purchase-1", advertiserId: "advertiser-1" },
+      select: { id: true },
+    });
+    expect(hasAvailableSlotInPurchaseMock).not.toHaveBeenCalled();
+    expect(dbMock.privateAd.create).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("retorna 400 quando a compra não tem vaga disponível", async () => {
     authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    dbMock.adPurchase.findFirst.mockResolvedValueOnce({ id: "purchase-1" });
     hasAvailableSlotInPurchaseMock.mockResolvedValueOnce(false);
 
     const res = await POST(makeRequest());
@@ -77,6 +108,8 @@ describe("POST /api/anunciante/ads", () => {
 
   it("retorna 400 quando a posição escolhida não está disponível", async () => {
     authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    dbMock.adPurchase.findFirst.mockResolvedValueOnce({ id: "purchase-1" });
     hasAvailableSlotInPurchaseMock.mockResolvedValueOnce(true);
     listAvailableSlotsForAdvertiserMock.mockResolvedValueOnce([]);
 
@@ -91,6 +124,8 @@ describe("POST /api/anunciante/ads", () => {
 
   it("retorna 400 quando a dimensão da imagem não bate, sem subir arquivo nem criar PrivateAd", async () => {
     authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    dbMock.adPurchase.findFirst.mockResolvedValueOnce({ id: "purchase-1" });
     hasAvailableSlotInPurchaseMock.mockResolvedValueOnce(true);
     listAvailableSlotsForAdvertiserMock.mockResolvedValueOnce([SLOT] as any);
     validateImageDimensionsMock.mockResolvedValueOnce(false);
@@ -105,6 +140,8 @@ describe("POST /api/anunciante/ads", () => {
 
   it("retorna 201 e cria o PrivateAd como PENDING_APPROVAL no caminho de sucesso", async () => {
     authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    dbMock.adPurchase.findFirst.mockResolvedValueOnce({ id: "purchase-1" });
     hasAvailableSlotInPurchaseMock.mockResolvedValueOnce(true);
     listAvailableSlotsForAdvertiserMock.mockResolvedValueOnce([SLOT] as any);
     validateImageDimensionsMock.mockResolvedValueOnce(true);

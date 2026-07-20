@@ -32,6 +32,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
+  const advertiser = await db.advertiserProfile.findUnique({ where: { userId: session.user.id } });
+  if (!advertiser) {
+    return NextResponse.json({ error: "Perfil de anunciante não encontrado" }, { status: 404 });
+  }
+
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -54,13 +59,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
   }
 
-  // 1. A compra escolhida precisa ter vaga livre.
+  // 1. A compra escolhida precisa pertencer ao anunciante autenticado. Resposta idêntica à de
+  // "sem vaga disponível" para não permitir enumeração de adPurchaseId de terceiros.
+  const ownedPurchase = await db.adPurchase.findFirst({
+    where: { id: adPurchaseId, advertiserId: advertiser.id },
+    select: { id: true },
+  });
+  if (!ownedPurchase) {
+    return NextResponse.json({ error: "Esta compra não possui vaga disponível" }, { status: 400 });
+  }
+
+  // 2. A compra escolhida precisa ter vaga livre.
   const hasSlot = await hasAvailableSlotInPurchase(adPurchaseId);
   if (!hasSlot) {
     return NextResponse.json({ error: "Esta compra não possui vaga disponível" }, { status: 400 });
   }
 
-  // 2. A posição escolhida precisa estar entre as disponíveis.
+  // 3. A posição escolhida precisa estar entre as disponíveis.
   const availableSlots = await listAvailableSlotsForAdvertiser();
   const slot = availableSlots.find((s) => s.id === adSlotId);
   if (!slot) {
@@ -78,7 +93,7 @@ export async function POST(req: NextRequest) {
   const bytes = await image.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  // 3. Dimensão da imagem precisa bater com a posição — validado ANTES do upload,
+  // 4. Dimensão da imagem precisa bater com a posição — validado ANTES do upload,
   // pra não deixar arquivo órfão no storage se a validação falhar.
   const dimensionsOk = await validateImageDimensions(buffer, slot.width, slot.height);
   if (!dimensionsOk) {
@@ -88,7 +103,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Só agora sobe o arquivo pro storage.
+  // 5. Só agora sobe o arquivo pro storage.
   const cfg = getSupabaseConfig();
   if (!cfg.ready) {
     return NextResponse.json({ error: "Storage não configurado" }, { status: 503 });
@@ -113,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   const imageUrl = `${cfg.url}/storage/v1/object/public/${cfg.bucket}/${key}`;
 
-  // 5. Todo PrivateAd nasce PENDING_APPROVAL — sem aprovação automática nesta versão.
+  // 6. Todo PrivateAd nasce PENDING_APPROVAL — sem aprovação automática nesta versão.
   const ad = await db.privateAd.create({
     data: {
       adPurchaseId,
