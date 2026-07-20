@@ -1,32 +1,104 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-19
+2026-07-20
 
-## PRÓXIMA TAREFA (ponto de retomada — usuário vai reiniciar o computador)
+## PRÓXIMA TAREFA: fazer o deploy único combinado (nenhum código pendente — só deploy)
 
-Executar o plano do **sub-projeto 4 (marketplace de anunciantes privados)** via
-`superpowers:subagent-driven-development` — usuário já escolheu explicitamente a opção
-"Subagent-Driven" (2026-07-19). Nenhuma tarefa foi dispatchada ainda — comece pela Task 1.
+Os **4 sub-projetos da sessão estão 100% implementados, revisados e commitados na main**
+(nada em branch separada). Falta só o deploy único já combinado com o usuário desde o início da
+sessão. Ver checklist completo logo abaixo, em "Deploy pendente — checklist".
 
-**Contexto necessário para retomar:**
-- Plano: `docs/superpowers/plans/2026-07-18-marketplace-anunciantes.md` (commit `f4de0e8`), 20
-  tasks, self-review já feita e aplicada (3 pequenos ajustes de consistência de interface/edge
-  case já corrigidos no próprio arquivo).
-- Spec: `docs/superpowers/specs/2026-07-18-marketplace-anunciantes-design.md` (commit `ab5fe60`).
-- Ledger de progresso do subagent-driven-development: `.superpowers/sdd/progress.md` (git-ignored
-  — se não existir ainda, é porque nenhuma task foi concluída; criar do zero).
-- **Decisão de deploy do usuário**: NÃO fazer deploy a cada sub-projeto. Só ao final do
-  sub-projeto 4, um deploy único cobrindo os 3 sub-projetos pendentes (mensagens, AdSense,
-  marketplace) — ver Task 20 do plano pro checklist completo do que precisa ir junto (migrações,
-  seeds manuais, env vars, nova dependência `@react-pdf/renderer`).
-- Sub-projetos 1 (filtros) e 3 (AdSense) e 2 (mensagens) já implementados e revisados — ver seções
-  abaixo. Só falta o 4.
-- Memória relevante: `[[subagent_driven_execution_choice]]` (decisão salva no sistema de memória
-  persistente sobre a escolha de execução).
+**Sub-projeto 4 (marketplace de anunciantes privados) — CONCLUÍDO nesta sessão** via
+`superpowers:subagent-driven-development`, direto na main — spec
+`docs/superpowers/specs/2026-07-18-marketplace-anunciantes-design.md` (commit `ab5fe60`), plano
+`docs/superpowers/plans/2026-07-18-marketplace-anunciantes.md` (commit `f4de0e8`). 20 tasks,
+todas implementadas e revisadas individualmente (spec ✅ + qualidade ✅ em cada uma) — resumo por
+área:
+- Schema: `ADVERTISER` role, `AdvertiserProfile → AdPurchase → PrivateAd`, `Payment.orderId` viu
+  opcional + novo `Payment.adPurchaseId` (cadeia paralela, `Order`/`checkout.ts`/`Registration`
+  nunca tocados). Seed de 3 `AdPlan` (Básico/Intermediário/Premium) via `migration.sql`.
+- Cadastro de anunciante (`/auth/cadastro-anunciante`) atrás do toggle `ads_marketplace_enabled`
+  (`PlatformSetting`, padrão `"false"`, liga em `/admin/configuracoes`).
+- Checkout do plano (`/api/checkout-ads`) reaproveita o gateway de pagamento genérico existente
+  sem nenhuma mudança nele.
+- Webhook de pagamento ganha branch aditivo pra `AdPurchase` (`confirmAdPurchasePayment`),
+  espelhando o padrão já existente de `applyGatewayStatus` (guard de status obsoleto/terminal +
+  transação + e-mail só depois do commit).
+- Painel do anunciante (`/anunciante`), cadastro de anúncio com validação de dimensão real via
+  `sharp` (nunca confia em metadata do cliente) e upload só depois de toda validação passar (sem
+  arquivo órfão em rejeição).
+- Renderização pública (`AdSlotRenderer` ganha branch `PRIVATE`), rastreio de impressão/clique,
+  moderação admin (aprovar/rejeitar com `ConfirmModal`, nunca `prompt()` nativo), cron de
+  expiração.
+- Relatório em PDF (`@react-pdf/renderer`, nova dependência) enviável por e-mail (anexo) ou
+  WhatsApp (documento).
 
-Quando o usuário disser "vamos continuar" (ou similar), retome direto neste ponto sem pedir mais
-esclarecimentos — dispatch a Task 1 do plano.
+**3 bugs reais encontrados e corrigidos durante a implementação/revisão** (nenhum fazia parte do
+código já existente antes desta sessão — todos introduzidos ou expostos pelas mudanças desta
+feature):
+1. IDOR na rota de cadastro de anúncio (`POST /api/anunciante/ads`) — não checava se o
+   `adPurchaseId` enviado pertencia ao anunciante autenticado; qualquer anunciante podia consumir
+   vaga paga de outro. Corrigido com checagem de posse (mesmo 400 genérico da rota, sem oráculo
+   de enumeração).
+2. **Achado só na revisão final de branch inteira, cross-task** — rota de aprovação
+   (`approve/route.ts`) não checava exclusividade de posição: dois anunciantes podiam ter anúncio
+   `APPROVED` na mesma posição ao mesmo tempo (um deles pagando sem receber veiculação real).
+   Corrigido com checagem transacional (404 se não existe, 409 se a posição já tem outro
+   aprovado).
+3. **Também só na revisão final** — o cron genérico de expiração de pagamentos
+   (`expirePendingPayments`, já existia antes desta feature) não filtrava `orderId not null`,
+   então pegava pagamento PIX de plano de anúncio vencido e entrava num loop de erro permanente
+   (rollback a cada execução, pagamento nunca expira de verdade). Corrigido com filtro no `where`.
+
+Também corrigido durante a implementação (regressão cross-cutting, não um bug de feature): a
+Task 1 tornar `Payment.orderId` opcional quebrou `tsc` em 13 arquivos pré-existentes do sistema
+de pagamentos que assumiam `payment.order` sempre não-nulo — corrigido com guards explícitos
+(nunca non-null assertion), decisão do usuário.
+
+Suíte final: **1018/1018 testes**, `tsc --noEmit` limpo. Revisão final de branch inteira (opus,
+26 commits, diff completo desde antes da Task 1): **pronto pra merge, com ajustes** — os 2
+achados (Critical + Important acima) foram corrigidos e re-revisados (Approved). Achados Minor
+não corrigidos (backlog, sem ação necessária agora): `Payment.orderId`/`adPurchaseId` mutuamente
+exclusivos só "por construção" (sem `CHECK` no banco); rota de aprovação não re-checa
+status/prazo ao reaprovar um anúncio já expirado/rejeitado (mesmo padrão já aceito nas rotas
+irmãs); nav do anunciante linka `/anunciante/anuncios` e `/anunciante/perfil`, nenhuma das duas
+construída por nenhuma task (dead link conhecido desde a revisão da Task 7).
+
+**Verificação manual no navegador não feita** (mesmo motivo dos 3 sub-projetos anteriores: banco
+de dev local inacessível na sessão inteira).
+
+## Deploy pendente — checklist (cobre os 4 sub-projetos da sessão, nenhum deployado ainda)
+
+Migrações (banco via `prisma db push` — **não roda `migration.sql`**, seeds abaixo precisam de
+INSERT manual):
+- `MessageLog` (sub-projeto 2, caixa de entrada de mensagens).
+- `AdSlot` + `AdMetricsSnapshot` (sub-projeto 3, anúncios + Google AdSense) — seed manual de 5
+  linhas `AdSlot` (todas `enabled=false` por padrão).
+- `AdvertiserProfile`/`AdPlan`/`AdPurchase`/`PrivateAd` + `Payment.orderId` opcional/`adPurchaseId`
+  (sub-projeto 4, marketplace) — seed manual de 3 linhas `AdPlan` (ver INSERT em
+  `prisma/migrations/20260718010000_add_advertiser_marketplace/migration.sql`).
+
+Env vars novas:
+- `WHATSAPP_WEBHOOK_SECRET` (sub-projeto 2).
+- `GOOGLE_ADS_OAUTH_CLIENT_ID`/`SECRET` (sub-projeto 3 — só funciona depois de criar o projeto no
+  Google Cloud e ativar a AdSense Management API; sem isso a infra fica pronta mas inerte, sem
+  quebrar nada).
+
+Build:
+- Nova dependência `@react-pdf/renderer@^4.5.1` (sub-projeto 4) — confirmar que entra no build da
+  imagem Docker (`npm install` roda automático no build, mas confirmar o `package-lock.json`
+  commitado bate).
+
+Depois do deploy, smoke test sugerido (mesmo padrão dos deploys anteriores desta sessão): home
+200, `/eventos` 200, `/admin/mensagens` e `/organizador/mensagens` 200, `/admin/anuncios` 200,
+`/anunciante` redireciona pra login sem sessão, `docker logs corridas-app` sem erro nos primeiros
+minutos.
+
+## Contexto necessário para retomar (deploy)
+- Processo de deploy: ver memória `[[deploy_vps_process]]` — git pull + `/opt/corridas/deploy.sh`
+  na VPS, plink/pscp (PuTTY), `db push` manual se houver mudança de schema.
+- Ledger completo task-a-task do sub-projeto 4 (git-ignored): `.superpowers/sdd/progress.md`.
 
 ## Corrigido fora dos 4 sub-projetos (achado pelo usuário)
 Bug real confirmado e corrigido: lotes de inscrição em modo de ativação "Manual" (padrão do
