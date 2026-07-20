@@ -215,6 +215,19 @@ describe("admin whatsapp routes", () => {
         expect.objectContaining({ data: expect.objectContaining({ action: "WHATSAPP_INSTANCE_DELETED" }) }),
       );
     });
+
+    it("desloga (best-effort) antes de excluir -- a Evolution API rejeita exclusão de instância ainda conectada", async () => {
+      await deletePost();
+      expect(logoutInstance).toHaveBeenCalledWith(configMock);
+      expect(deleteInstance).toHaveBeenCalledWith(configMock);
+    });
+
+    it("segue tentando excluir mesmo se o logout falhar (ex.: já estava desconectada)", async () => {
+      vi.mocked(logoutInstance).mockRejectedValueOnce(new Error("já desconectada"));
+      const res = await deletePost();
+      expect(res.status).toBe(200);
+      expect(deleteInstance).toHaveBeenCalledWith(configMock);
+    });
   });
 
   describe("POST /api/admin/whatsapp/test", () => {

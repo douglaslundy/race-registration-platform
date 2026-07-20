@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
-import { deleteInstance } from "@/lib/whatsapp/evolution-client";
+import { deleteInstance, logoutInstance } from "@/lib/whatsapp/evolution-client";
 
 export async function POST() {
   const session = await auth();
@@ -16,6 +16,13 @@ export async function POST() {
   }
 
   try {
+    // A Evolution API frequentemente rejeita (ou não conclui de fato) a exclusão de uma
+    // instância que ainda está conectada -- desloga primeiro, best-effort, antes de excluir.
+    try {
+      await logoutInstance(config);
+    } catch {
+      // Já pode estar desconectada; a exclusão segue tentando de qualquer forma.
+    }
     await deleteInstance(config);
     await db.auditLog.create({
       data: {

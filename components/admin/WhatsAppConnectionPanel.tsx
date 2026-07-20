@@ -53,6 +53,18 @@ export default function WhatsAppConnectionPanel({ configured }: { configured: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configured]);
 
+  // Poll de fundo (mais espaçado) enquanto a tela estiver aberta, mesmo sem QR code visível --
+  // a conexão pode cair no Evolution API a qualquer momento (fora do controle deste painel), e
+  // sem isso o status mostrado ficava preso no que foi lido na última visita/clique manual.
+  useEffect(() => {
+    if (!configured) return;
+    const interval = setInterval(() => {
+      refreshStatus();
+    }, 20000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configured]);
+
   useEffect(() => {
     if (!qrCode || state === "open") return;
     const interval = setInterval(() => {
