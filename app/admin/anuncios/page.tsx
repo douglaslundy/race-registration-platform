@@ -23,6 +23,7 @@ export default async function AdminAnunciosPage() {
         <div className="flex gap-2 text-sm">
           <Link href="/admin/anuncios/conectar-google" className="btn-secondary py-1.5 px-3">Conectar Google AdSense</Link>
           <Link href="/admin/anuncios/metricas" className="btn-secondary py-1.5 px-3">Métricas</Link>
+          <Link href="/admin/anuncios/planos" className="btn-secondary py-1.5 px-3">Planos</Link>
         </div>
       </div>
 
