@@ -32,6 +32,14 @@ export default async function OrganizerDashboard({
   const session = await requireOrganizer();
   const { de, ate, eventId } = await searchParams;
 
+  const to = parseDateInput(ate, true) ?? new Date();
+  const from = parseDateInput(de, false) ?? (() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 29);
+    d.setUTCHours(0, 0, 0, 0);
+    return d;
+  })();
+
   const organizer = await db.organizerProfile.findUnique({
     where: { userId: session.user.id },
     include: {
@@ -40,8 +48,14 @@ export default async function OrganizerDashboard({
         take: 10,
         include: {
           orders: {
-            where: { status: "PAID" },
-            select: { totalAmount: true },
+            // Mesma regra da receita do topo da página: subtotalAmount (não totalAmount, que
+            // inclui taxas da plataforma) e filtrado por quando o pagamento foi confirmado
+            // (paidAt), respeitando o período selecionado no filtro de data.
+            where: {
+              status: "PAID",
+              payments: { some: { status: "PAID", paidAt: { gte: from, lte: to } } },
+            },
+            select: { subtotalAmount: true },
           },
         },
       },
@@ -56,14 +70,6 @@ export default async function OrganizerDashboard({
       </div>
     );
   }
-
-  const to = parseDateInput(ate, true) ?? new Date();
-  const from = parseDateInput(de, false) ?? (() => {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - 29);
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  })();
 
   const [eventCount, totalRegistrations, revenueAgg, confirmedRegistrations, pendingRegistrations, cancelledRegistrations, statusGroups] = await Promise.all([
     db.event.count({ where: { organizerId: organizer.id, createdAt: { gte: from, lte: to } } }),
@@ -198,7 +204,7 @@ export default async function OrganizerDashboard({
                 <th className="pb-2">Evento</th>
                 <th className="pb-2">Status</th>
                 <th className="pb-2">Inscrições</th>
-                <th className="pb-2">Receita</th>
+                <th className="pb-2">Receita no período</th>
                 <th className="pb-2"></th>
               </tr>
             </thead>
@@ -217,7 +223,7 @@ export default async function OrganizerDashboard({
                     <p>{breakdown.paid} confirmadas</p>
                     <p className="text-xs text-gray-400">{breakdown.pending} pendentes · {breakdown.cancelled} canceladas</p>
                   </td>
-                  <td className="py-3">{formatCurrency(event.orders.reduce((s, o) => s + o.totalAmount, 0))}</td>
+                  <td className="py-3">{formatCurrency(event.orders.reduce((s, o) => s + o.subtotalAmount, 0))}</td>
                   <td className="py-3">
                     <div className="flex items-center gap-3">
                       <Link href={`/organizador/eventos/${event.id}`} className="text-primary-600 hover:underline">
