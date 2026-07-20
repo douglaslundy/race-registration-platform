@@ -82,20 +82,21 @@ export default async function AdminRelatorioPage({
     { status: "PAID" as const, _count: { id: paidOrdersAgg._count.id }, _sum: { totalAmount: paidOrdersAgg._sum.totalAmount } },
   ];
 
-  const byMethod = await db.payment.groupBy({
-    by: ["method"],
-    _sum: { amount: true },
-    _count: { id: true },
-    where: buildReportPaymentWhere(filter, "PAID"),
-    orderBy: { _sum: { amount: "desc" } },
-  });
-
-  const byMonth = await db.payment.groupBy({
-    by: ["paidAt"],
-    _sum: { amount: true },
-    _count: { id: true },
-    where: buildReportPaymentWhere(filter, "PAID"),
-  });
+  const [byMethod, byMonth] = await Promise.all([
+    db.payment.groupBy({
+      by: ["method"],
+      _sum: { amount: true },
+      _count: { id: true },
+      where: buildReportPaymentWhere(filter, "PAID"),
+      orderBy: { _sum: { amount: "desc" } },
+    }),
+    db.payment.groupBy({
+      by: ["paidAt"],
+      _sum: { amount: true },
+      _count: { id: true },
+      where: buildReportPaymentWhere(filter, "PAID"),
+    }),
+  ]);
 
   const monthlyMap = new Map<string, number>();
   for (const row of byMonth) {

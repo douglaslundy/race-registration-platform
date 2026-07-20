@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getAdSlot } from "@/lib/ad-slots";
 import { getSetting } from "@/lib/settings";
 import { db } from "@/lib/db";
@@ -14,7 +15,7 @@ export default async function AdSlotRenderer({ position }: { position: string })
     await recordImpression(slot.id);
     return (
       <a href={`/api/ads/click/${ad.id}`} style={{ display: "inline-block", width: slot.width, height: slot.height }}>
-        <img src={ad.imageUrl} alt="" width={slot.width} height={slot.height} style={{ objectFit: "cover" }} />
+        <Image src={ad.imageUrl} alt="" width={slot.width} height={slot.height} style={{ objectFit: "cover" }} />
       </a>
     );
   }

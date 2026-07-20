@@ -87,11 +87,6 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
   const status = params.status?.trim() ?? "ALL";
   const createdFrom = params.createdFrom?.trim() ?? "";
   const createdTo = params.createdTo?.trim() ?? "";
-  const userSettings = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { uiDensity: true },
-  });
-  const compact = params.compact ? params.compact === "1" : userSettings?.uiDensity === "compact";
   const requestedPage = Number.parseInt(params.page ?? "1", 10);
   const sortParam = params.sort?.trim() ?? "createdAt";
   const dirParam = params.dir?.trim() ?? "desc";
@@ -99,7 +94,11 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
   const pageSize = 20;
   const where = buildAdminUserWhere({ q, role, status, createdFrom, createdTo });
 
-  const total = await db.user.count({ where });
+  const [userSettings, total] = await Promise.all([
+    db.user.findUnique({ where: { id: session.user.id }, select: { uiDensity: true } }),
+    db.user.count({ where }),
+  ]);
+  const compact = params.compact ? params.compact === "1" : userSettings?.uiDensity === "compact";
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
 

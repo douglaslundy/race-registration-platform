@@ -82,20 +82,18 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
   const sortParam = params.sort?.trim() ?? "createdAt";
   const dirParam = params.dir?.trim() ?? "desc";
   const sortConfig = buildAdminEventOrderBy(sortParam, dirParam);
-  const userSettings = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { uiDensity: true },
-  });
-  const compact = params.compact ? params.compact === "1" : userSettings?.uiDensity === "compact";
   const pageSize = 20;
   const where = buildAdminEventWhere({ q, status, modality, city, dateFrom, dateTo, organizerId });
 
-  const organizers = await db.organizerProfile.findMany({
-    select: { id: true, user: { select: { name: true, email: true } } },
-    orderBy: { user: { name: "asc" } },
-  });
-
-  const total = await db.event.count({ where });
+  const [userSettings, organizers, total] = await Promise.all([
+    db.user.findUnique({ where: { id: session.user.id }, select: { uiDensity: true } }),
+    db.organizerProfile.findMany({
+      select: { id: true, user: { select: { name: true, email: true } } },
+      orderBy: { user: { name: "asc" } },
+    }),
+    db.event.count({ where }),
+  ]);
+  const compact = params.compact ? params.compact === "1" : userSettings?.uiDensity === "compact";
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
 
