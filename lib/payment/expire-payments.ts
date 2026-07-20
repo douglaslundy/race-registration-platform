@@ -54,6 +54,7 @@ export async function expirePendingPayments(options?: { organizerUserId?: string
   const payments = await db.payment.findMany({
     where: {
       status: "PENDING",
+      orderId: { not: null },
       expiresAt: { not: null, lt: new Date() },
       ...(options?.organizerUserId
         ? { order: { event: { organizer: { userId: options.organizerUserId } } } }

@@ -10,10 +10,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
-  await db.privateAd.update({
-    where: { id },
-    data: { status: "APPROVED" },
+  const result = await db.$transaction(async (tx) => {
+    const ad = await tx.privateAd.findUnique({ where: { id } });
+    if (!ad) {
+      return { error: "Anúncio não encontrado", status: 404 } as const;
+    }
+
+    const conflict = await tx.privateAd.findFirst({
+      where: { adSlotId: ad.adSlotId, status: "APPROVED", id: { not: id } },
+    });
+    if (conflict) {
+      return { error: "Esta posição já possui um anúncio aprovado", status: 409 } as const;
+    }
+
+    await tx.privateAd.update({ where: { id }, data: { status: "APPROVED" } });
+    return { ok: true } as const;
   });
 
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
   return NextResponse.json({ ok: true });
 }

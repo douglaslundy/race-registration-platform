@@ -111,9 +111,22 @@ describe("expirePendingPayments", () => {
 
     expect(dbMock.payment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: "PENDING", expiresAt: { not: null, lt: expect.any(Date) } }),
+        where: expect.objectContaining({
+          status: "PENDING",
+          orderId: { not: null },
+          expiresAt: { not: null, lt: expect.any(Date) },
+        }),
       }),
     );
+  });
+
+  it("exclui pagamentos de compra de anúncio (orderId null) da busca", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([]);
+
+    await expirePendingPayments();
+
+    const call = dbMock.payment.findMany.mock.calls[0][0];
+    expect(call.where.orderId).toEqual({ not: null });
   });
 
   it("filtra por organizador quando organizerUserId é informado", async () => {
