@@ -6,6 +6,7 @@ import { recordImpression } from "@/lib/ads/private-ad-metrics";
 export default async function AdSlotRenderer({ position }: { position: string }) {
   const slot = await getAdSlot(position);
   if (!slot) return null;
+  if (!slot.enabled) return null;
 
   if (slot.source === "PRIVATE") {
     const ad = await db.privateAd.findFirst({ where: { adSlotId: slot.id, status: "APPROVED" } });
