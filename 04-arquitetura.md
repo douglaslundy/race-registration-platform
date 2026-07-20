@@ -10,7 +10,7 @@
 - Storage: S3 compatível
 - E-mail: Resend, Postmark ou AWS SES
 - Fila: BullMQ + Redis ou serviço gerenciado
-- Deploy: Vercel para frontend/API simples; Render/Fly/Railway/AWS para backend separado
+- Deploy: VPS própria (Docker + Traefik), sem serviços de deploy gerenciado de terceiros
 
 ## Módulos
 1. Public Site
