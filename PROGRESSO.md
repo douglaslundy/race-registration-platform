@@ -3,11 +3,15 @@
 ## Última atualização
 2026-07-20 (sessão pós-deploy: correções WhatsApp + filtro de data + confirmação + compressão de imagem)
 
-## Correções pontuais pós-deploy (2026-07-20) — implementadas, testadas, AINDA NÃO deployadas
+## Correções pontuais pós-deploy (2026-07-20) — DEPLOYADO
 
 Pedidos avulsos do usuário depois do deploy único de 2026-07-21 anterior (arquivo ficou com datas
-fora de ordem porque esses pedidos chegaram numa sessão datada 2026-07-20). Tudo com testes
-passando (1075+ testes) e `tsc --noEmit` limpo, mas **nada disso foi feito push/deploy ainda**.
+fora de ordem porque esses pedidos chegaram numa sessão datada 2026-07-20). Testes passando
+(1076 testes) e `tsc --noEmit` limpo. Commitado em 6 commits (`f9809ca..17a7162`), push feito, e
+**deploy executado na VPS** via `/opt/corridas/deploy.sh` (git pull → docker build → restart só do
+`corridas-app`, sem `prisma db push` — nenhuma mudança de schema nesta leva). Smoke test depois do
+restart: `/` 200, `/eventos` 200, `/admin/mensagens` 307 (redirect de login, esperado sem sessão),
+`docker logs corridas-app` sem erros.
 
 1. **Status do WhatsApp não atualizava sozinho** (`components/admin/WhatsAppConnectionPanel.tsx`):
    só consultava status uma vez ao gerar o QR; agora faz polling a cada 3s enquanto o QR estiver
