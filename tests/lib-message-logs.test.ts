@@ -178,6 +178,14 @@ describe("listMessageLogs", () => {
     );
   });
 
+  it("sem channel, lista todos os canais misturados (where sem channel)", async () => {
+    await listMessageLogs({});
+
+    expect(dbMock.messageLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {}, orderBy: { createdAt: "desc" } }),
+    );
+  });
+
   it("combina status, busca e intervalo de data no where", async () => {
     const from = new Date("2026-07-01T00:00:00.000Z");
     const to = new Date("2026-07-10T00:00:00.000Z");

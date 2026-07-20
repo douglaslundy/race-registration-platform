@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Mensagens" };
 export const dynamic = "force-dynamic";
 
 interface SearchParams {
-  tab?: string;
+  channel?: string;
   status?: string;
   q?: string;
   dateFrom?: string;
@@ -22,7 +22,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
 
   const ownerUserId = (await resolveMessageOwnerUserId(session)) ?? "__none__";
 
-  const channel = params.tab === "whatsapp" ? "WHATSAPP" : "EMAIL";
+  const channel = params.channel === "EMAIL" || params.channel === "WHATSAPP" ? params.channel : undefined;
   const status = params.status?.trim() || undefined;
   const q = params.q?.trim() || undefined;
   const dateFrom = params.dateFrom?.trim() || "";
@@ -39,12 +39,10 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
     page,
   });
 
-  const buildTabUrl = (tab: "email" | "whatsapp") => `/organizador/mensagens?tab=${tab}`;
-
   const buildFilterQuery = (overrides: Partial<SearchParams> = {}) => {
     const query = new URLSearchParams();
-    query.set("tab", params.tab === "whatsapp" ? "whatsapp" : "email");
-    const merged = { status, q, dateFrom, dateTo, ...overrides };
+    const merged = { channel, status, q, dateFrom, dateTo, ...overrides };
+    if (merged.channel) query.set("channel", merged.channel);
     if (merged.status) query.set("status", merged.status);
     if (merged.q) query.set("q", merged.q);
     if (merged.dateFrom) query.set("dateFrom", merged.dateFrom);
@@ -59,38 +57,26 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
         <p className="text-sm text-gray-500">{total} mensagem(ns) encontrada(s)</p>
       </div>
 
-      <div className="flex gap-2 border-b dark:border-gray-700">
-        <Link
-          href={buildTabUrl("email")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 ${
-            channel === "EMAIL" ? "border-primary-600 text-primary-600" : "border-transparent text-gray-500"
-          }`}
-        >
-          E-mail
-        </Link>
-        <Link
-          href={buildTabUrl("whatsapp")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 ${
-            channel === "WHATSAPP" ? "border-primary-600 text-primary-600" : "border-transparent text-gray-500"
-          }`}
-        >
-          WhatsApp
-        </Link>
-      </div>
-
-      <form method="GET" className="card grid gap-4 md:grid-cols-5">
-        <input type="hidden" name="tab" value={params.tab === "whatsapp" ? "whatsapp" : "email"} />
+      <form method="GET" className="card grid gap-4 md:grid-cols-6">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Buscar</label>
           <input name="q" defaultValue={q ?? ""} placeholder="Nome, e-mail ou telefone" className="input-field text-sm py-1.5" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Canal</label>
+          <select name="channel" defaultValue={channel ?? ""} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            <option value="EMAIL">E-mail</option>
+            <option value="WHATSAPP">WhatsApp</option>
+          </select>
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">Status</label>
           <select name="status" defaultValue={status ?? ""} className="input-field text-sm py-1.5">
             <option value="">Todos</option>
             <option value="SENT">Enviado</option>
-            {channel === "WHATSAPP" && <option value="DELIVERED">Entregue</option>}
-            {channel === "WHATSAPP" && <option value="READ">Lido</option>}
+            <option value="DELIVERED">Entregue</option>
+            <option value="READ">Lido</option>
             <option value="FAILED">Falhou</option>
           </select>
         </div>
@@ -104,7 +90,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
         </div>
         <div className="flex items-end gap-2">
           <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
-          <Link href={buildTabUrl(channel === "WHATSAPP" ? "whatsapp" : "email")} className="btn-secondary py-1.5 px-4 text-sm">
+          <Link href="/organizador/mensagens" className="btn-secondary py-1.5 px-4 text-sm">
             Limpar
           </Link>
         </div>

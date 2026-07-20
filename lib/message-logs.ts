@@ -72,7 +72,7 @@ export async function updateMessageLogStatusByProviderMessageId(
 }
 
 export interface MessageLogFilters {
-  channel: MessageChannel;
+  channel?: MessageChannel;
   recipientUserId?: string;
   status?: MessageLogStatus;
   q?: string;
@@ -82,11 +82,11 @@ export interface MessageLogFilters {
   pageSize?: number;
 }
 
-export async function listMessageLogs(filters: MessageLogFilters) {
+export async function listMessageLogs(filters: MessageLogFilters = {}) {
   const { channel, recipientUserId, status, q, from, to, page = 1, pageSize = 20 } = filters;
 
   const where = {
-    channel,
+    ...(channel ? { channel } : {}),
     ...(recipientUserId ? { recipientUserId } : {}),
     ...(status ? { status } : {}),
     ...(q
