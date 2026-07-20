@@ -4,10 +4,12 @@ import { formatCurrency } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
 import { ORDER_STATUS_LABEL } from "@/lib/admin/labels";
 import { buildReportOrderWhere, buildReportOrderFeeWhere, buildReportPaymentWhere, buildReportRegistrationWhere, buildReportRefundWhere } from "@/lib/admin/report";
+import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import Link from "next/link";
 import type { Metadata } from "next";
 import PrintButton from "@/components/ui/PrintButton";
 import ReportKpiLegend from "@/components/ui/ReportKpiLegend";
+import RevenueBreakdownCard from "@/components/ui/RevenueBreakdownCard";
 
 export const metadata: Metadata = { title: "Relatório Financeiro — Admin" };
 export const dynamic = "force-dynamic";
@@ -105,10 +107,12 @@ export default async function AdminRelatorioPage({
   const grossRevenue = paymentsAgg._sum.amount ?? 0;
   const cancelledAmount = cancelledPaymentsAgg._sum.amount ?? 0;
   const refunds = refundsAgg._sum.amount ?? 0;
-  const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
-  const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
-  const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
-  const gatewayFeeActual = paymentsAgg._sum.gatewayFeeAmount ?? 0;
+  const revenueBreakdown = computeRevenueBreakdown({
+    grossRevenue,
+    platformFeeAmount: platformFeeAgg._sum.platformFeeAmount,
+    serviceFeeAmount: platformFeeAgg._sum.paymentFeeAmount,
+    gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,
+  });
 
   const METHOD_LABEL: Record<string, string> = {
     PIX: "Pix", CREDIT_CARD: "Cartão de Crédito", DEBIT_CARD: "Débito", BOLETO: "Boleto",
@@ -153,27 +157,9 @@ export default async function AdminRelatorioPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-teal-600">{formatCurrency(eventRevenue)}</p>
-          <p className="text-gray-500 text-sm mt-1">Receita do evento</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(platformFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Taxa da plataforma</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(serviceFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Taxa de serviço</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(gatewayFeeActual)}</p>
-          <p className="text-gray-500 text-sm mt-1">Comissão do gateway</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(grossRevenue)}</p>
-          <p className="text-gray-500 text-sm mt-1">Receita bruta</p>
-        </div>
+      <RevenueBreakdownCard breakdown={revenueBreakdown} variant="admin" />
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="card text-center">
           <p className="text-2xl font-bold text-orange-500">{formatCurrency(cancelledAmount)}</p>
           <p className="text-gray-500 text-sm mt-1">Pagamentos cancelados ({cancelledPaymentsAgg._count.id})</p>
