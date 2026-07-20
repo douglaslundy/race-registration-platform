@@ -160,4 +160,35 @@ describe("buildRegistrationWhere", () => {
       order: { payments: { some: { status: { in: ["REFUNDED", "CHARGEBACK"] }, method: "PIX" } } },
     });
   });
+
+  it("filters by createdAt >= dateFrom (início do dia em Brasília)", () => {
+    const result = buildRegistrationWhere("evt-1", { dateFrom: "2026-07-10" });
+    expect(result).toEqual({
+      eventId: "evt-1",
+      createdAt: { gte: new Date("2026-07-10T03:00:00.000Z") },
+    });
+  });
+
+  it("filters by createdAt <= dateTo (fim do dia em Brasília)", () => {
+    const result = buildRegistrationWhere("evt-1", { dateTo: "2026-07-10" });
+    expect(result).toEqual({
+      eventId: "evt-1",
+      createdAt: { lte: new Date("2026-07-11T02:59:59.999Z") },
+    });
+  });
+
+  it("combines dateFrom and dateTo into a single createdAt range", () => {
+    const result = buildRegistrationWhere("evt-1", { dateFrom: "2026-07-10", dateTo: "2026-07-12" });
+    expect(result).toEqual({
+      eventId: "evt-1",
+      createdAt: {
+        gte: new Date("2026-07-10T03:00:00.000Z"),
+        lte: new Date("2026-07-13T02:59:59.999Z"),
+      },
+    });
+  });
+
+  it("ignores empty dateFrom/dateTo strings", () => {
+    expect(buildRegistrationWhere("evt-1", { dateFrom: "", dateTo: "" })).toEqual({ eventId: "evt-1" });
+  });
 });

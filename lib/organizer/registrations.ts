@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { normalizeCpf } from "@/lib/cpf";
+import { parseDateInput } from "@/lib/admin/audit";
 
 export type RegistrationSortColumn = "name" | "date";
 export type SortDirection = "asc" | "desc";
@@ -37,13 +38,15 @@ export interface RegistrationFilters {
   ticketBatchId?: string;
   couponId?: string;
   paymentMethod?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export function buildRegistrationWhere(
   eventId: string,
   filters: RegistrationFilters = {},
 ): Prisma.RegistrationWhereInput {
-  const { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod } = filters;
+  const { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo } = filters;
   const query = q?.trim();
   const normalizedCpf = query ? normalizeCpf(query) : "";
   const isPaymentStatusFilter = status === "REFUNDED" || status === "REFUND_PENDING";
@@ -62,6 +65,9 @@ export function buildRegistrationWhere(
     paymentSomeFilter.method = paymentMethod as never;
   }
 
+  const from = parseDateInput(dateFrom, false);
+  const to = parseDateInput(dateTo, true);
+
   const orderFilter: Prisma.OrderWhereInput = {};
   // Sentinela "none" = inscrições cujo pedido não usou cupom nenhum.
   if (couponId === "none") orderFilter.couponId = null;
@@ -78,6 +84,9 @@ export function buildRegistrationWhere(
     ...(categoryId ? { categoryId } : {}),
     ...(routeId ? { routeId } : {}),
     ...(ticketBatchId ? { ticketBatchId } : {}),
+    ...(from || to
+      ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+      : {}),
     ...(Object.keys(orderFilter).length > 0 ? { order: orderFilter } : {}),
     ...(query
       ? {

@@ -39,6 +39,8 @@ interface SearchParams {
   ticketBatchId?: string;
   couponId?: string;
   paymentMethod?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 function buildInscritosUrl(
@@ -53,6 +55,8 @@ function buildInscritosUrl(
     ticketBatchId?: string;
     couponId?: string;
     paymentMethod?: string;
+    dateFrom?: string;
+    dateTo?: string;
   },
 ) {
   const query = new URLSearchParams();
@@ -65,6 +69,8 @@ function buildInscritosUrl(
   if (params.ticketBatchId) query.set("ticketBatchId", params.ticketBatchId);
   if (params.couponId) query.set("couponId", params.couponId);
   if (params.paymentMethod) query.set("paymentMethod", params.paymentMethod);
+  if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+  if (params.dateTo) query.set("dateTo", params.dateTo);
   const qs = query.toString();
   return `/organizador/eventos/${id}/inscritos${qs ? `?${qs}` : ""}`;
 }
@@ -86,6 +92,8 @@ export default async function InscritosPage({
   const ticketBatchId = sp.ticketBatchId?.trim() ?? "";
   const couponId = sp.couponId?.trim() ?? "";
   const paymentMethod = sp.paymentMethod?.trim() ?? "";
+  const dateFrom = sp.dateFrom?.trim() ?? "";
+  const dateTo = sp.dateTo?.trim() ?? "";
   const sortConfig = buildRegistrationOrderBy(sp.sort?.trim() ?? "", sp.dir?.trim() ?? "");
 
   const event = await db.event.findFirst({
@@ -102,7 +110,7 @@ export default async function InscritosPage({
   if (!event) notFound();
 
   const registrations = await db.registration.findMany({
-    where: buildRegistrationWhere(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod }),
+    where: buildRegistrationWhere(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo }),
     include: {
       athlete: {
         select: {
@@ -233,10 +241,18 @@ export default async function InscritosPage({
             ))}
           </select>
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Inscrito de</label>
+          <input type="date" name="dateFrom" defaultValue={dateFrom} className="input-field text-sm py-1.5" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Inscrito até</label>
+          <input type="date" name="dateTo" defaultValue={dateTo} className="input-field text-sm py-1.5" />
+        </div>
         <input type="hidden" name="sort" value={sortConfig.normalizedSort} />
         <input type="hidden" name="dir" value={sortConfig.normalizedDir} />
         <button type="submit" className="btn-primary py-1.5 px-4 text-sm">Filtrar</button>
-        {status || q || categoryId || routeId || ticketBatchId || couponId || paymentMethod ? (
+        {status || q || categoryId || routeId || ticketBatchId || couponId || paymentMethod || dateFrom || dateTo ? (
           <Link
             href={buildInscritosUrl(id, { sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir })}
             className="btn-secondary py-1.5 px-4 text-sm"
@@ -248,13 +264,13 @@ export default async function InscritosPage({
 
       <div className="flex gap-2">
         <Link
-          href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, sort: "name", dir: nameDir })}
+          href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: "name", dir: nameDir })}
           className={sortConfig.normalizedSort === "name" ? activeButtonClass : inactiveButtonClass}
         >
           Ordem alfabética {sortConfig.normalizedSort === "name" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}
         </Link>
         <Link
-          href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, sort: "date", dir: dateDir })}
+          href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: "date", dir: dateDir })}
           className={sortConfig.normalizedSort === "date" ? activeButtonClass : inactiveButtonClass}
         >
           Ordem cronológica {sortConfig.normalizedSort === "date" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}
@@ -287,7 +303,7 @@ export default async function InscritosPage({
                 {r.status === "CONFIRMED" && (
                   <ResendPaymentNotificationButton
                     endpoint={`/api/organizer/registrations/${r.id}/resend-confirmation-email`}
-                    label={r.order.confirmationEmailSentAt ? "Reenviar e-mail de confirmação" : "Enviar e-mail de confirmação"}
+                    label="Reenviar confirmação"
                     loadingLabel="Enviando..."
                   />
                 )}
