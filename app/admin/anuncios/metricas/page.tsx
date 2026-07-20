@@ -11,6 +11,12 @@ function formatMicrosAsCurrency(micros: bigint): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function formatSource(source: string | null): string {
+  if (source === "GOOGLE") return "Google";
+  if (source === "PRIVATE") return "Privado";
+  return "—";
+}
+
 export default async function AdMetricasPage() {
   await requireAdmin();
 
@@ -39,6 +45,7 @@ export default async function AdMetricasPage() {
           <thead>
             <tr className="text-left text-gray-500 border-b dark:border-gray-700 text-xs uppercase">
               <th className="pb-2 pr-4">Posição</th>
+              <th className="pb-2 pr-4">Fonte</th>
               <th className="pb-2 pr-4">Impressões</th>
               <th className="pb-2 pr-4">Cliques</th>
               <th className="pb-2">Receita estimada</th>
@@ -48,6 +55,7 @@ export default async function AdMetricasPage() {
             {rows.map((row) => (
               <tr key={row.slotLabel} className="border-b dark:border-gray-700 last:border-0">
                 <td className="py-2 pr-4">{row.slotLabel}</td>
+                <td className="py-2 pr-4">{formatSource(row.source)}</td>
                 <td className="py-2 pr-4">{row.impressions.toLocaleString("pt-BR")}</td>
                 <td className="py-2 pr-4">{row.clicks.toLocaleString("pt-BR")}</td>
                 <td className="py-2 font-medium">{formatMicrosAsCurrency(row.estimatedRevenueMicros)}</td>

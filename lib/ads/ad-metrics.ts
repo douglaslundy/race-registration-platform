@@ -5,6 +5,7 @@ export interface AdMetricsSummaryRow {
   impressions: number;
   clicks: number;
   estimatedRevenueMicros: bigint;
+  source: string | null;
 }
 
 export async function listAdMetricsSummary(from: Date, to: Date): Promise<AdMetricsSummaryRow[]> {
@@ -21,5 +22,6 @@ export async function listAdMetricsSummary(from: Date, to: Date): Promise<AdMetr
       (sum: bigint, m: { estimatedRevenueMicros: bigint }) => sum + m.estimatedRevenueMicros,
       0n,
     ),
+    source: slot.source,
   }));
 }
