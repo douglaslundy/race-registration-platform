@@ -3,6 +3,41 @@
 ## Última atualização
 2026-07-20
 
+## Reconciliação de receita + bug de fuso horário nos filtros (2026-07-20) — commitado e pushado, NÃO deployado
+
+Usuário reportou: valor de receita mostrado no dashboard/tela de evento não batia com o saldo
+real no Mercado Pago, e o filtro de data "10/7 a 20/7" trazia inscrição do dia 9. Análise
+completa + correção, 8 commits (`e722826..5cad33b`), push feito.
+
+**Causas raiz encontradas:**
+1. `parseDateInput` (`lib/admin/audit.ts`) interpretava a data digitada como meia-noite UTC em
+   vez de meia-noite em Brasília (UTC-3) — filtro "de 10/7" começava às 21h do dia 9. Função
+   compartilhada por vários arquivos, mas **também havia 2 cópias duplicadas com o mesmo bug**
+   em `lib/admin/users.ts` e `lib/admin/events.ts` (achado só na revisão independente) —
+   deletadas, agora importam a versão corrigida.
+2. Não existia definição única de "receita" no sistema — cada página calculava diferente
+   (bruto vs líquido de taxa da plataforma vs líquido de taxa de serviço), e **nenhuma delas**
+   descontava a comissão real do gateway (`Payment.gatewayFeeAmount`) — só a página
+   `/admin/relatorio` mostrava essa comissão, mas como card solto, não subtraído de nada.
+
+**Correção:** `lib/revenue-breakdown.ts` (`computeRevenueBreakdown`, TDD) centraliza a cascata
+bruto → −taxa plataforma → −taxa serviço → =receita do evento → −comissão gateway → =margem
+real da plataforma (esse último é o número que deve bater com o Mercado Pago). Componente
+`RevenueBreakdownCard` (variant admin/organizer) aplicado em `/admin/relatorio`,
+`/organizador/relatorio` e nas 2 páginas de evento. Dashboards migrados de `createdAt` pra
+`Payment.paidAt` no filtro de período. Tabela de eventos do organizador corrigida (usava
+`totalAmount` em vez de `subtotalAmount`, e ignorava o filtro de data).
+
+**Achado importante da revisão independente (opus)**: `eventRevenue` originalmente era
+derivado por subtração (`grossRevenue - taxas`), o que infla o valor se um Order acabar com
+mais de 1 Payment PAID (anomalia real, é pra isso que existe o cron de reconciliação) —
+corrigido pra vir direto de `Order.subtotalAmount` como input independente, não derivado.
+Também achou um `to.setHours(23,59,59,999)` residual nas 2 páginas de relatório que, combinado
+com a correção de fuso, causava um vazamento AINDA PIOR (~21h a mais) em servidor UTC —
+removido.
+
+Suíte final 1049/1049, `tsc --noEmit` limpo.
+
 ## Auditoria de segurança do fluxo de pagamento com cartão (2026-07-20) — commitado e pushado, NÃO deployado
 
 Usuário pediu análise do formulário de cartão (autocomplete/cache) + regras de negócio/segurança
