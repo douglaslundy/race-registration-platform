@@ -53,6 +53,21 @@ export default function WhatsAppConnectionPanel({ configured }: { configured: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configured]);
 
+  useEffect(() => {
+    if (!qrCode || state === "open") return;
+    const interval = setInterval(() => {
+      refreshStatus();
+    }, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrCode, state]);
+
+  useEffect(() => {
+    if (state === "open" && qrCode) {
+      setQrCode(null);
+    }
+  }, [state, qrCode]);
+
   async function handleGenerateQrCode() {
     setLoading("qrcode");
     setError(null);

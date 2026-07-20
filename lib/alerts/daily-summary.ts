@@ -35,10 +35,6 @@ function formatDateLabel(day: Date): string {
   return `${dd}/${mm}/${day.getUTCFullYear()}`;
 }
 
-function toWhatsAppDestination(localDigits: string): string {
-  return `55${localDigits}`;
-}
-
 function buildAdminEmailRows(m: AdminDailySummary): { label: string; value: string }[] {
   return [
     { label: "Novos usuários", value: String(m.newUsersCount) },
@@ -141,7 +137,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(toWhatsAppDestination(recipient.value), buildAdminWhatsAppText(metrics));
+              await sendWhatsAppMessage(recipient.value, buildAdminWhatsAppText(metrics));
               sent++;
             }
           } catch (err) {
@@ -254,7 +250,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(toWhatsAppDestination(recipient.value), buildOrganizerWhatsAppText(metrics));
+              await sendWhatsAppMessage(recipient.value, buildOrganizerWhatsAppText(metrics));
               sent++;
             }
           } catch (err) {

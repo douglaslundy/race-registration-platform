@@ -12,10 +12,37 @@ vi.mock("@/lib/message-logs", () => ({
   recordMessageLog: vi.fn(),
 }));
 
-import { sendWhatsAppMessage, sendWhatsAppDocument } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppDocument, normalizePhoneForWhatsApp } from "@/lib/whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import { sendTextMessage, sendMediaMessage } from "@/lib/whatsapp/evolution-client";
 import { recordMessageLog } from "@/lib/message-logs";
+
+describe("normalizePhoneForWhatsApp", () => {
+  it("adiciona o DDI 55 quando o número local não tem código de país (celular, 11 dígitos)", () => {
+    expect(normalizePhoneForWhatsApp("11999999999")).toBe("5511999999999");
+  });
+
+  it("adiciona o DDI 55 quando o número local não tem código de país (fixo, 10 dígitos)", () => {
+    expect(normalizePhoneForWhatsApp("1133334444")).toBe("551133334444");
+  });
+
+  it("não duplica o DDI quando o número já vem com 55 (celular)", () => {
+    expect(normalizePhoneForWhatsApp("5511999999999")).toBe("5511999999999");
+  });
+
+  it("não duplica o DDI quando o número já vem com 55 (fixo)", () => {
+    expect(normalizePhoneForWhatsApp("551133334444")).toBe("551133334444");
+  });
+
+  it("remove formatação e o + antes de normalizar", () => {
+    expect(normalizePhoneForWhatsApp("+55 (11) 99999-9999")).toBe("5511999999999");
+    expect(normalizePhoneForWhatsApp("(11) 99999-9999")).toBe("5511999999999");
+  });
+
+  it("devolve só os dígitos sem alterar quando o formato é inesperado", () => {
+    expect(normalizePhoneForWhatsApp("123")).toBe("123");
+  });
+});
 
 describe("sendWhatsAppMessage", () => {
   beforeEach(() => {
@@ -49,6 +76,20 @@ describe("sendWhatsAppMessage", () => {
     });
   });
 
+  it("normaliza o telefone (adiciona o DDI 55) antes de enviar e de registrar o log", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
+
+    await sendWhatsAppMessage("11999999999", "Olá!");
+
+    expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", "Olá!");
+    expect(recordMessageLog).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientAddress: "5511999999999" }),
+    );
+  });
+
   it("trunca o texto em ~80 caracteres pro subject do log", async () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
@@ -69,12 +110,12 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
     vi.mocked(sendTextMessage).mockRejectedValueOnce(new Error("Evolution API 400 ao enviar mensagem"));
 
-    await expect(sendWhatsAppMessage("invalid", "Olá!")).rejects.toThrow("Evolution API 400");
+    await expect(sendWhatsAppMessage("5511999999999", "Olá!")).rejects.toThrow("Evolution API 400");
 
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "WHATSAPP",
       subject: "Olá!",
-      recipientAddress: "invalid",
+      recipientAddress: "5511999999999",
       status: "FAILED",
       errorMessage: "Evolution API 400 ao enviar mensagem",
     });

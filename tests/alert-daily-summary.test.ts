@@ -206,7 +206,7 @@ describe("sendAdminDailySummaries", () => {
     expect(sendDailySummaryEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "maria@example.com", role: "ADMIN" }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("11999999999", expect.any(String));
     expect(result).toEqual({ sent: 2, failed: 0 });
   });
 
@@ -240,7 +240,7 @@ describe("sendAdminDailySummaries", () => {
     const result = await sendAdminDailySummaries(dayStart, dayEnd);
 
     expect(sendDailySummaryEmail).toHaveBeenCalledTimes(2);
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("11999999999", expect.any(String));
     expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:recipient:recipient-1", "EMAIL");
     expect(result).toEqual({ sent: 2, failed: 1 });
   });
@@ -379,7 +379,7 @@ describe("sendOrganizerDailySummaries", () => {
     expect(dbMock.dailySummaryRecipient.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "org-user-1" } }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5521988887777", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("21988887777", expect.any(String));
     expect(result).toEqual({ sent: 1, failed: 0 });
   });
 });
