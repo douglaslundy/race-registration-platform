@@ -87,6 +87,26 @@ export async function POST(req: NextRequest) {
     parsedStatus = provider.parseWebhookPayload(payload);
   }
 
+  // Pagar.me não tem, como o Mercado Pago, um passo prévio que já busca o status real na API
+  // (ver bloco de fetchMPPaymentStatus acima) — o status usado ali vem direto do corpo do
+  // webhook. Como a autenticação do webhook do Pagar.me é uma senha compartilhada (Basic auth),
+  // não uma assinatura por mensagem, reconfirmamos aqui via consulta autenticada à API antes de
+  // aplicar qualquer mudança, como defesa em profundidade contra um payload adulterado/replay.
+  if (isPagarMe && parsedStatus.providerPaymentId) {
+    try {
+      const real = await provider.checkPaymentStatus(parsedStatus.providerPaymentId);
+      if (real.status === "PENDING") {
+        // Status real ainda não é definitivo — não aplica nada deste evento.
+        return NextResponse.json({ ok: true });
+      }
+      parsedStatus = { ...parsedStatus, status: real.status };
+    } catch {
+      // Falha ao reconsultar a API do Pagar.me — mantém o status já calculado a partir do
+      // payload (mesma resiliência que o fluxo do Mercado Pago já tem quando
+      // fetchMPPaymentStatus falha).
+    }
+  }
+
   const event = parsedStatus;
 
   const payment = await db.payment.findFirst({
