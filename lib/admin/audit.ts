@@ -66,11 +66,20 @@ export function buildAdminAuditOrderBy(
   }
 }
 
+// Horário de Brasília é UTC-3 (sem horário de verão desde 2019). Os inputs de data dos
+// filtros (<input type="date">) são dias de calendário no fuso do usuário (Brasília), não UTC.
+const BRAZIL_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
+
 export function parseDateInput(dateValue?: string, endOfDay = false): Date | undefined {
   if (!dateValue) return undefined;
   const normalized = endOfDay ? `${dateValue}T23:59:59.999Z` : `${dateValue}T00:00:00.000Z`;
   const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  // `parsed` foi calculado como se o dia informado fosse UTC. Como na verdade é um dia de
+  // calendário em Brasília (UTC-3), o instante real é 3h mais tarde em UTC — sem esse ajuste,
+  // um filtro "de 10/7" começava às 21h do dia 9 (horário de Brasília), incluindo registros
+  // do dia anterior.
+  return new Date(parsed.getTime() + BRAZIL_UTC_OFFSET_MS);
 }
 
 export function escapeCsvValue(value: unknown): string {
