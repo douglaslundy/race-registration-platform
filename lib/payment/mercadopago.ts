@@ -215,7 +215,9 @@ export class MercadoPagoProvider implements PaymentProvider {
 
   async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {
     const secret = await getMercadoPagoWebhookSecret();
-    if (!secret) return true; // skip verification if not configured
+    // Falha fechada: sem segredo configurado, nenhum webhook é aceito (nunca pular a
+    // verificação — isso permitiria forjar confirmações de pagamento).
+    if (!secret) return false;
 
     // MP signature format: ts=<timestamp>,v1=<hash>
     const parts = Object.fromEntries(

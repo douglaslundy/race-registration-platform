@@ -158,7 +158,9 @@ export class PagarMeProvider implements PaymentProvider {
 
   async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {
     const password = await getPagarMeWebhookPassword();
-    if (!password) return true;
+    // Falha fechada: sem senha configurada, nenhum webhook é aceito (nunca pular a
+    // verificação — isso permitiria forjar confirmações de pagamento).
+    if (!password) return false;
 
     // Authorization: Basic base64(password:)
     const expectedBasic = `Basic ${Buffer.from(`${password}:`).toString("base64")}`;
