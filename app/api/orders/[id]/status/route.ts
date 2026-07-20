@@ -1,27 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getPaymentProviderSetting, getMercadoPagoAccessToken } from "@/lib/payment-settings";
+import { getPaymentProviderSetting } from "@/lib/payment-settings";
+import { checkMPPaymentStatus } from "@/lib/payment/check-mp-status";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
-
-async function checkMPPaymentStatus(providerPaymentId: string): Promise<"PAID" | "CANCELLED" | null> {
-  const token = await getMercadoPagoAccessToken();
-  if (!token) return null;
-  try {
-    const res = await fetch(`https://api.mercadopago.com/v1/payments/${providerPaymentId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 0 },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status === "approved") return "PAID";
-    if (data.status === "cancelled" || data.status === "rejected" || data.status === "expired") return "CANCELLED";
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();

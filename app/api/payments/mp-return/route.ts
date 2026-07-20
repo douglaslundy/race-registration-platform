@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkMPPaymentStatus } from "@/lib/payment/check-mp-status";
 
+/**
+ * URL de retorno do checkout do Mercado Pago — o navegador chega aqui com parâmetros
+ * (`status`, `payment_id`) que são 100% controláveis pelo usuário (não é um webhook
+ * servidor-a-servidor, não tem assinatura nenhuma). Por isso esta rota NUNCA grava nada no
+ * banco só porque a query string diz "approved" — ela sempre reconsulta o status real na API
+ * do Mercado Pago antes de confirmar qualquer pagamento, e sempre exige que o pedido pertença
+ * ao usuário autenticado.
+ */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
@@ -8,17 +18,26 @@ export async function GET(req: NextRequest) {
   const paymentId = searchParams.get("payment_id");
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
-  if (!orderId) {
+  const session = await auth();
+
+  if (!orderId || !session?.user) {
     return NextResponse.redirect(`${appUrl}/dashboard/inscricoes`);
   }
 
-  if (status === "approved" && paymentId) {
-    const order = await db.order.findUnique({
-      where: { id: orderId },
-      include: { registrations: { take: 1 } },
-    });
+  const order = await db.order.findFirst({
+    where: { id: orderId, buyerUserId: session.user.id },
+    include: { registrations: { take: 1 } },
+  });
 
-    if (order && order.status !== "PAID") {
+  if (!order) {
+    return NextResponse.redirect(`${appUrl}/dashboard/inscricoes`);
+  }
+
+  const regId = order.registrations[0]?.id;
+
+  if (paymentId && order.status !== "PAID") {
+    const realStatus = await checkMPPaymentStatus(paymentId);
+    if (realStatus === "PAID") {
       await db.$transaction([
         db.order.update({ where: { id: orderId }, data: { status: "PAID" } }),
         ...order.registrations.map((r) =>
@@ -29,12 +48,14 @@ export async function GET(req: NextRequest) {
           data: { status: "PAID", paidAt: new Date(), providerPaymentId: paymentId },
         }),
       ]);
+      if (regId) {
+        return NextResponse.redirect(`${appUrl}/dashboard/inscricoes/${regId}?confirmed=1`);
+      }
     }
+  }
 
-    const regId = order?.registrations[0]?.id;
-    if (regId) {
-      return NextResponse.redirect(`${appUrl}/dashboard/inscricoes/${regId}?confirmed=1`);
-    }
+  if (order.status === "PAID" && regId) {
+    return NextResponse.redirect(`${appUrl}/dashboard/inscricoes/${regId}?confirmed=1`);
   }
 
   if (status === "failure") {
