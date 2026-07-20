@@ -62,4 +62,15 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
   },
+  events: {
+    async signIn({ user }) {
+      // Best-effort — nunca deve impedir o login se a gravação falhar.
+      if (!user?.id) return;
+      try {
+        await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      } catch (err) {
+        console.error("[auth] failed to update lastLoginAt:", err);
+      }
+    },
+  },
 };

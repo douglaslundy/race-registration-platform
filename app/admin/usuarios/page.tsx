@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { UserRole } from "@prisma/client";
+import { formatDate } from "@/lib/format";
 import { BADGE } from "@/lib/badge-colors";
 import ChangeUserRoleButton from "@/components/admin/ChangeUserRoleButton";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
@@ -114,6 +115,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
       role: true,
       active: true,
       createdAt: true,
+      lastLoginAt: true,
       _count: { select: { orders: true } },
       athleteProfile: {
         select: {
@@ -294,13 +296,16 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
               <th className="pb-2 pr-4">
                 <SortLink label="Cadastro" column="createdAt" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("createdAt")} />
               </th>
+              <th className="pb-2 pr-4">
+                <SortLink label="Último acesso" column="lastLoginAt" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("lastLoginAt")} />
+              </th>
               <th className="pb-2 pr-4">Ações</th>
             </tr>
           </thead>
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-sm text-gray-500">
+                <td colSpan={9} className="py-8 text-center text-sm text-gray-500">
                   Nenhum usuário encontrado com os filtros atuais.
                 </td>
               </tr>
@@ -333,6 +338,9 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                     </span>
                   </td>
                   <td className={cellPadding + " text-gray-400 text-xs"}>{u.createdAt.toLocaleDateString("pt-BR")}</td>
+                  <td className={cellPadding + " text-gray-400 text-xs"}>
+                    {u.lastLoginAt ? formatDate(u.lastLoginAt, "dd/MM/yyyy HH:mm") : "Nunca acessou"}
+                  </td>
                   <td className={cellPadding}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Link href={`/admin/usuarios/${u.id}`} className="text-xs text-primary-600 hover:underline">

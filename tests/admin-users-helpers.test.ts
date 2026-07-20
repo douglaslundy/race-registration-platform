@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAdminUserWhere } from "@/lib/admin/users";
+import { buildAdminUserWhere, buildAdminUserOrderBy } from "@/lib/admin/users";
 
 describe("buildAdminUserWhere", () => {
   it("returns an empty filter when no params given", () => {
@@ -31,6 +31,24 @@ describe("buildAdminUserWhere", () => {
           ],
         },
       ],
+    });
+  });
+});
+
+describe("buildAdminUserOrderBy", () => {
+  it("ordena por lastLoginAt (desc), com quem nunca acessou sempre por último", () => {
+    expect(buildAdminUserOrderBy("lastLoginAt", "desc")).toEqual({
+      orderBy: [{ lastLoginAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+      normalizedSort: "lastLoginAt",
+      normalizedDir: "desc",
+    });
+  });
+
+  it("ordena por lastLoginAt (asc), com quem nunca acessou sempre por último", () => {
+    expect(buildAdminUserOrderBy("lastLoginAt", "asc")).toEqual({
+      orderBy: [{ lastLoginAt: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
+      normalizedSort: "lastLoginAt",
+      normalizedDir: "asc",
     });
   });
 });

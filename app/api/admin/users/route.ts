@@ -55,11 +55,12 @@ export async function GET(req: NextRequest) {
       role: true,
       active: true,
       createdAt: true,
+      lastLoginAt: true,
       _count: { select: { registrations: true, orders: true } },
     },
   });
 
-  const header = ["Nome", "Email", "Perfil", "Status", "Inscrições", "Pedidos", "Cadastro"].map(escapeCsvValue).join(",") + "\n";
+  const header = ["Nome", "Email", "Perfil", "Status", "Inscrições", "Pedidos", "Cadastro", "Último acesso"].map(escapeCsvValue).join(",") + "\n";
   const rows = users
     .map((user) =>
       [
@@ -70,6 +71,7 @@ export async function GET(req: NextRequest) {
         user._count.registrations,
         user._count.orders,
         user.createdAt.toISOString(),
+        user.lastLoginAt ? user.lastLoginAt.toISOString() : "",
       ]
         .map(escapeCsvValue)
         .join(","),

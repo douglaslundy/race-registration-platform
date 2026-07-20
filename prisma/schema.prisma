@@ -113,6 +113,7 @@ model User {
   dailySummaryEmailEnabled    Boolean   @default(true)
   dailySummaryWhatsappEnabled Boolean   @default(true)
   uiDensity     String    @default("comfortable")
+  lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

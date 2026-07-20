@@ -99,6 +99,14 @@ export function buildAdminUserOrderBy(
         normalizedSort: "orders",
         normalizedDir,
       };
+    case "lastLoginAt":
+      // nulls: "last" — quem nunca acessou aparece por último em qualquer direção, em vez de
+      // "furar a fila" no topo quando ordenado desc (comportamento padrão do Postgres pra NULL).
+      return {
+        orderBy: [{ lastLoginAt: { sort: normalizedDir, nulls: "last" } }, { createdAt: "desc" }],
+        normalizedSort: "lastLoginAt",
+        normalizedDir,
+      };
     case "createdAt":
     default:
       return {

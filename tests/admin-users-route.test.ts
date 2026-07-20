@@ -79,7 +79,17 @@ describe("admin users API", () => {
         role: "ATHLETE",
         active: true,
         createdAt: new Date("2026-01-02T10:00:00.000Z"),
+        lastLoginAt: new Date("2026-01-05T08:30:00.000Z"),
         _count: { registrations: 3, orders: 1 },
+      },
+      {
+        name: "Bruno Costa",
+        email: "bruno@exemplo.com",
+        role: "ATHLETE",
+        active: true,
+        createdAt: new Date("2026-01-03T10:00:00.000Z"),
+        lastLoginAt: null,
+        _count: { registrations: 0, orders: 0 },
       },
     ]);
 
@@ -108,6 +118,11 @@ describe("admin users API", () => {
     expect(csv).toContain('"Ana Silva"');
     expect(csv).toContain('"ana@exemplo.com"');
     expect(csv).toContain('"ATHLETE"');
+    expect(csv).toContain('"Último acesso"');
+    expect(csv).toContain('"2026-01-05T08:30:00.000Z"');
+    // Usuário que nunca acessou: coluna vazia, não "null"/"undefined" no CSV.
+    expect(csv).not.toContain("null");
+    expect(csv).not.toContain("undefined");
   });
 
   it("exports a user registration csv from the detail view", async () => {
