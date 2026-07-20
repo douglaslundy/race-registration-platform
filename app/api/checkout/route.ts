@@ -11,6 +11,7 @@ import type { ShirtSize, PaymentMethod } from "@prisma/client";
 import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { checkLowStockAlert } from "@/lib/alerts/low-stock";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const checkoutSchema = z.object({
   eventId: opaqueIdField(),
@@ -35,6 +36,16 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Autenticação necessária" }, { status: 401 });
+  }
+
+  // Limita tentativas de checkout por usuário — mitiga "card testing" (submissão em massa de
+  // tokens de cartão roubados contra este endpoint).
+  const { allowed } = checkRateLimit(`checkout:${session.user.id}`, RATE_LIMITS.CHECKOUT);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Muitas tentativas de pagamento. Aguarde um minuto e tente novamente." },
+      { status: 429 },
+    );
   }
 
   const body = await req.json();

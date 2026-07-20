@@ -27,14 +27,43 @@ vi.mock("@/lib/alerts/low-stock", () => ({
   checkLowStockAlert: vi.fn(),
 }));
 
+vi.mock("@/lib/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit");
+  return { ...actual, checkRateLimit: vi.fn() };
+});
+
+import { checkRateLimit } from "@/lib/rate-limit";
+
 const authMock = vi.mocked(auth);
 const enabledMethodsMock = vi.mocked(getEnabledPaymentMethods);
+const rateLimitMock = vi.mocked(checkRateLimit);
 const dbMock = db as any;
 
 describe("checkout api", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "user-1", role: "ATHLETE" } } as any);
+    rateLimitMock.mockReturnValue({ allowed: true, remaining: 4 });
+  });
+
+  it("retorna 429 e não cria o checkout quando o limite de tentativas é excedido", async () => {
+    rateLimitMock.mockReturnValue({ allowed: false, remaining: 0 });
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+        }),
+      }) as any,
+    );
+
+    expect(rateLimitMock).toHaveBeenCalledWith("checkout:user-1", expect.objectContaining({ requests: 5, windowMs: 60_000 }));
+    expect(res.status).toBe(429);
+    expect(vi.mocked(createCheckout)).not.toHaveBeenCalled();
   });
 
   it("rejects a disabled payment method before creating the checkout", async () => {
