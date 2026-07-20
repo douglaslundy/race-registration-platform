@@ -1,5 +1,6 @@
 import type { Prisma, UserRole } from "@prisma/client";
 import { normalizeCpf } from "@/lib/cpf";
+import { parseDateInput } from "@/lib/admin/audit";
 
 export interface AdminUserSearchParams {
   q?: string;
@@ -106,14 +107,6 @@ export function buildAdminUserOrderBy(
         normalizedDir,
       };
   }
-}
-
-export function parseDateInput(dateValue?: string, endOfDay = false): Date | undefined {
-  if (!dateValue) return undefined;
-
-  const normalized = endOfDay ? `${dateValue}T23:59:59.999Z` : `${dateValue}T00:00:00.000Z`;
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
 export function escapeCsvValue(value: unknown): string {

@@ -3,11 +3,14 @@ import type { RevenueBreakdown } from "@/lib/revenue-breakdown";
 
 interface RowProps {
   label: string;
+  /** Sempre o valor em centavos como um positivo (ex: o tamanho da taxa) — o sinal de "−" vem
+   * só do `subtract`, nunca de passar um número já negativo aqui (evita duplo sinal e -R$0,00). */
   value: number;
   tone?: "default" | "muted" | "highlight";
+  subtract?: boolean;
 }
 
-function Row({ label, value, tone = "default" }: RowProps) {
+function Row({ label, value, tone = "default", subtract = false }: RowProps) {
   const valueCls =
     tone === "highlight"
       ? "font-bold text-primary-600"
@@ -17,7 +20,7 @@ function Row({ label, value, tone = "default" }: RowProps) {
   return (
     <div className="flex justify-between items-baseline gap-3">
       <span className={tone === "highlight" ? "font-semibold" : "text-gray-600 dark:text-gray-400"}>{label}</span>
-      <span className={valueCls}>{formatCurrency(value)}</span>
+      <span className={valueCls}>{subtract ? "-" : ""}{formatCurrency(value)}</span>
     </div>
   );
 }
@@ -44,8 +47,8 @@ export default function RevenueBreakdownCard({
     <div className="card space-y-2">
       <h2 className="font-semibold mb-1">Composição da receita</h2>
       <Row label="Receita bruta (pago pelo atleta)" value={grossRevenue} />
-      <Row label="− Taxa da plataforma" value={-platformFeeAmount} tone="muted" />
-      {serviceFeeAmount > 0 && <Row label="− Taxa de serviço" value={-serviceFeeAmount} tone="muted" />}
+      {platformFeeAmount > 0 && <Row label="− Taxa da plataforma" value={platformFeeAmount} tone="muted" subtract />}
+      {serviceFeeAmount > 0 && <Row label="− Taxa de serviço" value={serviceFeeAmount} tone="muted" subtract />}
       <Row
         label={variant === "organizer" ? "= Receita do evento (seu repasse)" : "= Receita do evento"}
         value={eventRevenue}
@@ -54,7 +57,7 @@ export default function RevenueBreakdownCard({
 
       {variant === "admin" && (
         <>
-          <Row label="− Comissão do gateway" value={-gatewayFeeAmount} tone="muted" />
+          {gatewayFeeAmount > 0 && <Row label="− Comissão do gateway" value={gatewayFeeAmount} tone="muted" subtract />}
           <Row label="= Margem real da plataforma" value={platformNetMargin} tone="highlight" />
           <p className="text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-700 pt-2 mt-2">
             "Margem real da plataforma" é o número que deve bater com o saldo movimentado na

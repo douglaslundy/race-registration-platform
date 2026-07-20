@@ -23,8 +23,11 @@ export default async function AdminRelatorioPage({
   const { de, ate, eventId } = await searchParams;
 
   const from = parseDateInput(de, false) ?? new Date(new Date().getFullYear(), 0, 1);
+  // Não usar to.setHours(...) aqui — parseDateInput(ate, true) já calcula o fim do dia certo em
+  // horário de Brasília; setHours mexe na hora LOCAL do servidor (UTC em produção), o que
+  // reintroduzia o mesmo tipo de vazamento que este filtro deveria corrigir (~21h a mais no
+  // limite "até").
   const to = parseDateInput(ate, true) ?? new Date();
-  to.setHours(23, 59, 59, 999);
 
   const filter = { from, to, eventId: eventId || undefined };
 
@@ -109,6 +112,7 @@ export default async function AdminRelatorioPage({
   const refunds = refundsAgg._sum.amount ?? 0;
   const revenueBreakdown = computeRevenueBreakdown({
     grossRevenue,
+    eventRevenue: platformFeeAgg._sum.subtotalAmount,
     platformFeeAmount: platformFeeAgg._sum.platformFeeAmount,
     serviceFeeAmount: platformFeeAgg._sum.paymentFeeAmount,
     gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,

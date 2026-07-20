@@ -85,7 +85,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       where: { status: "PAID", order: { eventId: id } },
     }),
     db.order.aggregate({
-      _sum: { platformFeeAmount: true, paymentFeeAmount: true },
+      _sum: { subtotalAmount: true, platformFeeAmount: true, paymentFeeAmount: true },
       where: { status: "PAID", eventId: id },
     }),
   ]);
@@ -124,6 +124,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
 
   const revenueBreakdown = computeRevenueBreakdown({
     grossRevenue: paymentsAgg._sum.amount,
+    eventRevenue: orderFeeAgg._sum.subtotalAmount,
     platformFeeAmount: orderFeeAgg._sum.platformFeeAmount,
     serviceFeeAmount: orderFeeAgg._sum.paymentFeeAmount,
     gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,

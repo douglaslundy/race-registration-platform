@@ -1,4 +1,5 @@
 import type { EventModality, Prisma, EventStatus } from "@prisma/client";
+import { parseDateInput } from "@/lib/admin/audit";
 
 export interface AdminEventSearchParams {
   q?: string;
@@ -89,13 +90,6 @@ export function buildAdminEventOrderBy(
     default:
       return { orderBy: [{ createdAt: normalizedDir }, { title: "asc" }], normalizedSort: "createdAt", normalizedDir };
   }
-}
-
-export function parseDateInput(dateValue?: string, endOfDay = false): Date | undefined {
-  if (!dateValue) return undefined;
-  const normalized = endOfDay ? `${dateValue}T23:59:59.999Z` : `${dateValue}T00:00:00.000Z`;
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
 export function escapeCsvValue(value: unknown): string {
