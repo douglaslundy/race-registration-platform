@@ -31,7 +31,7 @@ const dbMock = db as any;
 
 const orderFixture = {
   buyer: { name: "Atleta Teste", email: "atleta@example.com" },
-  event: { title: "Corrida Teste" },
+  event: { id: "event-1", title: "Corrida Teste" },
   registrations: [
     { id: "reg-1", notes: "Chegarei atrasado", athlete: { athleteProfile: { phone: "5511999999999" } } },
   ],
@@ -56,6 +56,7 @@ describe("notifyOrderConfirmed", () => {
         to: "atleta@example.com",
         registrationId: "reg-1",
         orderId: "order-1",
+        eventId: "event-1",
         notes: "Chegarei atrasado",
       }),
     );
@@ -115,6 +116,7 @@ describe("notifyOrderConfirmed", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       expect.stringContaining("Corrida Teste"),
+      { relatedEntityType: "Event", relatedEntityId: "event-1" },
     );
   });
 

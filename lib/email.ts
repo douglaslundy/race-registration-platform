@@ -18,12 +18,18 @@ export async function sendMail(opts: {
   subject: string;
   html: string;
   attachments?: { filename: string; content: Buffer }[];
+  relatedEntityType?: string;
+  relatedEntityId?: string;
 }): Promise<void> {
   const cfg = await getSmtpConfig();
   if (!isSmtpReady(cfg)) {
     throw new Error("SMTP não configurado. Configure em Admin → Configurações.");
   }
   const transporter = buildTransport(cfg);
+  const relatedEntity =
+    opts.relatedEntityType && opts.relatedEntityId
+      ? { relatedEntityType: opts.relatedEntityType, relatedEntityId: opts.relatedEntityId }
+      : {};
 
   try {
     await transporter.sendMail({
@@ -40,6 +46,7 @@ export async function sendMail(opts: {
       recipientAddress: opts.to,
       status: "FAILED",
       errorMessage: err instanceof Error ? err.message : String(err),
+      ...relatedEntity,
     });
     throw err;
   }
@@ -49,6 +56,7 @@ export async function sendMail(opts: {
     subject: opts.subject,
     recipientAddress: opts.to,
     status: "SENT",
+    ...relatedEntity,
   });
 }
 
@@ -90,6 +98,7 @@ export async function sendRegistrationConfirmationEmail(params: {
   registrationId: string;
   orderId: string;
   eventTitle?: string;
+  eventId?: string;
   notes?: string;
 }): Promise<void> {
   const appName = await getAppName();
@@ -107,6 +116,7 @@ export async function sendRegistrationConfirmationEmail(params: {
        ${params.notes ? `<p>Observação registrada: ${params.notes}</p>` : ""}
        <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Ver detalhes da inscrição</a></p>`
     ),
+    ...(params.eventId ? { relatedEntityType: "Event", relatedEntityId: params.eventId } : {}),
   });
 }
 

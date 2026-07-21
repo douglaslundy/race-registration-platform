@@ -90,6 +90,25 @@ describe("sendWhatsAppMessage", () => {
     );
   });
 
+  it("grava relatedEntityType/relatedEntityId no log quando informados", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
+
+    await sendWhatsAppMessage("5511999999999", "Olá!", { relatedEntityType: "Event", relatedEntityId: "event-1" });
+
+    expect(recordMessageLog).toHaveBeenCalledWith({
+      channel: "WHATSAPP",
+      subject: "Olá!",
+      recipientAddress: "5511999999999",
+      status: "SENT",
+      providerMessageId: "wamid.abc",
+      relatedEntityType: "Event",
+      relatedEntityId: "event-1",
+    });
+  });
+
   it("trunca o texto em ~80 caracteres pro subject do log", async () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);

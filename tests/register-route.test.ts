@@ -25,6 +25,7 @@ const validAthleteBody = {
   role: "ATHLETE",
   birthDate: "1990-01-01",
   cpf: "111.444.777-35",
+  phone: "11999999999",
 };
 
 describe("POST /api/auth/register", () => {
@@ -45,6 +46,22 @@ describe("POST /api/auth/register", () => {
     const body: Record<string, unknown> = { ...validAthleteBody };
     delete body.cpf;
     const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem telefone", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.phone;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita telefone com menos de 10 dígitos", async () => {
+    const res = await POST(makeRequest({ ...validAthleteBody, phone: "1199999" }));
 
     expect(res.status).toBe(400);
     expect(dbMock.user.create).not.toHaveBeenCalled();
@@ -75,6 +92,7 @@ describe("POST /api/auth/register", () => {
         data: expect.objectContaining({
           userId: "user-1",
           cpf: "11144477735",
+          phone: "11999999999",
         }),
       }),
     );

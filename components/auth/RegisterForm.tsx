@@ -16,6 +16,7 @@ const schema = z
     role: z.enum(["ATHLETE", "ORGANIZER"]),
     birthDate: z.string().optional(),
     cpf: z.string().optional(),
+    phone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role !== "ATHLETE") return;
@@ -39,6 +40,20 @@ const schema = z
         code: z.ZodIssueCode.custom,
         message: "CPF inválido",
         path: ["cpf"],
+      });
+    }
+
+    if (!data.phone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe seu telefone",
+        path: ["phone"],
+      });
+    } else if (data.phone.replace(/\D/g, "").length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Telefone inválido",
+        path: ["phone"],
       });
     }
   });
@@ -122,6 +137,17 @@ export default function RegisterForm() {
               maxLength={14}
             />
             {errors.cpf && <p className="text-red-500 text-xs mt-1">{errors.cpf.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp *</label>
+            <input
+              type="tel"
+              {...register("phone")}
+              className="input-field"
+              placeholder="(11) 99999-9999"
+            />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
           </div>
         </>
       )}

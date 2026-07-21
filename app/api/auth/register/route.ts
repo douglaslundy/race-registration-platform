@@ -14,6 +14,7 @@ const registerSchema = z
     role: z.enum(["ATHLETE", "ORGANIZER"]).default("ATHLETE"),
     birthDate: z.string().optional(),
     cpf: z.string().optional(),
+    phone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role !== "ATHLETE") return;
@@ -39,6 +40,20 @@ const registerSchema = z
         path: ["cpf"],
       });
     }
+
+    if (!data.phone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Telefone é obrigatório",
+        path: ["phone"],
+      });
+    } else if (data.phone.replace(/\D/g, "").length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Telefone inválido",
+        path: ["phone"],
+      });
+    }
   });
 
 export async function POST(req: NextRequest) {
@@ -50,7 +65,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { name, email, password, role, birthDate, cpf } = parsed.data;
+    const { name, email, password, role, birthDate, cpf, phone } = parsed.data;
 
     if (!(await hasValidMxRecord(email))) {
       return NextResponse.json({ error: "Domínio de e-mail inválido ou inexistente" }, { status: 400 });
@@ -80,7 +95,7 @@ export async function POST(req: NextRequest) {
     if (role === "ATHLETE" && birthDate) {
       try {
         await db.athleteProfile.create({
-          data: { userId: user.id, birthDate: new Date(birthDate), cpf: normalizedCpf },
+          data: { userId: user.id, birthDate: new Date(birthDate), cpf: normalizedCpf, phone },
         });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

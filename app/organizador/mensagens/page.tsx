@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/rbac";
-import { listMessageLogs, resolveMessageOwnerUserId, type MessageLogStatus } from "@/lib/message-logs";
+import { listMessageLogs, resolveMessageOwnerUserId, resolveOrganizerEventIds, type MessageLogStatus } from "@/lib/message-logs";
 import MessageLogList, { type MessageLogRow } from "@/components/messages/MessageLogList";
 
 export const metadata: Metadata = { title: "Mensagens" };
@@ -21,6 +21,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
   const params = await searchParams;
 
   const ownerUserId = (await resolveMessageOwnerUserId(session)) ?? "__none__";
+  const eventIds = ownerUserId === "__none__" ? [] : await resolveOrganizerEventIds(ownerUserId);
 
   const channel = params.channel === "EMAIL" || params.channel === "WHATSAPP" ? params.channel : undefined;
   const status = params.status?.trim() || undefined;
@@ -32,6 +33,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
   const { rows, total, totalPages } = await listMessageLogs({
     channel,
     recipientUserId: ownerUserId,
+    eventIds,
     status: status as MessageLogStatus | undefined,
     q,
     from: dateFrom ? new Date(dateFrom) : undefined,

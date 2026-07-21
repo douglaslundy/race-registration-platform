@@ -25,7 +25,7 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
     where: { id: orderId },
     select: {
       buyer: { select: { name: true, email: true } },
-      event: { select: { title: true } },
+      event: { select: { id: true, title: true } },
       registrations: {
         select: {
           id: true,
@@ -49,6 +49,7 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
         registrationId: registration.id,
         orderId,
         eventTitle: order.event?.title,
+        eventId: order.event?.id,
         notes: registration.notes ?? undefined,
       });
       await db.order.update({ where: { id: orderId }, data: { confirmationEmailSentAt: new Date() } });
@@ -67,6 +68,7 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
       await sendWhatsAppMessage(
         phone,
         `Sua inscrição${eventLabel} foi confirmada! Pedido ${orderId}. Detalhes: ${baseUrl}/dashboard/inscricoes/${registration.id}`,
+        order.event?.id ? { relatedEntityType: "Event", relatedEntityId: order.event.id } : undefined,
       );
     }
   } catch (err) {

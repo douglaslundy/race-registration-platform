@@ -13,6 +13,8 @@ export interface RecordMessageLogParams {
   status: "SENT" | "FAILED";
   errorMessage?: string;
   providerMessageId?: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
 }
 
 async function resolveRecipientUserIdByEmail(email: string): Promise<string | null> {
@@ -43,6 +45,8 @@ export async function recordMessageLog(params: RecordMessageLogParams): Promise<
         status: params.status,
         errorMessage: params.errorMessage ?? null,
         providerMessageId: params.providerMessageId ?? null,
+        relatedEntityType: params.relatedEntityType ?? null,
+        relatedEntityId: params.relatedEntityId ?? null,
         sentAt: params.status === "SENT" ? new Date() : null,
       },
     });
@@ -74,6 +78,9 @@ export async function updateMessageLogStatusByProviderMessageId(
 export interface MessageLogFilters {
   channel?: MessageChannel;
   recipientUserId?: string;
+  /** IDs de eventos do organizador — ORed com recipientUserId, para incluir mensagens enviadas
+   * aos atletas inscritos nesses eventos (não só mensagens endereçadas ao próprio organizador). */
+  eventIds?: string[];
   status?: MessageLogStatus;
   q?: string;
   from?: Date;
@@ -83,20 +90,26 @@ export interface MessageLogFilters {
 }
 
 export async function listMessageLogs(filters: MessageLogFilters = {}) {
-  const { channel, recipientUserId, status, q, from, to, page = 1, pageSize = 20 } = filters;
+  const { channel, recipientUserId, eventIds, status, q, from, to, page = 1, pageSize = 20 } = filters;
 
-  const where = {
+  const scopeClause: Record<string, unknown> | null = recipientUserId
+    ? eventIds && eventIds.length > 0
+      ? { OR: [{ recipientUserId }, { relatedEntityType: "Event", relatedEntityId: { in: eventIds } }] }
+      : { recipientUserId }
+    : null;
+
+  const searchClause: Record<string, unknown> | null = q
+    ? {
+        OR: [
+          { recipientAddress: { contains: q, mode: "insensitive" as const } },
+          { recipientUser: { name: { contains: q, mode: "insensitive" as const } } },
+        ],
+      }
+    : null;
+
+  const baseWhere = {
     ...(channel ? { channel } : {}),
-    ...(recipientUserId ? { recipientUserId } : {}),
     ...(status ? { status } : {}),
-    ...(q
-      ? {
-          OR: [
-            { recipientAddress: { contains: q, mode: "insensitive" as const } },
-            { recipientUser: { name: { contains: q, mode: "insensitive" as const } } },
-          ],
-        }
-      : {}),
     ...(from || to
       ? {
           createdAt: {
@@ -106,6 +119,14 @@ export async function listMessageLogs(filters: MessageLogFilters = {}) {
         }
       : {}),
   };
+
+  // scopeClause e searchClause podem gerar cada um sua própria chave `OR` — combinadas via spread
+  // direto, a segunda sobrescreveria a primeira (perdendo o escopo de segurança do organizador).
+  // Só nesse caso as duas viram cláusulas de um `AND` explícito.
+  const where =
+    scopeClause && searchClause
+      ? { ...baseWhere, AND: [scopeClause, searchClause] }
+      : { ...baseWhere, ...(scopeClause ?? {}), ...(searchClause ?? {}) };
 
   const [rows, total] = await Promise.all([
     db.messageLog.findMany({
@@ -134,4 +155,16 @@ export async function resolveMessageOwnerUserId(session: Session): Promise<strin
     return user?.createdByUserId ?? null;
   }
   return null;
+}
+
+/** IDs dos eventos de um organizador — usado para ampliar o escopo da caixa de mensagens do
+ * organizador às mensagens enviadas aos atletas inscritos nesses eventos, além das endereçadas a
+ * ele mesmo. `organizerUserId` é sempre o dono real (já resolvido via `resolveMessageOwnerUserId`
+ * no caso de assistente), nunca o id de sessão bruto. */
+export async function resolveOrganizerEventIds(organizerUserId: string): Promise<string[]> {
+  const events = await db.event.findMany({
+    where: { organizerId: organizerUserId },
+    select: { id: true },
+  });
+  return events.map((e) => e.id);
 }

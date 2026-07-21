@@ -9,10 +9,11 @@ describe("getMissingAthleteProfileFields", () => {
     vi.clearAllMocks();
   });
 
-  it("retorna lista vazia quando birthDate e cpf estão preenchidos", async () => {
+  it("retorna lista vazia quando birthDate, cpf e phone estão preenchidos", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
       birthDate: new Date("1990-01-01"),
       cpf: "11144477735",
+      phone: "5511999999999",
     });
 
     const missing = await getMissingAthleteProfileFields("user-1");
@@ -20,18 +21,19 @@ describe("getMissingAthleteProfileFields", () => {
     expect(missing).toEqual([]);
   });
 
-  it("retorna birthDate e cpf quando não há perfil nenhum", async () => {
+  it("retorna birthDate, cpf e phone quando não há perfil nenhum", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce(null);
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
-    expect(missing).toEqual(["birthDate", "cpf"]);
+    expect(missing).toEqual(["birthDate", "cpf", "phone"]);
   });
 
-  it("retorna só cpf quando birthDate já está preenchido", async () => {
+  it("retorna só cpf quando birthDate e phone já estão preenchidos", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
       birthDate: new Date("1990-01-01"),
       cpf: null,
+      phone: "5511999999999",
     });
 
     const missing = await getMissingAthleteProfileFields("user-1");
@@ -39,14 +41,27 @@ describe("getMissingAthleteProfileFields", () => {
     expect(missing).toEqual(["cpf"]);
   });
 
-  it("retorna só birthDate quando cpf já está preenchido", async () => {
+  it("retorna só birthDate quando cpf e phone já estão preenchidos", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
       birthDate: null,
       cpf: "11144477735",
+      phone: "5511999999999",
     });
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
     expect(missing).toEqual(["birthDate"]);
+  });
+
+  it("retorna só phone quando birthDate e cpf já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
+      birthDate: new Date("1990-01-01"),
+      cpf: "11144477735",
+      phone: null,
+    });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["phone"]);
   });
 });

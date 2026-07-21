@@ -23,7 +23,11 @@ export function normalizePhoneForWhatsApp(phone: string): string {
 }
 
 /** Envia uma mensagem de WhatsApp usando a configuração salva (Evolution API). */
-export async function sendWhatsAppMessage(phone: string, text: string): Promise<void> {
+export async function sendWhatsAppMessage(
+  phone: string,
+  text: string,
+  options?: { relatedEntityType?: string; relatedEntityId?: string },
+): Promise<void> {
   const config = await getWhatsAppConfig();
   if (!isWhatsAppConfigured(config)) {
     throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
@@ -31,6 +35,10 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
 
   const normalizedPhone = normalizePhoneForWhatsApp(phone);
   const subject = truncateForSubject(text);
+  const relatedEntity =
+    options?.relatedEntityType && options?.relatedEntityId
+      ? { relatedEntityType: options.relatedEntityType, relatedEntityId: options.relatedEntityId }
+      : {};
 
   try {
     const { providerMessageId } = await sendTextMessage(config, normalizedPhone, text);
@@ -40,6 +48,7 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
       recipientAddress: normalizedPhone,
       status: "SENT",
       ...(providerMessageId ? { providerMessageId } : {}),
+      ...relatedEntity,
     });
   } catch (err) {
     await recordMessageLog({
@@ -48,6 +57,7 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
       recipientAddress: normalizedPhone,
       status: "FAILED",
       errorMessage: err instanceof Error ? err.message : String(err),
+      ...relatedEntity,
     });
     throw err;
   }

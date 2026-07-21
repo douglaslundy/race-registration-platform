@@ -66,6 +66,27 @@ describe("sendMail", () => {
     });
   });
 
+  it("grava relatedEntityType/relatedEntityId no log quando informados no opts", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+
+    await sendMail({
+      to: "atleta@example.com",
+      subject: "Inscrição confirmada",
+      html: "<p>Oi</p>",
+      relatedEntityType: "Event",
+      relatedEntityId: "event-1",
+    });
+
+    expect(recordMessageLog).toHaveBeenCalledWith({
+      channel: "EMAIL",
+      subject: "Inscrição confirmada",
+      recipientAddress: "atleta@example.com",
+      status: "SENT",
+      relatedEntityType: "Event",
+      relatedEntityId: "event-1",
+    });
+  });
+
   it("repassa attachments pro transporter.sendMail quando fornecidos", async () => {
     sendMailMock.mockResolvedValueOnce({});
     const attachments = [{ filename: "relatorio.pdf", content: Buffer.from("PDF") }];

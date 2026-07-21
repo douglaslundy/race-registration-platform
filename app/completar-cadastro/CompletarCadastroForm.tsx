@@ -15,11 +15,13 @@ export default function CompletarCadastroForm({
   const router = useRouter();
   const [birthDate, setBirthDate] = useState("");
   const [cpf, setCpf] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const needsBirthDate = missingFields.includes("birthDate");
   const needsCpf = missingFields.includes("cpf");
+  const needsPhone = missingFields.includes("phone");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,10 +32,16 @@ export default function CompletarCadastroForm({
       return;
     }
 
+    if (needsPhone && phone.replace(/\D/g, "").length < 10) {
+      setError("Informe um telefone válido.");
+      return;
+    }
+
     setSaving(true);
     const body: Record<string, string> = {};
     if (needsBirthDate) body.birthDate = birthDate;
     if (needsCpf) body.cpf = cpf;
+    if (needsPhone) body.phone = phone;
 
     const res = await fetch("/api/athlete/profile", {
       method: "PUT",
@@ -77,6 +85,21 @@ export default function CompletarCadastroForm({
             onChange={(e) => setCpf(e.target.value)}
             placeholder="000.000.000-00"
             maxLength={14}
+            required
+            className="input-field"
+          />
+        </div>
+      )}
+      {needsPhone && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Telefone / WhatsApp *
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="(11) 99999-9999"
             required
             className="input-field"
           />

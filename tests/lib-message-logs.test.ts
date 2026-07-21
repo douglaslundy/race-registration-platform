@@ -5,6 +5,7 @@ import {
   updateMessageLogStatusByProviderMessageId,
   listMessageLogs,
   resolveMessageOwnerUserId,
+  resolveOrganizerEventIds,
 } from "@/lib/message-logs";
 
 const dbMock = db as any;
@@ -35,6 +36,8 @@ describe("recordMessageLog", () => {
         status: "SENT",
         errorMessage: null,
         providerMessageId: null,
+        relatedEntityType: null,
+        relatedEntityId: null,
         sentAt: expect.any(Date),
       },
     });
@@ -61,9 +64,30 @@ describe("recordMessageLog", () => {
         status: "SENT",
         errorMessage: null,
         providerMessageId: "wamid.abc",
+        relatedEntityType: null,
+        relatedEntityId: null,
         sentAt: expect.any(Date),
       },
     });
+  });
+
+  it("grava relatedEntityType/relatedEntityId quando informados", async () => {
+    dbMock.user.findFirst.mockResolvedValueOnce({ id: "user-2" });
+
+    await recordMessageLog({
+      channel: "WHATSAPP",
+      subject: "Prévia da mensagem",
+      recipientAddress: "5511999999999",
+      status: "SENT",
+      relatedEntityType: "Event",
+      relatedEntityId: "event-1",
+    });
+
+    expect(dbMock.messageLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ relatedEntityType: "Event", relatedEntityId: "event-1" }),
+      }),
+    );
   });
 
   it("recipientUserId fica null quando não bate com nenhum usuário", async () => {
@@ -205,6 +229,78 @@ describe("listMessageLogs", () => {
         },
       }),
     );
+  });
+
+  it("escopo do organizador com eventIds: amplia pra OR com mensagens relacionadas aos eventos dele", async () => {
+    await listMessageLogs({ recipientUserId: "org-user-1", eventIds: ["event-1", "event-2"] });
+
+    expect(dbMock.messageLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { recipientUserId: "org-user-1" },
+            { relatedEntityType: "Event", relatedEntityId: { in: ["event-1", "event-2"] } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("eventIds vazio: comportamento igual a só recipientUserId (sem OR)", async () => {
+    await listMessageLogs({ recipientUserId: "org-user-1", eventIds: [] });
+
+    expect(dbMock.messageLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { recipientUserId: "org-user-1" } }),
+    );
+  });
+
+  it("escopo com eventIds + busca (q): não deixa o OR da busca sobrescrever o OR do escopo", async () => {
+    await listMessageLogs({ recipientUserId: "org-user-1", eventIds: ["event-1"], q: "joão" });
+
+    expect(dbMock.messageLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            {
+              OR: [
+                { recipientUserId: "org-user-1" },
+                { relatedEntityType: "Event", relatedEntityId: { in: ["event-1"] } },
+              ],
+            },
+            {
+              OR: [
+                { recipientAddress: { contains: "joão", mode: "insensitive" } },
+                { recipientUser: { name: { contains: "joão", mode: "insensitive" } } },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+  });
+});
+
+describe("resolveOrganizerEventIds", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("retorna os ids dos eventos do organizador", async () => {
+    dbMock.event.findMany.mockResolvedValueOnce([{ id: "event-1" }, { id: "event-2" }]);
+
+    const ids = await resolveOrganizerEventIds("org-1");
+
+    expect(dbMock.event.findMany).toHaveBeenCalledWith({
+      where: { organizerId: "org-1" },
+      select: { id: true },
+    });
+    expect(ids).toEqual(["event-1", "event-2"]);
+  });
+
+  it("retorna lista vazia quando o organizador não tem eventos", async () => {
+    dbMock.event.findMany.mockResolvedValueOnce([]);
+
+    const ids = await resolveOrganizerEventIds("org-1");
+
+    expect(ids).toEqual([]);
   });
 });
 

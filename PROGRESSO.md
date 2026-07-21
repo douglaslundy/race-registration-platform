@@ -1,7 +1,79 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-20 (sessão pós-deploy: correções WhatsApp + filtro de data + confirmação + compressão de imagem)
+2026-07-21 (sessão: 2 bugs reportados pelo usuário — WhatsApp não chegou numa inscrição real +
+mensagens do organizador não incluíam os atletas dos eventos dele) — **implementado e testado,
+NÃO deployado ainda**
+
+## Bugs WhatsApp/mensagens reportados pelo usuário (2026-07-21) — investigado, corrigido, testes OK
+
+**Investigação (systematic-debugging)**: acesso direto à VPS via plink (logs do container +
+query no Postgres de produção) confirmou que não havia nenhuma falha de envio (`message_logs`
+sem nenhuma linha `FAILED` de WhatsApp) — a causa real dos 2 problemas era outra:
+
+1. **WhatsApp "não chegou" na inscrição da atleta `rosaria.silva.15.11@gmail.com`**: causa raiz —
+   `AthleteProfile.phone` nunca é coletado em NENHUM ponto do fluxo de cadastro/inscrição (nem
+   signup, nem `completar-cadastro`, nem checkout — este só pede telefone do *contato de
+   emergência*, campo diferente). Confirmado no banco: `users.phone` e `athlete_profiles.phone`
+   vazios pra essa atleta, apesar do e-mail de confirmação ter sido enviado normalmente
+   (`notifyOrderConfirmed` só pula o WhatsApp quando `!phone`, silenciosamente, sem log de erro).
+2. **Organizador não via mensagens dos atletas dos eventos dele em `/organizador/mensagens`**:
+   não era bug — era o spec original (`docs/superpowers/specs/2026-07-17-caixa-entrada-alertas-design.md`,
+   linha 202) que colocava isso explicitamente fora de escopo na 1ª versão. Usuário confirmou que
+   quer mudar esse escopo agora.
+
+**Decisões do usuário (perguntadas via AskUserQuestion antes de implementar)**:
+- Telefone: tornar obrigatório tanto no cadastro (signup) quanto no gate pós-login
+  (`completar-cadastro`) — os dois, não só um.
+- Mensagens do organizador: vínculo correto por evento (`relatedEntityType`/`relatedEntityId`,
+  campos que já existiam no schema mas ficavam sempre `null`), não a heurística rápida por
+  destinatário. Sem backfill — mensagens já enviadas antes desta mudança não aparecerão
+  retroativamente pro organizador (só as endereçadas a ele mesmo, como já era).
+
+**Implementado (TDD, suíte completa 1089/1089, `tsc --noEmit` limpo, `npm run build` OK)**:
+- `lib/message-logs.ts`: `recordMessageLog` grava `relatedEntityType`/`relatedEntityId` (antes
+  existiam no schema mas nunca eram passados por lugar nenhum). `listMessageLogs` ganha filtro
+  `eventIds?: string[]` — quando presente junto com `recipientUserId`, amplia pra
+  `OR: [{recipientUserId}, {relatedEntityType:"Event", relatedEntityId:{in:eventIds}}]`; cuidado
+  extra pra não deixar o `OR` da busca por texto (`q`) sobrescrever o `OR` do escopo quando os
+  dois coexistem (usa `AND` explícito nesse caso — testado). Nova função
+  `resolveOrganizerEventIds(organizerUserId)`.
+- `lib/email.ts` (`sendMail`) e `lib/whatsapp.ts` (`sendWhatsAppMessage`): ganham parâmetro
+  opcional `relatedEntityType`/`relatedEntityId`, repassado pro `recordMessageLog` só quando
+  informado (não quebra nenhuma chamada existente dos ~15 call sites). `sendRegistrationConfirmationEmail`
+  ganha `eventId?` opcional.
+- `lib/notifications.ts` (`notifyOrderConfirmed`): passa `relatedEntityType:"Event"` +
+  `relatedEntityId:order.event.id` tanto no e-mail quanto no WhatsApp de confirmação de
+  inscrição — é o único ponto de mensagem transacional ligada a evento nesta 1ª leva (resend de
+  confirmação e manual-confirm já passam por aqui, ganham de graça).
+- `app/organizador/mensagens/page.tsx`: passa `eventIds` (via `resolveOrganizerEventIds`) pro
+  `listMessageLogs`.
+- `lib/auth/profile-completion.ts`: `MissingAthleteField` ganha `"phone"`, checado igual
+  birthDate/cpf. Efeito automático: `app/dashboard/layout.tsx` e `app/(public)/inscricao/[slug]/page.tsx`
+  (já usavam essa função) passam a bloquear/redirecionar pra `/completar-cadastro` qualquer
+  atleta (novo ou já existente) sem telefone no perfil.
+- `app/completar-cadastro/CompletarCadastroForm.tsx`: novo campo telefone quando `missing` inclui
+  `"phone"` (mesmo padrão visual de birthDate/cpf, validação de mínimo de dígitos no cliente).
+- `components/auth/RegisterForm.tsx` + `app/api/auth/register/route.ts`: telefone agora
+  obrigatório no cadastro de ATLETA (mesmo padrão de validação de birthDate/cpf via
+  `superRefine`), salvo em `AthleteProfile.phone` na criação. Organizador continua sem exigir.
+
+**Não afeta**: atletas já cadastrados com telefone preenchido (nada muda pra eles); organizador
+continua vendo normalmente as mensagens endereçadas a ele mesmo (resumo diário, alertas) mesmo
+sem nenhum evento cadastrado ainda (`eventIds` vazio cai no mesmo comportamento de antes).
+
+**Pendente**: usuário ainda não autorizou push/deploy pra essas mudanças. Perguntar antes de
+fazer qualquer um dos dois (ele tem alternado entre autorizar e não autorizar a cada pedido).
+
+**Também descoberto nesta sessão (fora de escopo, adiado a pedido do usuário)**: nem o sistema de
+rating por atletas nem um modal opcional de "complete seu cadastro" (dispensável, campos não
+obrigatórios, botão de fechar e seguir navegando) existem no código — confirmado por busca no
+repo inteiro (schema, rotas, componentes). Usuário confirmou que quer os dois como tarefa nova,
+com brainstorm dedicado, depois que estes 2 bugs forem resolvidos/deployados. Ver memória
+`rating_system_pending` (não iniciar sem pedido explícito — pontuação retroativa pros atletas já
+cadastrados é um requisito conhecido de antemão).
+
+## Sessão anterior (2026-07-20, já deployada)
 
 ## Correções pontuais pós-deploy (2026-07-20) — DEPLOYADO
 
