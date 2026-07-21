@@ -1,9 +1,64 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-21 (sessão: 2 bugs reportados pelo usuário — WhatsApp não chegou numa inscrição real +
-mensagens do organizador não incluíam os atletas dos eventos dele) — **implementado e testado,
-NÃO deployado ainda**
+2026-07-21 (sessão: 4 ajustes pequenos via subagent-driven-development — modal opcional de
+completar cadastro, telas do anunciante que eram link morto, CHECK constraint) — **implementado,
+testado e revisado, NÃO deployado ainda**
+
+## 4 ajustes pequenos via subagent-driven-development (2026-07-21) — implementado, NÃO deployado
+
+Continuação da sessão: depois dos 2 bugs de WhatsApp/mensagens (seção abaixo), usuário pediu pra
+seguir com 2 itens do backlog levantado ("o que falta desenvolver"): sistema de rating (adiado,
+brainstorm dedicado no futuro) + modal opcional de completar cadastro, e o backlog "cosmético"
+(2 dos 4 itens não eram cosméticos — eram páginas do anunciante com link morto no menu). Spec
+`docs/superpowers/specs/2026-07-21-ajustes-pequenos-perfil-anunciante-design.md`, plano
+`docs/superpowers/plans/2026-07-21-ajustes-pequenos-perfil-anunciante.md`. 6 tasks + 1 fix
+pós-revisão-final, todas implementadas e revisadas individualmente (spec ✅ + qualidade ✅ em
+cada uma), commits `ab99f7d..4a26f7a` direto na main:
+
+1. **Modal opcional "complete seu cadastro"** (Tasks 1-2): sugere ao atleta preencher
+   `gender`/`preferredShirtSize`/`city`+`state` (hoje só editáveis em `/dashboard/perfil`, nunca
+   pedidos em nenhum outro lugar). Aparece uma vez por sessão de login (`sessionStorage`, limpo
+   em TODOS os pontos de logout alcançáveis por atleta — achado real na 1ª revisão: só limpava
+   no logout de dentro do `/dashboard`, não no header público usado fora dele). Nunca bloqueia
+   navegação (diferente do gate obrigatório de `/completar-cadastro`).
+2. **`/anunciante/anuncios` (Meus Anúncios)** (Tasks 3-4): o link "Meus Anúncios" no menu do
+   anunciante apontava pra uma rota sem página — só existia o formulário de cadastro
+   (`/anunciante/anuncios/novo`), nunca a listagem. Agora lista os anúncios do anunciante logado
+   com status/motivo de rejeição, e permite cancelar um anúncio ativo (`POST
+   /api/anunciante/ads/[id]/cancel`, novo status `CANCELLED`, libera a vaga automaticamente).
+3. **`/anunciante/perfil` (Meus Dados)** (Task 5): mesma situação — link morto no menu. Clonado
+   do padrão de `/organizador/perfil`, editando `AdvertiserProfile` (razão social, e-mail e
+   telefone de contato, os 3 campos obrigatórios desde o cadastro do anunciante).
+4. **`CHECK` constraint em `Payment`** (Task 6): ver seção abaixo, já registrada.
+
+**2 achados reais corrigidos durante a implementação/revisão** (nenhum fazia parte de nenhuma
+task antes de ser descoberto):
+- Revisão da Task 2: flag de "modal já visto" só era limpa no botão de sair de dentro do
+  `/dashboard` — o header público (usado quando o atleta navega fora do dashboard, ex.:
+  `/eventos`) tinha 2 outros botões de sair que não limpavam a flag. Corrigido nos 2.
+- **Revisão final de branch inteira (achado cross-task, nenhum revisor de task individual podia
+  ver)**: as 2 rotas novas de anunciante (cancelar anúncio e editar perfil) divergiam em
+  autenticação — a de cancelar checava `role===ADVERTISER`, a de perfil só checava sessão. A
+  Task 5 tinha racionalizado isso como "protegido pelo layout da página", o que está errado:
+  rotas de API não são descendentes do layout de página React. Corrigido: mesmo guard 401→403
+  aplicado às 2 rotas de perfil.
+
+Suíte final: **1107/1107 testes**, `tsc --noEmit` limpo. Revisão final de branch inteira (opus):
+**pronto pra merge**. Backlog Minor sem ação (não bloqueiam nada): flag do modal ainda não é
+limpa nos logouts de Admin/Organizer/AdvertiserNav (inofensivo hoje — o modal só renderiza pra
+ATHLETE, que nunca alcança essas navs); boilerplate de auth duplicado entre as 2 rotas de
+anunciante (candidato a helper `requireAdvertiser()` compartilhado); 2 pares de mapas de
+status/estilo duplicados entre páginas do mesmo domínio.
+
+**Verificação manual no navegador não feita** (mesmo motivo de sempre nesta sessão: banco de dev
+local inacessível).
+
+**Ainda pendente, fora de escopo desta leva**: sistema de rating de atletas (schema/UI/pontuação
+retroativa) — brainstorm dedicado combinado pra depois do deploy, ver memória
+`rating_system_pending`.
+
+## Bugs WhatsApp/mensagens reportados pelo usuário (2026-07-21) — investigado, corrigido, testes OK
 
 ## CHECK constraint pendente de aplicação manual (Task 6, 2026-07-21)
 
