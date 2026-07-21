@@ -2,10 +2,21 @@
 
 ## Última atualização
 2026-07-21 (sessão: 4 ajustes pequenos via subagent-driven-development — modal opcional de
-completar cadastro, telas do anunciante que eram link morto, CHECK constraint) — **implementado,
-testado e revisado, NÃO deployado ainda**
+completar cadastro, telas do anunciante que eram link morto, CHECK constraint) — **DEPLOYADO em
+produção**
 
-## 4 ajustes pequenos via subagent-driven-development (2026-07-21) — implementado, NÃO deployado
+## Deploy dos 4 ajustes pequenos + fix WhatsApp/mensagens (2026-07-21) — DEPLOYADO
+
+`git push origin main` (`148b9cb..a80863d`, 14 commits) → `git pull` na VPS → `docker build` →
+`CHECK` constraint aplicado manualmente via `psql` (`payment_order_xor_adpurchase_check`,
+confirmado via `pg_get_constraintdef`) **antes** do restart do container → `docker compose up -d
+--no-deps app`. Sem mudança de schema Prisma nesta leva (só a constraint SQL pura). Smoke test
+via `https://circuitodascorridas.com.br`: `/`, `/eventos`, `/auth/cadastro` 200; `/admin/mensagens`,
+`/organizador/mensagens`, `/anunciante/anuncios`, `/anunciante/perfil` 307 (redirect de login,
+esperado sem sessão — as 2 últimas eram link morto antes desta leva, agora resolvem de verdade).
+`docker logs corridas-app` limpo, sem erros.
+
+## 4 ajustes pequenos via subagent-driven-development (2026-07-21) — implementado e deployado
 
 Continuação da sessão: depois dos 2 bugs de WhatsApp/mensagens (seção abaixo), usuário pediu pra
 seguir com 2 itens do backlog levantado ("o que falta desenvolver"): sistema de rating (adiado,
