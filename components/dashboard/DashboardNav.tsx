@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import { PROFILE_NUDGE_DISMISS_KEY } from "@/components/dashboard/ProfileCompletionNudge";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Início", exact: true },
@@ -59,7 +60,13 @@ export default function DashboardNav({
               </Link>
             )}
             <ThemeToggle />
-            <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-secondary text-xs px-3 py-1">
+            <button
+              onClick={() => {
+                sessionStorage.removeItem(PROFILE_NUDGE_DISMISS_KEY);
+                signOut({ callbackUrl: "/" });
+              }}
+              className="btn-secondary text-xs px-3 py-1"
+            >
               Sair
             </button>
           </div>
