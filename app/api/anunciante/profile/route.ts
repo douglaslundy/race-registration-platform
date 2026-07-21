@@ -12,6 +12,9 @@ const profileSchema = z.object({
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (session.user.role !== "ADVERTISER") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
 
   const profile = await db.advertiserProfile.findUnique({
     where: { userId: session.user.id },
@@ -23,6 +26,9 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (session.user.role !== "ADVERTISER") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
 
   const body = await req.json();
   const parsed = profileSchema.safeParse(body);

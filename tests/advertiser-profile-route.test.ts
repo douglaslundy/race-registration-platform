@@ -33,8 +33,14 @@ describe("GET /api/anunciante/profile", () => {
     expect(res.status).toBe(401);
   });
 
+  it("retorna 403 para quem não é ADVERTISER", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ATHLETE" } } as any);
+    const res = await GET();
+    expect(res.status).toBe(403);
+  });
+
   it("retorna o perfil do anunciante autenticado", async () => {
-    authMock.mockResolvedValue({ user: { id: "advertiser-user-1" } } as any);
+    authMock.mockResolvedValue({ user: { id: "advertiser-user-1", role: "ADVERTISER" } } as any);
     dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ companyName: "Empresa Teste" });
 
     const res = await GET();
@@ -50,13 +56,19 @@ describe("GET /api/anunciante/profile", () => {
 describe("PUT /api/anunciante/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authMock.mockResolvedValue({ user: { id: "advertiser-user-1" } } as any);
+    authMock.mockResolvedValue({ user: { id: "advertiser-user-1", role: "ADVERTISER" } } as any);
   });
 
   it("retorna 401 quando não autenticado", async () => {
     authMock.mockResolvedValueOnce(null as any);
     const res = await PUT(makeRequest(validBody));
     expect(res.status).toBe(401);
+  });
+
+  it("retorna 403 para quem não é ADVERTISER", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "u1", role: "ATHLETE" } } as any);
+    const res = await PUT(makeRequest(validBody));
+    expect(res.status).toBe(403);
   });
 
   it("rejeita quando falta razão social", async () => {
