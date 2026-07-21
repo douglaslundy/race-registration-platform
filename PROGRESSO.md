@@ -5,6 +5,10 @@
 mensagens do organizador não incluíam os atletas dos eventos dele) — **implementado e testado,
 NÃO deployado ainda**
 
+## CHECK constraint pendente de aplicação manual (Task 6, 2026-07-21)
+
+O arquivo `prisma/migrations/20260721010000_payment_order_xor_adpurchase_check/migration.sql` garante no banco de dados que `Payment.orderId` e `adPurchaseId` são mutuamente exclusivos — cada pagamento deve estar vinculado a exatamente um dos dois (inscricao ou compra de plano de anúncio), nunca os dois, nunca nenhum. Até agora essa invariante era garantida só "por construção" no código (`lib/checkout.ts` e `lib/checkout-ads.ts`), sem garantia no banco. Como o deploy deste projeto usa `prisma db push --skip-generate` (que não executa arquivos `migration.sql`), este `ALTER TABLE` precisa ser aplicado manualmente via `psql` no próximo deploy — mesmo padrão já usado para os seeds de `AdPlan`/`AdSlot` do sub-projeto de marketplace. O comando para executar a migração é: `docker exec -e DBURL="$URL" -i corridas-db sh -c 'psql "$DBURL" -f -' < prisma/migrations/20260721010000_payment_order_xor_adpurchase_check/migration.sql`. Confirmado em 2026-07-21 que as 147 linhas de produção não violam essa regra (0 violações), então é seguro aplicar sem quebrar dados existentes.
+
 ## Bugs WhatsApp/mensagens reportados pelo usuário (2026-07-21) — investigado, corrigido, testes OK
 
 **Investigação (systematic-debugging)**: acesso direto à VPS via plink (logs do container +
