@@ -1,5 +1,31 @@
 # Progresso do Projeto
 
+## PRÓXIMA TAREFA (retomar por aqui — sessão pausada a pedido do usuário em 2026-07-22)
+
+Continuar o plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` (9 tasks, via
+subagent-driven-development, direto na main). **Tasks 1-3 completas e revisadas (Approved, zero
+Critical/Important)** — commits `0ef731b`, `d55ac2f`, `9f5a4ff`. A Task 4 (convite de acesso por
+e-mail — `lib/email.ts` + `lib/proxy-athlete.ts`) estava rodando em background no momento da
+pausa, resultado desconhecido.
+
+**Antes de fazer qualquer coisa, checar o estado exato da Task 4** — instruções completas de
+recuperação (o que checar, em que ordem, o que fazer em cada cenário) estão em
+`.superpowers/sdd/progress.md`, seção "PAUSADO A PEDIDO DO USUÁRIO", perto do final do arquivo.
+Resumo: rodar `git log --oneline -5` primeiro (pode já ter terminado e commitado sozinha — nesse
+caso só falta revisar, não redespachar); se não, checar `git status --short` (pode ter ficado
+com mudança não commitada, precisa avaliar quanto foi feito antes de decidir completar ou
+redespachar do zero).
+
+**Contexto necessário**: ler só `.superpowers/sdd/progress.md` (ledger completo desta plan,
+inclusive as instruções de retomada) e o plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` —
+não precisa reler o resto deste PROGRESSO.md pra retomar isto especificamente.
+
+Depois da Task 4 (revisada e aprovada): faltam as Tasks 5-9 (rota de checkout aceitar
+`proxyAthlete`, toggle na edição de evento + fix de acesso do admin, notificação dupla, "minhas
+inscrições", frontend modal+seletor) + revisão final de branch inteira — mesmo padrão já usado
+nas Tasks 1-3. Depois de tudo revisado, falta perguntar ao usuário sobre push/deploy (ele tem
+alternado entre autorizar e pedir pra esperar, não assumir).
+
 ## Última atualização
 2026-07-22 (sessão: cupom vencido + backlog técnico + tag do AdSense (2ª correção, confirmada) +
 anúncio privado destravado + início da inscrição por procuração) — commit `3ac06f2` deployado
@@ -25,11 +51,12 @@ layout raiz, nunca o componente `Script`.
 ## Início da inscrição por procuração (2026-07-22) — em andamento, plano de 9 tasks
 
 Ver spec `docs/superpowers/specs/2026-07-22-inscricao-por-procuracao-design.md` e plano
-`docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md`. Tasks 1-3 completas (schema
-`Event.allowProxyRegistration`, helpers de e-mail sintético em `lib/proxy-athlete.ts`, resolução/
-criação do atleta por procuração dentro de `createCheckout`) — Task 3 ainda com revisão pendente
-no momento deste registro. Feature ainda não é alcançável via UI/API pública (faltam as tasks de
-rota de checkout, notificação, toggle na tela de evento e frontend) — código novo é inerte em
+`docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md`. Tasks 1-3 completas e revisadas
+(schema `Event.allowProxyRegistration`, helpers de e-mail sintético em `lib/proxy-athlete.ts`,
+resolução/criação do atleta por procuração dentro de `createCheckout`) — ver seção "PRÓXIMA
+TAREFA" no topo deste arquivo pro estado da Task 4 (pausada em andamento). Feature ainda não é
+alcançável via UI/API pública (faltam as tasks de rota de checkout, notificação, toggle na tela
+de evento e frontend) — código novo é inerte em
 produção por enquanto, sem risco no deploy já feito.
 
 ## Deploy do lote acumulado (2026-07-22) — DEPLOYADO
