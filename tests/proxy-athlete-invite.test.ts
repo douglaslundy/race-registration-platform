@@ -55,4 +55,14 @@ describe("sendProxyRegistrationInvite", () => {
       sendProxyRegistrationInvite({ name: "Maria", email: "maria@example.com", invitedByName: "João" }),
     ).resolves.toBeUndefined();
   });
+
+  it("nunca lança erro quando a criação do token no banco falha", async () => {
+    vi.mocked(dbMock.verificationToken.create).mockRejectedValueOnce(new Error("DB down"));
+
+    await expect(
+      sendProxyRegistrationInvite({ name: "Maria", email: "maria@example.com", invitedByName: "João" }),
+    ).resolves.toBeUndefined();
+
+    expect(sendProxyRegistrationInviteEmail).not.toHaveBeenCalled();
+  });
 });

@@ -25,25 +25,29 @@ export async function sendProxyRegistrationInvite(params: {
   email: string;
   invitedByName: string;
 }): Promise<void> {
-  const token = randomBytes(32).toString("hex");
-  const expires = new Date(Date.now() + 1000 * 60 * 60);
-  await db.verificationToken.deleteMany({ where: { identifier: params.email } });
-  await db.verificationToken.create({ data: { identifier: params.email, token, expires } });
-
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const resetUrl = `${baseUrl}/auth/nova-senha?token=${token}&email=${encodeURIComponent(params.email)}`;
-
-  const cfg = await getSmtpConfig();
-  if (!isSmtpReady(cfg)) return;
-
   try {
-    await sendProxyRegistrationInviteEmail({
-      to: params.email,
-      name: params.name,
-      invitedByName: params.invitedByName,
-      resetUrl,
-    });
+    const token = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 1000 * 60 * 60);
+    await db.verificationToken.deleteMany({ where: { identifier: params.email } });
+    await db.verificationToken.create({ data: { identifier: params.email, token, expires } });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    const resetUrl = `${baseUrl}/auth/nova-senha?token=${token}&email=${encodeURIComponent(params.email)}`;
+
+    const cfg = await getSmtpConfig();
+    if (!isSmtpReady(cfg)) return;
+
+    try {
+      await sendProxyRegistrationInviteEmail({
+        to: params.email,
+        name: params.name,
+        invitedByName: params.invitedByName,
+        resetUrl,
+      });
+    } catch (err) {
+      console.error("[sendProxyRegistrationInvite] invite email failed:", err);
+    }
   } catch (err) {
-    console.error("[sendProxyRegistrationInvite] invite email failed:", err);
+    console.error("[sendProxyRegistrationInvite] failed:", err);
   }
 }
