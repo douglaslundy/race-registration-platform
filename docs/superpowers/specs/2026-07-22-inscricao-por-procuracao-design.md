@@ -51,10 +51,19 @@ Nenhum outro campo novo em `Registration`, `Order` ou `User`.
 
 Novo checkbox "Permitir inscrição por procuração (atleta inscrever outra pessoa)" no formulário de
 edição de evento em `app/organizador/eventos/[id]/editar` — página única (não existe uma página de
-edição de evento separada pro admin; `requireOrganizer()` já libera ADMIN titular pra essa mesma
-página, então "organizador ou admin" é satisfeito sem nenhuma tela nova), junto aos outros toggles
-booleanos do evento. Rota `PUT /api/events/[id]` ganha o campo `allowProxyRegistration` no schema
-Zod, mesmo padrão dos outros campos booleanos já aceitos ali.
+edição de evento separada pro admin), junto aos outros toggles booleanos do evento. Rota
+`PATCH /api/events/[id]` ganha o campo `allowProxyRegistration` no schema Zod, mesmo padrão dos
+outros campos booleanos já aceitos ali.
+
+**Fix incluído (achado durante o brainstorm, aprovado pelo usuário)**: a página
+`app/organizador/eventos/[id]/editar/page.tsx` hoje busca o evento com
+`db.event.findFirst({ where: { id, organizer: { userId: session.user.id } } })` — isso encontra o
+evento pro organizador dono, mas nunca encontra nada pra um admin (ele não tem
+`OrganizerProfile` próprio), mesmo `requireOrganizer()` deixando o admin passar pelo gate de
+papel. Isso afeta **todos os campos do formulário hoje**, não é específico deste recurso — mas
+como o pedido explícito é "organizador ou admin", a página passa a resolver o escopo com
+`resolveActingScope` (mesmo padrão já usado pela própria rota `PATCH`): se `actingAsAdmin`, busca
+só por `id`; senão, mantém a busca por `organizer.userId` como hoje.
 
 ## 3. UI — opção na página de inscrição + modal
 
