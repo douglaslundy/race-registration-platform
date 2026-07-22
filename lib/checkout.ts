@@ -78,17 +78,18 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     const couponCode = input.couponCode?.trim().toUpperCase();
 
     if (couponCode) {
-      const expiryFilter = { OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] };
+      // Busca só pelo código (sem filtrar validade/status na query) — cada condição é checada
+      // depois, separadamente, pra poder informar o motivo exato de rejeição (vencido vs.
+      // esgotado vs. inexistente/inativo), em vez de colapsar tudo em "Cupom inválido".
       // Cupom específico do evento tem prioridade sobre o cupom global.
       const coupon =
-        (await tx.coupon.findFirst({
-          where: { eventId: input.eventId, code: couponCode, active: true, ...expiryFilter },
-        })) ??
-        (await tx.coupon.findFirst({
-          where: { eventId: null, code: couponCode, active: true, ...expiryFilter },
-        }));
-      if (!coupon) {
+        (await tx.coupon.findFirst({ where: { eventId: input.eventId, code: couponCode } })) ??
+        (await tx.coupon.findFirst({ where: { eventId: null, code: couponCode } }));
+      if (!coupon || !coupon.active) {
         throw new Error("Cupom inválido");
+      }
+      if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+        throw new Error("Cupom vencido");
       }
       if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
         throw new Error("Cupom esgotado");

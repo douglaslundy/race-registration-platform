@@ -37,18 +37,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Evento ou lote não encontrado" }, { status: 404 });
   }
 
-  const expiryFilter = { OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] };
+  // Busca só pelo código (sem filtrar validade/status na query) — cada condição é checada
+  // depois, separadamente, pra poder informar o motivo exato de rejeição (vencido vs. esgotado
+  // vs. inexistente/inativo), em vez de colapsar tudo em "Cupom inválido".
   // Cupom específico do evento tem prioridade sobre o cupom global.
   const coupon =
-    (await db.coupon.findFirst({
-      where: { eventId: id, code, active: true, ...expiryFilter },
-    })) ??
-    (await db.coupon.findFirst({
-      where: { eventId: null, code, active: true, ...expiryFilter },
-    }));
+    (await db.coupon.findFirst({ where: { eventId: id, code } })) ??
+    (await db.coupon.findFirst({ where: { eventId: null, code } }));
 
-  if (!coupon) {
+  if (!coupon || !coupon.active) {
     return NextResponse.json({ error: "Cupom inválido" }, { status: 404 });
+  }
+  if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+    return NextResponse.json({ error: "Cupom vencido" }, { status: 410 });
   }
   if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
     return NextResponse.json({ error: "Cupom esgotado" }, { status: 409 });

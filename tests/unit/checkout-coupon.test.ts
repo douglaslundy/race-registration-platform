@@ -59,6 +59,8 @@ describe("createCheckout coupon handling", () => {
       discountValue: 10,
       maxUses: null,
       usedCount: 0,
+      active: true,
+      expiresAt: null,
     });
 
     dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
@@ -128,5 +130,56 @@ describe("createCheckout coupon handling", () => {
         couponCode: "INVALID",
       }),
     ).rejects.toThrow("Cupom inválido");
+  });
+
+  it("rejects an expired coupon with a specific message, not the generic 'Cupom inválido'", async () => {
+    const tx = createTx({
+      id: "coupon-1",
+      discountType: "PERCENT",
+      discountValue: 10,
+      maxUses: null,
+      usedCount: 0,
+      active: true,
+      expiresAt: new Date("2020-01-01T00:00:00.000Z"),
+    });
+
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+        couponCode: "EXPIRED10",
+      }),
+    ).rejects.toThrow("Cupom vencido");
+    expect(tx.coupon.update).not.toHaveBeenCalled();
+    expect(tx.order.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an inactive coupon (same generic message as not-found, no new user-facing behavior)", async () => {
+    const tx = createTx({
+      id: "coupon-1",
+      discountType: "PERCENT",
+      discountValue: 10,
+      maxUses: null,
+      usedCount: 0,
+      active: false,
+      expiresAt: null,
+    });
+
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+        couponCode: "OFFCODE",
+      }),
+    ).rejects.toThrow("Cupom inválido");
+    expect(tx.coupon.update).not.toHaveBeenCalled();
   });
 });
