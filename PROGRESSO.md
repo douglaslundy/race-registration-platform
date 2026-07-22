@@ -1,11 +1,51 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-22 (sessão: bug urgente de cupom vencido corrigido + backlog técnico via
-subagent-driven-development) — **implementado e testado, NÃO deployado ainda** (deploy adiado a
-pedido do usuário, pra bater junto com o próximo trabalho da sessão)
+2026-07-22 (sessão: cupom vencido + backlog técnico + tag do AdSense + anúncio privado
+destravado) — **tudo DEPLOYADO em produção** (commit `212857e`)
 
-## Bug urgente: cupom vencido falhava silenciosamente (2026-07-22) — corrigido, NÃO deployado
+## Deploy do lote acumulado (2026-07-22) — DEPLOYADO
+
+`git push origin main` (`325af4e..212857e`) → `git pull` na VPS → `docker build` → `docker
+compose up -d --no-deps app`. Sem mudança de schema Prisma neste lote inteiro (confirmado via
+`git diff --stat` em `prisma/schema.prisma` antes do push). Smoke test via
+`https://circuitodascorridas.com.br`: `/`, `/eventos` 200; `/admin/anuncios`,
+`/anunciante/anuncios` 307 (redirect de login, esperado sem sessão). `docker logs corridas-app`
+limpo. Inclui: bug urgente do cupom vencido (abaixo), backlog técnico da sessão anterior (helper
+de logout + helper de auth do anunciante), e os 2 fixes urgentes desta seção seguinte (AdSense +
+anúncio privado).
+
+## 2 fixes urgentes: tag do Google AdSense + fonte "Privada" travada no admin (2026-07-22) — DEPLOYADO
+
+Usuário reportou 2 problemas depois de tentar configurar o Google AdSense de verdade:
+
+1. **Google mandou a tag de verificação e ela não era detectada.** Causa raiz: o campo pra colar
+   o `ca-pub-XXXXXXXXXXXXXXXX` já existia em `/admin/anuncios`
+   (`components/admin/GoogleAdSenseClientIdForm.tsx`), mas o script (`app/(public)/layout.tsx`)
+   carregava com `strategy="afterInteractive"` (só depois do JS rodar no navegador) e só quando
+   já havia uma posição Google ativa (`hasActiveGoogleAdSlot()`) — o crawler de verificação do
+   Google lê o HTML puro, sem executar JavaScript, então nunca via a tag. Corrigido: script movido
+   pro layout raiz (`app/layout.tsx`), `strategy="beforeInteractive"` (garante presença no HTML
+   inicial), carregando em toda página do site (não só as públicas — exigência literal do
+   Google: "insira este código em cada página do seu site"), sem depender de nenhuma posição já
+   estar ativa. **Confirmado em produção que o campo `google_adsense_client_id` ainda está vazio**
+   — usuário precisa colar `ca-pub-6911820306119064` em Admin → Anúncios pra tag aparecer (a
+   correção está no ar, só falta essa configuração).
+2. **Não conseguia cadastrar anúncio privado.** Causa raiz: a opção "Privada" no dropdown de fonte
+   de cada posição (`components/admin/AdSlotEditForm.tsx`) estava com `disabled` e rótulo
+   "(em breve)" — resíduo de antes do marketplace de anunciantes (sub-projeto 4) ser construído,
+   nunca reativado depois que a feature ficou pronta e foi deployada. O backend
+   (`PATCH /api/admin/ads/slots/[id]`) já aceitava `source: "PRIVATE"` normalmente o tempo todo —
+   só a opção do formulário estava travada. Corrigido: opção habilitada.
+   **Achado relacionado, não corrigido agora (fora do escopo pedido, registrado pra depois)**:
+   `lib/ads/private-ads.ts::listAvailableSlotsForAdvertiser` não filtra por `source`/`enabled` —
+   depois que o admin configurar uma posição como "Privada", vale conferir se não sobra alguma
+   posição Google aparecendo por engano como disponível pro anunciante.
+
+Suíte 1121/1121, `tsc --noEmit` limpo, build OK. Sem teste automatizado nestes 2 arquivos
+(layout raiz e componente admin, sem cobertura de teste — convenção já estabelecida do projeto).
+
+## Bug urgente: cupom vencido falhava silenciosamente (2026-07-22) — corrigido, DEPLOYADO
 
 Usuário reportou em produção: cupom não aplicava e nenhuma mensagem de erro aparecia. Ele mesmo
 diagnosticou a causa (cupom vencido) antes de eu terminar a investigação — confirmei contra o
@@ -30,7 +70,7 @@ Suíte final 1121/1121, `tsc --noEmit` limpo. Commit `504e790`.
 e retome o desenvolvimento atual, deixe o deploy para o final" — vai bater junto com o resto do
 trabalho desta sessão (backlog técnico já revisado, ver seção abaixo, mais o que vier depois).
 
-## Backlog técnico: helper de logout + helper de auth do anunciante (2026-07-22) — pronto, NÃO deployado
+## Backlog técnico: helper de logout + helper de auth do anunciante (2026-07-22) — DEPLOYADO
 
 2 dos 3 itens do backlog Minor levantado na revisão final da sessão anterior (o 3º, reaprovação
 de anúncio, ficou fora por decisão do usuário). Spec
