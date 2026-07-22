@@ -1,8 +1,36 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-22 (sessão: cupom vencido + backlog técnico + tag do AdSense + anúncio privado
-destravado) — **tudo DEPLOYADO em produção** (commit `212857e`)
+2026-07-22 (sessão: cupom vencido + backlog técnico + tag do AdSense (2ª correção, confirmada) +
+anúncio privado destravado + início da inscrição por procuração) — commit `3ac06f2` deployado
+
+## Correção #2 da tag do AdSense — o fix anterior não funcionava de verdade (2026-07-22) — DEPLOYADO e CONFIRMADO
+
+Usuário confirmou que já tinha colado `ca-pub-6911820306119064` no campo (o fix de configuração
+estava certo), mas o Google continuava não verificando o site. Investigação: o primeiro fix
+(`strategy="beforeInteractive"` via `next/script`, commit `212857e`) **não resolvia de verdade** —
+confirmado direto no HTML servido em produção via `curl`: o `next/script` só emite um
+`<link rel="preload">` no `<head>` e monta a `<script>` de verdade via hidratação no navegador
+(payload RSC do React 19/Next 16), nunca aparecendo como tag `<script>` literal no HTML inicial.
+Corrigido de vez: tag `<script>` nativa escrita à mão dentro de um `<head>` explícito no layout
+raiz, sem passar pelo componente `Script` do Next em nenhum momento. **Confirmado via `curl` direto
+no HTML de produção depois do deploy**: a tag aparece literalmente dentro de `<head>...</head>`,
+exatamente como o Google exige. Suite 1132/1132, tsc limpo, build OK.
+
+**Lição registrada**: `next/script` com `strategy="beforeInteractive"` não é confiável pra casos
+onde um crawler externo precisa achar uma tag `<script>` literal no HTML puro (verificação de
+site, meta tags de terceiros) — nesses casos, usar uma tag `<script>` nativa direto no JSX do
+layout raiz, nunca o componente `Script`.
+
+## Início da inscrição por procuração (2026-07-22) — em andamento, plano de 9 tasks
+
+Ver spec `docs/superpowers/specs/2026-07-22-inscricao-por-procuracao-design.md` e plano
+`docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md`. Tasks 1-3 completas (schema
+`Event.allowProxyRegistration`, helpers de e-mail sintético em `lib/proxy-athlete.ts`, resolução/
+criação do atleta por procuração dentro de `createCheckout`) — Task 3 ainda com revisão pendente
+no momento deste registro. Feature ainda não é alcançável via UI/API pública (faltam as tasks de
+rota de checkout, notificação, toggle na tela de evento e frontend) — código novo é inerte em
+produção por enquanto, sem risco no deploy já feito.
 
 ## Deploy do lote acumulado (2026-07-22) — DEPLOYADO
 
