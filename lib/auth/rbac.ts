@@ -1,4 +1,4 @@
-import type { UserRole } from "@prisma/client";
+import type { UserRole, AdvertiserProfile } from "@prisma/client";
 import type { Session } from "next-auth";
 import { NextResponse } from "next/server";
 import { auth } from "./index";
@@ -106,6 +106,26 @@ export async function checkAdminOnlyApiPermission(actionKey: string): Promise<Pe
   }
 
   return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
+}
+
+export type AdvertiserPermissionCheck =
+  | { allowed: true; session: Session; advertiser: AdvertiserProfile | null }
+  | { allowed: false; response: NextResponse };
+
+/** Checagem de auth pras rotas de API do anunciante — mesmo formato de checkApiPermission, mas
+ * também resolve o AdvertiserProfile (evita cada rota repetir a mesma query). Nunca decide 404
+ * sozinho por perfil ausente: advertiser pode vir null, e cada rota decide o que fazer (algumas
+ * tratam ausência como 404, outras como estado válido — ex. perfil ainda não criado). */
+export async function checkAdvertiserApiPermission(): Promise<AdvertiserPermissionCheck> {
+  const session = await auth();
+  if (!session?.user) {
+    return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+  if (session.user.role !== "ADVERTISER") {
+    return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
+  }
+  const advertiser = await db.advertiserProfile.findUnique({ where: { userId: session.user.id } });
+  return { allowed: true, session, advertiser };
 }
 
 export async function requireAdmin() {

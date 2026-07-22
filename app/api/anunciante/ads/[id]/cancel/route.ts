@@ -1,25 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkAdvertiserApiPermission } from "@/lib/auth/rbac";
 import { ACTIVE_STATUSES } from "@/lib/ads/private-ads";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-  if (session.user.role !== "ADVERTISER") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
-
-  const advertiser = await db.advertiserProfile.findUnique({ where: { userId: session.user.id } });
-  if (!advertiser) {
+  const check = await checkAdvertiserApiPermission();
+  if (!check.allowed) return check.response;
+  if (!check.advertiser) {
     return NextResponse.json({ error: "Perfil de anunciante não encontrado" }, { status: 404 });
   }
 
   const { id } = await params;
   const ad = await db.privateAd.findFirst({
-    where: { id, adPurchase: { advertiserId: advertiser.id } },
+    where: { id, adPurchase: { advertiserId: check.advertiser.id } },
     select: { id: true, status: true },
   });
   if (!ad) {

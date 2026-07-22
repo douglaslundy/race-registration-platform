@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkAdvertiserApiPermission } from "@/lib/auth/rbac";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -10,33 +10,23 @@ const profileSchema = z.object({
 });
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADVERTISER") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdvertiserApiPermission();
+  if (!check.allowed) return check.response;
 
-  const profile = await db.advertiserProfile.findUnique({
-    where: { userId: session.user.id },
-  });
-
-  return NextResponse.json({ profile });
+  return NextResponse.json({ profile: check.advertiser });
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADVERTISER") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
-  }
+  const check = await checkAdvertiserApiPermission();
+  if (!check.allowed) return check.response;
 
   const body = await req.json();
   const parsed = profileSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const profile = await db.advertiserProfile.upsert({
-    where: { userId: session.user.id },
-    create: { userId: session.user.id, ...parsed.data },
+    where: { userId: check.session.user.id },
+    create: { userId: check.session.user.id, ...parsed.data },
     update: parsed.data,
   });
 

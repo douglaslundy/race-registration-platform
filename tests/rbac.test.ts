@@ -12,6 +12,7 @@ import {
   resolveActingScope,
   checkApiPermission,
   checkAdminOnlyApiPermission,
+  checkAdvertiserApiPermission,
   requireAdmin,
   requireOrganizer,
   requirePermission,
@@ -161,6 +162,47 @@ describe("checkAdminOnlyApiPermission", () => {
     const result = await checkAdminOnlyApiPermission("events.approve");
     expect(result.allowed).toBe(false);
     if (!result.allowed) expect(result.response.status).toBe(403);
+  });
+});
+
+describe("checkAdvertiserApiPermission", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("retorna 401 sem sessão, sem consultar AdvertiserProfile", async () => {
+    authMock.mockResolvedValue(null as any);
+    const result = await checkAdvertiserApiPermission();
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(401);
+    expect(dbMock.advertiserProfile.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("retorna 403 quando o papel não é ADVERTISER, sem consultar AdvertiserProfile", async () => {
+    authMock.mockResolvedValue({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
+    const result = await checkAdvertiserApiPermission();
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(403);
+    expect(dbMock.advertiserProfile.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("ADVERTISER com perfil: allowed=true, advertiser preenchido", async () => {
+    authMock.mockResolvedValue({ user: { id: "advertiser-user-1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    const result = await checkAdvertiserApiPermission();
+    expect(dbMock.advertiserProfile.findUnique).toHaveBeenCalledWith({
+      where: { userId: "advertiser-user-1" },
+    });
+    expect(result.allowed).toBe(true);
+    if (result.allowed) expect(result.advertiser).toEqual({ id: "advertiser-1" });
+  });
+
+  it("ADVERTISER sem perfil ainda: allowed=true, advertiser null (não decide 404 sozinho)", async () => {
+    authMock.mockResolvedValue({ user: { id: "advertiser-user-1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce(null);
+    const result = await checkAdvertiserApiPermission();
+    expect(result.allowed).toBe(true);
+    if (result.allowed) expect(result.advertiser).toBeNull();
   });
 });
 
