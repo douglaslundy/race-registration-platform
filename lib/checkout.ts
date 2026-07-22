@@ -2,6 +2,8 @@ import { db } from "./db";
 import { calculatePlatformFee } from "./format";
 import { getSetting } from "./settings";
 import { isBatchAvailable } from "./batch-status";
+import { normalizeCpf } from "./cpf";
+import { generatePlaceholderEmail } from "./proxy-athlete";
 import type { ShirtSize } from "@prisma/client";
 
 export interface CheckoutInput {
@@ -18,6 +20,13 @@ export interface CheckoutInput {
   medicalNotes?: string;
   notes?: string;
   couponCode?: string;
+  proxyAthlete?: {
+    name: string;
+    birthDate: string;
+    cpf: string;
+    phone: string;
+    email?: string;
+  };
 }
 
 export interface CheckoutResult {
@@ -27,6 +36,7 @@ export interface CheckoutResult {
   totalAmount: number;
   discountAmount: number;
   platformFeeAmount: number;
+  proxyAthleteInvite?: { userId: string; name: string; email: string };
 }
 
 export async function createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
@@ -47,6 +57,10 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
 
     const event = await tx.event.findUnique({ where: { id: input.eventId } });
     if (!event || event.status !== "REGISTRATIONS_OPEN") throw new Error("Inscrições não abertas");
+
+    if (input.proxyAthlete && !event.allowProxyRegistration) {
+      throw new Error("Inscrição por procuração não está habilitada para este evento");
+    }
 
     // Percurso e categoria são obrigatórios quando o evento os oferece.
     const [routeCount, categoryCount] = await Promise.all([
@@ -70,6 +84,47 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         select: { id: true },
       });
       if (!category) throw new Error("Categoria inválida para este evento");
+    }
+
+    let athleteUserId = input.athleteUserId;
+    let proxyAthleteInvite: CheckoutResult["proxyAthleteInvite"];
+
+    if (input.proxyAthlete) {
+      const proxyCpf = normalizeCpf(input.proxyAthlete.cpf);
+      // Busca só pelo CPF — se já existe conta (Fase B), reaproveita e nunca cria duplicata; se
+      // coincidir com o próprio comprador, o resultado já é idêntico a uma inscrição normal.
+      const existingProfile = await tx.athleteProfile.findFirst({ where: { cpf: proxyCpf } });
+
+      if (existingProfile) {
+        athleteUserId = existingProfile.userId;
+      } else {
+        const realEmail = input.proxyAthlete.email?.trim();
+        const proxyEmail = realEmail || generatePlaceholderEmail();
+        if (realEmail) {
+          const emailTaken = await tx.user.findUnique({ where: { email: proxyEmail }, select: { id: true } });
+          if (emailTaken) throw new Error("Este e-mail já está em uso por outra conta");
+        }
+
+        const newAthlete = await tx.user.create({
+          data: {
+            name: input.proxyAthlete.name,
+            email: proxyEmail,
+            role: "ATHLETE",
+            passwordHash: null,
+            athleteProfile: {
+              create: {
+                cpf: proxyCpf,
+                birthDate: new Date(input.proxyAthlete.birthDate),
+                phone: input.proxyAthlete.phone,
+              },
+            },
+          },
+        });
+        athleteUserId = newAthlete.id;
+        if (realEmail) {
+          proxyAthleteInvite = { userId: newAthlete.id, name: newAthlete.name, email: realEmail };
+        }
+      }
     }
 
     let discountAmount = 0;
@@ -130,7 +185,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     const registration = await tx.registration.create({
       data: {
         eventId: input.eventId,
-        athleteUserId: input.athleteUserId,
+        athleteUserId,
         routeId: input.routeId,
         categoryId: input.categoryId,
         ticketBatchId: input.ticketBatchId,
@@ -157,6 +212,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       totalAmount: total,
       discountAmount,
       platformFeeAmount: platformFee,
+      proxyAthleteInvite,
     };
   });
 }
