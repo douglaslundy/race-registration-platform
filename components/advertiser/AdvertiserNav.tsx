@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNudge";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
 export default function AdvertiserNav({ userName, appName }: { userName: string; appName: string }) {
@@ -20,7 +20,7 @@ export default function AdvertiserNav({ userName, appName }: { userName: string;
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-600 dark:text-gray-400">{userName}</span>
           <ThemeToggle />
-          <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-secondary text-xs px-3 py-1">
+          <button onClick={signOutAndClearNudge} className="btn-secondary text-xs px-3 py-1">
             Sair
           </button>
         </div>

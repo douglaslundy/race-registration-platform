@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import type { SuggestedAthleteField } from "@/lib/auth/profile-completion";
 
 export const PROFILE_NUDGE_DISMISS_KEY = "profile-nudge-dismissed";
+
+/** Limpa a flag de "modal já visto nesta sessão de login" e desloga — chamado por todo botão
+ * "Sair" do app, pra garantir que uma nova sessão de login sempre reavalie o nudge. */
+export function signOutAndClearNudge() {
+  sessionStorage.removeItem(PROFILE_NUDGE_DISMISS_KEY);
+  signOut({ callbackUrl: "/" });
+}
 
 const FIELD_LABELS: Record<SuggestedAthleteField, string> = {
   gender: "Gênero",

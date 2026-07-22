@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNudge";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
 export default function AdminNav() {
@@ -39,7 +39,7 @@ export default function AdminNav() {
             Área do atleta
           </Link>
           <ThemeToggle className="text-gray-400 hover:text-white hover:bg-gray-800" />
-          <button onClick={() => signOut({ callbackUrl: "/" })} className="text-sm text-gray-400 hover:text-white">
+          <button onClick={signOutAndClearNudge} className="text-sm text-gray-400 hover:text-white">
             Sair
           </button>
         </div>

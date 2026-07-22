@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNudge";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
 export default function OrganizerNav({ userName, appName }: { userName: string; appName: string }) {
@@ -33,7 +33,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
             Área do atleta
           </Link>
           <ThemeToggle />
-          <button onClick={() => signOut({ callbackUrl: "/" })} className="btn-secondary text-xs px-3 py-1">
+          <button onClick={signOutAndClearNudge} className="btn-secondary text-xs px-3 py-1">
             Sair
           </button>
         </div>

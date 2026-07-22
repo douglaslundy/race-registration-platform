@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import ThemeToggle from "./ThemeToggle";
-import { PROFILE_NUDGE_DISMISS_KEY } from "@/components/dashboard/ProfileCompletionNudge";
+import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNudge";
 
 export default function Header({ appName }: { appName: string }) {
   const { data: session } = useSession();
@@ -38,13 +38,7 @@ export default function Header({ appName }: { appName: string }) {
           {session?.user ? (
             <div className="flex items-center gap-3 ml-1">
               <span className="text-sm text-gray-600 dark:text-gray-400">{session.user.name?.split(" ")[0]}</span>
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem(PROFILE_NUDGE_DISMISS_KEY);
-                  signOut({ callbackUrl: "/" });
-                }}
-                className="btn-secondary text-sm px-3 py-1.5"
-              >
+              <button onClick={signOutAndClearNudge} className="btn-secondary text-sm px-3 py-1.5">
                 Sair
               </button>
             </div>
@@ -74,10 +68,7 @@ export default function Header({ appName }: { appName: string }) {
           {session?.user ? (
             <>
               <Link href={dashboardLink} className="block py-2 text-gray-700 dark:text-gray-300" onClick={() => setMenuOpen(false)}>Minha Área</Link>
-              <button onClick={() => {
-                sessionStorage.removeItem(PROFILE_NUDGE_DISMISS_KEY);
-                signOut({ callbackUrl: "/" });
-              }} className="block py-2 text-red-600 dark:text-red-400 w-full text-left">Sair</button>
+              <button onClick={signOutAndClearNudge} className="block py-2 text-red-600 dark:text-red-400 w-full text-left">Sair</button>
             </>
           ) : (
             <>
