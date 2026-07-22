@@ -1,5 +1,21 @@
 # Progresso do Projeto
 
+## Fix: link da Moderação de anúncios privados faltava no admin (2026-07-22)
+
+Usuário reportou que não achava onde o anunciante cadastra anúncio privado nem onde o admin
+"cadastra" (gerencia) o anúncio dentro da plataforma. Investigação:
+1. **Anunciante**: `/anunciante/anuncios/novo` existe e funciona, mas redireciona silenciosamente
+   pra `/anunciante/planos` se o anunciante não tiver nenhum `AdPurchase` PAID com vaga livre
+   (`app/anunciante/anuncios/novo/page.tsx:43-45`) — comportamento correto, só precisa comprar um
+   plano antes. Não é bug.
+2. **Admin — bug real**: a página `/admin/anuncios/moderacao` (aprovar/rejeitar anúncios privados
+   pendentes) existia no código desde o sub-projeto 4, mas nunca foi linkada em lugar nenhum — nem
+   no `AdminNav.tsx`, nem nos botões da própria página `/admin/anuncios` (que só linkava
+   "Conectar Google AdSense", "Métricas", "Planos"). Só era acessível digitando a URL direto.
+   Corrigido: adicionado botão "Moderação" em `app/admin/anuncios/page.tsx`, mesmo padrão dos
+   outros 3. `tsc --noEmit` limpo, sem teste dedicado (página sem cobertura antes, mesma convenção
+   já estabelecida pra Server Components deste domínio).
+
 ## PRÓXIMA TAREFA (retomar por aqui — sessão pausada a pedido do usuário em 2026-07-22)
 
 Continuar o plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` (9 tasks, via

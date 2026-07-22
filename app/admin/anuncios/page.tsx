@@ -24,6 +24,7 @@ export default async function AdminAnunciosPage() {
           <Link href="/admin/anuncios/conectar-google" className="btn-secondary py-1.5 px-3">Conectar Google AdSense</Link>
           <Link href="/admin/anuncios/metricas" className="btn-secondary py-1.5 px-3">Métricas</Link>
           <Link href="/admin/anuncios/planos" className="btn-secondary py-1.5 px-3">Planos</Link>
+          <Link href="/admin/anuncios/moderacao" className="btn-secondary py-1.5 px-3">Moderação</Link>
         </div>
       </div>
 
