@@ -1,9 +1,58 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-07-21 (sessão: 4 ajustes pequenos via subagent-driven-development — modal opcional de
-completar cadastro, telas do anunciante que eram link morto, CHECK constraint) — **DEPLOYADO em
-produção**
+2026-07-22 (sessão: bug urgente de cupom vencido corrigido + backlog técnico via
+subagent-driven-development) — **implementado e testado, NÃO deployado ainda** (deploy adiado a
+pedido do usuário, pra bater junto com o próximo trabalho da sessão)
+
+## Bug urgente: cupom vencido falhava silenciosamente (2026-07-22) — corrigido, NÃO deployado
+
+Usuário reportou em produção: cupom não aplicava e nenhuma mensagem de erro aparecia. Ele mesmo
+diagnosticou a causa (cupom vencido) antes de eu terminar a investigação — confirmei contra o
+banco de produção: cupom real `BEMVINDO10` com `active=true` mas `expiresAt` no passado.
+
+**Causa raiz**: tanto `app/api/events/[id]/coupons/preview/route.ts` (usada pelo campo de cupom
+no checkout, debounce de 350ms) quanto `lib/checkout.ts::createCheckout` (validação real no
+momento de criar o pedido) filtravam `active: true` + validade **dentro do WHERE da query** — um
+cupom vencido simplesmente "não existia" pro código, caindo no mesmo caminho de "Cupom inválido"
+genérico que um código digitado errado. No preview isso nem chegava a aparecer como erro visível
+(sintoma relatado pelo usuário).
+
+**Correção (TDD)**: as duas rotas agora buscam o cupom só pelo código (evento específico → cupom
+global, mesma prioridade de antes) e checam cada condição separadamente, com mensagem específica:
+inexistente/inativo → "Cupom inválido" (comportamento inalterado); vencido → **"Cupom vencido"**
+(novo, 410 no preview); esgotado → "Cupom esgotado" (comportamento inalterado). Testes novos em
+`tests/unit/checkout-coupon.test.ts` (2 novos: vencido + inativo) e novo arquivo
+`tests/event-coupons-preview-route.test.ts` (8 testes, rota nunca tinha teste dedicado antes).
+Suíte final 1121/1121, `tsc --noEmit` limpo. Commit `504e790`.
+
+**Deploy adiado**: usuário pediu inicialmente deploy só desta correção, depois mudou pra "corrija
+e retome o desenvolvimento atual, deixe o deploy para o final" — vai bater junto com o resto do
+trabalho desta sessão (backlog técnico já revisado, ver seção abaixo, mais o que vier depois).
+
+## Backlog técnico: helper de logout + helper de auth do anunciante (2026-07-22) — pronto, NÃO deployado
+
+2 dos 3 itens do backlog Minor levantado na revisão final da sessão anterior (o 3º, reaprovação
+de anúncio, ficou fora por decisão do usuário). Spec
+`docs/superpowers/specs/2026-07-21-backlog-tecnico-nudge-advertiser-design.md`, plano
+`docs/superpowers/plans/2026-07-21-backlog-tecnico-nudge-advertiser.md`, via
+subagent-driven-development. 2 tasks, ambas revisadas individualmente e em revisão final de
+branch inteira, commits `aa156d2..7a4aa27`:
+
+1. **`signOutAndClearNudge()`** (`components/dashboard/ProfileCompletionNudge.tsx`): consolida a
+   limpeza da flag do modal de completar cadastro (antes duplicada, corrigida em 3 dos 6 pontos
+   de logout na sessão anterior) — agora os 6 pontos (`DashboardNav`, `Header` ×2,
+   `AdminNav`/`OrganizerNav`/`AdvertiserNav`) chamam só essa função.
+2. **`checkAdvertiserApiPermission()`** (`lib/auth/rbac.ts`): mesmo formato `PermissionCheck` já
+   usado no resto do projeto, extraído do boilerplate de auth duplicado entre as 2 rotas de
+   anunciante (cancelar anúncio + editar perfil). Preserva 100% do comportamento — nunca decide
+   404 sozinho por perfil ausente (a rota de cancelar continua 404, a de perfil continua tratando
+   ausência como estado válido).
+
+Suíte final (antes do fix de cupom acima) 1111/1111, `tsc --noEmit` limpo. Revisão final de
+branch inteira (opus): **pronto pra merge**, zero Critical/Important, confirmou zero overlap de
+arquivo entre as 2 tasks. 1 Minor sem ação (PUT de perfil ganhou 1 query a mais, descartada,
+efeito colateral inofensivo da consolidação).
 
 ## Deploy dos 4 ajustes pequenos + fix WhatsApp/mensagens (2026-07-21) — DEPLOYADO
 
