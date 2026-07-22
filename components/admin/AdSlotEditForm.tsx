@@ -52,7 +52,7 @@ export default function AdSlotEditForm({ id, enabled: initialEnabled, source: in
       >
         <option value="">Nenhuma</option>
         <option value="GOOGLE">Google AdSense</option>
-        <option value="PRIVATE" disabled>Privada (em breve)</option>
+        <option value="PRIVATE">Privada (marketplace de anunciantes)</option>
       </select>
       {source === "GOOGLE" && (
         <input
