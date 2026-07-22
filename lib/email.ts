@@ -305,6 +305,30 @@ export async function sendAssistantInviteEmail(params: {
   });
 }
 
+/** E-mail de convite pro atleta inscrito por procuração definir a senha e acessar a própria
+ * conta/inscrição. Só é disparado quando o comprador informou um e-mail real (nunca pro
+ * sintético). */
+export async function sendProxyRegistrationInviteEmail(params: {
+  to: string;
+  name: string;
+  invitedByName: string;
+  resetUrl: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    subject: `Você tem uma inscrição em ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p><strong>${params.invitedByName}</strong> criou uma inscrição pra você no ${appName}.</p>
+       <p>Clique no botão abaixo para definir sua senha e acompanhar sua inscrição:</p>
+       <p><a href="${params.resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Definir senha e acessar</a></p>
+       <p style="font-size:13px;color:#6b7280">Se você não esperava este convite, ignore este e-mail. O link expira em 1 hora.</p>`
+    ),
+  });
+}
+
 /** E-mail com o resumo diário de atividade (admin ou organizador). */
 export async function sendDailySummaryEmail(params: {
   to: string;
