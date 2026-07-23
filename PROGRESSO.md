@@ -18,17 +18,22 @@ Usuário reportou que não achava onde o anunciante cadastra anúncio privado ne
 
 ## PRÓXIMA TAREFA
 
-Plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` **100% completo**: 9 tasks +
-1 fix de segurança pós-revisão-final (Task 10), todas implementadas e revisadas individualmente
-(zero Critical/Important em aberto), mais a revisão final de branch inteira (opus) já feita e o
-achado dela já corrigido e re-revisado. Suite final 1144/1144, `tsc --noEmit` limpo, `npm run
-build` OK. HEAD atual: `eee748e`. Ledger completo task-a-task em `.superpowers/sdd/progress.md`.
+Plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` **100% completo E
+DEPLOYADO** (2026-07-23): 9 tasks + 1 fix de segurança pós-revisão-final (Task 10), todas
+implementadas e revisadas individualmente (zero Critical/Important em aberto), revisão final de
+branch inteira (opus) feita e o achado dela corrigido e re-revisado. Suite final 1144/1144,
+`tsc --noEmit` limpo, `npm run build` OK.
 
-**Falta perguntar ao usuário sobre push/deploy** antes de qualquer ação de rede — ele tem
-alternado entre autorizar e pedir pra esperar a cada pedido nesta sessão, não assumir aprovação.
-Mudança de schema nesta leva (`Event.allowProxyRegistration`, `Registration.proxyAthleteDisplayName`)
-— se aprovado o deploy, vai precisar de `prisma db push --skip-generate` na VPS, mesmo padrão já
-usado nos deploys anteriores.
+`git push origin main` (`5a3adf1..db19664`) → `git pull` na VPS → `docker build` →
+`docker compose run --rm app sh -c "npx prisma db push --skip-generate"` (schema novo:
+`Event.allowProxyRegistration`, `Registration.proxyAthleteDisplayName`) → `docker compose up -d
+--no-deps app`. Smoke test: `/`, `/eventos` 200; `/admin/mensagens`, `/organizador/mensagens`,
+`/admin/anuncios`, `/admin/anuncios/moderacao`, `/dashboard/inscricoes` 307 (redirect de login,
+esperado sem sessão). `docker logs corridas-app` limpo. Acesso à VPS nesta sessão via chave SSH
+`~/.ssh/id_ed25519` (sem senha) em vez de plink/senha root — funcionou direto.
+
+Nenhuma tarefa pendente conhecida no momento. Sistema de rating de atletas continua adiado (ver
+memória `rating_system_pending`) — só retomar se o usuário pedir explicitamente.
 
 ## Última atualização
 2026-07-22 (sessão: cupom vencido + backlog técnico + tag do AdSense (2ª correção, confirmada) +
