@@ -197,6 +197,7 @@ describe("notifyOrderConfirmed", () => {
         id: "reg-1",
         notes: null,
         athleteUserId: "athlete-1",
+        proxyAthleteDisplayName: "Nome Digitado Pelo Comprador",
         athlete: { name: "Atleta Convidado", email: "atleta-convidado@example.com", athleteProfile: { phone: "5511888888888" } },
       },
     ],
@@ -214,7 +215,7 @@ describe("notifyOrderConfirmed", () => {
     );
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511777777777",
-      expect.stringContaining("Você inscreveu Atleta Convidado"),
+      expect.stringContaining("Você inscreveu Nome Digitado Pelo Comprador"),
       expect.anything(),
     );
   });

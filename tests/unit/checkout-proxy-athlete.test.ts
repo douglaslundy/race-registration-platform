@@ -120,7 +120,9 @@ describe("createCheckout proxy athlete handling", () => {
       },
     });
     expect(tx.registration.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ athleteUserId: "new-athlete-1" }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ athleteUserId: "new-athlete-1", proxyAthleteDisplayName: "Maria Atleta" }),
+      }),
     );
     expect(result.proxyAthleteInvite).toBeUndefined();
   });
@@ -139,7 +141,9 @@ describe("createCheckout proxy athlete handling", () => {
 
     expect(tx.user.create).not.toHaveBeenCalled();
     expect(tx.registration.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ athleteUserId: "existing-athlete-1" }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ athleteUserId: "existing-athlete-1", proxyAthleteDisplayName: "Maria Atleta" }),
+      }),
     );
   });
 
@@ -219,5 +223,7 @@ describe("createCheckout proxy athlete handling", () => {
     expect(tx.registration.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ athleteUserId: "buyer-1" }) }),
     );
+    const createCall = tx.registration.create.mock.calls[0][0];
+    expect(createCall.data.proxyAthleteDisplayName).toBeUndefined();
   });
 });

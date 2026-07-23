@@ -196,6 +196,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         emergencyContactPhone: input.emergencyContactPhone,
         medicalNotes: input.medicalNotes,
         notes: input.notes,
+        proxyAthleteDisplayName: input.proxyAthlete?.name,
         acceptedTermsAt: new Date(),
       },
     });

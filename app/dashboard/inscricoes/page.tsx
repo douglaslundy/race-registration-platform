@@ -67,7 +67,7 @@ export default async function InscricoesPage() {
                       </span>
                       {createdByMeForOther && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-                          Inscrito por você — {r.athlete.name}
+                          Inscrito por você — {r.proxyAthleteDisplayName ?? r.athlete.name}
                         </span>
                       )}
                     </div>

@@ -56,6 +56,7 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
           id: true,
           notes: true,
           athleteUserId: true,
+          proxyAthleteDisplayName: true,
           athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
         },
         take: 1,
@@ -94,7 +95,7 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
     ? order.buyer.athleteProfile?.phone
     : registration.athlete.athleteProfile?.phone;
   const buyerWhatsappText = isProxyRegistration
-    ? `Você inscreveu ${registration.athlete.name}${eventLabel}! Pedido ${orderId}. Detalhes: ${detailsUrl}`
+    ? `Você inscreveu ${registration.proxyAthleteDisplayName ?? registration.athlete.name}${eventLabel}! Pedido ${orderId}. Detalhes: ${detailsUrl}`
     : `Sua inscrição${eventLabel} foi confirmada! Pedido ${orderId}. Detalhes: ${detailsUrl}`;
   await sendWhatsAppIfActive(buyerWhatsappPhone, buyerWhatsappText, order.event?.id);
 

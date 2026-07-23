@@ -334,6 +334,7 @@ model Registration {
   emergencyContactPhone String?
   medicalNotes         String?
   notes                String?
+  proxyAthleteDisplayName String?
   status               RegistrationStatus @default(PENDING_PAYMENT)
   acceptedTermsAt      DateTime?
   cancellationReason      String?
