@@ -791,6 +791,346 @@ git commit -m "fix: apaga arquivo orfao do storage quando anuncio da casa e remo
 
 ---
 
+### Task 6: Reenviar uma nova imagem também limpa a anterior do storage
+
+**Contexto (achado da revisão final desta mesma leva):** a Task 5 só limpa o storage quando a
+fonte de um slot deixa de ser `"HOUSE"`. Mas reenviar uma imagem nova **sem trocar de fonte**
+(substituir a arte de um anúncio da casa já ativo) também deixa a imagem antiga órfã — mesma
+classe de bug, gatilho diferente. Verificado antes de escrever esta task: a chave anon do
+Supabase **tem permissão de DELETE no bucket real de produção** (testado diretamente via API do
+Supabase Storage: upload 200, delete 200 "Successfully deleted") — a limpeza funciona de verdade,
+não é só teórica.
+
+**Files:**
+- Create: `lib/ads/house-ad-storage.ts`
+- Test: `tests/lib-house-ad-storage.test.ts`
+- Modify: `app/api/admin/ads/slots/[id]/house-ad/route.ts`
+- Modify: `app/api/admin/ads/slots/[id]/route.ts`
+- Test: `tests/admin-house-ad-upload-route.test.ts`
+
+**Interfaces:**
+- Produces: `getSupabaseConfig(): { url, key, bucket, ready }`,
+  `deleteHouseAdImage(imageUrl: string): Promise<void>` (best-effort, nunca lança) — extraídos de
+  `app/api/admin/ads/slots/[id]/route.ts` (Task 5) pra serem reaproveitados também pela rota de
+  upload.
+
+- [ ] **Step 1: Escrever os testes que falham**
+
+Criar `tests/lib-house-ad-storage.test.ts`:
+
+```ts
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
+
+describe("deleteHouseAdImage", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.SUPABASE_URL = "https://supabase.example.com";
+    process.env.SUPABASE_ANON_KEY = "anon-key";
+    process.env.SUPABASE_BUCKET = "uploads";
+    fetchSpy = vi.spyOn(global, "fetch" as any).mockResolvedValue(new Response(null, { status: 200 })) as any;
+  });
+
+  it("extrai a key da URL pública e chama DELETE no endpoint do storage", async () => {
+    await deleteHouseAdImage("https://supabase.example.com/storage/v1/object/public/uploads/house-ads/abc.png");
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://supabase.example.com/storage/v1/object/uploads/house-ads/abc.png",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("não faz nada quando o storage não está configurado", async () => {
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_ANON_KEY;
+    await deleteHouseAdImage("https://supabase.example.com/storage/v1/object/public/uploads/house-ads/abc.png");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("não faz nada quando a URL não bate com o formato esperado", async () => {
+    await deleteHouseAdImage("https://outro-dominio.com/arquivo.png");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("nunca lança erro quando o delete falha (best-effort)", async () => {
+    fetchSpy.mockRejectedValueOnce(new Error("network down"));
+    await expect(
+      deleteHouseAdImage("https://supabase.example.com/storage/v1/object/public/uploads/house-ads/abc.png"),
+    ).resolves.toBeUndefined();
+  });
+});
+```
+
+Em `tests/admin-house-ad-upload-route.test.ts`, adicionar o teste abaixo ao final do
+`describe("POST /api/admin/ads/slots/[id]/house-ad", ...)`, antes do fechamento:
+
+```ts
+  it("apaga a imagem anterior do storage quando a posição já tinha uma (reenvio substituindo a arte)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.adSlot.findUnique.mockResolvedValueOnce({
+      ...SLOT,
+      houseAdImageUrl: "https://supabase.example.com/storage/v1/object/public/uploads/house-ads/old.png",
+    });
+    validateImageDimensionsMock.mockResolvedValueOnce(true);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "slot-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      "https://supabase.example.com/storage/v1/object/uploads/house-ads/old.png",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+```
+
+- [ ] **Step 2: Rodar os testes e confirmar que falham**
+
+Run: `npx vitest run tests/lib-house-ad-storage.test.ts tests/admin-house-ad-upload-route.test.ts`
+Expected: FAIL — `@/lib/ads/house-ad-storage` ainda não existe; o teste de reenvio falha porque
+`fetchSpy` só é chamado 1 vez (upload), nunca um 2º (delete).
+
+- [ ] **Step 3: Criar `lib/ads/house-ad-storage.ts`**
+
+```ts
+export function getSupabaseConfig() {
+  const url = process.env.SUPABASE_URL ?? "";
+  const key = process.env.SUPABASE_ANON_KEY ?? "";
+  const bucket = process.env.SUPABASE_BUCKET ?? "uploads";
+  return { url, key, bucket, ready: Boolean(url && key) };
+}
+
+// Apaga um arquivo de anúncio da casa do storage. Best-effort: nunca lança — um arquivo órfão é
+// bem menos grave do que quebrar a operação principal (upload de uma imagem nova, ou atualização
+// da posição) por causa de uma falha de rede num delete secundário.
+export async function deleteHouseAdImage(imageUrl: string): Promise<void> {
+  try {
+    const cfg = getSupabaseConfig();
+    if (!cfg.ready) return;
+    const marker = `/storage/v1/object/public/${cfg.bucket}/`;
+    const idx = imageUrl.indexOf(marker);
+    if (idx === -1) return;
+    const key = imageUrl.slice(idx + marker.length);
+    await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${key}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${cfg.key}` },
+    });
+  } catch (err) {
+    console.error("[house-ad-storage] failed to delete house-ad image:", err);
+  }
+}
+```
+
+- [ ] **Step 4: Atualizar `app/api/admin/ads/slots/[id]/house-ad/route.ts`**
+
+Substituir o conteúdo inteiro do arquivo por:
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { validateImageDimensions } from "@/lib/ads/private-ads";
+import { updateAdSlot } from "@/lib/ad-slots";
+import { getSupabaseConfig, deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
+
+const ALLOWED_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+const MAX_SIZE = 10 * 1024 * 1024;
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
+  }
+
+  const targetUrl = formData.get("targetUrl") as string | null;
+  const image = formData.get("image") as File | null;
+
+  if (!targetUrl || !image) {
+    return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 });
+  }
+
+  try {
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+    }
+  } catch {
+    return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+  }
+
+  const slot = await db.adSlot.findUnique({ where: { id } });
+  if (!slot) {
+    return NextResponse.json({ error: "Posição não encontrada" }, { status: 404 });
+  }
+
+  if (image.size > MAX_SIZE) {
+    return NextResponse.json({ error: "Arquivo muito grande (máx 10 MB)" }, { status: 400 });
+  }
+  const extension = ALLOWED_MIME[image.type];
+  if (!extension) {
+    return NextResponse.json({ error: "Tipo de arquivo não suportado" }, { status: 400 });
+  }
+
+  const bytes = await image.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  // Dimensão validada ANTES do upload, pra não deixar arquivo órfão no storage se falhar —
+  // mesmo cuidado já usado no fluxo de cadastro de anúncio do anunciante.
+  const dimensionsOk = await validateImageDimensions(buffer, slot.width, slot.height);
+  if (!dimensionsOk) {
+    return NextResponse.json(
+      { error: `Dimensão da imagem deve ser ${slot.width}x${slot.height}px` },
+      { status: 400 },
+    );
+  }
+
+  const cfg = getSupabaseConfig();
+  if (!cfg.ready) {
+    return NextResponse.json({ error: "Storage não configurado" }, { status: 503 });
+  }
+
+  const key = `house-ads/${randomUUID()}.${extension}`;
+  const uploadRes = await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${key}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cfg.key}`,
+      "Content-Type": image.type,
+      "x-upsert": "true",
+    },
+    body: buffer,
+  });
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text().catch(() => "");
+    console.error("[admin/house-ad] Supabase error:", uploadRes.status, err);
+    return NextResponse.json({ error: "Falha ao enviar arquivo para o storage" }, { status: 502 });
+  }
+
+  const imageUrl = `${cfg.url}/storage/v1/object/public/${cfg.bucket}/${key}`;
+
+  // O anúncio da casa é ativo imediatamente — sem passo de aprovação (é o próprio admin).
+  await updateAdSlot(id, {
+    source: "HOUSE",
+    houseAdImageUrl: imageUrl,
+    houseAdTargetUrl: targetUrl,
+  });
+
+  // Limpa a imagem anterior do storage, se havia uma (reenvio substituindo uma arte já
+  // existente) — roda só DEPOIS que a nova imagem já está salva com sucesso, pra nunca ficar sem
+  // nenhuma arte se esta limpeza secundária falhar.
+  if (slot.houseAdImageUrl) {
+    await deleteHouseAdImage(slot.houseAdImageUrl);
+  }
+
+  return NextResponse.json({ houseAdImageUrl: imageUrl, houseAdTargetUrl: targetUrl });
+}
+```
+
+- [ ] **Step 5: Atualizar `app/api/admin/ads/slots/[id]/route.ts`**
+
+Substituir o conteúdo inteiro do arquivo por:
+
+```ts
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { updateAdSlot } from "@/lib/ad-slots";
+import { deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
+import { z } from "zod";
+
+const schema = z.object({
+  enabled: z.boolean().optional(),
+  source: z.enum(["GOOGLE", "PRIVATE", "HOUSE"]).nullable().optional(),
+  googleAdUnitId: z.string().max(100).nullable().optional(),
+  houseAdImageUrl: z.string().max(500).nullable().optional(),
+  houseAdTargetUrl: z.string().max(500).nullable().optional(),
+});
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const body = await req.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  if (parsed.data.houseAdTargetUrl) {
+    try {
+      const url = new URL(parsed.data.houseAdTargetUrl);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+    }
+  }
+
+  if (parsed.data.houseAdImageUrl === null) {
+    const current = await db.adSlot.findUnique({ where: { id }, select: { houseAdImageUrl: true } });
+    if (current?.houseAdImageUrl) {
+      await deleteHouseAdImage(current.houseAdImageUrl);
+    }
+  }
+
+  await updateAdSlot(id, parsed.data);
+  return NextResponse.json({ ok: true });
+}
+```
+
+(`getSupabaseConfig`/`deleteOrphanedHouseAdImage` locais são removidos deste arquivo — a mesma
+lógica agora vem de `lib/ads/house-ad-storage.ts`, criado no Step 3. Os 2 testes de delete já
+existentes em `tests/admin-ad-slots-route.test.ts`, da Task 5, continuam passando sem nenhuma
+mudança — eles verificam o `fetch` real via spy, não uma função intermediária, então o
+comportamento observável é idêntico antes e depois deste refactor.)
+
+- [ ] **Step 6: Rodar os testes e confirmar que passam**
+
+Run: `npx vitest run tests/lib-house-ad-storage.test.ts tests/admin-house-ad-upload-route.test.ts tests/admin-ad-slots-route.test.ts`
+Expected: PASS (todos — os 2 arquivos novos/alterados mais a confirmação de que
+`admin-ad-slots-route.test.ts` continua passando sem alteração)
+
+- [ ] **Step 7: Rodar a suíte completa, `tsc` e build**
+
+Run: `npx vitest run`
+Expected: todos os testes passam
+
+Run: `npx tsc --noEmit`
+Expected: sem erros
+
+Run: `npm run build`
+Expected: build de produção limpo
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add lib/ads/house-ad-storage.ts tests/lib-house-ad-storage.test.ts "app/api/admin/ads/slots/[id]/house-ad/route.ts" "app/api/admin/ads/slots/[id]/route.ts" tests/admin-house-ad-upload-route.test.ts
+git commit -m "fix: reenviar imagem do anuncio da casa tambem limpa a arte anterior do storage"
+```
+
+---
+
 ## Revisão final (depois de todas as 5 tasks)
 
 - [ ] Rodar `npx vitest run` inteiro — suíte completa passando.
