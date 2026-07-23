@@ -5,25 +5,13 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { buildAdReportData } from "@/lib/ads/private-ad-report";
 import { formatDate } from "@/lib/format";
+import { PRIVATE_AD_STATUS } from "@/lib/private-ad-status";
 import { BADGE } from "@/lib/badge-colors";
 import PrivateAdSendReportButtons from "@/components/admin/PrivateAdSendReportButtons";
 
 export const metadata: Metadata = { title: "Detalhe do Anúncio — Admin" };
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING_APPROVAL: "Aguardando aprovação",
-  APPROVED: "Aprovado",
-  REJECTED: "Rejeitado",
-  EXPIRED: "Expirado",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  PENDING_APPROVAL: BADGE.yellow,
-  APPROVED: BADGE.green,
-  REJECTED: BADGE.red,
-  EXPIRED: BADGE.gray,
-};
 
 function formatMicrosAsCurrency(micros: bigint): string {
   const value = Number(micros) / 1_000_000;
@@ -64,8 +52,8 @@ export default async function AdminPrivateAdDetailPage({
             {data.adLabel} ({data.slotWidth}×{data.slotHeight})
           </p>
         </div>
-        <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLOR[existing.status] ?? ""}`}>
-          {STATUS_LABEL[existing.status] ?? existing.status}
+        <span className={`text-sm px-3 py-1 rounded-full font-medium ${PRIVATE_AD_STATUS[existing.status]?.color ?? BADGE.gray}`}>
+          {PRIVATE_AD_STATUS[existing.status]?.label ?? existing.status}
         </span>
       </div>
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
+import { PRIVATE_AD_STATUS } from "@/lib/private-ad-status";
 import { BADGE } from "@/lib/badge-colors";
 import { ACTIVE_STATUSES } from "@/lib/ads/private-ads";
 import PrivateAdCancelButton from "@/components/advertiser/PrivateAdCancelButton";
@@ -10,13 +11,6 @@ import PrivateAdCancelButton from "@/components/advertiser/PrivateAdCancelButton
 export const metadata: Metadata = { title: "Meus Anúncios — Anunciante" };
 export const dynamic = "force-dynamic";
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  PENDING_APPROVAL: { label: "Aguardando aprovação", cls: BADGE.yellow },
-  APPROVED: { label: "Aprovado", cls: BADGE.green },
-  REJECTED: { label: "Rejeitado", cls: BADGE.red },
-  EXPIRED: { label: "Expirado", cls: BADGE.gray },
-  CANCELLED: { label: "Cancelado", cls: BADGE.gray },
-};
 
 export default async function AdvertiserAnunciosPage() {
   const session = await requireAuth();
@@ -43,7 +37,7 @@ export default async function AdvertiserAnunciosPage() {
       ) : (
         <div className="card divide-y dark:divide-gray-700">
           {ads.map((ad) => {
-            const status = STATUS[ad.status] ?? { label: ad.status, cls: BADGE.gray };
+            const status = PRIVATE_AD_STATUS[ad.status] ?? { label: ad.status, color: BADGE.gray };
             return (
               <div key={ad.id} className="py-4 first:pt-0 last:pb-0 flex flex-wrap items-center gap-4">
                 <img
@@ -66,7 +60,7 @@ export default async function AdvertiserAnunciosPage() {
                     {ad.status === "REJECTED" && ad.rejectionReason && <> — Motivo: {ad.rejectionReason}</>}
                   </p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded font-medium ${status.cls}`}>{status.label}</span>
+                <span className={`text-xs px-2 py-1 rounded font-medium ${status.color}`}>{status.label}</span>
                 {ACTIVE_STATUSES.includes(ad.status) && <PrivateAdCancelButton id={ad.id} />}
               </div>
             );
