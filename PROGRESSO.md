@@ -16,31 +16,19 @@ Usuário reportou que não achava onde o anunciante cadastra anúncio privado ne
    outros 3. `tsc --noEmit` limpo, sem teste dedicado (página sem cobertura antes, mesma convenção
    já estabelecida pra Server Components deste domínio).
 
-## PRÓXIMA TAREFA (retomar por aqui — sessão pausada a pedido do usuário em 2026-07-22)
+## PRÓXIMA TAREFA
 
-Continuar o plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` (9 tasks, via
-subagent-driven-development, direto na main). **Tasks 1-3 completas e revisadas (Approved, zero
-Critical/Important)** — commits `0ef731b`, `d55ac2f`, `9f5a4ff`. A Task 4 (convite de acesso por
-e-mail — `lib/email.ts` + `lib/proxy-athlete.ts`) estava rodando em background no momento da
-pausa, resultado desconhecido.
+Plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` **100% completo**: 9 tasks +
+1 fix de segurança pós-revisão-final (Task 10), todas implementadas e revisadas individualmente
+(zero Critical/Important em aberto), mais a revisão final de branch inteira (opus) já feita e o
+achado dela já corrigido e re-revisado. Suite final 1144/1144, `tsc --noEmit` limpo, `npm run
+build` OK. HEAD atual: `eee748e`. Ledger completo task-a-task em `.superpowers/sdd/progress.md`.
 
-**Antes de fazer qualquer coisa, checar o estado exato da Task 4** — instruções completas de
-recuperação (o que checar, em que ordem, o que fazer em cada cenário) estão em
-`.superpowers/sdd/progress.md`, seção "PAUSADO A PEDIDO DO USUÁRIO", perto do final do arquivo.
-Resumo: rodar `git log --oneline -5` primeiro (pode já ter terminado e commitado sozinha — nesse
-caso só falta revisar, não redespachar); se não, checar `git status --short` (pode ter ficado
-com mudança não commitada, precisa avaliar quanto foi feito antes de decidir completar ou
-redespachar do zero).
-
-**Contexto necessário**: ler só `.superpowers/sdd/progress.md` (ledger completo desta plan,
-inclusive as instruções de retomada) e o plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` —
-não precisa reler o resto deste PROGRESSO.md pra retomar isto especificamente.
-
-Depois da Task 4 (revisada e aprovada): faltam as Tasks 5-9 (rota de checkout aceitar
-`proxyAthlete`, toggle na edição de evento + fix de acesso do admin, notificação dupla, "minhas
-inscrições", frontend modal+seletor) + revisão final de branch inteira — mesmo padrão já usado
-nas Tasks 1-3. Depois de tudo revisado, falta perguntar ao usuário sobre push/deploy (ele tem
-alternado entre autorizar e pedir pra esperar, não assumir).
+**Falta perguntar ao usuário sobre push/deploy** antes de qualquer ação de rede — ele tem
+alternado entre autorizar e pedir pra esperar a cada pedido nesta sessão, não assumir aprovação.
+Mudança de schema nesta leva (`Event.allowProxyRegistration`, `Registration.proxyAthleteDisplayName`)
+— se aprovado o deploy, vai precisar de `prisma db push --skip-generate` na VPS, mesmo padrão já
+usado nos deploys anteriores.
 
 ## Última atualização
 2026-07-22 (sessão: cupom vencido + backlog técnico + tag do AdSense (2ª correção, confirmada) +
@@ -64,16 +52,28 @@ onde um crawler externo precisa achar uma tag `<script>` literal no HTML puro (v
 site, meta tags de terceiros) — nesses casos, usar uma tag `<script>` nativa direto no JSX do
 layout raiz, nunca o componente `Script`.
 
-## Início da inscrição por procuração (2026-07-22) — em andamento, plano de 9 tasks
+## Inscrição por procuração (2026-07-22/23) — COMPLETO, ainda não deployado
 
 Ver spec `docs/superpowers/specs/2026-07-22-inscricao-por-procuracao-design.md` e plano
-`docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md`. Tasks 1-3 completas e revisadas
-(schema `Event.allowProxyRegistration`, helpers de e-mail sintético em `lib/proxy-athlete.ts`,
-resolução/criação do atleta por procuração dentro de `createCheckout`) — ver seção "PRÓXIMA
-TAREFA" no topo deste arquivo pro estado da Task 4 (pausada em andamento). Feature ainda não é
-alcançável via UI/API pública (faltam as tasks de rota de checkout, notificação, toggle na tela
-de evento e frontend) — código novo é inerte em
-produção por enquanto, sem risco no deploy já feito.
+`docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md`. Feature completa: schema
+(`Event.allowProxyRegistration`, `Registration.proxyAthleteDisplayName`), e-mail sintético
+(`lib/proxy-athlete.ts`), resolução/criação do atleta por procuração dentro de `createCheckout`
+(reaproveita conta existente por CPF ou cria nova), convite de acesso por e-mail, rota de checkout
+aceitando `proxyAthlete`, notificação dupla (comprador + atleta), toggle na edição de evento (+
+fix de acesso do admin em `/organizador/eventos/[id]/editar`), "Minhas Inscrições" mostrando
+procurações criadas, modal + seletor no frontend do checkout.
+
+**Achado de segurança na revisão final de branch inteira, corrigido**: quando o comprador informa
+um CPF que já pertence a conta existente, o sistema reaproveitava a conta mas ecoava o nome REAL
+armazenado nela de volta pro comprador (WhatsApp + "Minhas Inscrições") — virava oráculo pra
+descobrir nome real associado a um CPF. Corrigido (Task 10): novo campo
+`Registration.proxyAthleteDisplayName` sempre guarda o nome que o COMPRADOR digitou, nunca o nome
+da conta reaproveitada; as 2 superfícies voltadas pro comprador usam esse campo agora. Um 2º
+achado (convite de acesso disparado antes do pagamento confirmar) foi aceito como está, decisão do
+usuário — risco baixo, comportamento deliberado.
+
+Suite final 1144/1144, `tsc --noEmit` limpo, `npm run build` OK. HEAD `eee748e`, ainda não
+commitado no VPS/deployado — aguardando autorização do usuário.
 
 ## Deploy do lote acumulado (2026-07-22) — DEPLOYADO
 
