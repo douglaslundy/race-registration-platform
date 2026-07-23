@@ -20,6 +20,16 @@ export default async function AdSlotRenderer({ position }: { position: string })
     );
   }
 
+  if (slot.source === "HOUSE") {
+    if (!slot.houseAdImageUrl || !slot.houseAdTargetUrl) return null;
+    await recordImpression(slot.id);
+    return (
+      <a href={`/api/ads/click/house/${slot.id}`} style={{ display: "inline-block", width: slot.width, height: slot.height }}>
+        <Image src={slot.houseAdImageUrl} alt="" width={slot.width} height={slot.height} style={{ objectFit: "cover" }} />
+      </a>
+    );
+  }
+
   if (!slot || !slot.enabled || slot.source !== "GOOGLE" || !slot.googleAdUnitId) return null;
 
   const clientId = await getSetting("google_adsense_client_id");
