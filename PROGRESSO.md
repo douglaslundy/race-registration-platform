@@ -16,23 +16,50 @@ Usuário reportou que não achava onde o anunciante cadastra anúncio privado ne
    outros 3. `tsc --noEmit` limpo, sem teste dedicado (página sem cobertura antes, mesma convenção
    já estabelecida pra Server Components deste domínio).
 
+## Anúncio da casa — admin publica anúncio direto numa posição (2026-07-23) — completo, ainda não deployado
+
+Usuário perguntou se o admin conseguia cadastrar um anúncio ele mesmo (não só aprovar os do
+marketplace de anunciantes) — resposta era não, então virou feature nova. Spec
+`docs/superpowers/specs/2026-07-23-anuncio-da-casa-admin-design.md`, plano de implementação
+`docs/superpowers/plans/2026-07-23-anuncio-da-casa-admin.md` (7 tasks, todas revisadas
+individualmente, zero Critical/Important). `AdSlot.source` ganha valor `"HOUSE"`; admin sobe
+imagem+URL direto em `/admin/anuncios` (novo endpoint `POST
+/api/admin/ads/slots/[id]/house-ad`), ativo na hora, sem aprovação — zero mudança no marketplace
+de anunciantes existente (`PrivateAd`/`AdPurchase`/`AdvertiserProfile` intocados).
+
+**Revisão final de branch inteira (opus) achou 1 problema real**: métricas do anúncio da casa
+(mesma tabela `AdMetricsSnapshot`, só por posição+dia, sem distinguir origem) podiam contaminar o
+relatório em PDF de um anunciante pagante se a mesma posição fosse usada como anúncio da casa
+enquanto ele ainda tinha campanha ativa. Usuário pediu correção completa (não só aceitar como
+risco). Plano de correção `docs/superpowers/plans/2026-07-23-anuncio-da-casa-fixes.md` (6 tasks,
+a 6ª adicionada depois — reupload de imagem também deixava arquivo órfão no storage, achado
+extra):
+- `AdMetricsSnapshot` ganha coluna `source` (`@default("PRIVATE")`, backfill automático) — separa
+  métricas de `HOUSE`/`PRIVATE`/`GOOGLE` na mesma posição/dia.
+- `buildAdReportData` (relatório do anunciante) só soma `source:"PRIVATE"` — fechou o vazamento de
+  verdade.
+- URL de destino do anúncio da casa restrita a http/https (antes aceitava `javascript:` etc,
+  emitido sem validação pela rota de redirecionamento de clique).
+- Arquivo órfão no storage limpo automaticamente (best-effort) quando a fonte muda ou quando a
+  imagem é reenviada — **verificado contra o bucket real de produção que a chave anon tem
+  permissão de DELETE** (testado via API do Supabase: upload 200 + delete 200 confirmados).
+- Achado extra descoberto durante a implementação (não fazia parte da revisão original):
+  `lib/ads/metrics-sync.ts` (cron de métricas reais do Google AdSense) também escrevia na mesma
+  tabela com a chave composta antiga — teria quebrado em runtime depois da migração da coluna
+  `source`; corrigido junto.
+
+Suite final 1171/1171, `tsc --noEmit` limpo, `npm run build` OK. Revisão final da leva de correção:
+"Ready to merge: Yes", zero Critical/Important. **Ambos os planos completos, nada deployado ainda
+— falta perguntar ao usuário sobre push/deploy.**
+
 ## PRÓXIMA TAREFA
 
-Plano `docs/superpowers/plans/2026-07-22-inscricao-por-procuracao.md` **100% completo E
-DEPLOYADO** (2026-07-23): 9 tasks + 1 fix de segurança pós-revisão-final (Task 10), todas
-implementadas e revisadas individualmente (zero Critical/Important em aberto), revisão final de
-branch inteira (opus) feita e o achado dela corrigido e re-revisado. Suite final 1144/1144,
-`tsc --noEmit` limpo, `npm run build` OK.
+Perguntar ao usuário sobre push/deploy das 2 levas acima (feature + correções). Mudança de schema
+nesta leva (`AdSlot.houseAdImageUrl`/`houseAdTargetUrl`, `AdMetricsSnapshot.source`) — se
+aprovado, vai precisar de `prisma db push --skip-generate` na VPS, mesmo padrão já usado nos
+deploys anteriores. Acesso à VPS via chave SSH `~/.ssh/id_ed25519` (sem senha).
 
-`git push origin main` (`5a3adf1..db19664`) → `git pull` na VPS → `docker build` →
-`docker compose run --rm app sh -c "npx prisma db push --skip-generate"` (schema novo:
-`Event.allowProxyRegistration`, `Registration.proxyAthleteDisplayName`) → `docker compose up -d
---no-deps app`. Smoke test: `/`, `/eventos` 200; `/admin/mensagens`, `/organizador/mensagens`,
-`/admin/anuncios`, `/admin/anuncios/moderacao`, `/dashboard/inscricoes` 307 (redirect de login,
-esperado sem sessão). `docker logs corridas-app` limpo. Acesso à VPS nesta sessão via chave SSH
-`~/.ssh/id_ed25519` (sem senha) em vez de plink/senha root — funcionou direto.
-
-Nenhuma tarefa pendente conhecida no momento. Sistema de rating de atletas continua adiado (ver
+Fora isso, nenhuma tarefa pendente conhecida. Sistema de rating de atletas continua adiado (ver
 memória `rating_system_pending`) — só retomar se o usuário pedir explicitamente.
 
 ## Última atualização
