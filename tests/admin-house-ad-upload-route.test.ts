@@ -135,4 +135,23 @@ describe("POST /api/admin/ads/slots/[id]/house-ad", () => {
     expect(res.status).toBe(502);
     expect(updateAdSlotMock).not.toHaveBeenCalled();
   });
+
+  it("apaga a imagem anterior do storage quando a posição já tinha uma (reenvio substituindo a arte)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.adSlot.findUnique.mockResolvedValueOnce({
+      ...SLOT,
+      houseAdImageUrl: "https://supabase.example.com/storage/v1/object/public/uploads/house-ads/old.png",
+    });
+    validateImageDimensionsMock.mockResolvedValueOnce(true);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "slot-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      "https://supabase.example.com/storage/v1/object/uploads/house-ads/old.png",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
 });

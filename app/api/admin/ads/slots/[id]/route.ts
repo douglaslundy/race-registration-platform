@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { updateAdSlot } from "@/lib/ad-slots";
+import { deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
 import { z } from "zod";
 
 const schema = z.object({
@@ -11,33 +12,6 @@ const schema = z.object({
   houseAdImageUrl: z.string().max(500).nullable().optional(),
   houseAdTargetUrl: z.string().max(500).nullable().optional(),
 });
-
-function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL ?? "";
-  const key = process.env.SUPABASE_ANON_KEY ?? "";
-  const bucket = process.env.SUPABASE_BUCKET ?? "uploads";
-  return { url, key, bucket, ready: Boolean(url && key) };
-}
-
-// Apaga o arquivo antigo do storage quando a imagem do anúncio da casa é limpa (troca de fonte).
-// Best-effort: nunca lança — um arquivo órfão no storage é bem menos grave do que quebrar a
-// atualização da posição por causa de uma falha de rede num delete secundário.
-async function deleteOrphanedHouseAdImage(imageUrl: string): Promise<void> {
-  try {
-    const cfg = getSupabaseConfig();
-    if (!cfg.ready) return;
-    const marker = `/storage/v1/object/public/${cfg.bucket}/`;
-    const idx = imageUrl.indexOf(marker);
-    if (idx === -1) return;
-    const key = imageUrl.slice(idx + marker.length);
-    await fetch(`${cfg.url}/storage/v1/object/${cfg.bucket}/${key}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${cfg.key}` },
-    });
-  } catch (err) {
-    console.error("[admin/ads/slots] failed to delete orphaned house-ad image:", err);
-  }
-}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -66,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (parsed.data.houseAdImageUrl === null) {
     const current = await db.adSlot.findUnique({ where: { id }, select: { houseAdImageUrl: true } });
     if (current?.houseAdImageUrl) {
-      await deleteOrphanedHouseAdImage(current.houseAdImageUrl);
+      await deleteHouseAdImage(current.houseAdImageUrl);
     }
   }
 

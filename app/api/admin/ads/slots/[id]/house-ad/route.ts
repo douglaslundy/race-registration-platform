@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { validateImageDimensions } from "@/lib/ads/private-ads";
 import { updateAdSlot } from "@/lib/ad-slots";
+import { getSupabaseConfig, deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
 
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -12,13 +13,6 @@ const ALLOWED_MIME: Record<string, string> = {
   "image/gif": "gif",
 };
 const MAX_SIZE = 10 * 1024 * 1024;
-
-function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL ?? "";
-  const key = process.env.SUPABASE_ANON_KEY ?? "";
-  const bucket = process.env.SUPABASE_BUCKET ?? "uploads";
-  return { url, key, bucket, ready: Boolean(url && key) };
-}
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -107,6 +101,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     houseAdImageUrl: imageUrl,
     houseAdTargetUrl: targetUrl,
   });
+
+  // Limpa a imagem anterior do storage, se havia uma (reenvio substituindo uma arte já
+  // existente) — roda só DEPOIS que a nova imagem já está salva com sucesso, pra nunca ficar sem
+  // nenhuma arte se esta limpeza secundária falhar.
+  if (slot.houseAdImageUrl) {
+    await deleteHouseAdImage(slot.houseAdImageUrl);
+  }
 
   return NextResponse.json({ houseAdImageUrl: imageUrl, houseAdTargetUrl: targetUrl });
 }
