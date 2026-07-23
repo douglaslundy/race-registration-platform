@@ -5,8 +5,10 @@ import { z } from "zod";
 
 const schema = z.object({
   enabled: z.boolean().optional(),
-  source: z.enum(["GOOGLE", "PRIVATE"]).nullable().optional(),
+  source: z.enum(["GOOGLE", "PRIVATE", "HOUSE"]).nullable().optional(),
   googleAdUnitId: z.string().max(100).nullable().optional(),
+  houseAdImageUrl: z.string().max(500).nullable().optional(),
+  houseAdTargetUrl: z.string().max(500).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

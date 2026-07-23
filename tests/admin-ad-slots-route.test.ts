@@ -62,4 +62,34 @@ describe("PATCH /api/admin/ads/slots/[id]", () => {
     expect(updateAdSlot).toHaveBeenCalledWith("slot-1", { source: null, googleAdUnitId: null });
     expect(res.status).toBe(200);
   });
+
+  it("aceita source HOUSE com houseAdImageUrl/houseAdTargetUrl", async () => {
+    const res = await PATCH(
+      makeRequest({
+        source: "HOUSE",
+        houseAdImageUrl: "https://storage.example.com/house-ads/a.png",
+        houseAdTargetUrl: "https://empresa.com",
+      }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    expect(updateAdSlot).toHaveBeenCalledWith("slot-1", {
+      source: "HOUSE",
+      houseAdImageUrl: "https://storage.example.com/house-ads/a.png",
+      houseAdTargetUrl: "https://empresa.com",
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("aceita limpar houseAdImageUrl/houseAdTargetUrl com null ao trocar de fonte", async () => {
+    const res = await PATCH(
+      makeRequest({ source: "GOOGLE", houseAdImageUrl: null, houseAdTargetUrl: null }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    expect(updateAdSlot).toHaveBeenCalledWith("slot-1", {
+      source: "GOOGLE",
+      houseAdImageUrl: null,
+      houseAdTargetUrl: null,
+    });
+    expect(res.status).toBe(200);
+  });
 });
