@@ -44,7 +44,7 @@ describe("buildAdReportData", () => {
       include: { adSlot: true, adPurchase: { include: { advertiser: true } } },
     });
     expect(dbMock.adMetricsSnapshot.findMany).toHaveBeenCalledWith({
-      where: { adSlotId: "slot-1", date: { gte: startAt, lte: now } },
+      where: { adSlotId: "slot-1", source: "PRIVATE", date: { gte: startAt, lte: now } },
     });
     expect(result).toEqual({
       privateAdId: "ad-1",
@@ -88,7 +88,7 @@ describe("buildAdReportData", () => {
     const result = await buildAdReportData("ad-2");
 
     expect(dbMock.adMetricsSnapshot.findMany).toHaveBeenCalledWith({
-      where: { adSlotId: "slot-2", date: { gte: startAt, lte: endAt } },
+      where: { adSlotId: "slot-2", source: "PRIVATE", date: { gte: startAt, lte: endAt } },
     });
     expect(result.periodEnd).toEqual(endAt);
     expect(result.impressions).toBe(0);

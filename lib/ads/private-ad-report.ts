@@ -36,8 +36,11 @@ export async function buildAdReportData(privateAdId: string): Promise<AdReportDa
   const periodStart = ad.adPurchase.startAt ?? ad.createdAt;
   const periodEnd = ad.adPurchase.endAt && ad.adPurchase.endAt < now ? ad.adPurchase.endAt : now;
 
+  // Só soma métricas do marketplace (source "PRIVATE") — uma posição pode ter sido usada como
+  // anúncio da casa (source "HOUSE") em parte do período, e essas métricas nunca devem entrar na
+  // conta do anunciante pagante.
   const snapshots = await db.adMetricsSnapshot.findMany({
-    where: { adSlotId: ad.adSlotId, date: { gte: periodStart, lte: periodEnd } },
+    where: { adSlotId: ad.adSlotId, source: "PRIVATE", date: { gte: periodStart, lte: periodEnd } },
   });
 
   const impressions = snapshots.reduce((sum: number, s: { impressions: number }) => sum + s.impressions, 0);
