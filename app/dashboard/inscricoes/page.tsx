@@ -18,14 +18,20 @@ export default async function InscricoesPage() {
   const session = await requireAuth();
 
   const registrations = await db.registration.findMany({
-    where: { athleteUserId: session.user.id },
+    where: {
+      OR: [
+        { athleteUserId: session.user.id },
+        { order: { buyerUserId: session.user.id } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     include: {
       event: { select: { title: true, slug: true, startAt: true, city: true, state: true, bannerUrl: true } },
       route: { select: { name: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true, priceAmount: true } },
-      order: { select: { status: true, totalAmount: true } },
+      order: { select: { status: true, totalAmount: true, buyerUserId: true } },
+      athlete: { select: { name: true } },
     },
   });
 
@@ -46,6 +52,7 @@ export default async function InscricoesPage() {
         <div className="space-y-3">
           {registrations.map((r) => {
             const badge = STATUS_LABEL[r.status];
+            const createdByMeForOther = r.order.buyerUserId === session.user.id && r.athleteUserId !== session.user.id;
             return (
               <Link
                 key={r.id}
@@ -54,10 +61,15 @@ export default async function InscricoesPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${badge.color}`}>
                         {badge.label}
                       </span>
+                      {createdByMeForOther && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                          Inscrito por você — {r.athlete.name}
+                        </span>
+                      )}
                     </div>
                     <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{r.event.title}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
