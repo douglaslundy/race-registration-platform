@@ -619,6 +619,8 @@ model AdSlot {
   enabled        Boolean  @default(false)
   source         String?
   googleAdUnitId String?
+  houseAdImageUrl  String?
+  houseAdTargetUrl String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

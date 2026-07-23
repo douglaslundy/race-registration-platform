@@ -11,6 +11,8 @@ export interface AdSlotRow {
   enabled: boolean;
   source: string | null;
   googleAdUnitId: string | null;
+  houseAdImageUrl: string | null;
+  houseAdTargetUrl: string | null;
 }
 
 export async function listAdSlots(): Promise<AdSlotRow[]> {
@@ -26,6 +28,8 @@ export interface UpdateAdSlotData {
   enabled?: boolean;
   source?: string | null;
   googleAdUnitId?: string | null;
+  houseAdImageUrl?: string | null;
+  houseAdTargetUrl?: string | null;
 }
 
 export async function updateAdSlot(id: string, data: UpdateAdSlotData): Promise<void> {

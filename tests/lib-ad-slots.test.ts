@@ -51,4 +51,21 @@ describe("updateAdSlot", () => {
       data: { enabled: false, source: null, googleAdUnitId: null },
     });
   });
+
+  it("atualiza houseAdImageUrl e houseAdTargetUrl", async () => {
+    dbMock.adSlot.update.mockResolvedValueOnce({});
+    await updateAdSlot("slot-1", {
+      source: "HOUSE",
+      houseAdImageUrl: "https://storage.example.com/house-ads/a.png",
+      houseAdTargetUrl: "https://empresa.com",
+    });
+    expect(dbMock.adSlot.update).toHaveBeenCalledWith({
+      where: { id: "slot-1" },
+      data: {
+        source: "HOUSE",
+        houseAdImageUrl: "https://storage.example.com/house-ads/a.png",
+        houseAdTargetUrl: "https://empresa.com",
+      },
+    });
+  });
 });
