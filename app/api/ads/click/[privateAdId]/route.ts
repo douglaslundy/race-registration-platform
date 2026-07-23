@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ private
     return NextResponse.json({ error: "Anúncio não encontrado" }, { status: 404 });
   }
 
-  await recordClick(ad.adSlotId);
+  await recordClick(ad.adSlotId, "PRIVATE");
   return new Response(null, {
     status: 307,
     headers: { location: ad.targetUrl }

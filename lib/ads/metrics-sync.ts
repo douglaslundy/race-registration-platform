@@ -39,10 +39,11 @@ export async function syncAdMetrics(date: Date): Promise<{ synced: number; faile
       if (!report) continue;
 
       await db.adMetricsSnapshot.upsert({
-        where: { adSlotId_date: { adSlotId: slot.id, date } },
+        where: { adSlotId_date_source: { adSlotId: slot.id, date, source: "GOOGLE" } },
         create: {
           adSlotId: slot.id,
           date,
+          source: "GOOGLE",
           impressions: report.impressions,
           clicks: report.clicks,
           estimatedRevenueMicros: report.estimatedRevenueMicros,

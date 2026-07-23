@@ -24,7 +24,7 @@ describe("GET /api/ads/click/house/[slotId]", () => {
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ slotId: "slot-1" }) });
 
-    expect(recordClick).toHaveBeenCalledWith("slot-1");
+    expect(recordClick).toHaveBeenCalledWith("slot-1", "HOUSE");
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://empresa.com");
   });

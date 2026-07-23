@@ -20,7 +20,7 @@ describe("GET /api/ads/click/[privateAdId]", () => {
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ privateAdId: "ad-1" }) });
 
-    expect(recordClick).toHaveBeenCalledWith("slot-1");
+    expect(recordClick).toHaveBeenCalledWith("slot-1", "PRIVATE");
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://empresa.com");
   });

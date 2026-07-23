@@ -12,7 +12,7 @@ export default async function AdSlotRenderer({ position }: { position: string })
   if (slot.source === "PRIVATE") {
     const ad = await db.privateAd.findFirst({ where: { adSlotId: slot.id, status: "APPROVED" } });
     if (!ad) return null;
-    await recordImpression(slot.id);
+    await recordImpression(slot.id, "PRIVATE");
     return (
       <a href={`/api/ads/click/${ad.id}`} style={{ display: "inline-block", width: slot.width, height: slot.height }}>
         <Image src={ad.imageUrl} alt="" width={slot.width} height={slot.height} style={{ objectFit: "cover" }} />
@@ -22,7 +22,7 @@ export default async function AdSlotRenderer({ position }: { position: string })
 
   if (slot.source === "HOUSE") {
     if (!slot.houseAdImageUrl || !slot.houseAdTargetUrl) return null;
-    await recordImpression(slot.id);
+    await recordImpression(slot.id, "HOUSE");
     return (
       <a href={`/api/ads/click/house/${slot.id}`} style={{ display: "inline-block", width: slot.width, height: slot.height }}>
         <Image src={slot.houseAdImageUrl} alt="" width={slot.width} height={slot.height} style={{ objectFit: "cover" }} />

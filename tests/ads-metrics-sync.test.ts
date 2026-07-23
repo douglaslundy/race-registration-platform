@@ -49,8 +49,8 @@ describe("syncAdMetrics", () => {
     expect(dbMock.adSlot.findMany).toHaveBeenCalledWith({ where: { enabled: true, source: "GOOGLE", googleAdUnitId: { not: null } } });
     expect(fetchDailyAdUnitReport).toHaveBeenCalledWith({ accessToken: "at-new", publisherId: "pub-123", adUnitId: "111", date });
     expect(dbMock.adMetricsSnapshot.upsert).toHaveBeenCalledWith({
-      where: { adSlotId_date: { adSlotId: "s1", date } },
-      create: { adSlotId: "s1", date, impressions: 100, clicks: 5, estimatedRevenueMicros: 1000000n, currency: "BRL" },
+      where: { adSlotId_date_source: { adSlotId: "s1", date, source: "GOOGLE" } },
+      create: { adSlotId: "s1", date, source: "GOOGLE", impressions: 100, clicks: 5, estimatedRevenueMicros: 1000000n, currency: "BRL" },
       update: { impressions: 100, clicks: 5, estimatedRevenueMicros: 1000000n, currency: "BRL" },
     });
     expect(result).toEqual({ synced: 1, failed: 0 });
