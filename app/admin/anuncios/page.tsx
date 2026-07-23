@@ -5,6 +5,7 @@ import { listAdSlots } from "@/lib/ad-slots";
 import { getSetting } from "@/lib/settings";
 import AdSlotEditForm from "@/components/admin/AdSlotEditForm";
 import GoogleAdSenseClientIdForm from "@/components/admin/GoogleAdSenseClientIdForm";
+import HouseAdUploadForm from "@/components/admin/HouseAdUploadForm";
 
 export const metadata: Metadata = { title: "Anúncios — Admin" };
 export const dynamic = "force-dynamic";
@@ -50,6 +51,15 @@ export default async function AdminAnunciosPage() {
               source={slot.source}
               googleAdUnitId={slot.googleAdUnitId}
             />
+            {slot.source === "HOUSE" && (
+              <HouseAdUploadForm
+                slotId={slot.id}
+                width={slot.width}
+                height={slot.height}
+                initialImageUrl={slot.houseAdImageUrl}
+                initialTargetUrl={slot.houseAdTargetUrl}
+              />
+            )}
           </div>
         ))}
       </div>
