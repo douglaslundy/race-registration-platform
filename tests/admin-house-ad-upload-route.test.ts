@@ -98,4 +98,41 @@ describe("POST /api/admin/ads/slots/[id]/house-ad", () => {
     const body = await res.json();
     expect(body.houseAdTargetUrl).toBe("https://empresa.com");
   });
+
+  it("retorna 400 quando a URL de destino usa esquema não-http (ex: javascript:)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    const res = await POST(
+      makeRequest({ targetUrl: "javascript:alert(1)" }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    expect(res.status).toBe(400);
+    expect(dbMock.adSlot.findUnique).not.toHaveBeenCalled();
+    expect(updateAdSlotMock).not.toHaveBeenCalled();
+  });
+
+  it("retorna 503 quando o storage não está configurado", async () => {
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_ANON_KEY;
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.adSlot.findUnique.mockResolvedValueOnce(SLOT);
+    validateImageDimensionsMock.mockResolvedValueOnce(true);
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "slot-1" }) });
+
+    expect(res.status).toBe(503);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(updateAdSlotMock).not.toHaveBeenCalled();
+  });
+
+  it("retorna 502 quando o upload pro Supabase falha", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.adSlot.findUnique.mockResolvedValueOnce(SLOT);
+    validateImageDimensionsMock.mockResolvedValueOnce(true);
+    fetchSpy.mockResolvedValueOnce(new Response("erro", { status: 500 }));
+
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "slot-1" }) });
+
+    expect(res.status).toBe(502);
+    expect(updateAdSlotMock).not.toHaveBeenCalled();
+  });
 });

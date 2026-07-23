@@ -43,7 +43,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   try {
-    new URL(targetUrl);
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+    }
   } catch {
     return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
   }

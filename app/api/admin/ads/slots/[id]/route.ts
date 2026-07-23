@@ -24,6 +24,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  if (parsed.data.houseAdTargetUrl) {
+    try {
+      const url = new URL(parsed.data.houseAdTargetUrl);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+    }
+  }
+
   await updateAdSlot(id, parsed.data);
   return NextResponse.json({ ok: true });
 }

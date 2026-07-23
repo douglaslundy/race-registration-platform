@@ -92,4 +92,13 @@ describe("PATCH /api/admin/ads/slots/[id]", () => {
     });
     expect(res.status).toBe(200);
   });
+
+  it("retorna 400 quando houseAdTargetUrl usa esquema não-http (ex: javascript:)", async () => {
+    const res = await PATCH(
+      makeRequest({ source: "HOUSE", houseAdTargetUrl: "javascript:alert(1)" }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    expect(res.status).toBe(400);
+    expect(updateAdSlot).not.toHaveBeenCalled();
+  });
 });
