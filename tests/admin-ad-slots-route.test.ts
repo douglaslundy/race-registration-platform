@@ -101,4 +101,39 @@ describe("PATCH /api/admin/ads/slots/[id]", () => {
     expect(res.status).toBe(400);
     expect(updateAdSlot).not.toHaveBeenCalled();
   });
+
+  it("apaga o arquivo do storage quando houseAdImageUrl é limpo (troca de fonte)", async () => {
+    process.env.SUPABASE_URL = "https://supabase.example.com";
+    process.env.SUPABASE_ANON_KEY = "anon-key";
+    process.env.SUPABASE_BUCKET = "uploads";
+    dbMock.adSlot.findUnique.mockResolvedValueOnce({
+      houseAdImageUrl: "https://supabase.example.com/storage/v1/object/public/uploads/house-ads/abc.png",
+    });
+    const fetchSpy = vi.spyOn(global, "fetch" as any).mockResolvedValueOnce(new Response(null, { status: 200 })) as any;
+
+    const res = await PATCH(
+      makeRequest({ source: "GOOGLE", houseAdImageUrl: null, houseAdTargetUrl: null }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://supabase.example.com/storage/v1/object/uploads/house-ads/abc.png",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(updateAdSlot).toHaveBeenCalledWith("slot-1", { source: "GOOGLE", houseAdImageUrl: null, houseAdTargetUrl: null });
+    expect(res.status).toBe(200);
+  });
+
+  it("não tenta apagar nada quando o slot não tinha houseAdImageUrl configurado", async () => {
+    dbMock.adSlot.findUnique.mockResolvedValueOnce({ houseAdImageUrl: null });
+    const fetchSpy = vi.spyOn(global, "fetch" as any) as any;
+
+    const res = await PATCH(
+      makeRequest({ source: "GOOGLE", houseAdImageUrl: null, houseAdTargetUrl: null }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+  });
 });
