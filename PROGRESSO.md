@@ -1,5 +1,30 @@
 # Progresso do Projeto
 
+## Backlog técnico (4 itens, 5 tasks) — completo (2026-07-23)
+
+Usuário pediu pra resolver, nesta ordem: backlog técnico → Google Ads OAuth → sistema de rating.
+Plano `docs/superpowers/plans/2026-07-23-backlog-tecnico.md`, 5 tasks via
+subagent-driven-development, todas revisadas individualmente, zero Critical/Important em aberto:
+
+1. `lib/ads/private-ads.ts::listAvailableSlotsForAdvertiser` agora filtra `source:"PRIVATE"` +
+   `enabled:true` — antes oferecia até posições Google/House pro anunciante comprar.
+2. `lib/private-ad-status.ts` novo, unifica o mapa de status do `PrivateAd` entre
+   `/anunciante/anuncios` e `/admin/anuncios/privados/[id]` — **corrige bug real**: um anúncio
+   `CANCELLED` aparecia com badge vazio + texto cru no admin, agora mostra "Cancelado" cinza.
+3. As 2 páginas de "Inscritos" (`/organizador/eventos/[id]/inscritos`,
+   `/admin/eventos/[id]/inscritos`) reaproveitam `lib/registration-status.ts` pros 6 status reais
+   do filtro, mantendo `REFUNDED`/`REFUND_PENDING` locais (são valores sintéticos de filtro, não
+   status reais do enum — não fazia sentido poluir o lib compartilhado com eles).
+4. `PageViewLogger` usa `navigator.sendBeacon` (com fallback pra `fetch`) em vez de `fetch`
+   bloqueante em toda navegação client-side.
+5. `recharts` dos dashboards do admin/organizador agora carrega sob demanda
+   (`next/dynamic(ssr:false)`, via wrappers `LineChartLazy`/`MultiLineChartLazy`) — **verificado
+   com evidência real** (não só teoria): os chunks do recharts (349KB+13.9KB) têm zero referência
+   no client-reference-manifest de `/admin`/`/organizador`, confirmando que saíram do bundle
+   inicial dessas 2 páginas.
+
+Suite final 1171/1171, `tsc --noEmit` limpo, `npm run build` OK. Ainda não deployado.
+
 ## Fix: link da Moderação de anúncios privados faltava no admin (2026-07-22)
 
 Usuário reportou que não achava onde o anunciante cadastra anúncio privado nem onde o admin
