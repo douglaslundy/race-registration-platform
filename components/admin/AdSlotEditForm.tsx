@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   id: string;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function AdSlotEditForm({ id, enabled: initialEnabled, source: initialSource, googleAdUnitId: initialGoogleAdUnitId }: Props) {
+  const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [source, setSource] = useState(initialSource ?? "");
   const [googleAdUnitId, setGoogleAdUnitId] = useState(initialGoogleAdUnitId ?? "");
@@ -28,10 +30,12 @@ export default function AdSlotEditForm({ id, enabled: initialEnabled, source: in
         enabled,
         source: source || null,
         googleAdUnitId: source === "GOOGLE" ? (googleAdUnitId || null) : null,
+        ...(source !== "HOUSE" ? { houseAdImageUrl: null, houseAdTargetUrl: null } : {}),
       }),
     });
     if (res.ok) {
       setSaved(true);
+      router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data.error ? JSON.stringify(data.error) : "Erro ao salvar");
@@ -53,6 +57,7 @@ export default function AdSlotEditForm({ id, enabled: initialEnabled, source: in
         <option value="">Nenhuma</option>
         <option value="GOOGLE">Google AdSense</option>
         <option value="PRIVATE">Privada (marketplace de anunciantes)</option>
+        <option value="HOUSE">Anúncio da casa (admin)</option>
       </select>
       {source === "GOOGLE" && (
         <input
