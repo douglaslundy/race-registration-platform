@@ -12,6 +12,16 @@ import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqu
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { checkLowStockAlert } from "@/lib/alerts/low-stock";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { sendProxyRegistrationInvite } from "@/lib/proxy-athlete";
+import { isValidCpf } from "@/lib/cpf";
+
+const proxyAthleteSchema = z.object({
+  name: z.string().min(2).max(100),
+  birthDate: z.string().min(1),
+  cpf: z.string().min(11).max(14).refine(isValidCpf, "CPF inválido"),
+  phone: z.string().min(10).max(20),
+  email: z.string().email().optional(),
+});
 
 const checkoutSchema = z.object({
   eventId: opaqueIdField(),
@@ -30,6 +40,7 @@ const checkoutSchema = z.object({
   cardToken: z.string().max(200).optional(),
   cardBrand: z.string().max(50).optional(),
   installments: z.number().int().min(1).max(12).optional(),
+  proxyAthlete: proxyAthleteSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -111,6 +122,17 @@ export async function POST(req: NextRequest) {
       select: { cpf: true },
     }),
   ]);
+
+  // Se a inscrição foi criada pra outro atleta e um e-mail real foi informado, manda o convite de
+  // acesso (fire-and-forget) assim que sabemos que a conta existe — não espera o pagamento ser
+  // confirmado, já que a conta já foi criada nesse ponto independente do status do pagamento.
+  if (checkout.proxyAthleteInvite) {
+    void sendProxyRegistrationInvite({
+      name: checkout.proxyAthleteInvite.name,
+      email: checkout.proxyAthleteInvite.email,
+      invitedByName: buyer!.name,
+    });
+  }
 
   const effectiveCpf = cpf ?? athleteProfile?.cpf ?? undefined;
 

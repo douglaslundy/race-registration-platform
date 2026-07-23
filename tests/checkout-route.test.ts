@@ -27,12 +27,17 @@ vi.mock("@/lib/alerts/low-stock", () => ({
   checkLowStockAlert: vi.fn(),
 }));
 
+vi.mock("@/lib/proxy-athlete", () => ({
+  sendProxyRegistrationInvite: vi.fn(),
+}));
+
 vi.mock("@/lib/rate-limit", async () => {
   const actual = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit");
   return { ...actual, checkRateLimit: vi.fn() };
 });
 
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendProxyRegistrationInvite } from "@/lib/proxy-athlete";
 
 const authMock = vi.mocked(auth);
 const enabledMethodsMock = vi.mocked(getEnabledPaymentMethods);
@@ -257,5 +262,101 @@ describe("checkout api", () => {
     expect(txMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "PAYMENT_CARD_REJECTED" }) }),
     );
+  });
+
+  it("dispara o convite de acesso quando createCheckout retorna proxyAthleteInvite com e-mail real", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 10000,
+      discountAmount: 0,
+      platformFeeAmount: 0,
+      proxyAthleteInvite: { userId: "new-athlete-1", name: "Maria Atleta", email: "maria@example.com" },
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Comprador", email: "comprador@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      createPayment: vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-1", status: "PENDING" }),
+    } as any);
+    dbMock.payment.create.mockResolvedValueOnce({ id: "payment-1" });
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+          proxyAthlete: {
+            name: "Maria Atleta",
+            birthDate: "1995-05-20",
+            cpf: "111.444.777-35",
+            phone: "35999998888",
+            email: "maria@example.com",
+          },
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(sendProxyRegistrationInvite).toHaveBeenCalledWith({
+      name: "Maria Atleta",
+      email: "maria@example.com",
+      invitedByName: "Comprador",
+    });
+  });
+
+  it("não dispara convite quando createCheckout não retorna proxyAthleteInvite", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 10000,
+      discountAmount: 0,
+      platformFeeAmount: 0,
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      createPayment: vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-1", status: "PENDING" }),
+    } as any);
+    dbMock.payment.create.mockResolvedValueOnce({ id: "payment-1" });
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({ eventId: "event-1", ticketBatchId: "batch-1", paymentMethod: "PIX" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(sendProxyRegistrationInvite).not.toHaveBeenCalled();
+  });
+
+  it("rejeita proxyAthlete com CPF inválido (dígito verificador), sem chamar createCheckout", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: "event-1",
+          ticketBatchId: "batch-1",
+          paymentMethod: "PIX",
+          proxyAthlete: {
+            name: "Maria Atleta",
+            birthDate: "1995-05-20",
+            cpf: "111.444.777-36",
+            phone: "35999998888",
+          },
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(400);
+    expect(createCheckout).not.toHaveBeenCalled();
   });
 });
