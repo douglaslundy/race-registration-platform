@@ -24,6 +24,7 @@ const schema = z.object({
   cancellationRequiresApproval: z.boolean().optional(),
   cancellationContactPhone: z.string().optional(),
   cancellationContactEmail: z.string().optional(),
+  allowProxyRegistration: z.boolean().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -64,6 +65,7 @@ type EventData = {
   cancellationRequiresApproval?: boolean;
   cancellationContactPhone?: string | null;
   cancellationContactEmail?: string | null;
+  allowProxyRegistration?: boolean;
 };
 
 export default function EditEventForm({
@@ -98,6 +100,7 @@ export default function EditEventForm({
       cancellationRequiresApproval: event.cancellationRequiresApproval ?? false,
       cancellationContactPhone: event.cancellationContactPhone ?? "",
       cancellationContactEmail: event.cancellationContactEmail ?? "",
+      allowProxyRegistration: event.allowProxyRegistration ?? false,
     },
   });
 
@@ -238,6 +241,13 @@ export default function EditEventForm({
           rows={8}
           placeholder="Descreva as regras, categorias, premiação e demais informações do regulamento..."
         />
+      </div>
+
+      <div className="border-t pt-5 dark:border-gray-700">
+        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+          <input type="checkbox" {...register("allowProxyRegistration")} className="h-4 w-4" />
+          Permitir inscrição por procuração (atleta inscrever outra pessoa)
+        </label>
       </div>
 
       {cancellationPolicyEnabled && (

@@ -25,6 +25,7 @@ const updateEventSchema = z.object({
   cancellationRequiresApproval: z.boolean().optional(),
   cancellationContactPhone: z.string().optional().nullable(),
   cancellationContactEmail: z.string().optional().nullable(),
+  allowProxyRegistration: z.boolean().optional(),
 });
 
 async function getEventAndVerifyOwnerByOrganizerId(eventId: string, organizerId: string) {

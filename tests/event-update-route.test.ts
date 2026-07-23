@@ -110,4 +110,19 @@ describe("event update api", () => {
     expect(res.status).toBe(403);
     expect(dbMock.event.update).not.toHaveBeenCalled();
   });
+
+  it("aceita e persiste allowProxyRegistration", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+
+    const res = await PATCH(
+      makeRequest({ allowProxyRegistration: true }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ allowProxyRegistration: true }) }),
+    );
+  });
 });

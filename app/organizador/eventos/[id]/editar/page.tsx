@@ -1,4 +1,4 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -11,10 +11,11 @@ export const metadata: Metadata = { title: "Editar Evento" };
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireOrganizer();
   const { id } = await params;
+  const scope = await resolveActingScope(session);
 
   const [event, cancellationPolicyEnabled] = await Promise.all([
     db.event.findFirst({
-      where: { id, organizer: { userId: session.user.id } },
+      where: scope.actingAsAdmin ? { id } : { id, organizer: { userId: session.user.id } },
       select: {
         id: true, title: true, description: true, modality: true,
         startAt: true, kitPickupAt: true, venueName: true, addressLine: true,
@@ -22,6 +23,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
         bannerUrl: true, listBannerUrl: true, regulationUrl: true, regulationText: true,
         cancellationDeadline: true, cancellationRequiresApproval: true,
         cancellationContactPhone: true, cancellationContactEmail: true,
+        allowProxyRegistration: true,
       },
     }),
     getCancellationPolicyEnabled(),
