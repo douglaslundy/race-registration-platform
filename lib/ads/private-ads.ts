@@ -3,7 +3,7 @@ import { db } from "../db";
 
 export async function listAvailableSlotsForAdvertiser() {
   return db.adSlot.findMany({
-    where: { privateAds: { none: { status: "APPROVED" } } },
+    where: { privateAds: { none: { status: "APPROVED" } }, source: "PRIVATE", enabled: true },
     orderBy: { key: "asc" },
   });
 }

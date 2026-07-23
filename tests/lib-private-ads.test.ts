@@ -13,7 +13,7 @@ describe("listAvailableSlotsForAdvertiser", () => {
     const result = await listAvailableSlotsForAdvertiser();
 
     expect(dbMock.adSlot.findMany).toHaveBeenCalledWith({
-      where: { privateAds: { none: { status: "APPROVED" } } },
+      where: { privateAds: { none: { status: "APPROVED" } }, source: "PRIVATE", enabled: true },
       orderBy: { key: "asc" },
     });
     expect(result).toEqual([{ id: "slot-1", key: "A" }]);
