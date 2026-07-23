@@ -3,8 +3,8 @@ import { formatCurrency } from "@/lib/format";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { parseDateInput } from "@/lib/admin/audit";
 import { getDailySignups, getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence } from "@/lib/dashboard-metrics";
-import LineChart from "@/components/ui/LineChart";
-import MultiLineChart from "@/components/ui/MultiLineChart";
+import LineChart from "@/components/ui/LineChartLazy";
+import MultiLineChart from "@/components/ui/MultiLineChartLazy";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";

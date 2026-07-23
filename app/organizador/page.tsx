@@ -8,8 +8,8 @@ import PrintButton from "@/components/ui/PrintButton";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 import { parseDateInput } from "@/lib/admin/audit";
 import { getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence } from "@/lib/dashboard-metrics";
-import LineChart from "@/components/ui/LineChart";
-import MultiLineChart from "@/components/ui/MultiLineChart";
+import LineChart from "@/components/ui/LineChartLazy";
+import MultiLineChart from "@/components/ui/MultiLineChartLazy";
 
 export const dynamic = "force-dynamic";
 
