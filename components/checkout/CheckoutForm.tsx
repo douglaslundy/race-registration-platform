@@ -13,6 +13,7 @@ import type { MPCardFormHandle } from "./MPCardForm";
 import type { PagarMeCardFormHandle } from "./PagarMeCardForm";
 import EventDisclaimer from "@/components/events/EventDisclaimer";
 import dynamic from "next/dynamic";
+import ProxyAthleteModal, { type ProxyAthleteData } from "./ProxyAthleteModal";
 
 const MPCardForm = dynamic(() => import("./MPCardForm"), { ssr: false });
 const PagarMeCardForm = dynamic(() => import("./PagarMeCardForm"), { ssr: false });
@@ -92,6 +93,7 @@ export default function CheckoutForm({
   serviceFeePercent = 0,
   serviceFeeMin = 0,
   appName,
+  allowProxyRegistration,
 }: {
   event: EventData;
   batches: Batch[];
@@ -103,6 +105,7 @@ export default function CheckoutForm({
   serviceFeePercent?: number;
   serviceFeeMin?: number;
   appName?: string;
+  allowProxyRegistration?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +125,9 @@ export default function CheckoutForm({
   const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [proxyAthlete, setProxyAthlete] = useState<ProxyAthleteData | null>(null);
+  const [proxyModalOpen, setProxyModalOpen] = useState(false);
+  const [registeringFor, setRegisteringFor] = useState<"self" | "other">("self");
 
   const {
     register,
@@ -237,6 +243,10 @@ export default function CheckoutForm({
       setError("Selecione uma categoria para concluir a inscrição.");
       return;
     }
+    if (registeringFor === "other" && !proxyAthlete) {
+      setError("Preencha os dados do atleta para quem você está se inscrevendo.");
+      return;
+    }
     try {
       let cardToken: string | undefined;
       let cardBrand: string | undefined;
@@ -269,6 +279,17 @@ export default function CheckoutForm({
         cardToken,
         cardBrand,
         installments,
+        ...(proxyAthlete
+          ? {
+              proxyAthlete: {
+                name: proxyAthlete.name,
+                birthDate: proxyAthlete.birthDate,
+                cpf: proxyAthlete.cpf,
+                phone: proxyAthlete.phone,
+                email: proxyAthlete.email,
+              },
+            }
+          : {}),
       };
 
       const res = await fetch("/api/checkout", {
@@ -351,6 +372,61 @@ export default function CheckoutForm({
           {error}
         </div>
       )}
+      {allowProxyRegistration && (
+        <div className="card">
+          <h3 className="font-semibold mb-3">Para quem é esta inscrição?</h3>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 dark:border-gray-600">
+              <input
+                type="radio"
+                checked={registeringFor === "self"}
+                onChange={() => { setRegisteringFor("self"); setProxyAthlete(null); }}
+                className="accent-primary-600"
+              />
+              Para mim
+            </label>
+            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 dark:border-gray-600">
+              <input
+                type="radio"
+                checked={registeringFor === "other"}
+                onChange={() => { setRegisteringFor("other"); setProxyModalOpen(true); }}
+                className="accent-primary-600"
+              />
+              Para outro atleta
+            </label>
+          </div>
+          {proxyAthlete && (
+            <div className="mt-3 flex items-center justify-between rounded-lg border border-primary-200 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-800 px-3 py-2 text-sm">
+              <span>Inscrevendo: <strong>{proxyAthlete.name}</strong> — CPF {proxyAthlete.cpf}</span>
+              <button type="button" onClick={() => setProxyModalOpen(true)} className="text-primary-600 underline text-xs">Editar</button>
+            </div>
+          )}
+        </div>
+      )}
+      <ProxyAthleteModal
+        open={proxyModalOpen}
+        routes={event.routes}
+        categories={event.categories}
+        onSave={(saved) => {
+          // ProxyAthleteData junta 2 tipos de campo num só formulário (UX de uma tela só): os de
+          // IDENTIDADE (nome/nascimento/CPF/telefone/e-mail — viram o objeto proxyAthlete enviado
+          // à API) e os DA INSCRIÇÃO em si (percurso/categoria/camiseta/equipe/contato de
+          // emergência/observação médica — que já são campos do formulário principal, geridos
+          // pelo mesmo react-hook-form de uma inscrição normal). Sem este setValue, os dados de
+          // inscrição digitados no modal nunca chegariam no payload — o backend só entende
+          // proxyAthlete como identidade (name/birthDate/cpf/phone/email), nada mais.
+          setValue("routeId", saved.routeId ?? "", { shouldValidate: true });
+          setValue("categoryId", saved.categoryId ?? "", { shouldValidate: true });
+          setValue("shirtSize", (saved.shirtSize as FormData["shirtSize"]) ?? undefined);
+          setValue("teamName", saved.teamName ?? "");
+          setValue("emergencyContactName", saved.emergencyContactName, { shouldValidate: true });
+          setValue("emergencyContactPhone", saved.emergencyContactPhone, { shouldValidate: true });
+          setValue("medicalNotes", saved.medicalNotes ?? "");
+          setProxyAthlete(saved);
+          setProxyModalOpen(false);
+        }}
+        onCancel={() => { setProxyModalOpen(false); if (!proxyAthlete) setRegisteringFor("self"); }}
+      />
       <div className="card">
         <h3 className="font-semibold mb-3">Lote de inscrição</h3>
         <div className="space-y-2">

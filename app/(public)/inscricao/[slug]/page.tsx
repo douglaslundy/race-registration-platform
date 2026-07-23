@@ -98,6 +98,7 @@ export default async function InscricaoPage({ params }: Props) {
         serviceFeePercent={serviceFeePercent}
         serviceFeeMin={serviceFeeMin}
         appName={appName}
+        allowProxyRegistration={event.allowProxyRegistration}
       />
     </main>
   );
