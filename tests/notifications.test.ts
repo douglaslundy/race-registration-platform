@@ -19,6 +19,9 @@ vi.mock("@/lib/whatsapp-settings", () => ({
 vi.mock("@/lib/whatsapp/evolution-client", () => ({
   getConnectionState: vi.fn(),
 }));
+vi.mock("@/lib/proxy-athlete", () => ({
+  isPlaceholderEmail: vi.fn(),
+}));
 
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
@@ -26,14 +29,21 @@ import { sendRegistrationConfirmationEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import { getConnectionState } from "@/lib/whatsapp/evolution-client";
+import { isPlaceholderEmail } from "@/lib/proxy-athlete";
 
 const dbMock = db as any;
 
 const orderFixture = {
-  buyer: { name: "Atleta Teste", email: "atleta@example.com" },
+  buyerUserId: "user-1",
+  buyer: { name: "Atleta Teste", email: "atleta@example.com", athleteProfile: { phone: "5511999999999" } },
   event: { id: "event-1", title: "Corrida Teste" },
   registrations: [
-    { id: "reg-1", notes: "Chegarei atrasado", athlete: { athleteProfile: { phone: "5511999999999" } } },
+    {
+      id: "reg-1",
+      notes: "Chegarei atrasado",
+      athleteUserId: "user-1",
+      athlete: { name: "Atleta Teste", email: "atleta@example.com", athleteProfile: { phone: "5511999999999" } },
+    },
   ],
 };
 
@@ -44,6 +54,7 @@ describe("notifyOrderConfirmed", () => {
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
     vi.mocked(getWhatsAppConfig).mockResolvedValue({ apiUrl: "", apiKey: "", instanceName: "" });
+    vi.mocked(isPlaceholderEmail).mockReturnValue(false);
   });
 
   it("envia o e-mail com o código do pedido e a observação, e grava confirmationEmailSentAt", async () => {
@@ -171,6 +182,83 @@ describe("notifyOrderConfirmed", () => {
     vi.mocked(sendWhatsAppMessage).mockRejectedValueOnce(new Error("WhatsApp API down"));
 
     await expect(notifyOrderConfirmed("order-1")).resolves.toBeUndefined();
+    expect(dbMock.order.update).toHaveBeenCalledWith({
+      where: { id: "order-1" },
+      data: { confirmationEmailSentAt: expect.any(Date) },
+    });
+  });
+
+  const proxyOrderFixture = {
+    buyerUserId: "buyer-1",
+    buyer: { name: "Comprador Teste", email: "comprador@example.com", athleteProfile: { phone: "5511777777777" } },
+    event: { id: "event-1", title: "Corrida Teste" },
+    registrations: [
+      {
+        id: "reg-1",
+        notes: null,
+        athleteUserId: "athlete-1",
+        athlete: { name: "Atleta Convidado", email: "atleta-convidado@example.com", athleteProfile: { phone: "5511888888888" } },
+      },
+    ],
+  };
+
+  it("procuração: manda e-mail + WhatsApp pro comprador com texto avisando quem ele inscreveu", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValue("open");
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "comprador@example.com", name: "Comprador Teste" }),
+    );
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511777777777",
+      expect.stringContaining("Você inscreveu Atleta Convidado"),
+      expect.anything(),
+    );
+  });
+
+  it("procuração: manda e-mail + WhatsApp pro atleta com texto avisando quem criou a inscrição", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValue("open");
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta-convidado@example.com", name: "Atleta Convidado" }),
+    );
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511888888888",
+      expect.stringContaining("Comprador Teste criou uma inscrição pra você"),
+      expect.anything(),
+    );
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(2);
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it("procuração: não manda e-mail pro atleta quando o e-mail é sintético, mas manda WhatsApp normalmente", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValue("open");
+    vi.mocked(isPlaceholderEmail).mockReturnValue(true);
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(1);
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "comprador@example.com" }),
+    );
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511888888888", expect.any(String), expect.anything());
+  });
+
+  it("procuração: confirmationEmailSentAt é gravado só 1x, refletindo o e-mail do comprador", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(dbMock.order.update).toHaveBeenCalledTimes(1);
     expect(dbMock.order.update).toHaveBeenCalledWith({
       where: { id: "order-1" },
       data: { confirmationEmailSentAt: expect.any(Date) },
