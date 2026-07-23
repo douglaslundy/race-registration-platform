@@ -6,12 +6,12 @@ function todayUtcMidnight(): Date {
   return d;
 }
 
-export async function recordImpression(adSlotId: string): Promise<void> {
+export async function recordImpression(adSlotId: string, source: string): Promise<void> {
   try {
     const date = todayUtcMidnight();
     await db.adMetricsSnapshot.upsert({
-      where: { adSlotId_date: { adSlotId, date } },
-      create: { adSlotId, date, impressions: 1, clicks: 0, estimatedRevenueMicros: 0n, currency: "BRL" },
+      where: { adSlotId_date_source: { adSlotId, date, source } },
+      create: { adSlotId, date, source, impressions: 1, clicks: 0, estimatedRevenueMicros: 0n, currency: "BRL" },
       update: { impressions: { increment: 1 } },
     });
   } catch {
@@ -19,12 +19,12 @@ export async function recordImpression(adSlotId: string): Promise<void> {
   }
 }
 
-export async function recordClick(adSlotId: string): Promise<void> {
+export async function recordClick(adSlotId: string, source: string): Promise<void> {
   try {
     const date = todayUtcMidnight();
     await db.adMetricsSnapshot.upsert({
-      where: { adSlotId_date: { adSlotId, date } },
-      create: { adSlotId, date, impressions: 0, clicks: 1, estimatedRevenueMicros: 0n, currency: "BRL" },
+      where: { adSlotId_date_source: { adSlotId, date, source } },
+      create: { adSlotId, date, source, impressions: 0, clicks: 1, estimatedRevenueMicros: 0n, currency: "BRL" },
       update: { clicks: { increment: 1 } },
     });
   } catch {

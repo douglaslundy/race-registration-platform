@@ -633,6 +633,7 @@ model AdSlot {
 model AdMetricsSnapshot {
   id                     String   @id @default(cuid())
   adSlotId               String
+  source                 String   @default("PRIVATE")
   date                   DateTime
   impressions            Int
   clicks                 Int
@@ -642,7 +643,7 @@ model AdMetricsSnapshot {
 
   adSlot AdSlot @relation(fields: [adSlotId], references: [id])
 
-  @@unique([adSlotId, date])
+  @@unique([adSlotId, date, source])
   @@map("ad_metrics_snapshots")
 }
 
