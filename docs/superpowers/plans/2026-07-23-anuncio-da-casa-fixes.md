@@ -35,7 +35,7 @@ vazamento. As outras 3 correções são pontuais nas rotas já existentes.
 
 ---
 
-### Task A: `AdMetricsSnapshot.source` — separar métricas por origem
+### Task 1: `AdMetricsSnapshot.source` — separar métricas por origem
 
 **Files:**
 - Modify: `prisma/schema.prisma`
@@ -46,7 +46,7 @@ vazamento. As outras 3 correções são pontuais nas rotas já existentes.
 **Interfaces:**
 - Produces: `recordImpression(adSlotId: string, source: string): Promise<void>`,
   `recordClick(adSlotId: string, source: string): Promise<void>` — assinatura muda (ganham 2º
-  parâmetro obrigatório) — consumido pela Task B.
+  parâmetro obrigatório) — consumido pela Task 2.
 
 - [ ] **Step 1: Escrever os testes que falham**
 
@@ -231,8 +231,8 @@ Expected: PASS (6 testes — 3 de `recordImpression` + 3 de `recordClick`)
 
 Nota: os call sites existentes (`AdSlotRenderer.tsx`, os 2 endpoints de clique) ainda chamam
 `recordImpression(slot.id)`/`recordClick(...)` com 1 argumento só — isso vai quebrar o `tsc` até
-a Task B atualizar os call sites. **Não rodar a suíte completa nem `tsc --noEmit` nesta task** —
-isso é esperado e corrigido na Task B, que já está planejada em seguida. Rodar só o teste do
+a Task 2 atualizar os call sites. **Não rodar a suíte completa nem `tsc --noEmit` nesta task** —
+isso é esperado e corrigido na Task 2, que já está planejada em seguida. Rodar só o teste do
 Step 5 acima pra confirmar o comportamento da própria função.
 
 - [ ] **Step 6: Commit**
@@ -244,7 +244,7 @@ git commit -m "feat: AdMetricsSnapshot ganha dimensao source (separa metricas HO
 
 ---
 
-### Task B: Atualizar os 4 call sites de `recordImpression`/`recordClick`
+### Task 2: Atualizar os 4 call sites de `recordImpression`/`recordClick`
 
 **Files:**
 - Modify: `components/ads/AdSlotRenderer.tsx`
@@ -254,7 +254,7 @@ git commit -m "feat: AdMetricsSnapshot ganha dimensao source (separa metricas HO
 - Test: `tests/ads-click-house-route.test.ts`
 
 **Interfaces:**
-- Consumes: `recordImpression(adSlotId, source)`, `recordClick(adSlotId, source)` (Task A).
+- Consumes: `recordImpression(adSlotId, source)`, `recordClick(adSlotId, source)` (Task 1).
 
 - [ ] **Step 1: Atualizar os testes que falham**
 
@@ -342,7 +342,7 @@ Run: `npx vitest run`
 Expected: todos os testes passam
 
 Run: `npx tsc --noEmit`
-Expected: sem erros (essa é a task que corrige o erro de tipo deixado pela Task A)
+Expected: sem erros (essa é a task que corrige o erro de tipo deixado pela Task 1)
 
 Run: `npm run build`
 Expected: build de produção limpo
@@ -356,7 +356,7 @@ git commit -m "feat: call sites de recordImpression/recordClick passam a informa
 
 ---
 
-### Task C: `buildAdReportData` só soma métricas `source: "PRIVATE"`
+### Task 3: `buildAdReportData` só soma métricas `source: "PRIVATE"`
 
 **Files:**
 - Modify: `lib/ads/private-ad-report.ts`
@@ -451,7 +451,7 @@ git commit -m "fix: relatorio do anunciante nao soma mais metricas do anuncio da
 
 ---
 
-### Task D: URL de destino restrita a http/https + cobertura de teste das falhas de storage
+### Task 4: URL de destino restrita a http/https + cobertura de teste das falhas de storage
 
 **Files:**
 - Modify: `app/api/admin/ads/slots/[id]/house-ad/route.ts`
@@ -624,7 +624,7 @@ git commit -m "fix: restringe URL de destino do anuncio da casa a http/https + t
 
 ---
 
-### Task E: Limpar arquivo órfão no storage quando o anúncio da casa é removido
+### Task 5: Limpar arquivo órfão no storage quando o anúncio da casa é removido
 
 **Files:**
 - Modify: `app/api/admin/ads/slots/[id]/route.ts`
@@ -637,7 +637,7 @@ git commit -m "fix: restringe URL de destino do anuncio da casa a http/https + t
 
 Em `tests/admin-ad-slots-route.test.ts`, adicionar os 2 testes abaixo ao final do
 `describe("PATCH /api/admin/ads/slots/[id]", ...)`, antes do fechamento (depois do teste da
-Task D):
+Task 4):
 
 ```ts
   it("apaga o arquivo do storage quando houseAdImageUrl é limpo (troca de fonte)", async () => {
@@ -763,8 +763,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 ```
 
-(A checagem de esquema da Task D é preservada — este Step substitui o arquivo inteiro porque a
-Task D já rodou antes e está na base desta task.)
+(A checagem de esquema da Task 4 é preservada — este Step substitui o arquivo inteiro porque a
+Task 4 já rodou antes e está na base desta task.)
 
 - [ ] **Step 4: Rodar os testes e confirmar que passam**
 
