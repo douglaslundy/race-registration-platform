@@ -14,13 +14,10 @@ import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTa
 
 export const metadata: Metadata = { title: "Inscritos — Admin" };
 
-const REGISTRATION_STATUS: Record<string, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
-  CONFIRMED: { label: "Confirmada", color: BADGE.green },
-  CANCELLED: { label: "Cancelada", color: BADGE.red },
-  TRANSFERRED: { label: "Transferida", color: BADGE.blue },
-  WAITLISTED: { label: "Lista de espera", color: BADGE.gray },
-  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
+import { REGISTRATION_STATUS } from "@/lib/registration-status";
+
+const FILTER_STATUS_OPTIONS: Record<string, { label: string; color: string }> = {
+  ...REGISTRATION_STATUS,
   REFUNDED: { label: "Estornado", color: BADGE.purple },
   REFUND_PENDING: { label: "Cancelado — reembolso pendente", color: BADGE.orange },
 };
@@ -186,7 +183,7 @@ export default async function AdminInscritosPage({
           <label className="block text-xs text-gray-500 mb-1">Status</label>
           <select name="status" defaultValue={status} className="input-field text-sm py-1.5">
             <option value="">Todos</option>
-            {Object.entries(REGISTRATION_STATUS).map(([value, info]) => (
+            {Object.entries(FILTER_STATUS_OPTIONS).map(([value, info]) => (
               <option key={value} value={value}>{info.label}</option>
             ))}
           </select>
