@@ -1,4 +1,7 @@
 import { db } from "@/lib/db";
+import { getSetting } from "@/lib/settings";
+import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
+import { sendAdvertiserPromotionEmail } from "@/lib/email";
 
 export interface PromoteToAdvertiserInput {
   userId: string;
@@ -6,6 +9,7 @@ export interface PromoteToAdvertiserInput {
   contactEmail: string;
   contactPhone: string;
   promotedByUserId: string;
+  promotedByName?: string;
 }
 
 export interface PromoteToAdvertiserResult {
@@ -18,13 +22,23 @@ export interface PromoteToAdvertiserResult {
  * Promove um usuário existente (deve estar com papel ATHLETE) a ADVERTISER, criando o
  * AdvertiserProfile correspondente na mesma transação — nunca deixa o papel mudado sem o perfil
  * (companyName/contactEmail/contactPhone são obrigatórios em qualquer fluxo que compre um plano).
+ * Bloqueada quando o marketplace de anunciantes está desligado, mesma checagem do autosserviço.
  */
 export async function promoteToAdvertiser(
   input: PromoteToAdvertiserInput,
 ): Promise<PromoteToAdvertiserResult> {
+  const enabled = await getSetting("ads_marketplace_enabled");
+  if (enabled !== "true") {
+    return {
+      ok: false,
+      error: "Cadastro de anunciantes não está disponível no momento",
+      status: 403,
+    };
+  }
+
   const user = await db.user.findUnique({
     where: { id: input.userId },
-    select: { id: true, role: true },
+    select: { id: true, name: true, email: true, role: true },
   });
   if (!user) {
     return { ok: false, error: "Usuário não encontrado", status: 404 };
@@ -57,6 +71,19 @@ export async function promoteToAdvertiser(
       },
     });
   });
+
+  const cfg = await getSmtpConfig();
+  if (isSmtpReady(cfg)) {
+    try {
+      await sendAdvertiserPromotionEmail({
+        to: user.email,
+        name: user.name ?? "",
+        promotedByName: input.promotedByName ?? "Um administrador",
+      });
+    } catch (err) {
+      console.error("[promoteToAdvertiser] notification email failed:", err);
+    }
+  }
 
   return { ok: true };
 }
