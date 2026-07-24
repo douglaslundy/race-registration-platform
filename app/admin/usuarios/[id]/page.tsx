@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import ChangeUserRoleButton from "@/components/admin/ChangeUserRoleButton";
+import PromoteToAdvertiserButton from "@/components/admin/PromoteToAdvertiserButton";
 import ToggleUserActiveButton from "@/components/admin/ToggleUserActiveButton";
 import UserDeleteButton from "@/components/admin/UserDeleteButton";
 import type { Metadata } from "next";
@@ -99,6 +100,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               Exportar inscrições CSV
             </Link>
             <ChangeUserRoleButton userId={user.id} currentRole={user.role} />
+            {user.role === "ATHLETE" && <PromoteToAdvertiserButton userId={user.id} />}
             <ToggleUserActiveButton userId={user.id} active={user.active} />
             <UserDeleteButton userId={user.id} userName={user.name} />
           </div>
