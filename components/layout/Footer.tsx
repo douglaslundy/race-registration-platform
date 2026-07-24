@@ -15,6 +15,7 @@ export default function Footer({ appName }: { appName: string }) {
               <li><Link href="/eventos" className="hover:text-white transition-colors">Ver eventos</Link></li>
               <li><Link href="/auth/cadastro" className="hover:text-white transition-colors">Criar conta</Link></li>
               <li><Link href="/auth/login" className="hover:text-white transition-colors">Entrar</Link></li>
+              <li><Link href="/auth/cadastro-anunciante" className="hover:text-white transition-colors">Anuncie no site</Link></li>
             </ul>
           </div>
           <div>
