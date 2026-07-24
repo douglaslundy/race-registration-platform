@@ -1,36 +1,38 @@
 # Progresso do Projeto
 
-## PRÓXIMA TAREFA (retomar por aqui — itens 1 e 2 da fila concluídos em 2026-07-24, falta só o deploy)
+## PRÓXIMA TAREFA: sistema de rating de atletas — AGUARDAR usuário pedir pra começar
 
-**Contexto**: usuário reportou não conseguir achar como anunciar no marketplace nem como o admin
-promove alguém a anunciante. Investigado e corrigido via plano
-`docs/superpowers/plans/2026-07-24-acesso-anunciante.md` (4 tasks, todas implementadas, revisadas
-individualmente e revisão final de branch inteira "Ready to merge: Yes", zero
-Critical/Important).
+Usuário pediu explicitamente, em 2026-07-24, pra eu **aguardar** antes de iniciar o sistema de
+rating — não começar nada sozinho, nem brainstorm, até ele retomar o assunto. Quando ele pedir:
 
-A revisão final achou 3 itens Minor (nenhum bloqueante). Usuário pediu pra fazer, nesta ordem
-exata — **itens 1 e 2 já implementados nesta sessão**, commits `4f2e2d6` (bloqueio) e `289b24d`
-(notificação):
-1. ✅ Bloquear a promoção de anunciante (`lib/advertisers/promote.ts::promoteToAdvertiser`) quando
-   o marketplace estiver desligado — mesma checagem `ads_marketplace_enabled` do autosserviço
-   (`app/api/auth/register-advertiser/route.ts:18-21`). Retorna 403 "Cadastro de anunciantes não
-   está disponível no momento" antes até de buscar o usuário.
-2. ✅ Notificar por e-mail o usuário promovido a anunciante — `sendAdvertiserPromotionEmail`
-   (`lib/email.ts`), best-effort (guard `getSmtpConfig`/`isSmtpReady`, nunca falha a promoção se o
-   envio der erro), disparado depois da transação. Diferente do convite de assistente/procuração:
-   a conta já existe e já tem senha, então é só aviso com link pro painel (`/anunciante`), sem
-   token de redefinição. Rota (`app/api/admin/users/[id]/promote-advertiser/route.ts`) passa
-   `promotedByName: session.user.name`.
-3. **PENDENTE — usuário confirmou em 2026-07-24 que NÃO quer deploy agora** ("só commitar/enviar
-   depois"): Deploy de tudo (estas 2 correções + as 4 tasks do plano original) — `git push` →
-   `git pull` na VPS → `docker build` → **sem mudança de schema nesta leva** (só código) →
-   `docker compose up -d --no-deps app`. Não fazer push/deploy sem novo pedido explícito.
+1. Rodar `superpowers:brainstorming` primeiro (é criação de feature nova do zero — schema, UI,
+   regra de pontuação — não existe nada disso no código hoje, confirmado por busca no repo
+   inteiro numa sessão anterior).
+2. Requisito já conhecido de antemão (não esquecer de perguntar/considerar): precisa de
+   **pontuação retroativa pros atletas já cadastrados/inscritos**, não só pra inscrições novas
+   dali pra frente.
+3. Depois do brainstorm: spec → plano → `superpowers:subagent-driven-development` → revisão →
+   perguntar sobre deploy no final, mesmo padrão usado nas últimas sessões.
 
-Suíte final 1181/1181, `tsc --noEmit` limpo, `npm run build` OK (rodado depois das 2 correções).
+**Contexto necessário pra retomar**: nenhum arquivo específico ainda — a feature não existe, o
+primeiro passo real é o brainstorm com o usuário pra definir escopo (ex.: o que gera pontos,
+quem vê o rating, como funciona a retroatividade).
 
-**Contexto necessário pra retomar**: ler só este bloco. Não precisa reler o resto deste
-PROGRESSO.md nem o plano de novo — os 2 itens já estão implementados, só falta perguntar ao
-usuário se pode fazer o deploy (item 3).
+## Fila de acesso a anunciante — CONCLUÍDA e DEPLOYADA em 2026-07-24
+
+Plano `docs/superpowers/plans/2026-07-24-acesso-anunciante.md` (4 tasks — link público no rodapé
++ fluxo dedicado de promoção admin→anunciante) + os 2 achados Minor da revisão final, corrigidos
+na sequência pedida pelo usuário:
+1. Bloqueio da promoção quando `ads_marketplace_enabled` está desligado (commit `4f2e2d6`).
+2. Notificação por e-mail (`sendAdvertiserPromotionEmail`) pro usuário promovido (commit
+   `289b24d`).
+3. Deploy: `git push origin main` (`54b0ab9..d8f9656`) → `/opt/corridas/deploy.sh` na VPS (`git
+   pull` → `docker build` → `docker compose up -d --no-deps app`) → smoke test:
+   `https://circuitodascorridas.com.br` `/`, `/eventos`, `/auth/cadastro-anunciante` 200;
+   `/admin/usuarios`, `/anunciante` 307 (redirect de login, esperado sem sessão). `docker logs
+   corridas-app` limpo. Sem mudança de schema nesta leva.
+
+Suíte final 1181/1181, `tsc --noEmit` limpo, `npm run build` OK.
 
 ## DEPLOY (2026-07-24) — feature anúncio da casa + correções + backlog técnico
 
