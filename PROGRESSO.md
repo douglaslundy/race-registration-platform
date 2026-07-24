@@ -1,5 +1,17 @@
 # Progresso do Projeto
 
+## DEPLOY (2026-07-24) — feature anúncio da casa + correções + backlog técnico
+
+`git push origin main` (`db19664..54b0ab9`, 27 commits) → `git pull` na VPS → `docker build` →
+`docker compose run --rm app sh -c "npx prisma db push --skip-generate --accept-data-loss"`
+(schema novo: `AdSlot.houseAdImageUrl`/`houseAdTargetUrl`, `AdMetricsSnapshot.source` — o
+`--accept-data-loss` era só o aviso esperado da nova constraint única `[adSlotId,date,source]`,
+seguro porque toda linha já era única em `[adSlotId,date]` e o backfill usa o mesmo valor
+constante `'PRIVATE'`) → `docker compose up -d --no-deps app`. Smoke test: `/`, `/eventos` 200;
+`/admin`, `/admin/anuncios`, `/admin/anuncios/moderacao`, `/admin/eventos/1/inscritos`,
+`/organizador`, `/anunciante/anuncios`, `/dashboard/inscricoes` 307 (redirect de login, esperado
+sem sessão). `docker logs corridas-app` limpo.
+
 ## Backlog técnico (4 itens, 5 tasks) — completo (2026-07-23)
 
 Usuário pediu pra resolver, nesta ordem: backlog técnico → Google Ads OAuth → sistema de rating.
