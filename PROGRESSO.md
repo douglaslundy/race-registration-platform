@@ -1,34 +1,36 @@
 # Progresso do Projeto
 
-## PRÓXIMA TAREFA (retomar por aqui — sessão pausada a pedido do usuário em 2026-07-24)
+## PRÓXIMA TAREFA (retomar por aqui — itens 1 e 2 da fila concluídos em 2026-07-24, falta só o deploy)
 
 **Contexto**: usuário reportou não conseguir achar como anunciar no marketplace nem como o admin
 promove alguém a anunciante. Investigado e corrigido via plano
 `docs/superpowers/plans/2026-07-24-acesso-anunciante.md` (4 tasks, todas implementadas, revisadas
 individualmente e revisão final de branch inteira "Ready to merge: Yes", zero
-Critical/Important). HEAD atual: `9cc7818`, **ainda não commitado localmente mudança nenhuma
-pendente, mas ainda NÃO enviado pro GitHub/VPS** (deploy fica pro final da fila abaixo).
+Critical/Important).
 
-A revisão final achou 3 itens Minor (nenhum bloqueante). **Usuário pediu pra fazer, nesta ordem
-exata**:
-1. Bloquear a promoção de anunciante (`lib/advertisers/promote.ts::promoteToAdvertiser`) quando o
-   marketplace estiver desligado — mesma checagem `ads_marketplace_enabled` que o autosserviço já
-   faz em `app/api/auth/register-advertiser/route.ts:18-21`. Hoje o admin consegue promover mesmo
-   com o toggle desligado (achado #2 da revisão final).
-2. Notificar por e-mail o usuário promovido a anunciante (hoje a troca é silenciosa — achado #1
-   da revisão final). Mesmo padrão de guard (`getSmtpConfig`/`isSmtpReady`) já usado no convite de
-   assistente (`lib/assistants/create-or-promote.ts`) e no convite de procuração
-   (`lib/proxy-athlete.ts::sendProxyRegistrationInvite`).
-3. Deploy de tudo (esta correção + os 2 itens acima) — `git push` → `git pull` na VPS →
-   `docker build` → **sem mudança de schema nesta leva** (só código) → `docker compose up -d
-   --no-deps app`.
+A revisão final achou 3 itens Minor (nenhum bloqueante). Usuário pediu pra fazer, nesta ordem
+exata — **itens 1 e 2 já implementados nesta sessão**, commits `4f2e2d6` (bloqueio) e `289b24d`
+(notificação):
+1. ✅ Bloquear a promoção de anunciante (`lib/advertisers/promote.ts::promoteToAdvertiser`) quando
+   o marketplace estiver desligado — mesma checagem `ads_marketplace_enabled` do autosserviço
+   (`app/api/auth/register-advertiser/route.ts:18-21`). Retorna 403 "Cadastro de anunciantes não
+   está disponível no momento" antes até de buscar o usuário.
+2. ✅ Notificar por e-mail o usuário promovido a anunciante — `sendAdvertiserPromotionEmail`
+   (`lib/email.ts`), best-effort (guard `getSmtpConfig`/`isSmtpReady`, nunca falha a promoção se o
+   envio der erro), disparado depois da transação. Diferente do convite de assistente/procuração:
+   a conta já existe e já tem senha, então é só aviso com link pro painel (`/anunciante`), sem
+   token de redefinição. Rota (`app/api/admin/users/[id]/promote-advertiser/route.ts`) passa
+   `promotedByName: session.user.name`.
+3. **PENDENTE — usuário confirmou em 2026-07-24 que NÃO quer deploy agora** ("só commitar/enviar
+   depois"): Deploy de tudo (estas 2 correções + as 4 tasks do plano original) — `git push` →
+   `git pull` na VPS → `docker build` → **sem mudança de schema nesta leva** (só código) →
+   `docker compose up -d --no-deps app`. Não fazer push/deploy sem novo pedido explícito.
 
-**Contexto necessário pra retomar**: ler só este bloco + o plano
-`docs/superpowers/plans/2026-07-24-acesso-anunciante.md` (pra ver o padrão de código já
-estabelecido nas 4 tasks — `lib/advertisers/promote.ts`, a rota
-`app/api/admin/users/[id]/promote-advertiser/route.ts`) — não precisa reler o resto deste
-PROGRESSO.md. Seguir o mesmo processo desta sessão: escrever mini-plano (task extra ou plano novo
-pequeno) → subagent-driven-development → revisão → deploy por último.
+Suíte final 1181/1181, `tsc --noEmit` limpo, `npm run build` OK (rodado depois das 2 correções).
+
+**Contexto necessário pra retomar**: ler só este bloco. Não precisa reler o resto deste
+PROGRESSO.md nem o plano de novo — os 2 itens já estão implementados, só falta perguntar ao
+usuário se pode fazer o deploy (item 3).
 
 ## DEPLOY (2026-07-24) — feature anúncio da casa + correções + backlog técnico
 
