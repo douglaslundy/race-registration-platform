@@ -26,6 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     userId: id,
     ...parsed.data,
     promotedByUserId: session.user.id,
+    promotedByName: session.user.name ?? undefined,
   });
 
   if (!result.ok) {

@@ -329,6 +329,30 @@ export async function sendProxyRegistrationInviteEmail(params: {
   });
 }
 
+/** E-mail avisando o usuário que a conta foi promovida a anunciante pelo admin. Diferente do
+ * convite de assistente/procuração: a conta já existe e já tem senha, então é só um aviso com
+ * link direto pro painel, sem token de redefinição de senha. */
+export async function sendAdvertiserPromotionEmail(params: {
+  to: string;
+  name: string;
+  promotedByName: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const url = `${baseUrl}/anunciante`;
+  await sendMail({
+    to: params.to,
+    subject: `Sua conta agora é de anunciante — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p><strong>${params.promotedByName}</strong> promoveu sua conta para o papel de <strong>Anunciante</strong> no ${appName}.</p>
+       <p>Use seu login e senha de sempre para acessar o painel de anunciante:</p>
+       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Acessar painel do anunciante</a></p>`
+    ),
+  });
+}
+
 /** E-mail com o resumo diário de atividade (admin ou organizador). */
 export async function sendDailySummaryEmail(params: {
   to: string;

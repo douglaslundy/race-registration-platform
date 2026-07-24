@@ -27,7 +27,7 @@ const VALID_BODY = {
 describe("POST /api/admin/users/[id]/promote-advertiser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN", name: "Admin Geral" } } as any);
   });
 
   it("retorna 403 para quem não é admin", async () => {
@@ -68,6 +68,7 @@ describe("POST /api/admin/users/[id]/promote-advertiser", () => {
       contactEmail: "contato@empresa.com",
       contactPhone: "+5511999999999",
       promotedByUserId: "admin-1",
+      promotedByName: "Admin Geral",
     });
   });
 });
