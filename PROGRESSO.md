@@ -1,5 +1,35 @@
 # Progresso do Projeto
 
+## PRÓXIMA TAREFA (retomar por aqui — sessão pausada a pedido do usuário em 2026-07-24)
+
+**Contexto**: usuário reportou não conseguir achar como anunciar no marketplace nem como o admin
+promove alguém a anunciante. Investigado e corrigido via plano
+`docs/superpowers/plans/2026-07-24-acesso-anunciante.md` (4 tasks, todas implementadas, revisadas
+individualmente e revisão final de branch inteira "Ready to merge: Yes", zero
+Critical/Important). HEAD atual: `9cc7818`, **ainda não commitado localmente mudança nenhuma
+pendente, mas ainda NÃO enviado pro GitHub/VPS** (deploy fica pro final da fila abaixo).
+
+A revisão final achou 3 itens Minor (nenhum bloqueante). **Usuário pediu pra fazer, nesta ordem
+exata**:
+1. Bloquear a promoção de anunciante (`lib/advertisers/promote.ts::promoteToAdvertiser`) quando o
+   marketplace estiver desligado — mesma checagem `ads_marketplace_enabled` que o autosserviço já
+   faz em `app/api/auth/register-advertiser/route.ts:18-21`. Hoje o admin consegue promover mesmo
+   com o toggle desligado (achado #2 da revisão final).
+2. Notificar por e-mail o usuário promovido a anunciante (hoje a troca é silenciosa — achado #1
+   da revisão final). Mesmo padrão de guard (`getSmtpConfig`/`isSmtpReady`) já usado no convite de
+   assistente (`lib/assistants/create-or-promote.ts`) e no convite de procuração
+   (`lib/proxy-athlete.ts::sendProxyRegistrationInvite`).
+3. Deploy de tudo (esta correção + os 2 itens acima) — `git push` → `git pull` na VPS →
+   `docker build` → **sem mudança de schema nesta leva** (só código) → `docker compose up -d
+   --no-deps app`.
+
+**Contexto necessário pra retomar**: ler só este bloco + o plano
+`docs/superpowers/plans/2026-07-24-acesso-anunciante.md` (pra ver o padrão de código já
+estabelecido nas 4 tasks — `lib/advertisers/promote.ts`, a rota
+`app/api/admin/users/[id]/promote-advertiser/route.ts`) — não precisa reler o resto deste
+PROGRESSO.md. Seguir o mesmo processo desta sessão: escrever mini-plano (task extra ou plano novo
+pequeno) → subagent-driven-development → revisão → deploy por último.
+
 ## DEPLOY (2026-07-24) — feature anúncio da casa + correções + backlog técnico
 
 `git push origin main` (`db19664..54b0ab9`, 27 commits) → `git pull` na VPS → `docker build` →
