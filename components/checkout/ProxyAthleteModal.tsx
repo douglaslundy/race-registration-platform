@@ -120,7 +120,7 @@ export default function ProxyAthleteModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contato emergência *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome do contato de emergência *</label>
             <input value={form.emergencyContactName ?? ""} onChange={(e) => set("emergencyContactName", e.target.value)} placeholder="Nome" className="input-field" />
           </div>
           <div>
