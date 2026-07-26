@@ -1,6 +1,51 @@
 # Progresso do Projeto
 
-## PRÓXIMA TAREFA: sistema de rating de atletas — AGUARDAR usuário pedir pra começar
+## PRÓXIMA TAREFA: sistema de SEO da plataforma (pedido em 2026-07-26)
+
+Usuário pediu um sistema de SEO completo: pesquisar boas práticas de SEO pro nicho (plataforma de
+inscrição pra corridas de rua/eventos esportivos), implementar meta tags/structured data nas
+páginas públicas, e criar uma aba nova em Admin com os campos que fazem sentido serem editáveis
+(ex.: meta title/description por página, Open Graph, sitemap, etc.) — objetivo declarado pelo
+usuário é ranquear bem no Google. **Ainda não iniciado** — é feature nova do zero, vai precisar de
+`superpowers:brainstorming` primeiro (não existe nada de SEO estruturado no código hoje, além do
+`generateMetadata` básico em `app/layout.tsx` com title/description/keywords estáticos).
+
+**Contexto necessário pra retomar**: nenhum ainda — primeiro passo é o brainstorm com o usuário
+pra definir escopo (quais campos ficam editáveis por evento vs. globais, sitemap.xml dinâmico,
+JSON-LD de qual tipo de schema.org — Event, SportsEvent —, robots.txt, Open Graph/Twitter Cards).
+
+## Ajuda pontual: configuração do Google AdSense + ads.txt (2026-07-26) — DEPLOYADO
+
+Usuário já tinha o client ID configurado (`ca-pub-6911820306119064`, sessão anterior) e recebeu o
+código de um bloco de anúncio do Google (`data-ad-slot="8770096948"`) mas nenhum anúncio
+aparecia. Investigado:
+1. Confirmado que o `<ins class="adsbygoogle">` já estava sendo gerado certinho no HTML de
+   produção pela posição `EVENTOS_ABAIXO_BANNER` (o sistema já gera esse bloco automaticamente a
+   partir do `AdSlotEditForm` em Admin → Anúncios, não precisa colar HTML em lugar nenhum).
+2. Achado real: o usuário (provavelmente testando) tinha deixado 2 posições com o ID de bloco
+   válido **desativadas** (`EVENTOS_COLUNA_ESQUERDA`, `EVENTO_DETALHE_COLUNA_DIREITA`) e 2 outras
+   **ativadas sem nenhum ID de bloco preenchido** (`EVENTOS_ENTRE_RESULTADOS`,
+   `EVENTO_DETALHE_ABAIXO_BANNER` — essas nunca iam renderizar nada). Corrigido direto no banco de
+   produção (reativadas as 2 com ID válido, desativadas as 2 sem ID) — ação reversível pelo
+   próprio Admin → Anúncios a qualquer momento.
+3. **Causa raiz real de nenhum anúncio aparecer**: faltava o arquivo `/ads.txt` — o Google AdSense
+   exige esse arquivo pra autorizar a veiculação de anúncios daquele publisher no domínio, mesmo
+   com o código do bloco correto. Implementado `app/ads.txt/route.ts` (route handler dinâmico,
+   gera a linha `google.com, pub-<id>, DIRECT, f08c47fec0942fa0` a partir do
+   `google_adsense_client_id` já salvo em Admin → Anúncios — não precisa reconfigurar nada se o
+   client ID mudar no futuro). TDD, `tests/ads-txt-route.test.ts`.
+
+Aproveitado o mesmo commit/deploy pra uma correção pontual: label do campo de nome do contato de
+emergência no checkout dizia só "Contato emergência", agora diz "Nome do contato de emergência"
+(`components/checkout/CheckoutForm.tsx`, `components/checkout/ProxyAthleteModal.tsx`, pedido
+avulso do usuário nesta mesma sessão).
+
+Suíte 1183/1183, `tsc --noEmit` limpo, `npm run build` OK. Deploy: `git push` (`9306dcd..6818dfc`)
+→ `/opt/corridas/deploy.sh` → confirmado em produção: `/ads.txt` retorna 200 com a linha certa,
+`/eventos` mostra 2 blocos `<ins class="adsbygoogle" data-ad-slot="8770096948">` no HTML, `docker
+logs corridas-app` limpo.
+
+## Sistema de rating de atletas — continua AGUARDANDO usuário pedir pra começar
 
 Usuário pediu explicitamente, em 2026-07-24, pra eu **aguardar** antes de iniciar o sistema de
 rating — não começar nada sozinho, nem brainstorm, até ele retomar o assunto. Quando ele pedir:
