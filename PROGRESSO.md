@@ -6,13 +6,28 @@ Usuário confirmou explicitamente a ordem: **1) executar o plano de SEO+IA/anún
 terminar o brainstorm+spec do fluxo de solicitação de anunciante → 3) só depois começar a
 auditoria do módulo de alertas** (é a maior e mais arriscada, mexe em pagamento/cancelamento).
 
-### 1. Plano combinado SEO+IA + link de anúncios — PRONTO, aguardando escolha de execução
+### 1. Plano combinado SEO+IA + link de anúncios — EM EXECUÇÃO via subagent-driven-development
 
+Usuário escolheu subagent-driven-development, direto na main (mesmo padrão da sessão inteira).
 Spec `docs/superpowers/specs/2026-07-26-sistema-seo-ia.md` + spec
 `docs/superpowers/specs/2026-07-27-anuncios-link-destino.md` + plano combinado (25 tasks)
-`docs/superpowers/plans/2026-07-27-seo-ia-e-anuncios-link.md`, todos commitados. **Falta perguntar
-ao usuário: subagent-driven-development ou executing-plans (inline)?** — é o próximo passo real
-assim que retomar esta frente.
+`docs/superpowers/plans/2026-07-27-seo-ia-e-anuncios-link.md`.
+
+**Estado exato pra retomar** (ledger completo em `.superpowers/sdd/progress.md`, git é a fonte da
+verdade se o ledger sumir):
+- Tasks 1-4: **completas e revisadas** (spec ✅ + qualidade Approved cada uma). Commits
+  `920a199`, `432cab6`, `4d4122e`, `4eb3cf1`.
+- Task 5 (`app/robots.ts`): **implementada, commit `de70b06`, mas a revisão FALHOU por limite
+  semanal de API da sessão anterior (erro de infraestrutura, não um problema de qualidade real)**.
+  Pacote de diff já gerado em `.superpowers/sdd/review-4eb3cf1..de70b06.diff` — só falta
+  redisparar o task reviewer (mesmo prompt de sempre: ler `task-5-brief.md` + o diff, verificar
+  spec+qualidade) antes de marcar como completa e seguir pra Task 6.
+- Tasks 6-25 + revisão final: ainda não iniciadas.
+
+**Como retomar**: seguir `superpowers:subagent-driven-development` normalmente a partir da
+revisão pendente da Task 5 — não re-implementar nada já commitado (git log confirma os commits
+acima existem). Task list interna (`TaskList`) já reflete esse estado: #1-4 completed, #5
+in_progress, #6-26 pending.
 
 ### 2. Fluxo de solicitação de conta de anunciante (pagamento antes da aprovação) — BRAINSTORM EM ANDAMENTO
 
