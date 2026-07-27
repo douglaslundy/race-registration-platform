@@ -22,6 +22,17 @@ async function saveSetting(key: string, value: string) {
   if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`);
 }
 
+async function generateSiteText(field: "metaTitle" | "metaDescription"): Promise<string> {
+  const res = await fetch("/api/admin/seo/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ field }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Erro ao gerar texto");
+  return data.text as string;
+}
+
 export default function SeoSettingsForm({
   defaultTitle,
   defaultDescription,
@@ -40,6 +51,21 @@ export default function SeoSettingsForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState<"metaTitle" | "metaDescription" | null>(null);
+
+  async function handleGenerate(field: "metaTitle" | "metaDescription") {
+    setGenerating(field);
+    setError(null);
+    try {
+      const text = await generateSiteText(field);
+      if (field === "metaTitle") setTitle(text);
+      else setDescription(text);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao gerar texto com IA");
+    } finally {
+      setGenerating(null);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,12 +104,32 @@ export default function SeoSettingsForm({
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Título padrão do site</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Título padrão do site</label>
+          <button
+            type="button"
+            onClick={() => handleGenerate("metaTitle")}
+            disabled={generating !== null}
+            className="text-xs text-primary-600 hover:underline disabled:opacity-50"
+          >
+            {generating === "metaTitle" ? "Gerando..." : "✨ Gerar com IA"}
+          </button>
+        </div>
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={70} className="input-field w-full" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição padrão do site</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição padrão do site</label>
+          <button
+            type="button"
+            onClick={() => handleGenerate("metaDescription")}
+            disabled={generating !== null}
+            className="text-xs text-primary-600 hover:underline disabled:opacity-50"
+          >
+            {generating === "metaDescription" ? "Gerando..." : "✨ Gerar com IA"}
+          </button>
+        </div>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={160} rows={3} className="input-field w-full" />
       </div>
 
