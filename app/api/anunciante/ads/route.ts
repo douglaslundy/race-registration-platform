@@ -7,6 +7,7 @@ import {
   listAvailableSlotsForAdvertiser,
   validateImageDimensions,
 } from "@/lib/ads/private-ads";
+import { validateAdDestinationUrl } from "@/lib/validate-url";
 
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -53,10 +54,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 });
   }
 
-  try {
-    new URL(targetUrl);
-  } catch {
-    return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+  const validatedUrl = validateAdDestinationUrl(targetUrl);
+  if (!validatedUrl.ok) {
+    return NextResponse.json({ error: validatedUrl.error }, { status: 400 });
   }
 
   // 1. A compra escolhida precisa pertencer ao anunciante autenticado. Resposta idêntica à de
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       adPurchaseId,
       adSlotId,
       imageUrl,
-      targetUrl,
+      targetUrl: validatedUrl.url,
       status: "PENDING_APPROVAL",
     },
   });

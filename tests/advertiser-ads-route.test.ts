@@ -138,6 +138,27 @@ describe("POST /api/anunciante/ads", () => {
     expect(dbMock.privateAd.create).not.toHaveBeenCalled();
   });
 
+  it("retorna 400 quando a URL de destino usa http em vez de https", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+
+    const res = await POST(makeRequest({ targetUrl: "http://empresa.com" }));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.adPurchase.findFirst).not.toHaveBeenCalled();
+    expect(dbMock.privateAd.create).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando a URL de destino usa protocolo perigoso (javascript:)", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+
+    const res = await POST(makeRequest({ targetUrl: "javascript:alert(1)" }));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.privateAd.create).not.toHaveBeenCalled();
+  });
+
   it("retorna 201 e cria o PrivateAd como PENDING_APPROVAL no caminho de sucesso", async () => {
     authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
     dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
@@ -159,7 +180,7 @@ describe("POST /api/anunciante/ads", () => {
       data: expect.objectContaining({
         adPurchaseId: "purchase-1",
         adSlotId: "slot-1",
-        targetUrl: "https://example.com",
+        targetUrl: "https://example.com/",
         status: "PENDING_APPROVAL",
         imageUrl: expect.any(String),
       }),
