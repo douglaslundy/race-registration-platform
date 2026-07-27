@@ -27,6 +27,7 @@ function makeRequest(fields: Record<string, string | Blob> = {}) {
   };
   const merged = { ...defaults, ...fields };
   for (const [key, value] of Object.entries(merged)) {
+    if (value === "") continue; // simula campo não preenchido, igual a um form real
     formData.append(key, value as any);
   }
   return new Request("http://localhost/api/admin/ads/slots/slot-1/house-ad", {
@@ -53,11 +54,33 @@ describe("POST /api/admin/ads/slots/[id]/house-ad", () => {
     expect(updateAdSlotMock).not.toHaveBeenCalled();
   });
 
-  it("retorna 400 com URL de destino inválida", async () => {
+  it("retorna 400 com URL de destino malformada", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     const res = await POST(makeRequest({ targetUrl: "não-é-url" }), { params: Promise.resolve({ id: "slot-1" }) });
     expect(res.status).toBe(400);
     expect(updateAdSlotMock).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando a URL de destino usa http em vez de https", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    const res = await POST(makeRequest({ targetUrl: "http://empresa.com" }), { params: Promise.resolve({ id: "slot-1" }) });
+    expect(res.status).toBe(400);
+    expect(updateAdSlotMock).not.toHaveBeenCalled();
+  });
+
+  it("aceita cadastro sem URL de destino (link opcional)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.adSlot.findUnique.mockResolvedValueOnce(SLOT);
+    validateImageDimensionsMock.mockResolvedValueOnce(true);
+
+    const res = await POST(makeRequest({ targetUrl: "" }), { params: Promise.resolve({ id: "slot-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(updateAdSlotMock).toHaveBeenCalledWith("slot-1", {
+      source: "HOUSE",
+      houseAdImageUrl: expect.any(String),
+      houseAdTargetUrl: null,
+    });
   });
 
   it("retorna 404 quando a posição não existe", async () => {
@@ -92,11 +115,11 @@ describe("POST /api/admin/ads/slots/[id]/house-ad", () => {
     expect(updateAdSlotMock).toHaveBeenCalledWith("slot-1", {
       source: "HOUSE",
       houseAdImageUrl: expect.any(String),
-      houseAdTargetUrl: "https://empresa.com",
+      houseAdTargetUrl: "https://empresa.com/",
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.houseAdTargetUrl).toBe("https://empresa.com");
+    expect(body.houseAdTargetUrl).toBe("https://empresa.com/");
   });
 
   it("retorna 400 quando a URL de destino usa esquema não-http (ex: javascript:)", async () => {

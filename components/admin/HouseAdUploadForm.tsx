@@ -63,9 +63,8 @@ export default function HouseAdUploadForm({ slotId, width, height, initialImageU
           type="url"
           value={targetUrl}
           onChange={(e) => setTargetUrl(e.target.value)}
-          placeholder="URL de destino"
+          placeholder="URL de destino (opcional)"
           className="input-field text-sm py-1 w-56"
-          required
         />
         <input
           type="file"

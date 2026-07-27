@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { validateImageDimensions } from "@/lib/ads/private-ads";
 import { updateAdSlot } from "@/lib/ad-slots";
 import { getSupabaseConfig, deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
+import { validateAdDestinationUrl } from "@/lib/validate-url";
 
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -29,20 +30,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  const targetUrl = formData.get("targetUrl") as string | null;
+  const targetUrlRaw = formData.get("targetUrl") as string | null;
   const image = formData.get("image") as File | null;
 
-  if (!targetUrl || !image) {
+  if (!image) {
     return NextResponse.json({ error: "Campos obrigatórios ausentes" }, { status: 400 });
   }
 
-  try {
-    const parsed = new URL(targetUrl);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+  let targetUrl: string | null = null;
+  if (targetUrlRaw && targetUrlRaw.trim()) {
+    const validated = validateAdDestinationUrl(targetUrlRaw, { allowRelative: true });
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.error }, { status: 400 });
     }
-  } catch {
-    return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+    targetUrl = validated.url;
   }
 
   const slot = await db.adSlot.findUnique({ where: { id } });

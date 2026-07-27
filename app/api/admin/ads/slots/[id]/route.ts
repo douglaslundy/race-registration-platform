@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { updateAdSlot } from "@/lib/ad-slots";
 import { deleteHouseAdImage } from "@/lib/ads/house-ad-storage";
+import { validateAdDestinationUrl } from "@/lib/validate-url";
 import { z } from "zod";
 
 const schema = z.object({
@@ -27,14 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (parsed.data.houseAdTargetUrl) {
-    try {
-      const url = new URL(parsed.data.houseAdTargetUrl);
-      if (url.protocol !== "http:" && url.protocol !== "https:") {
-        return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
-      }
-    } catch {
-      return NextResponse.json({ error: "URL de destino inválida" }, { status: 400 });
+    const validated = validateAdDestinationUrl(parsed.data.houseAdTargetUrl, { allowRelative: true });
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.error }, { status: 400 });
     }
+    parsed.data.houseAdTargetUrl = validated.url;
   }
 
   if (parsed.data.houseAdImageUrl === null) {

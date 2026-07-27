@@ -75,7 +75,7 @@ describe("PATCH /api/admin/ads/slots/[id]", () => {
     expect(updateAdSlot).toHaveBeenCalledWith("slot-1", {
       source: "HOUSE",
       houseAdImageUrl: "https://storage.example.com/house-ads/a.png",
-      houseAdTargetUrl: "https://empresa.com",
+      houseAdTargetUrl: "https://empresa.com/",
     });
     expect(res.status).toBe(200);
   });
@@ -96,6 +96,15 @@ describe("PATCH /api/admin/ads/slots/[id]", () => {
   it("retorna 400 quando houseAdTargetUrl usa esquema não-http (ex: javascript:)", async () => {
     const res = await PATCH(
       makeRequest({ source: "HOUSE", houseAdTargetUrl: "javascript:alert(1)" }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    expect(res.status).toBe(400);
+    expect(updateAdSlot).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando houseAdTargetUrl usa http em vez de https", async () => {
+    const res = await PATCH(
+      makeRequest({ source: "HOUSE", houseAdTargetUrl: "http://empresa.com" }),
       { params: Promise.resolve({ id: "slot-1" }) },
     );
     expect(res.status).toBe(400);
