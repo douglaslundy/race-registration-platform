@@ -156,6 +156,7 @@ describe("POST /api/anunciante/ads", () => {
     const res = await POST(makeRequest({ targetUrl: "javascript:alert(1)" }));
 
     expect(res.status).toBe(400);
+    expect(dbMock.adPurchase.findFirst).not.toHaveBeenCalled();
     expect(dbMock.privateAd.create).not.toHaveBeenCalled();
   });
 
