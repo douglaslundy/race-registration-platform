@@ -12,6 +12,8 @@ import EventDisclaimer from "@/components/events/EventDisclaimer";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getAppName, getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin } from "@/lib/settings";
 import { MODALITY_LABEL } from "@/lib/admin/labels";
+import JsonLd from "@/components/seo/JsonLd";
+import { buildEventJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/build-event-json-ld";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -22,14 +24,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const event = await getEventBySlug(slug);
   if (!event) return { title: "Evento não encontrado" };
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const ogImage = event.listBannerUrl ?? event.bannerUrl;
-  const description = event.description?.substring(0, 160) ?? `Inscreva-se em ${event.title}`;
+  const title = event.metaTitle || event.title;
+  const description = event.metaDescription || event.description?.substring(0, 160) || `Inscreva-se em ${event.title}`;
 
   return {
-    title: event.title,
+    title,
     description,
+    alternates: { canonical: `${baseUrl}/eventos/${slug}` },
     openGraph: {
-      title: event.title,
+      title,
       description,
       url: `/eventos/${slug}`,
       type: "website",
@@ -37,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: event.title,
+      title,
       description,
       ...(ogImage ? { images: [ogImage] } : {}),
     },
@@ -52,6 +57,34 @@ export default async function EventoPage({ params }: Props) {
   ]);
   if (!event) notFound();
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const eventUrl = `${baseUrl}/eventos/${slug}`;
+  const eventJsonLd = buildEventJsonLd(
+    {
+      title: event.title,
+      slug: event.slug,
+      description: event.description,
+      startAt: event.startAt,
+      venueName: event.venueName,
+      addressLine: event.addressLine,
+      city: event.city,
+      state: event.state,
+      country: event.country,
+      latitude: event.latitude,
+      longitude: event.longitude,
+      image: event.listBannerUrl ?? event.bannerUrl,
+      organizerName: event.organizer.companyName || event.organizer.user.name || appName,
+      ticketBatches: event.ticketBatches.map((b) => ({
+        priceAmount: b.priceAmount,
+        capacity: b.capacity,
+        soldCount: b.soldCount,
+        active: b.active,
+      })),
+    },
+    baseUrl,
+  );
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(event.title, eventUrl, baseUrl);
+
   const isLoggedIn = Boolean(session?.user);
   const canRegister = event.status === "REGISTRATIONS_OPEN";
   const availableBatches = event.ticketBatches.filter(
@@ -60,7 +93,10 @@ export default async function EventoPage({ params }: Props) {
   const heroBannerUrl = event.bannerUrl ?? event.listBannerUrl;
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
+    <>
+      <JsonLd data={eventJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
+      <main className="max-w-4xl mx-auto px-4 py-8">
       {heroBannerUrl && (
         <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden mb-8 bg-gray-100 dark:bg-gray-800">
           <div className="absolute inset-2">
@@ -202,6 +238,7 @@ export default async function EventoPage({ params }: Props) {
           </div>
         </aside>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
