@@ -4,7 +4,10 @@ import Providers from "@/components/layout/Providers";
 import { getAppName, getSetting } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const appName = await getAppName();
+  const [appName, googleSiteVerification] = await Promise.all([
+    getAppName(),
+    getSetting("seo_google_site_verification"),
+  ]);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   return {
     metadataBase: new URL(appUrl),
@@ -14,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: "Plataforma de inscrições para corridas de rua, trail run, ciclismo e mais.",
     keywords: ["corridas", "inscrições", "corrida de rua", "trail run", "esportes"],
+    ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
   };
 }
 
@@ -25,7 +29,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // HTML e monta a <script> de verdade via hidratação no navegador — confirmado direto no HTML
   // servido em produção, não aparecia nenhuma tag <script> literal. Por isso aqui é uma tag
   // <script> nativa, escrita à mão dentro de um <head> explícito, sem passar pelo next/script.
-  const adSenseClientId = await getSetting("google_adsense_client_id");
+  const [adSenseClientId, gaId] = await Promise.all([
+    getSetting("google_adsense_client_id"),
+    getSetting("seo_google_analytics_id"),
+  ]);
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
@@ -36,6 +43,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adSenseClientId}`}
             crossOrigin="anonymous"
           />
+        )}
+        {gaId && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', '${gaId}');`,
+              }}
+            />
+          </>
         )}
       </head>
       <body>
