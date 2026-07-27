@@ -20,6 +20,8 @@ const schema = z.object({
   maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional(),
   regulationText: z.string().optional().nullable(),
+  metaTitle: z.string().max(70).optional().nullable(),
+  metaDescription: z.string().max(160).optional().nullable(),
   cancellationDeadline: z.string().optional(),
   cancellationRequiresApproval: z.boolean().optional(),
   cancellationContactPhone: z.string().optional(),
@@ -61,6 +63,8 @@ type EventData = {
   listBannerUrl?: string | null;
   regulationUrl?: string | null;
   regulationText?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
   cancellationDeadline?: Date | string | null;
   cancellationRequiresApproval?: boolean;
   cancellationContactPhone?: string | null;
@@ -96,6 +100,8 @@ export default function EditEventForm({
       maxParticipants: event.maxParticipants ?? 0,
       organizerContact: event.organizerContact ?? "",
       regulationText: event.regulationText ?? "",
+      metaTitle: event.metaTitle ?? "",
+      metaDescription: event.metaDescription ?? "",
       cancellationDeadline: event.cancellationDeadline ? toDatetimeLocal(event.cancellationDeadline) : "",
       cancellationRequiresApproval: event.cancellationRequiresApproval ?? false,
       cancellationContactPhone: event.cancellationContactPhone ?? "",
@@ -119,6 +125,8 @@ export default function EditEventForm({
         listBannerUrl,
         regulationUrl,
         regulationText: data.regulationText || null,
+        metaTitle: data.metaTitle || null,
+        metaDescription: data.metaDescription || null,
         cancellationDeadline: data.cancellationDeadline ? new Date(data.cancellationDeadline).toISOString() : null,
         cancellationRequiresApproval: data.cancellationRequiresApproval ?? false,
         cancellationContactPhone: data.cancellationContactPhone || null,
@@ -241,6 +249,18 @@ export default function EditEventForm({
           rows={8}
           placeholder="Descreva as regras, categorias, premiação e demais informações do regulamento..."
         />
+      </div>
+
+      <div className="border-t pt-5 dark:border-gray-700 space-y-4">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">SEO</h3>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta título</label>
+          <input {...register("metaTitle")} maxLength={70} className="input w-full" placeholder="Deixe em branco para usar o nome do evento" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta descrição</label>
+          <textarea {...register("metaDescription")} maxLength={160} rows={2} className="input w-full" placeholder="Deixe em branco para usar a descrição do evento" />
+        </div>
       </div>
 
       <div className="border-t pt-5 dark:border-gray-700">

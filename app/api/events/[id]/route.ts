@@ -20,6 +20,8 @@ const updateEventSchema = z.object({
   listBannerUrl: z.string().url().optional().nullable(),
   regulationUrl: z.string().url().optional().nullable(),
   regulationText: z.string().optional().nullable(),
+  metaTitle: z.string().max(70).optional().nullable(),
+  metaDescription: z.string().max(160).optional().nullable(),
   status: z.enum(["DRAFT", "UNDER_REVIEW"]).optional(),
   cancellationDeadline: z.string().datetime().optional().nullable(),
   cancellationRequiresApproval: z.boolean().optional(),

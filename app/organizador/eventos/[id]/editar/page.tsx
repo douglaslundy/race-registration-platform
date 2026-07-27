@@ -21,6 +21,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
         startAt: true, kitPickupAt: true, venueName: true, addressLine: true,
         city: true, state: true, maxParticipants: true, organizerContact: true,
         bannerUrl: true, listBannerUrl: true, regulationUrl: true, regulationText: true,
+        metaTitle: true, metaDescription: true,
         cancellationDeadline: true, cancellationRequiresApproval: true,
         cancellationContactPhone: true, cancellationContactEmail: true,
         allowProxyRegistration: true,
