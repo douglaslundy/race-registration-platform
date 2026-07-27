@@ -72,6 +72,17 @@ type EventData = {
   allowProxyRegistration?: boolean;
 };
 
+async function generateEventText(eventId: string, field: "metaTitle" | "metaDescription"): Promise<string> {
+  const res = await fetch(`/api/events/${eventId}/seo/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ field }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Erro ao gerar texto");
+  return data.text as string;
+}
+
 export default function EditEventForm({
   event,
   cancellationPolicyEnabled = false,
@@ -85,7 +96,7 @@ export default function EditEventForm({
   const [listBannerUrl, setListBannerUrl] = useState<string | null>(event.listBannerUrl ?? null);
   const [regulationUrl, setRegulationUrl] = useState<string | null>(event.regulationUrl ?? null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: event.title,
@@ -109,6 +120,22 @@ export default function EditEventForm({
       allowProxyRegistration: event.allowProxyRegistration ?? false,
     },
   });
+
+  const [generating, setGenerating] = useState<"metaTitle" | "metaDescription" | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  async function handleGenerate(field: "metaTitle" | "metaDescription") {
+    setGenerating(field);
+    setGenerateError(null);
+    try {
+      const text = await generateEventText(event.id, field);
+      setValue(field, text, { shouldValidate: true });
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Erro ao gerar texto com IA");
+    } finally {
+      setGenerating(null);
+    }
+  }
 
   async function onSubmit(data: FormData) {
     setError(null);
@@ -253,12 +280,33 @@ export default function EditEventForm({
 
       <div className="border-t pt-5 dark:border-gray-700 space-y-4">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">SEO</h3>
+        {generateError && <p className="text-red-500 text-xs">{generateError}</p>}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta título</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Meta título</label>
+            <button
+              type="button"
+              onClick={() => handleGenerate("metaTitle")}
+              disabled={generating !== null}
+              className="text-xs text-primary-600 hover:underline disabled:opacity-50"
+            >
+              {generating === "metaTitle" ? "Gerando..." : "✨ Gerar com IA"}
+            </button>
+          </div>
           <input {...register("metaTitle")} maxLength={70} className="input w-full" placeholder="Deixe em branco para usar o nome do evento" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta descrição</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Meta descrição</label>
+            <button
+              type="button"
+              onClick={() => handleGenerate("metaDescription")}
+              disabled={generating !== null}
+              className="text-xs text-primary-600 hover:underline disabled:opacity-50"
+            >
+              {generating === "metaDescription" ? "Gerando..." : "✨ Gerar com IA"}
+            </button>
+          </div>
           <textarea {...register("metaDescription")} maxLength={160} rows={2} className="input w-full" placeholder="Deixe em branco para usar a descrição do evento" />
         </div>
       </div>
