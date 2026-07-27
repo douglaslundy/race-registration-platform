@@ -2,10 +2,15 @@ const MAX_LENGTH = 500;
 const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
 
 function isPrivateHost(hostname: string): boolean {
-  if (BLOCKED_HOSTS.has(hostname)) return true;
-  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
+  // Normalize: strip brackets (IPv6) and trailing dot (FQDN)
+  const normalized = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
+
+  if (BLOCKED_HOSTS.has(normalized)) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized)) return true;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(normalized)) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(normalized)) return true;
+  if (/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized)) return true;
+  if (/^169\.254\.\d{1,3}\.\d{1,3}$/.test(normalized)) return true;
   return false;
 }
 

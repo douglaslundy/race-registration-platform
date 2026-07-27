@@ -73,4 +73,20 @@ describe("validateAdDestinationUrl", () => {
   it("continua rejeitando protocolo perigoso mesmo com allowRelative true", () => {
     expect(validateAdDestinationUrl("javascript:alert(1)", { allowRelative: true }).ok).toBe(false);
   });
+
+  it("rejeita IPv6 loopback com brackets [::1]", () => {
+    expect(validateAdDestinationUrl("https://[::1]/pagina").ok).toBe(false);
+  });
+
+  it("rejeita localhost com trailing dot", () => {
+    expect(validateAdDestinationUrl("https://localhost./pagina").ok).toBe(false);
+  });
+
+  it("rejeita outros endereços no range 127.0.0.0/8", () => {
+    expect(validateAdDestinationUrl("https://127.0.0.2/pagina").ok).toBe(false);
+  });
+
+  it("rejeita cloud metadata endpoint 169.254.169.254", () => {
+    expect(validateAdDestinationUrl("https://169.254.169.254/pagina").ok).toBe(false);
+  });
 });
