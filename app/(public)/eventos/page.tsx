@@ -8,7 +8,15 @@ import { getBannerInterval, getAppName } from "@/lib/settings";
 import type { EventModality } from "@prisma/client";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 
-export const metadata: Metadata = { title: "Eventos" };
+export async function generateMetadata(): Promise<Metadata> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return {
+    title: "Eventos — corridas de rua, trail run e mais",
+    description:
+      "Veja todos os eventos esportivos abertos para inscrição: corridas de rua, trail run, ciclismo, caminhada e triathlon em diversas cidades.",
+    alternates: { canonical: `${baseUrl}/eventos` },
+  };
+}
 export const revalidate = 60;
 
 interface SearchParams {
