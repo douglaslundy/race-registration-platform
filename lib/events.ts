@@ -1,8 +1,8 @@
 import { db } from "./db";
 import type { EventModality, EventStatus } from "@prisma/client";
 
-const ACTIVE_STATUSES: EventStatus[] = ["PUBLISHED", "REGISTRATIONS_OPEN", "SOLD_OUT"];
-const CLOSED_STATUSES: EventStatus[] = ["REGISTRATIONS_CLOSED", "COMPLETED"];
+export const ACTIVE_STATUSES: EventStatus[] = ["PUBLISHED", "REGISTRATIONS_OPEN", "SOLD_OUT"];
+export const CLOSED_STATUSES: EventStatus[] = ["REGISTRATIONS_CLOSED", "COMPLETED"];
 
 export interface EventFilters {
   city?: string;
