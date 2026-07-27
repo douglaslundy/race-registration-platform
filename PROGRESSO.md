@@ -1,6 +1,70 @@
 # Progresso do Projeto
 
-## PRÓXIMA TAREFA: sistema de SEO da plataforma (pedido em 2026-07-26)
+## PRÓXIMA TAREFA (2026-07-27) — 3 frentes grandes, ordem confirmada pelo usuário
+
+Usuário confirmou explicitamente a ordem: **1) executar o plano de SEO+IA/anúncios (pronto) → 2)
+terminar o brainstorm+spec do fluxo de solicitação de anunciante → 3) só depois começar a
+auditoria do módulo de alertas** (é a maior e mais arriscada, mexe em pagamento/cancelamento).
+
+### 1. Plano combinado SEO+IA + link de anúncios — PRONTO, aguardando escolha de execução
+
+Spec `docs/superpowers/specs/2026-07-26-sistema-seo-ia.md` + spec
+`docs/superpowers/specs/2026-07-27-anuncios-link-destino.md` + plano combinado (25 tasks)
+`docs/superpowers/plans/2026-07-27-seo-ia-e-anuncios-link.md`, todos commitados. **Falta perguntar
+ao usuário: subagent-driven-development ou executing-plans (inline)?** — é o próximo passo real
+assim que retomar esta frente.
+
+### 2. Fluxo de solicitação de conta de anunciante (pagamento antes da aprovação) — BRAINSTORM EM ANDAMENTO
+
+Pedido do usuário em 2026-07-27: hoje virar `ADVERTISER` é direto (autosserviço ou promoção pelo
+admin, sem pagamento prévio). Fluxo novo pedido: página de planos pública mostra os planos
+desabilitados com botão "Solicitar conta de anunciante" → formulário → pagamento do plano →
+"aguardando aprovação" → admin aprova/rejeita (se rejeitar, reembolsa) → admin recebe alerta de
+solicitações pendentes → anúncios criados pelo anunciante aprovado consomem "créditos" do
+pagamento feito.
+
+**Decisões já fechadas:**
+1. Durante a espera, a pessoa continua com o papel que já tinha (atleta/organizador); se não tinha
+   conta nenhuma, cria uma conta comum `ATHLETE` no ato da solicitação — não existe papel
+   intermediário novo tipo `ADVERTISER_PENDING`.
+2. Visitante anônimo pode solicitar direto no formulário (sem precisar logar antes) — o próprio
+   formulário de solicitação já coleta os dados de uma conta nova (nome/e-mail/senha) junto com o
+   pedido de anunciante.
+3. Campos do formulário: além dos 3 já usados hoje (razão social, e-mail de contato, telefone de
+   contato), adicionar **CNPJ ou CPF, endereço, perfil do Instagram, perfil do Facebook**.
+
+**Ainda faltam decisões antes de virar spec** (perguntar ao retomar):
+- "Créditos": é só reaproveitar o `AdPurchase.maxSimultaneousSlots` que já existe (cada anúncio
+  aprovado ocupa uma vaga simultânea até cancelar/expirar), ou o usuário quer um saldo numérico
+  diferente, que desconta permanentemente por anúncio criado (não por "simultâneo")?
+- Alerta ao admin sobre solicitações pendentes: notificação imediata (e-mail/WhatsApp) a cada
+  solicitação nova, ou entra só no resumo diário que já existe (`lib/alerts/daily-summary.ts`)?
+- Fluxo de reembolso: reaproveitar a infraestrutura de reembolso já existente
+  (`lib/payment/refund-service.ts`) — presumido, não fechado explicitamente com o usuário ainda.
+
+**Contexto necessário pra retomar**: nenhum arquivo específico ainda além dos já mapeados durante
+esta sessão (`app/api/auth/register-advertiser/route.ts`, `lib/advertisers/promote.ts`,
+`prisma/schema.prisma` — models `AdvertiserProfile`/`AdPurchase`/`AdPlan`). Seguir
+`superpowers:brainstorming` a partir daqui — perguntar as decisões pendentes acima, uma de cada
+vez, antes de escrever a spec.
+
+### 3. Módulo administrativo de alertas/notificações — NÃO INICIADO
+
+Pedido extenso do usuário em 2026-07-27 (prompt completo salvo na conversa, não repetido aqui por
+economia de espaço — ler o pedido original se precisar do texto literal): auditoria completa de
+todos os fluxos de e-mail/WhatsApp/notificação já existentes no sistema (confirmação de
+inscrição, cancelamento, carrinho abandonado, pagamento aprovado/pendente/recusado/estornado,
+lembretes, etc.) + módulo novo em Admin pra centralizar criação/edição/ativação/teste desses
+alertas com templates por canal, variáveis dinâmicas mapeadas a colunas reais do banco, histórico
+de versões/auditoria, migração dos templates atuais preservando o texto, rodapé automático de
+redes sociais. É a frente mais arriscada das 3 (mexe em toda a comunicação transacional da
+plataforma, incluindo confirmação de pagamento). **Só começar depois que as frentes 1 e 2
+estiverem resolvidas**, começando pela fase de auditoria/diagnóstico (sem alterar nada ainda),
+apresentando o resultado antes de qualquer implementação — mesmo processo de brainstorm já usado
+nesta sessão pras outras 2 frentes, não pular direto pra código só porque o pedido original pede
+implementação completa.
+
+## PRÓXIMA TAREFA (histórico, já resolvida): sistema de SEO da plataforma (pedido em 2026-07-26)
 
 Usuário pediu um sistema de SEO completo: pesquisar boas práticas de SEO pro nicho (plataforma de
 inscrição pra corridas de rua/eventos esportivos), implementar meta tags/structured data nas
