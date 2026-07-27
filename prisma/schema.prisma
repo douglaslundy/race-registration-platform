@@ -240,6 +240,8 @@ model Event {
   listBannerUrl      String?
   regulationUrl      String?
   regulationText     String?       @db.Text
+  metaTitle          String?       @db.VarChar(70)
+  metaDescription    String?       @db.VarChar(160)
   organizerContact   String?
   maxParticipants    Int?
   platformFeePercent Int           @default(1100) // basis points
