@@ -19,7 +19,7 @@ function makePayment(overrides?: {
       id: "adpurchase-1",
       status: overrides?.adPurchaseStatus ?? "PENDING",
       adPlan: { name: "Plano Ouro", durationDays: 30 },
-      advertiser: { user: { name: "Anunciante", email: "anunciante@example.com" } },
+      advertiser: { user: { name: "Anunciante", email: "anunciante@example.com", role: "ADVERTISER" } },
     },
   };
 }
@@ -108,5 +108,52 @@ describe("confirmAdPurchasePayment", () => {
       planName: "Plano Ouro",
       endAt,
     });
+  });
+
+  it("primeira compra de quem ainda não é ADVERTISER vai pra PENDING_APPROVAL, não pra PAID", async () => {
+    const txMock = makeTx();
+    const payment = {
+      id: "payment-1",
+      status: "PENDING",
+      adPurchase: {
+        id: "purchase-1",
+        status: "PENDING",
+        adPlan: { name: "Plano Básico", durationDays: 30 },
+        advertiser: { user: { name: "Fulano", email: "fulano@example.com", role: "ATHLETE" } },
+      },
+    };
+
+    const result = await confirmAdPurchasePayment(txMock as any, payment, "PAID");
+
+    expect(txMock.adPurchase.update).toHaveBeenCalledWith({
+      where: { id: "purchase-1" },
+      data: { status: "PENDING_APPROVAL" },
+    });
+    expect(result).toEqual({
+      changed: true,
+      wentToPendingApproval: true,
+      advertiserEmail: "fulano@example.com",
+      advertiserName: "Fulano",
+      planName: "Plano Básico",
+    });
+  });
+
+  it("é idempotente: não repete a transição pra PENDING_APPROVAL se o webhook duplicar o evento", async () => {
+    const txMock = makeTx();
+    const payment = {
+      id: "payment-1",
+      status: "PENDING",
+      adPurchase: {
+        id: "purchase-1",
+        status: "PENDING_APPROVAL",
+        adPlan: { name: "Plano Básico", durationDays: 30 },
+        advertiser: { user: { name: "Fulano", email: "fulano@example.com", role: "ATHLETE" } },
+      },
+    };
+
+    const result = await confirmAdPurchasePayment(txMock as any, payment, "PAID");
+
+    expect(txMock.adPurchase.update).not.toHaveBeenCalled();
+    expect(result).toEqual({ changed: false });
   });
 });
