@@ -27,16 +27,15 @@ async function sendWhatsAppIfActive(
   bypassDedupe: boolean,
 ): Promise<void> {
   if (!phone) return;
-  const claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
-  if (!claimed) return;
   try {
-    if (await isWhatsAppConnectionActive()) {
-      await sendWhatsAppMessage(
-        phone,
-        text,
-        eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
-      );
-    }
+    if (!(await isWhatsAppConnectionActive())) return;
+    const claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
+    if (!claimed) return;
+    await sendWhatsAppMessage(
+      phone,
+      text,
+      eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
+    );
   } catch (err) {
     if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, claimEntityId, "WHATSAPP");
     console.error("[notifyOrderConfirmed] whatsapp failed:", err);
