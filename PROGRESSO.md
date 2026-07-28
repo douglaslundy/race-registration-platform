@@ -1,5 +1,39 @@
 # Progresso do Projeto
 
+## Revisão final do plano "Solicitação de conta de anunciante" — 8 achados corrigidos (2026-07-28)
+
+Plano de 14 tasks (`/anuncie` público → paga PIX → admin aprova/rejeita) estava completo; revisão
+final de branch inteira achou 8 problemas, todos corrigidos nesta leva (commit `8221fb4`, direto
+na `main`, HEAD anterior `1981bfe`):
+
+1. **CRÍTICO**: `RequestAdvertiserForm.tsx` navegava pra `/anuncie/enviado` e descartava o PIX —
+   ninguém conseguia pagar. Agora mostra `PixPaymentCard` (mesmo padrão de `SubscribeButton.tsx`).
+2. `POST /api/anunciante/solicitar` agora trata falha do gateway em `createPayment` (try/catch) —
+   antes deixava a conta criada mas travada (retry batia em "e-mail já cadastrado").
+3. `ads_marketplace_enabled` agora também bloqueia `/api/anunciante/solicitar` e a página
+   `/anuncie` (antes só bloqueava a promoção manual do admin) — texto do card em
+   `/admin/configuracoes` corrigido.
+4. Rejeição: `refundFailed` agora é rastreado e devolvido na resposta; e-mail só afirma que houve
+   estorno quando `refunded=true`; UI do admin avisa quando o estorno automático falha.
+5. `/api/anunciante/ads` só aceita `AdPurchase` com `status:"PAID"` pra liberar vaga (antes uma
+   compra REJECTED/PENDING também passava).
+6. Aprovação grava `AuditLog` (`USER_UPDATED`) na mesma transação (faltava, era o único fluxo do
+   plano que muda `role` sem auditoria); logs de erro de approve/reject ganharam `purchaseId`.
+7. Comentário em `request-advertiser.ts` não cita mais a rota `register-advertiser` (já removida).
+8. `/admin/alertas` ganhou o card "Solicitação de conta de anunciante" — faltava, então o alerta
+   imediato ao admin (decisão de design do próprio plano) ficava permanentemente OFF.
+
+Suite completa (excluindo 2 worktrees órfãs de sessões antigas em `.claude/worktrees/`, que falham
+por motivo pré-existente não relacionado — alias `@` do vitest sempre resolve pro repo principal):
+200 arquivos / 1285 testes, todos passando. `tsc --noEmit` limpo. `npm run build` limpo.
+
+Relatório completo:
+`.superpowers/sdd/2026-07-28-solicitacao-conta-anunciante/final-review-fix-round-1-report.md`
+(fora do git, `.superpowers/` está no `.gitignore`).
+
+**Pendência real**: nada aberto neste plano — pronto pra deploy junto com o resto (perguntar ao
+usuário quando quiser fazer o deploy acumulado, mesmo padrão de sempre).
+
 ## Conteúdo de SEO escrito e gravado em produção (2026-07-28)
 
 Usuário percebeu que o sistema de SEO (infraestrutura pronta desde o deploy anterior) não tinha
