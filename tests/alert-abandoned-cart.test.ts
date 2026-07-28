@@ -44,22 +44,14 @@ describe("checkAbandonedCarts", () => {
     vi.mocked(claimAlert).mockResolvedValue(true);
   });
 
-  it("consulta pedidos e grava auditoria mesmo com os dois canais desligados, mas não envia nada", async () => {
+  it("consulta pedidos e NÃO grava auditoria quando os dois canais estão desligados (nenhum aviso real foi enviado)", async () => {
     vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: false, minutesThreshold: 30 });
     dbMock.order.findMany.mockResolvedValueOnce([orderFixture]);
 
     const result = await checkAbandonedCarts();
 
     expect(dbMock.order.findMany).toHaveBeenCalled();
-    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
-      data: {
-        userId: "athlete-1",
-        action: "CART_ABANDONED",
-        entityType: "Order",
-        entityId: "order-1",
-        metadata: { eventTitle: "Corrida Teste" },
-      },
-    });
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
     expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
     expect(result).toEqual({ checked: 1, notified: 0 });
@@ -100,6 +92,7 @@ describe("checkAbandonedCarts", () => {
     const result = await checkAbandonedCarts();
 
     expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
     expect(result).toEqual({ checked: 1, notified: 0 });
   });
 
@@ -123,6 +116,7 @@ describe("checkAbandonedCarts", () => {
     const result = await checkAbandonedCarts();
 
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
     expect(result).toEqual({ checked: 1, notified: 0 });
   });
 

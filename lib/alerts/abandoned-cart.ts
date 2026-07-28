@@ -21,16 +21,6 @@ export async function sendAbandonedCartAlert(
 ): Promise<{ sent: boolean }> {
   const bypassDedupe = options?.bypassDedupe ?? false;
 
-  await db.auditLog.create({
-    data: {
-      userId: order.buyerUserId,
-      action: "CART_ABANDONED",
-      entityType: "Order",
-      entityId: order.id,
-      metadata: { eventTitle: order.event.title },
-    },
-  });
-
   let sentSomething = false;
 
   if (settings.emailEnabled) {
@@ -66,6 +56,21 @@ export async function sendAbandonedCartAlert(
         throw err;
       }
     }
+  }
+
+  // Só grava auditoria quando um aviso real foi enviado — sem isso, checkAbandonedCarts()
+  // reprocessando o mesmo pedido PENDING a cada ciclo de cron gerava uma linha nova por execução,
+  // pra sempre, mesmo quando o dedupe já tinha bloqueado ambos os canais (nada de novo aconteceu).
+  if (sentSomething) {
+    await db.auditLog.create({
+      data: {
+        userId: order.buyerUserId,
+        action: "CART_ABANDONED",
+        entityType: "Order",
+        entityId: order.id,
+        metadata: { eventTitle: order.event.title },
+      },
+    });
   }
 
   return { sent: sentSomething };
