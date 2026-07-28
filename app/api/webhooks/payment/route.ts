@@ -8,6 +8,7 @@ import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
 import { confirmAdPurchasePayment } from "@/lib/ads/ad-purchase-confirmation";
 import { sendAdPurchaseConfirmationEmail } from "@/lib/email";
+import { notifyAdvertiserRequestPending } from "@/lib/alerts/advertiser-request-pending";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -135,6 +136,9 @@ export async function POST(req: NextRequest) {
         planName: result.planName,
         endAt: result.endAt,
       });
+    }
+    if (result.wentToPendingApproval) {
+      await notifyAdvertiserRequestPending(adPurchase.id);
     }
     return NextResponse.json({ ok: true });
   }

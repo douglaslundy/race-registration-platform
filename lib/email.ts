@@ -353,6 +353,28 @@ export async function sendAdvertiserPromotionEmail(params: {
   });
 }
 
+/** E-mail pro admin avisando de uma nova solicitação de conta de anunciante aguardando aprovação. */
+export async function sendAdvertiserRequestPendingEmail(params: {
+  to: string;
+  companyName: string;
+  planName: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const url = `${baseUrl}/admin/anunciantes/solicitacoes`;
+  await sendMail({
+    to: params.to,
+    subject: `Nova solicitação de anunciante — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Uma nova solicitação de conta de anunciante chegou e está aguardando aprovação.</p>
+       <p><strong>Empresa:</strong> ${params.companyName}<br/>
+          <strong>Plano:</strong> ${params.planName}</p>
+       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Ver solicitações pendentes</a></p>`
+    ),
+  });
+}
+
 /** E-mail com o resumo diário de atividade (admin ou organizador). */
 export async function sendDailySummaryEmail(params: {
   to: string;

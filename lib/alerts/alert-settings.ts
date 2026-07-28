@@ -88,3 +88,19 @@ export async function getCancellationAlertSettings(): Promise<CancellationAlertS
     whatsappEnabled: whatsappEnabled === "true",
   };
 }
+
+export interface AdvertiserRequestAlertSettings {
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+}
+
+export async function getAdvertiserRequestAlertSettings(): Promise<AdvertiserRequestAlertSettings> {
+  const [emailEnabled, whatsappEnabled] = await Promise.all([
+    getSetting("alert_advertiser_request_email_enabled"),
+    getSetting("alert_advertiser_request_whatsapp_enabled"),
+  ]);
+  return {
+    emailEnabled: emailEnabled === "true",
+    whatsappEnabled: whatsappEnabled === "true",
+  };
+}
