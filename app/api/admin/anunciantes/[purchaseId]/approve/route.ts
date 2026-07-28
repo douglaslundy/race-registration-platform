@@ -27,8 +27,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pur
   const startAt = new Date();
   const endAt = new Date(startAt.getTime() + purchase.adPlan.durationDays * 24 * 60 * 60 * 1000);
 
-  await db.adPurchase.update({ where: { id: purchaseId }, data: { status: "PAID", startAt, endAt } });
-  await db.user.update({ where: { id: purchase.advertiser.userId }, data: { role: "ADVERTISER" } });
+  await db.$transaction(async (tx) => {
+    await tx.adPurchase.update({ where: { id: purchaseId }, data: { status: "PAID", startAt, endAt } });
+    await tx.user.update({ where: { id: purchase.advertiser.userId }, data: { role: "ADVERTISER" } });
+  });
 
   try {
     await sendAdvertiserRequestApprovedEmail({

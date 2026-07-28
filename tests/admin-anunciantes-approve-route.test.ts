@@ -4,6 +4,19 @@ import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendAdvertiserRequestApprovedEmail: vi.fn() }));
+vi.mock("@/lib/db", () => {
+  const db: any = {
+    adPurchase: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    user: {
+      update: vi.fn(),
+    },
+  };
+  db.$transaction = vi.fn(async (fn: any) => fn(db));
+  return { db };
+});
 
 import { POST } from "@/app/api/admin/anunciantes/[purchaseId]/approve/route";
 import { sendAdvertiserRequestApprovedEmail } from "@/lib/email";
@@ -51,6 +64,7 @@ describe("POST /api/admin/anunciantes/[purchaseId]/approve", () => {
       where: { id: "user-1" },
       data: { role: "ADVERTISER" },
     });
+    expect(dbMock.$transaction).toHaveBeenCalledTimes(1);
     expect(sendAdvertiserRequestApprovedEmail).toHaveBeenCalledWith({
       to: "fulano@example.com",
       name: "Fulano",
