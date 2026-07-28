@@ -40,11 +40,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pur
   });
 
   const payment = purchase.payments[0];
+  let refundFailed = false;
+  let refunded = false;
   if (payment) {
     try {
       await refundPayment({ paymentId: payment.id, initiatedByUserId: session.user.id, reason: parsed.data.reason });
+      refunded = true;
     } catch (err) {
-      console.error("[admin/anunciantes/reject] falha ao estornar pagamento:", err);
+      refundFailed = true;
+      console.error(
+        `[admin/anunciantes/reject] falha ao estornar pagamento (purchaseId=${purchaseId}, paymentId=${payment.id}):`,
+        err,
+      );
     }
   }
 
@@ -53,10 +60,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pur
       to: purchase.advertiser.user.email,
       name: purchase.advertiser.user.name,
       reason: parsed.data.reason,
+      refunded,
     });
   } catch (err) {
-    console.error("[admin/anunciantes/reject] falha ao enviar e-mail:", err);
+    console.error(`[admin/anunciantes/reject] falha ao enviar e-mail (purchaseId=${purchaseId}):`, err);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, refundFailed });
 }

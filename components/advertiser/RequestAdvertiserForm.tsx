@@ -4,7 +4,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
+
+interface RequestAdvertiserResult {
+  adPurchaseId: string;
+  status: string;
+  pixQrCode?: string | null;
+  pixQrCodeText?: string | null;
+  boletoUrl?: string | null;
+  checkoutUrl?: string | null;
+}
 
 const schema = z.object({
   name: z.string().min(2, "Nome muito curto").optional(),
@@ -28,8 +37,8 @@ export default function RequestAdvertiserForm({
   adPlanId: string;
   isLoggedIn: boolean;
 }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<RequestAdvertiserResult | null>(null);
   const {
     register,
     handleSubmit,
@@ -68,7 +77,23 @@ export default function RequestAdvertiserForm({
       return;
     }
 
-    router.push("/anuncie/enviado");
+    const body = await res.json();
+    setResult(body);
+  }
+
+  if (result?.pixQrCodeText) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+          Solicitação enviada! Falta só o pagamento.
+        </p>
+        <PixPaymentCard pixQrCodeText={result.pixQrCodeText} />
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Assim que o pagamento for confirmado, sua solicitação entra na fila de aprovação do
+          administrador. Você será avisado por e-mail sobre a aprovação ou rejeição.
+        </p>
+      </div>
+    );
   }
 
   return (

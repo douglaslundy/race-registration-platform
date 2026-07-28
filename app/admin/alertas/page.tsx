@@ -6,6 +6,7 @@ import {
   getPaymentErrorAlertSettings,
   getReconciliationAlertSettings,
   getCancellationAlertSettings,
+  getAdvertiserRequestAlertSettings,
 } from "@/lib/alerts/alert-settings";
 import type { Metadata } from "next";
 
@@ -15,12 +16,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminAlertasPage() {
   await requireAdmin();
 
-  const [lowStock, abandonedCart, paymentError, reconciliation, cancellation] = await Promise.all([
+  const [lowStock, abandonedCart, paymentError, reconciliation, cancellation, advertiserRequest] = await Promise.all([
     getLowStockAlertSettings(),
     getAbandonedCartAlertSettings(),
     getPaymentErrorAlertSettings(),
     getReconciliationAlertSettings(),
     getCancellationAlertSettings(),
+    getAdvertiserRequestAlertSettings(),
   ]);
 
   return (
@@ -87,6 +89,15 @@ export default async function AdminAlertasPage() {
         whatsappKey="alert_cancellation_whatsapp_enabled"
         currentEmailEnabled={cancellation.emailEnabled}
         currentWhatsappEnabled={cancellation.whatsappEnabled}
+      />
+
+      <AlertConfigCard
+        title="Solicitação de conta de anunciante"
+        description="Avisa todos os admins imediatamente quando alguém solicita uma conta de anunciante (com pagamento já realizado), aguardando aprovação."
+        emailKey="alert_advertiser_request_email_enabled"
+        whatsappKey="alert_advertiser_request_whatsapp_enabled"
+        currentEmailEnabled={advertiserRequest.emailEnabled}
+        currentWhatsappEnabled={advertiserRequest.whatsappEnabled}
       />
     </div>
   );

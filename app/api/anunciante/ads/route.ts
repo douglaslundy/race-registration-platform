@@ -59,10 +59,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: validatedUrl.error }, { status: 400 });
   }
 
-  // 1. A compra escolhida precisa pertencer ao anunciante autenticado. Resposta idêntica à de
-  // "sem vaga disponível" para não permitir enumeração de adPurchaseId de terceiros.
+  // 1. A compra escolhida precisa pertencer ao anunciante autenticado e estar paga (status
+  // "PAID" também filtra compras REJECTED/PENDING, que nunca deveriam liberar vaga). Resposta
+  // idêntica à de "sem vaga disponível" para não permitir enumeração de adPurchaseId de terceiros.
   const ownedPurchase = await db.adPurchase.findFirst({
-    where: { id: adPurchaseId, advertiserId: advertiser.id },
+    where: { id: adPurchaseId, advertiserId: advertiser.id, status: "PAID" },
     select: { id: true },
   });
   if (!ownedPurchase) {

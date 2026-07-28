@@ -55,7 +55,11 @@ export default function AdvertiserRequestRow({
     setLoading(false);
     setRejecting(false);
     if (res.ok) {
+      const data = await res.json().catch(() => ({}));
       router.refresh();
+      if (data.refundFailed) {
+        setError("Solicitação rejeitada, mas o estorno automático falhou — verifique manualmente o pagamento.");
+      }
       return;
     }
     const data = await res.json().catch(() => ({}));

@@ -154,11 +154,11 @@ export default async function ConfiguracoesPage() {
       <div className="card space-y-4">
         <h2 className="font-semibold text-lg dark:text-gray-100">Marketplace de anunciantes</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Controla a promoção manual de um atleta existente a anunciante (ação de admin). Quando
-          ativado, essa promoção manual fica liberada; quando desativado, ela é bloqueada. Não afeta
-          a página pública de solicitação de conta de anunciante (<code>/anuncie</code>), que
-          continua sempre disponível — nela, a empresa escolhe um plano, paga e a conta só é
-          liberada depois que um admin aprova a solicitação.
+          Controla, ao mesmo tempo, a promoção manual de um atleta existente a anunciante (ação de
+          admin) e o acesso público à página de solicitação de conta de anunciante
+          (<code>/anuncie</code>), onde a empresa escolhe um plano, paga e a conta só é liberada
+          depois que um admin aprova a solicitação. Quando ativado, ambos os caminhos ficam
+          liberados; quando desativado, nenhum dos dois fica disponível.
         </p>
         <AdsMarketplaceToggle currentEnabled={adsMarketplaceEnabled} />
       </div>

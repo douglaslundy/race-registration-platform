@@ -29,9 +29,10 @@ export type RequestAdvertiserResult =
  * acontece quando o admin aprova a solicitação, ver Task 12). Se o perfil já existir (ex.:
  * tentativa anterior rejeitada, perfil ficou órfão), atualiza os dados em vez de duplicar.
  *
- * No caminho anônimo, a criação do User e do AdvertiserProfile acontece na mesma transação
- * (mesmo padrão de `app/api/auth/register-advertiser/route.ts` e `lib/advertisers/promote.ts`) —
- * assim uma falha no meio do caminho nunca deixa um User(role=ATHLETE) órfão sem perfil, o que
+ * No caminho anônimo, a criação do User e do AdvertiserProfile acontece na mesma transação —
+ * mesmo padrão de transação usado em `lib/advertisers/promote.ts`: criar User+AdvertiserProfile
+ * atomicamente evita User órfão sem perfil caso a segunda escrita falhe. Isso importa porque uma
+ * falha no meio do caminho nunca pode deixar um User(role=ATHLETE) órfão sem perfil, o que
  * bloquearia permanentemente aquele e-mail (o retry cairia no "E-mail já cadastrado").
  */
 export async function requestAdvertiserAccount(

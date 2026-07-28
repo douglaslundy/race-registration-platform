@@ -63,7 +63,32 @@ describe("POST /api/admin/anunciantes/[purchaseId]/reject", () => {
       to: "fulano@example.com",
       name: "Fulano",
       reason: "Dados inconsistentes",
+      refunded: true,
     });
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, refundFailed: false });
+  });
+
+  it("rejeita mesmo quando o estorno falha, mas sinaliza refundFailed e não afirma no e-mail que houve estorno", async () => {
+    dbMock.adPurchase.findUnique.mockResolvedValueOnce({
+      id: "purchase-1",
+      status: "PENDING_APPROVAL",
+      advertiser: { user: { name: "Fulano", email: "fulano@example.com" } },
+      payments: [{ id: "payment-1" }],
+    });
+    vi.mocked(refundPayment).mockRejectedValueOnce(new Error("gateway indisponível"));
+
+    const res = await POST(makeRequest({ reason: "Dados inconsistentes" }), { params: Promise.resolve({ purchaseId: "purchase-1" }) });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, refundFailed: true });
+    expect(sendAdvertiserRequestRejectedEmail).toHaveBeenCalledWith({
+      to: "fulano@example.com",
+      name: "Fulano",
+      reason: "Dados inconsistentes",
+      refunded: false,
+    });
   });
 });

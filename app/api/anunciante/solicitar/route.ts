@@ -7,6 +7,7 @@ import { requestAdvertiserAccount } from "@/lib/advertisers/request-advertiser";
 import { createAdPlanCheckout } from "@/lib/checkout-ads";
 import { getPaymentProvider } from "@/lib/payment";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
+import { getSetting } from "@/lib/settings";
 import type { PaymentMethod } from "@prisma/client";
 
 const profileSchema = z.object({
@@ -34,6 +35,11 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const enabled = await getSetting("ads_marketplace_enabled");
+  if (enabled !== "true") {
+    return NextResponse.json({ error: "Cadastro de anunciantes não está disponível no momento" }, { status: 403 });
+  }
+
   const session = await auth();
 
   const body = await req.json();
@@ -70,17 +76,29 @@ export async function POST(req: NextRequest) {
   const provider = await getPaymentProvider();
   const idempotencyKey = `${checkout.adPurchaseId}_${parsed.data.paymentMethod}_${randomUUID()}`;
 
-  const paymentResult = await provider.createPayment({
-    orderId: checkout.adPurchaseId,
-    amount: checkout.totalAmount,
-    method: parsed.data.paymentMethod,
-    idempotencyKey,
-    buyer: { name: buyerName, email: buyerEmail },
-    description: `Solicitação de conta de anunciante — plano`,
-    cardToken: parsed.data.cardToken,
-    cardBrand: parsed.data.cardBrand,
-    installments: parsed.data.installments,
-  });
+  let paymentResult;
+  try {
+    paymentResult = await provider.createPayment({
+      orderId: checkout.adPurchaseId,
+      amount: checkout.totalAmount,
+      method: parsed.data.paymentMethod,
+      idempotencyKey,
+      buyer: { name: buyerName, email: buyerEmail },
+      description: `Solicitação de conta de anunciante — plano`,
+      cardToken: parsed.data.cardToken,
+      cardBrand: parsed.data.cardBrand,
+      installments: parsed.data.installments,
+    });
+  } catch (err) {
+    console.error(`[anunciante/solicitar] falha ao criar pagamento (adPurchaseId=${checkout.adPurchaseId}):`, err);
+    return NextResponse.json(
+      {
+        error:
+          "Sua conta foi criada, mas houve uma falha ao gerar o pagamento. Faça login com o e-mail e senha que você cadastrou e tente novamente em /anuncie para concluir o pagamento.",
+      },
+      { status: 500 },
+    );
+  }
 
   const providerKey = await getPaymentProviderSetting();
 

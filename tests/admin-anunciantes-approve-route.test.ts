@@ -13,6 +13,9 @@ vi.mock("@/lib/db", () => {
     user: {
       update: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(),
+    },
   };
   db.$transaction = vi.fn(async (fn: any) => fn(db));
   return { db };
@@ -63,6 +66,15 @@ describe("POST /api/admin/anunciantes/[purchaseId]/approve", () => {
     expect(dbMock.user.update).toHaveBeenCalledWith({
       where: { id: "user-1" },
       data: { role: "ADVERTISER" },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: "admin-1",
+        action: "USER_UPDATED",
+        entityType: "User",
+        entityId: "user-1",
+        metadata: { role: "ADVERTISER", adPurchaseId: "purchase-1" },
+      },
     });
     expect(dbMock.$transaction).toHaveBeenCalledTimes(1);
     expect(sendAdvertiserRequestApprovedEmail).toHaveBeenCalledWith({

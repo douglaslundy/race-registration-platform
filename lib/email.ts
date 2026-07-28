@@ -403,8 +403,14 @@ export async function sendAdvertiserRequestRejectedEmail(params: {
   to: string;
   name: string;
   reason: string;
+  refunded: boolean;
 }): Promise<void> {
   const appName = await getAppName();
+  const refundParagraph = params.refunded
+    ? `<p>O valor pago já foi estornado automaticamente e deve aparecer no seu extrato em alguns
+          dias úteis, conforme o meio de pagamento utilizado.</p>`
+    : `<p>Caso tenha sido efetuado algum pagamento, nossa equipe cuidará do estorno e entrará em
+          contato caso haja qualquer dúvida.</p>`;
   await sendMail({
     to: params.to,
     subject: `Sua solicitação de anunciante não foi aprovada — ${appName}`,
@@ -413,8 +419,7 @@ export async function sendAdvertiserRequestRejectedEmail(params: {
       `<p>Olá ${params.name},</p>
        <p>Sua solicitação de conta de anunciante não foi aprovada.</p>
        <p><strong>Motivo:</strong> ${params.reason}</p>
-       <p>O valor pago já foi estornado automaticamente e deve aparecer no seu extrato em alguns
-          dias úteis, conforme o meio de pagamento utilizado.</p>`
+       ${refundParagraph}`
     ),
   });
 }

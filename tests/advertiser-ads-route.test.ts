@@ -86,12 +86,27 @@ describe("POST /api/anunciante/ads", () => {
     const body = await res.json();
     expect(body.error).toBe("Esta compra não possui vaga disponível");
     expect(dbMock.adPurchase.findFirst).toHaveBeenCalledWith({
-      where: { id: "purchase-1", advertiserId: "advertiser-1" },
+      where: { id: "purchase-1", advertiserId: "advertiser-1", status: "PAID" },
       select: { id: true },
     });
     expect(hasAvailableSlotInPurchaseMock).not.toHaveBeenCalled();
     expect(dbMock.privateAd.create).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando a compra existe mas não está PAID (ex.: REJECTED ou PENDING), mesma resposta de ownership", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
+    dbMock.advertiserProfile.findUnique.mockResolvedValueOnce({ id: "advertiser-1" });
+    // findFirst já filtra por status: "PAID" na query, então uma compra REJECTED/PENDING
+    // simplesmente não é encontrada — mesmo caminho do teste de ownership acima.
+    dbMock.adPurchase.findFirst.mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Esta compra não possui vaga disponível");
+    expect(dbMock.privateAd.create).not.toHaveBeenCalled();
   });
 
   it("retorna 400 quando a compra não tem vaga disponível", async () => {

@@ -30,6 +30,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pur
   await db.$transaction(async (tx) => {
     await tx.adPurchase.update({ where: { id: purchaseId }, data: { status: "PAID", startAt, endAt } });
     await tx.user.update({ where: { id: purchase.advertiser.userId }, data: { role: "ADVERTISER" } });
+    await tx.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: "USER_UPDATED",
+        entityType: "User",
+        entityId: purchase.advertiser.userId,
+        metadata: { role: "ADVERTISER", adPurchaseId: purchaseId },
+      },
+    });
   });
 
   try {
@@ -39,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pur
       planName: purchase.adPlan.name,
     });
   } catch (err) {
-    console.error("[admin/anunciantes/approve] falha ao enviar e-mail:", err);
+    console.error(`[admin/anunciantes/approve] falha ao enviar e-mail (purchaseId=${purchaseId}):`, err);
   }
 
   return NextResponse.json({ ok: true });

@@ -35,8 +35,13 @@ describe("sendAdvertiserRequestApprovedEmail / sendAdvertiserRequestRejectedEmai
     );
   });
 
-  it("envia e-mail de rejeição com o motivo e menção ao reembolso", async () => {
-    await sendAdvertiserRequestRejectedEmail({ to: "empresa@example.com", name: "Fulano", reason: "Dados inconsistentes" });
+  it("envia e-mail de rejeição com o motivo e menção ao reembolso quando refunded=true", async () => {
+    await sendAdvertiserRequestRejectedEmail({
+      to: "empresa@example.com",
+      name: "Fulano",
+      reason: "Dados inconsistentes",
+      refunded: true,
+    });
 
     expect(sendMailMock).toHaveBeenCalled();
     const call = sendMailMock.mock.calls[0][0];
@@ -44,5 +49,20 @@ describe("sendAdvertiserRequestApprovedEmail / sendAdvertiserRequestRejectedEmai
     expect(call.subject).toContain("não foi aprovada");
     expect(call.html).toContain("Dados inconsistentes");
     expect(call.html).toMatch(/estorn|reembols/i);
+    expect(call.html).toContain("já foi estornado automaticamente");
+  });
+
+  it("envia e-mail de rejeição sem afirmar que o estorno ocorreu quando refunded=false", async () => {
+    await sendAdvertiserRequestRejectedEmail({
+      to: "empresa@example.com",
+      name: "Fulano",
+      reason: "Dados inconsistentes",
+      refunded: false,
+    });
+
+    expect(sendMailMock).toHaveBeenCalled();
+    const call = sendMailMock.mock.calls[0][0];
+    expect(call.html).not.toContain("já foi estornado automaticamente");
+    expect(call.html).toMatch(/nossa equipe cuidará do estorno/i);
   });
 });
