@@ -130,12 +130,16 @@ export async function POST(req: NextRequest) {
     }
     const result = await db.$transaction((tx) => confirmAdPurchasePayment(tx, { ...payment, adPurchase }, event.status));
     if (result.changed && result.advertiserEmail && result.advertiserName && result.planName && result.endAt) {
-      await sendAdPurchaseConfirmationEmail({
-        to: result.advertiserEmail,
-        name: result.advertiserName,
-        planName: result.planName,
-        endAt: result.endAt,
-      });
+      try {
+        await sendAdPurchaseConfirmationEmail({
+          to: result.advertiserEmail,
+          name: result.advertiserName,
+          planName: result.planName,
+          endAt: result.endAt,
+        });
+      } catch (err) {
+        console.error(`[webhooks/payment] falha ao enviar e-mail de confirmação de compra de anúncio para adPurchase ${adPurchase.id}:`, err);
+      }
     }
     if (result.wentToPendingApproval) {
       await notifyAdvertiserRequestPending(adPurchase.id);

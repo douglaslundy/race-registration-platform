@@ -64,4 +64,45 @@ describe("payment webhook — branch de AdPurchase", () => {
     expect(applyGatewayStatus).not.toHaveBeenCalled();
     expect(sendAdPurchaseConfirmationEmail).not.toHaveBeenCalled();
   });
+
+  it("responde 200 mesmo quando sendAdPurchaseConfirmationEmail falha (SMTP fora do ar não deve derrubar o webhook)", async () => {
+    vi.mocked(getPaymentProvider).mockResolvedValue(
+      makeProvider({ providerPaymentId: "pay-ads-2", status: "PAID", rawPayload: {} }) as any,
+    );
+    const payment = {
+      id: "payment-ads-2",
+      status: "PENDING",
+      orderId: null,
+      adPurchaseId: "adpurchase-2",
+      order: null,
+      adPurchase: {
+        id: "adpurchase-2",
+        status: "PENDING",
+        advertiser: { user: { name: "Anunciante", email: "anunciante@example.com" } },
+        adPlan: { name: "Plano Ouro", durationDays: 30 },
+      },
+    };
+    dbMock.payment.findFirst.mockResolvedValueOnce(payment);
+    vi.mocked(confirmAdPurchasePayment).mockResolvedValueOnce({
+      changed: true,
+      advertiserEmail: "anunciante@example.com",
+      advertiserName: "Anunciante",
+      planName: "Plano Ouro",
+      endAt: new Date("2026-08-01"),
+      wentToPendingApproval: false,
+    });
+    vi.mocked(sendAdPurchaseConfirmationEmail).mockRejectedValueOnce(new Error("SMTP down"));
+
+    const res = await POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ type: "charge.updated" }),
+      }) as any,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(sendAdPurchaseConfirmationEmail).toHaveBeenCalled();
+  });
 });
