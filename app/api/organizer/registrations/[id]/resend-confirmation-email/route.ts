@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Esta inscrição ainda não está confirmada" }, { status: 400 });
   }
 
-  await notifyOrderConfirmed(registration.order.id);
+  await notifyOrderConfirmed(registration.order.id, { bypassDedupe: true });
 
   await db.auditLog.create({
     data: {

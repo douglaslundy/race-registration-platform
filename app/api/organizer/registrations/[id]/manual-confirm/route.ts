@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   });
 
-  void notifyOrderConfirmed(registration.order.id);
+  void notifyOrderConfirmed(registration.order.id, { bypassDedupe: true });
 
   return NextResponse.json({ success: true });
 }

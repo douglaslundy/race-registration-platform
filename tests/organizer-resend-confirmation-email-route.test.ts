@@ -62,7 +62,7 @@ describe("POST /api/organizer/registrations/[id]/resend-confirmation-email", () 
         where: { id: "reg-1", event: { organizerId: "org-1" } },
       }),
     );
-    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1");
+    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1", { bypassDedupe: true });
     expect(dbMock.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "organizer-1",

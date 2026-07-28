@@ -59,7 +59,7 @@ describe("POST /api/admin/registrations/[id]/resend-confirmation-email", () => {
     expect(dbMock.registration.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "reg-1" } }),
     );
-    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1");
+    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1", { bypassDedupe: true });
     expect(dbMock.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "admin-1",

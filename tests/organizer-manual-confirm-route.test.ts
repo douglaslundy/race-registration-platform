@@ -107,7 +107,7 @@ describe("POST /api/organizer/registrations/[id]/manual-confirm", () => {
         }),
       }),
     );
-    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1");
+    expect(notifyOrderConfirmed).toHaveBeenCalledWith("order-1", { bypassDedupe: true });
   });
 
   it("assistente de organizador com a permissão confirma a inscrição escopada ao evento do criador", async () => {
