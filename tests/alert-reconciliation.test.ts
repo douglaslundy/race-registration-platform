@@ -81,4 +81,58 @@ describe("notifyReconciliationMismatches", () => {
 
     await expect(notifyReconciliationMismatches(mismatchFixture)).resolves.toBeUndefined();
   });
+
+  it("na 2ª chamada com a mesma lista de divergências, não reenvia (dedupe por payment+admin+canal)", async () => {
+    vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 15 });
+    dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: null }]);
+    // 1ª chamada: claim concedido (AlertLog.create grava normalmente). 2ª chamada: a constraint
+    // única já existe (P2002) — simula a mesma divergência não corrigida reaparecendo no próximo
+    // ciclo do cron, que antes desta correção reenviava pra sempre.
+    dbMock.alertLog.create.mockResolvedValueOnce({ id: "log-1" }).mockRejectedValueOnce({ code: "P2002" });
+
+    await notifyReconciliationMismatches(mismatchFixture);
+    await notifyReconciliationMismatches(mismatchFixture);
+
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("uma divergência NOVA ao lado de uma já alertada ainda é enviada (dedupe parcial por admin)", async () => {
+    vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 15 });
+    dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: null }]);
+
+    const newMismatch = {
+      paymentId: "payment-2",
+      orderId: "order-2",
+      eventTitle: "Corrida Teste 2",
+      localStatus: "PENDING",
+      gatewayStatus: "PAID",
+      corrected: false,
+    };
+
+    // 1ª execução: só a divergência 1 existe e é reivindicada com sucesso.
+    dbMock.alertLog.create.mockResolvedValueOnce({ id: "log-1" });
+    await notifyReconciliationMismatches(mismatchFixture);
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledTimes(1);
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledWith({ to: "admin1@example.com", mismatches: mismatchFixture });
+
+    vi.mocked(sendReconciliationMismatchEmail).mockClear();
+
+    // 2ª execução: a divergência 1 já foi reivindicada (P2002), mas a divergência 2 é nova — só
+    // ela deve entrar no resumo enviado a este admin.
+    dbMock.alertLog.create.mockRejectedValueOnce({ code: "P2002" }).mockResolvedValueOnce({ id: "log-2" });
+    await notifyReconciliationMismatches([mismatchFixture[0], newMismatch]);
+
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledTimes(1);
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledWith({ to: "admin1@example.com", mismatches: [newMismatch] });
+  });
+
+  it("não envia nada para um admin cujas divergências já foram todas alertadas antes", async () => {
+    vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 15 });
+    dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: null }]);
+    dbMock.alertLog.create.mockRejectedValueOnce({ code: "P2002" });
+
+    await notifyReconciliationMismatches(mismatchFixture);
+
+    expect(sendReconciliationMismatchEmail).not.toHaveBeenCalled();
+  });
 });
