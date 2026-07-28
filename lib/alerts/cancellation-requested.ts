@@ -21,6 +21,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
       where: { id: registrationId },
       select: {
         cancellationReason: true,
+        cancellationRequestedAt: true,
         athlete: { select: { name: true } },
         event: {
           select: {
@@ -35,12 +36,20 @@ export async function notifyCancellationRequested(registrationId: string): Promi
     const admins = await db.user.findMany({ where: { role: "ADMIN" }, select: { email: true, phone: true } });
     const recipients = [...admins, registration.event.organizer.user];
     const reason = registration.cancellationReason ?? "";
+    // Escopa a chave de dedupe por solicitação (não só por inscrição): sem o timestamp, uma
+    // segunda solicitação de cancelamento na MESMA inscrição (ex.: admin rejeita a primeira, o
+    // atleta pede de novo) reencontraria o claim antigo, nunca expirado, e ninguém seria avisado
+    // da nova solicitação. cancellationRequestedAt é regravado a cada nova solicitação
+    // (app/api/registrations/[id]/cancel/route.ts), então serve de escopo natural por tentativa.
+    const requestKey = registration.cancellationRequestedAt
+      ? `${registrationId}:${registration.cancellationRequestedAt.toISOString()}`
+      : registrationId;
 
     if (settings.emailEnabled) {
       const cfg = await getSmtpConfig();
       if (isSmtpReady(cfg)) {
         for (const recipient of recipients) {
-          const claimed = await claimAlert(ALERT_TYPE, "Registration", `${registrationId}:${recipient.email}`, "EMAIL");
+          const claimed = await claimAlert(ALERT_TYPE, "Registration", `${requestKey}:${recipient.email}`, "EMAIL");
           if (!claimed) continue;
           try {
             await sendCancellationRequestedEmail({
@@ -50,7 +59,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
               reason,
             });
           } catch (err) {
-            await unclaimAlert(ALERT_TYPE, `${registrationId}:${recipient.email}`, "EMAIL");
+            await unclaimAlert(ALERT_TYPE, `${requestKey}:${recipient.email}`, "EMAIL");
             console.error("[notifyCancellationRequested] email failed for", recipient.email, err);
           }
         }
@@ -60,7 +69,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
     if (settings.whatsappEnabled) {
       for (const recipient of recipients) {
         if (!recipient.phone) continue;
-        const claimed = await claimAlert(ALERT_TYPE, "Registration", `${registrationId}:${recipient.phone}`, "WHATSAPP");
+        const claimed = await claimAlert(ALERT_TYPE, "Registration", `${requestKey}:${recipient.phone}`, "WHATSAPP");
         if (!claimed) continue;
         try {
           await sendWhatsAppMessage(
@@ -68,7 +77,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
             `${registration.athlete.name} solicitou o cancelamento da inscrição em "${registration.event.title}". Motivo: ${reason}. Acesse o painel para aprovar ou rejeitar.`,
           );
         } catch (err) {
-          await unclaimAlert(ALERT_TYPE, `${registrationId}:${recipient.phone}`, "WHATSAPP");
+          await unclaimAlert(ALERT_TYPE, `${requestKey}:${recipient.phone}`, "WHATSAPP");
           console.error("[notifyCancellationRequested] whatsapp failed for", recipient.phone, err);
         }
       }

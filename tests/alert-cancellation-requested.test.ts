@@ -84,4 +84,47 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
     expect(sendCancellationRequestedEmail).not.toHaveBeenCalled();
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
   });
+
+  it("inclui cancellationRequestedAt na chave de dedupe, por destinatário", async () => {
+    vi.mocked(getCancellationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    const requestedAt = new Date("2026-07-20T10:00:00.000Z");
+    dbMock.registration.findUnique.mockResolvedValueOnce({ ...registrationFixture, cancellationRequestedAt: requestedAt });
+
+    await notifyCancellationRequested("reg-1");
+
+    expect(claimAlert).toHaveBeenCalledWith(
+      "CANCELLATION_REQUESTED",
+      "Registration",
+      `reg-1:${requestedAt.toISOString()}:admin@example.com`,
+      "EMAIL",
+    );
+  });
+
+  it("uma segunda solicitação de cancelamento na mesma inscrição, com cancellationRequestedAt diferente, também é alertada (não é bloqueada pelo claim da primeira)", async () => {
+    vi.mocked(getCancellationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    // Mock com estado real de dedupe (chave -> já reivindicada?), pra provar que é a MUDANÇA de
+    // chave (por causa do timestamp) que libera a 2ª solicitação — não apenas um mock sempre-true.
+    // Com a chave antiga (sem timestamp), a 2ª chamada reusaria a mesma entityId da 1ª e seria
+    // bloqueada, exatamente como no bug relatado.
+    const claimedKeys = new Set<string>();
+    vi.mocked(claimAlert).mockImplementation(async (_alertType: string, _entityType: string, entityId: string) => {
+      if (claimedKeys.has(entityId)) return false;
+      claimedKeys.add(entityId);
+      return true;
+    });
+
+    const firstRequestedAt = new Date("2026-07-01T10:00:00.000Z");
+    const secondRequestedAt = new Date("2026-07-20T10:00:00.000Z");
+
+    // 1ª solicitação: claim concedido normalmente.
+    dbMock.registration.findUnique.mockResolvedValueOnce({ ...registrationFixture, cancellationRequestedAt: firstRequestedAt });
+    await notifyCancellationRequested("reg-1");
+
+    // 2ª solicitação (admin rejeitou a 1ª, atleta pediu de novo): timestamp novo, claim novo,
+    // mesmo que o claim da 1ª solicitação nunca tenha sido liberado.
+    dbMock.registration.findUnique.mockResolvedValueOnce({ ...registrationFixture, cancellationRequestedAt: secondRequestedAt });
+    await notifyCancellationRequested("reg-1");
+
+    expect(sendCancellationRequestedEmail).toHaveBeenCalledTimes(4); // 2 destinatários x 2 solicitações
+  });
 });
