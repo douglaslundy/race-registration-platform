@@ -13,6 +13,7 @@ export default function ConfirmModal({
   showNoteField = false,
   noteRequired = false,
   notePlaceholder = "",
+  noteDefaultValue,
   onConfirm,
   onCancel,
 }: {
@@ -26,10 +27,11 @@ export default function ConfirmModal({
   showNoteField?: boolean;
   noteRequired?: boolean;
   notePlaceholder?: string;
+  noteDefaultValue?: string;
   onConfirm: (note?: string) => void;
   onCancel: () => void;
 }) {
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(noteDefaultValue ?? "");
 
   if (!open) return null;
 

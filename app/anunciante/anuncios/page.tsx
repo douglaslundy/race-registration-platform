@@ -7,6 +7,7 @@ import { PRIVATE_AD_STATUS } from "@/lib/private-ad-status";
 import { BADGE } from "@/lib/badge-colors";
 import { ACTIVE_STATUSES } from "@/lib/ads/private-ads";
 import PrivateAdCancelButton from "@/components/advertiser/PrivateAdCancelButton";
+import EditPrivateAdLinkButton from "@/components/advertiser/EditPrivateAdLinkButton";
 
 export const metadata: Metadata = { title: "Meus Anúncios — Anunciante" };
 export const dynamic = "force-dynamic";
@@ -61,7 +62,12 @@ export default async function AdvertiserAnunciosPage() {
                   </p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded font-medium ${status.color}`}>{status.label}</span>
-                {ACTIVE_STATUSES.includes(ad.status) && <PrivateAdCancelButton id={ad.id} />}
+                {ACTIVE_STATUSES.includes(ad.status) && (
+                  <div className="flex gap-2">
+                    <EditPrivateAdLinkButton id={ad.id} currentUrl={ad.targetUrl} isApproved={ad.status === "APPROVED"} />
+                    <PrivateAdCancelButton id={ad.id} />
+                  </div>
+                )}
               </div>
             );
           })}
