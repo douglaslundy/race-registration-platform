@@ -1,5 +1,129 @@
 # Progresso do Projeto
 
+## Conteúdo de SEO escrito e gravado em produção (2026-07-28)
+
+Usuário percebeu que o sistema de SEO (infraestrutura pronta desde o deploy anterior) não tinha
+nenhum conteúdo de verdade preenchido — nem configurações globais, nem `metaTitle`/`metaDescription`
+dos eventos reais. Não usei o botão "Gerar com IA" (não tem chave de provedor configurada ainda em
+Admin → SEO) — escrevi o conteúdo eu mesmo, direto no banco de produção (mesmo padrão já usado
+nesta sessão pra correções pontuais), baseado na descrição real de cada evento.
+
+**Configurações globais** (`platform_settings`, chaves `seo_default_title`/`seo_default_description`/`seo_brand_context`):
+"Circuito das Corridas — Inscrições para Corridas e Trail Run" / descrição mencionando MG, SP,
+Pix/cartão/boleto / contexto de marca pra fallback e futuros prompts de IA.
+
+**Eventos reais** (3 no banco, só 2 receberam SEO — ver justificativa):
+- "3º Corrida Saúde em Movimento" (Ilicínea/MG, 30/08/2026) — metaTitle/metaDescription gravados.
+- "Trail Run São Judas" (Guapé/MG, 18/10/2026) — metaTitle/metaDescription gravados.
+- "Corrida das Pedras 2025" (São Paulo/SP) — **propositalmente não recebeu SEO**: está com status
+  `CANCELLED`, não faz sentido investir em ranqueamento de um evento cancelado (cai no fallback
+  automático do próprio título/descrição do evento, comportamento padrão do sistema).
+
+Confirmado ao vivo via `curl` no HTML de produção: home e página do evento mostram o título/descrição
+corretos. Nenhuma mudança de código nesta leva — só dado gravado direto no banco de produção.
+
+**Pendência real que sobrou**: o botão "Gerar com IA" (Tasks 13/14/16/17 do plano) continua sem uso
+possível até alguém configurar uma chave de API (Claude/OpenAI/Google) em Admin → SEO. Perguntar
+ao usuário se quer configurar isso quando ele tiver a chave em mãos.
+
+## Frente 2 — decisões de brainstorm fechadas (2026-07-28), spec ainda não escrita
+
+Usuário respondeu as 3 decisões pendentes do fluxo de solicitação de conta de anunciante:
+1. **Créditos**: reaproveitar `AdPurchase.maxSimultaneousSlots` já existente (cada anúncio
+   aprovado ocupa uma vaga simultânea até cancelar/expirar) — sem schema novo.
+2. **Alerta ao admin**: notificação imediata (e-mail/WhatsApp) a cada solicitação nova de
+   anunciante, não só no resumo diário.
+3. **Reembolso na rejeição**: reaproveitar `lib/payment/refund-service.ts` (mesma infra usada
+   pros reembolsos de inscrição).
+
+**Próxima ação real ao retomar esta frente**: com as decisões fechadas, escrever a spec
+(`docs/superpowers/specs/...`) combinando essas 3 decisões + as 3 já fechadas antes (ver histórico
+mais abaixo neste arquivo) + os campos do formulário já definidos (CNPJ/CPF, endereço, Instagram,
+Facebook). Depois spec → plano → `superpowers:subagent-driven-development`.
+
+## Bug urgente (2026-07-28): card de evento na listagem não respeitava data do lote — CORRIGIDO, DEPLOY PENDENTE
+
+Usuário reportou que o evento "Trial Run São Judas" mostrava o botão "Inscrever-se" na página de
+listagem (`/eventos`) mesmo achando que a inscrição não devia estar aberta ainda. Investigação:
+os lotes reais desse evento têm `startAt=01/07/2026` (já ativos há quase um mês, não bate com a
+expectativa do usuário de "1º de agosto" — usuário não confirmou onde configurou essa data,
+possivelmente confusão/lote diferente, não travou a investigação). O bug REAL encontrado é
+separado do que já tinha sido corrigido na página de detalhe do evento: `components/events/EventCard.tsx`
+(usado só na listagem `/eventos`) tinha seu próprio botão "Inscreva-se" como link direto pra
+`/inscricao/[slug]`, sem NENHUMA validação de lote (só checava `status !== REGISTRATIONS_CLOSED/COMPLETED`).
+A query `lib/events.ts::listPublicEvents` também só buscava `priceAmount/soldCount/capacity` do
+lote mais barato (`take:1`), sem os campos que `getBatchStatus` precisa.
+
+Corrigido: query passa a buscar todos os lotes com os campos necessários (`startAt`/`endAt`/`active`/`activationMode`);
+`EventCard` reaproveita `getBatchStatus` (mesmo padrão já usado na página de detalhe) pra decidir
+entre "Inscreva-se" (link), "Inscrições em breve" (desabilitado, upcoming) ou o fallback de
+esgotado/fechado. Sem teste dedicado (componente React, convenção do projeto — mesma decisão da
+correção anterior). Commit `f037d15`, suíte 1254/1254, `tsc` limpo. **DEPLOYADO** (push -> pull na
+VPS -> docker build -> docker compose up -d --no-deps app, sem mudança de schema). Smoke test
+confirmado ao vivo: `/eventos` mostra "Inscrições em breve" pro evento com lote upcoming,
+"Inscrições abertas" pros demais.
+
+**Também descoberto durante a investigação, achado técnico registrado pra referência futura**:
+`app/organizador/eventos/[id]/lotes/page.tsx:113` usa `b.startAt.slice(0, 16)` pra preencher o
+campo de edição de data do lote — mesma classe de bug do `toDatetimeLocal` já corrigido em
+`EditEventForm.tsx`, só que aqui nem tenta converter de UTC pra local (pega a string crua). Não
+corrigido ainda (não é a causa do bug relatado, que era só no card da listagem) — vale corrigir
+numa próxima leva.
+
+## Interrupção pontual (2026-07-27): 2 correções urgentes pedidas pelo usuário no meio da execução do plano — RESOLVIDAS
+
+Usuário pediu pra pausar a sequência do plano SEO+IA/anúncios (estava na Task 22, interrompida
+por limite de sessão dos subagents — ver seção da Task 22 mais abaixo, ainda pendente) pra
+resolver 2 problemas urgentes antes de continuar:
+
+1. **Corrigir nome/link do evento "Trial Run São Judas - GUAPE - MG"** — o título já estava
+   certo no banco (o usuário já tinha renomeado via admin), mas o slug (link público) continuava
+   `desafio-sao-judas-x-jacutinga-1781733455085` (nunca é regenerado quando o título muda — hoje
+   não existe funcionalidade no app pra regenerar slug, foi uma correção manual direta no banco de
+   produção). Corrigido via `psql` na VPS (`docker exec corridas-db`) pra
+   `trial-run-sao-judas-guape-mg` (evento `id=cmqim3gmn000esf846h461fx4`, confirmada
+   unicidade antes de aplicar). **Não commitado no git** (é dado, não código) — só a mudança no
+   banco de produção.
+
+2. **Bug "grave" de fuso horário na edição de evento** — usuário criou evento pra 18/10/2026
+   07:00, mas ao reabrir pela tela de editar, o campo de hora mostrava 10:00. Investigado com
+   `superpowers:systematic-debugging`: causa raiz em `toDatetimeLocal()`
+   (`components/organizer/EditEventForm.tsx`) — usava `toISOString()` (sempre UTC) sem converter
+   de volta pro horário local de Brasília antes de preencher o input `datetime-local`. **O dado no
+   banco sempre esteve correto** (`startAt = 2026-10-18 10:00:00` é exatamente 07:00 BRT em UTC,
+   confirmado via query direta) — o bug era só na exibição do formulário de edição, e afeta os 3
+   campos que reaproveitam essa função (`startAt`, `kitPickupAt`, `cancellationDeadline`). TDD:
+   teste escrito primeiro (`tests/unit/to-datetime-local.test.ts`), confirmado RED reproduzindo o
+   bug exato (retornava 10:00 em vez de 07:00), corrigido subtraindo
+   `dt.getTimezoneOffset() * 60000` antes de formatar, confirmado GREEN. Suíte completa 1250/1250,
+   `tsc --noEmit` limpo. Commit `d53af22`, **ainda não deployado** — aguardando autorização do
+   usuário pra push/deploy (mesmo padrão de sempre). **Decisão do usuário**: não isolar esse
+   deploy — o `main` local está 27 commits à frente do `origin/main` (todo o plano de
+   SEO+IA/anúncios, Tasks 1-21, mais essa correção), não dá pra subir um commit isolado sem os
+   anteriores, e a Task 1 desse plano exige migração de schema (`Event.metaTitle`/`metaDescription`,
+   confirmado que ainda não existe em produção). Usuário optou por esperar o plano inteiro
+   terminar (Tasks 22-25 + revisão final) e fazer um deploy único no final, como sempre.
+
+## BACKLOG DE BUGS (não iniciar agora — só registrar, aguardando as 3 frentes em andamento)
+
+### Bug reportado pelo usuário em 2026-07-27: mensagem duplicada/errada na inscrição por procuração
+
+Quando um atleta cria uma inscrição por procuração pra um terceiro (feature completa em
+2026-07-22/23, ver seção "Inscrição por procuração" mais abaixo neste arquivo):
+- Mensagem pro terceiro (o atleta procurado): enviada corretamente.
+- Mensagem pro comprador (quem criou a inscrição): enviada corretamente.
+- **Bug**: existe uma SEGUNDA mensagem, com o texto "[nome do comprador] criou uma inscrição para
+  você" — essa mensagem deveria ir pro terceiro (é conteúdo dele), mas o texto sugere que está
+  sendo enviada pro comprador de novo (mensagem duplicada/destinatário errado) — a mensagem
+  correta com esse conteúdo já foi enviada antes, então essa segunda parece redundante ou mal
+  direcionada.
+
+**Não investigado ainda.** Ponto de partida provável: `lib/proxy-athlete.ts` e
+`lib/notifications.ts` (fluxo de notificação dupla comprador+atleta descrito na inscrição por
+procuração), mais os pontos que disparam convite de acesso por e-mail. Usar
+`superpowers:systematic-debugging` quando for investigar — não assumir a causa sem ler o código
+dos 2 pontos de disparo de mensagem envolvidos.
+
 ## PRÓXIMA TAREFA (2026-07-27) — 3 frentes grandes, ordem confirmada pelo usuário
 
 Usuário confirmou explicitamente a ordem: **1) executar o plano de SEO+IA/anúncios (pronto) → 2)
@@ -14,20 +138,45 @@ Spec `docs/superpowers/specs/2026-07-26-sistema-seo-ia.md` + spec
 `docs/superpowers/plans/2026-07-27-seo-ia-e-anuncios-link.md`.
 
 **Estado exato pra retomar** (ledger completo em `.superpowers/sdd/progress.md`, git é a fonte da
-verdade se o ledger sumir):
-- Tasks 1-4: **completas e revisadas** (spec ✅ + qualidade Approved cada uma). Commits
-  `920a199`, `432cab6`, `4d4122e`, `4eb3cf1`.
-- Task 5 (`app/robots.ts`): **implementada, commit `de70b06`, mas a revisão FALHOU por limite
-  semanal de API da sessão anterior (erro de infraestrutura, não um problema de qualidade real)**.
-  Pacote de diff já gerado em `.superpowers/sdd/review-4eb3cf1..de70b06.diff` — só falta
-  redisparar o task reviewer (mesmo prompt de sempre: ler `task-5-brief.md` + o diff, verificar
-  spec+qualidade) antes de marcar como completa e seguir pra Task 6.
-- Tasks 6-25 + revisão final: ainda não iniciadas.
+verdade se o ledger sumir — TaskList da ferramenta interna NÃO persiste entre sessões, sempre
+volta vazia; usar o ledger + `git log`, nunca a memória da conversa):
 
-**Como retomar**: seguir `superpowers:subagent-driven-development` normalmente a partir da
-revisão pendente da Task 5 — não re-implementar nada já commitado (git log confirma os commits
-acima existem). Task list interna (`TaskList`) já reflete esse estado: #1-4 completed, #5
-in_progress, #6-26 pending.
+- **Tasks 1-17: completas e revisadas** (spec ✅ + qualidade Approved cada uma, zero
+  Critical/Important em aberto). Commits em sequência: `920a199` (Task 1, migração
+  metaTitle/metaDescription) → `432cab6` (Task 2) → `4d4122e` (Task 3) → `4eb3cf1` (Task 4) →
+  `de70b06` (Task 5, robots.ts) → `f01a488` (Task 6) → `8d023b8` (Task 7) → `34c895f` (Task 8,
+  Search Console + GA no layout raiz) → `9704672` (Task 9, `/admin/seo`) → `36a928c` (Task 10,
+  campos metaTitle/metaDescription na edição de evento) → `2e4f34f` (Task 11, `lib/ai/` —
+  Claude/OpenAI/Google) → `e8e29df` (Task 12, build-seo-prompt) → `b8c7fd3` (Task 13, rota de
+  geração por IA do evento) → `c93b8a4` (Task 14, rota de geração por IA do site) → `05ede65`
+  (Task 15, formulário de provedor de IA) → `b08ae5f` (Task 16, botão "Gerar com IA" nos campos
+  globais) → `10f6d47` (Task 17, botão "Gerar com IA" nos campos do evento) → `7103392` (Task 18,
+  `lib/validate-url.ts` implementação inicial) → `f3dfaf8` (Task 18, fix de 3 gaps de segurança
+  achados na revisão — ver abaixo). HEAD atual: `f3dfaf8`.
+- **Task 18 achado de segurança (resolvido)**: revisão com escrutínio extra (validação é
+  SSRF/XSS-sensitive) achou 3 gaps reais mesmo com código implementado ao pé da letra da spec —
+  `::1` nunca bloqueava de verdade (hostname vem com colchetes `[::1]`), `localhost.` (ponto final)
+  contornava o bloqueio, e só `127.0.0.1` exato era bloqueado (não o `/8` inteiro) e
+  `169.254.0.0/16` (endpoint de metadados de nuvem) não tinha bloqueio nenhum. Usuário escolheu
+  corrigir antes de seguir (via AskUserQuestion) — corrigido, re-revisão confirmou os 3 endereçados
+  sem regressão.
+- Tasks 19-25 + revisão final de branch inteira: ainda não iniciadas.
+
+**Achados Minor registrados no ledger (não bloqueiam, deferred)**: indentação cosmética em
+`app/(public)/eventos/[slug]/page.tsx` (Task 7); `as any` em `app/admin/seo/page.tsx:60` (Task
+15); botão de salvar do `SeoSettingsForm` não desabilita durante geração por IA (Task 16).
+
+**Achado de processo (Task 13)**: o brief da Task 13 tinha um teste com mocks de banco
+incompletos pro caminho ORGANIZER de `resolveActingScope` — corrigido só no teste (código da rota
+implementado verbatim), verificado pelo revisor contra `lib/auth/rbac.ts` real. Não se repetiu nas
+Tasks 14/17 (rotas/formulários seguintes).
+
+**Como retomar**: seguir `superpowers:subagent-driven-development` normalmente a partir da Task
+18 (ou onde o ledger `.superpowers/sdd/progress.md` indicar) — não re-implementar nada já
+commitado. Specs completas em `docs/superpowers/specs/2026-07-26-sistema-seo-ia.md` +
+`docs/superpowers/specs/2026-07-27-anuncios-link-destino.md`; plano completo (25 tasks) em
+`docs/superpowers/plans/2026-07-27-seo-ia-e-anuncios-link.md` — todos já commitados no git, não
+precisam ser copiados pra lugar nenhum.
 
 ### 2. Fluxo de solicitação de conta de anunciante (pagamento antes da aprovação) — BRAINSTORM EM ANDAMENTO
 
@@ -1093,3 +1242,25 @@ Backup/Restore, Repasses — dois deles exigem dividir rotas multi-responsabilid
 de rating (só com pedido explícito — ver memória); dívidas técnicas menores registradas no ledger
 (validação de importId no PATCH de resultados, helper pra resolução de organizerUserId, padrão de
 mock dos 2 testes de cancelamento).
+
+## Frente 2 — spec fechada (2026-07-28), pronta pra virar plano
+
+Spec completa em `docs/superpowers/specs/2026-07-28-solicitacao-conta-anunciante.md`. Todas as
+decisões fechadas (as 3 do brainstorm inicial + as 3 de 2026-07-28 + as 4 que apareceram durante a
+escrita da spec, incluindo achado técnico real: `refundPayment()` precisa ser estendido pra
+aceitar AdPurchase, hoje só aceita Registration/Order). Decisão de escopo: `register-advertiser`
+(autosserviço instantâneo) será removido, substituído pelo fluxo pago+aprovado; promoção manual
+pelo admin continua igual. Próxima ação real: `superpowers:writing-plans` pra transformar a spec
+num plano de tasks, depois `superpowers:subagent-driven-development` (mesmo padrão de sempre).
+
+## Frente 2 — plano de implementação escrito (2026-07-28)
+
+Plano completo em `docs/superpowers/plans/2026-07-28-solicitacao-conta-anunciante.md` (14 tasks,
+commit d19cace). Autorrevisão encontrou e corrigiu um achado real antes de fechar: as páginas
+públicas novas não podiam ficar sob `/anunciante/*` porque `app/anunciante/layout.tsx` já exige
+`role==="ADVERTISER"` pra qualquer página ali — bloquearia a própria tela de solicitação. Corrigido
+pra `app/(public)/anuncie/` (grupo de rotas sem gate, mesmo usado por /eventos, /termos). Também
+achado durante o próprio plano: `refundPayment()` precisa reescrever o arquivo inteiro (não só um
+guard) porque `applyGatewayStatus` é acoplado a Order/Registration — plano já tem o código completo
+das duas versões (antes/depois). Próxima ação real: escolher entre execução via
+subagent-driven-development (recomendado) ou executing-plans.
