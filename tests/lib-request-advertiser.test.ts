@@ -41,6 +41,10 @@ describe("requestAdvertiserAccount", () => {
     expect(dbMock.user.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ email: "novo@example.com", role: "ATHLETE" }) }),
     );
+    // User + AdvertiserProfile creation must happen inside the same transaction, so a failure
+    // partway through never leaves an orphaned User(role=ATHLETE) with no profile (which would
+    // permanently block that e-mail via the "E-mail já cadastrado" check on retry).
+    expect(dbMock.$transaction).toHaveBeenCalledTimes(1);
   });
 
   it("retorna erro quando o e-mail da conta nova já existe", async () => {
@@ -53,6 +57,7 @@ describe("requestAdvertiserAccount", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "E-mail já cadastrado", status: 409 });
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("retorna erro quando o documento (CPF/CNPJ) é inválido", async () => {
@@ -63,6 +68,7 @@ describe("requestAdvertiserAccount", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "CPF ou CNPJ inválido", status: 400 });
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("reaproveita usuário já logado (não cria conta nova, não cria AdvertiserProfile duplicado)", async () => {
@@ -82,5 +88,7 @@ describe("requestAdvertiserAccount", () => {
     });
     expect(dbMock.advertiserProfile.create).not.toHaveBeenCalled();
     expect(dbMock.user.create).not.toHaveBeenCalled();
+    // No new User is created here, so there's nothing to keep atomic with the profile write.
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 });
