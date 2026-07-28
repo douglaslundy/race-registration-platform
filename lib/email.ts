@@ -375,6 +375,50 @@ export async function sendAdvertiserRequestPendingEmail(params: {
   });
 }
 
+/** E-mail pro anunciante avisando que a solicitação de conta foi aprovada. */
+export async function sendAdvertiserRequestApprovedEmail(params: {
+  to: string;
+  name: string;
+  planName: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+  const url = `${baseUrl}/anunciante`;
+  await sendMail({
+    to: params.to,
+    subject: `Sua solicitação de anunciante foi aprovada — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p>Sua solicitação de conta de anunciante (plano <strong>${params.planName}</strong>) foi
+          <strong>aprovada</strong>! Sua conta já está liberada como anunciante.</p>
+       <p>Use seu login e senha de sempre para acessar o painel de anunciante:</p>
+       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Acessar painel do anunciante</a></p>`
+    ),
+  });
+}
+
+/** E-mail pro anunciante avisando que a solicitação de conta foi rejeitada (com estorno). */
+export async function sendAdvertiserRequestRejectedEmail(params: {
+  to: string;
+  name: string;
+  reason: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    subject: `Sua solicitação de anunciante não foi aprovada — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p>Sua solicitação de conta de anunciante não foi aprovada.</p>
+       <p><strong>Motivo:</strong> ${params.reason}</p>
+       <p>O valor pago já foi estornado automaticamente e deve aparecer no seu extrato em alguns
+          dias úteis, conforme o meio de pagamento utilizado.</p>`
+    ),
+  });
+}
+
 /** E-mail com o resumo diário de atividade (admin ou organizador). */
 export async function sendDailySummaryEmail(params: {
   to: string;
