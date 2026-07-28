@@ -29,7 +29,18 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
           // todo ciclo do cron e o mesmo admin receberia o mesmo resumo pra sempre.
           const newMismatches: PaymentMismatch[] = [];
           for (const mismatch of mismatches) {
-            const claimed = await claimAlert(ALERT_TYPE, "Payment", `${mismatch.paymentId}:${admin.email}`, "EMAIL");
+            // A chave inclui a divergência específica (localStatus->gatewayStatus), não só o
+            // paymentId: sem isso, uma vez que QUALQUER divergência neste pagamento fosse
+            // alertada, uma divergência DIFERENTE e futura no mesmo pagamento (ex.: uma correção
+            // pending->paid antiga seguida, semanas depois, por um estorno/chargeback) seria
+            // silenciosamente engolida pela reivindicação antiga. Mesma lógica de
+            // cancellation-requested.ts escopando por cancellationRequestedAt.
+            const claimed = await claimAlert(
+              ALERT_TYPE,
+              "Payment",
+              `${mismatch.paymentId}:${mismatch.localStatus}->${mismatch.gatewayStatus}:${admin.email}`,
+              "EMAIL",
+            );
             if (claimed) newMismatches.push(mismatch);
           }
           if (newMismatches.length === 0) continue;
@@ -37,7 +48,11 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
             await sendReconciliationMismatchEmail({ to: admin.email, mismatches: newMismatches });
           } catch (err) {
             for (const mismatch of newMismatches) {
-              await unclaimAlert(ALERT_TYPE, `${mismatch.paymentId}:${admin.email}`, "EMAIL");
+              await unclaimAlert(
+                ALERT_TYPE,
+                `${mismatch.paymentId}:${mismatch.localStatus}->${mismatch.gatewayStatus}:${admin.email}`,
+                "EMAIL",
+              );
             }
             console.error("[notifyReconciliationMismatches] email failed for", admin.email, err);
           }
@@ -50,7 +65,12 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
         if (!admin.phone) continue;
         const newMismatches: PaymentMismatch[] = [];
         for (const mismatch of mismatches) {
-          const claimed = await claimAlert(ALERT_TYPE, "Payment", `${mismatch.paymentId}:${admin.phone}`, "WHATSAPP");
+          const claimed = await claimAlert(
+            ALERT_TYPE,
+            "Payment",
+            `${mismatch.paymentId}:${mismatch.localStatus}->${mismatch.gatewayStatus}:${admin.phone}`,
+            "WHATSAPP",
+          );
           if (claimed) newMismatches.push(mismatch);
         }
         if (newMismatches.length === 0) continue;
@@ -63,7 +83,11 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
           );
         } catch (err) {
           for (const mismatch of newMismatches) {
-            await unclaimAlert(ALERT_TYPE, `${mismatch.paymentId}:${admin.phone}`, "WHATSAPP");
+            await unclaimAlert(
+              ALERT_TYPE,
+              `${mismatch.paymentId}:${mismatch.localStatus}->${mismatch.gatewayStatus}:${admin.phone}`,
+              "WHATSAPP",
+            );
           }
           console.error("[notifyReconciliationMismatches] whatsapp failed for", admin.phone, err);
         }

@@ -135,4 +135,40 @@ describe("notifyReconciliationMismatches", () => {
 
     expect(sendReconciliationMismatchEmail).not.toHaveBeenCalled();
   });
+
+  it("uma divergência DIFERENTE no MESMO paymentId (ex.: correção pending->paid antiga seguida de um estorno depois) ainda é alertada", async () => {
+    // Reproduz a regressão real: um pagamento teve uma primeira divergência (PENDING->PAID) já
+    // alertada e corrigida. Semanas depois, o MESMO paymentId tem uma divergência diferente
+    // (PAID->REFUNDED, ex.: chargeback). A chave de dedupe precisa incluir a divergência
+    // específica (localStatus->gatewayStatus), senão a reivindicação antiga (escopada só por
+    // paymentId+admin) barraria silenciosamente este segundo alerta, completamente diferente.
+    vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 15 });
+    dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: null }]);
+
+    const firstMismatch = mismatchFixture[0];
+    const laterMismatch = {
+      paymentId: firstMismatch.paymentId,
+      orderId: firstMismatch.orderId,
+      eventTitle: firstMismatch.eventTitle,
+      localStatus: "PAID",
+      gatewayStatus: "REFUNDED",
+      corrected: false,
+    };
+
+    // 1ª execução: a divergência PENDING->PAID é reivindicada e alertada com sucesso.
+    dbMock.alertLog.create.mockResolvedValueOnce({ id: "log-1" });
+    await notifyReconciliationMismatches([firstMismatch]);
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledTimes(1);
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledWith({ to: "admin1@example.com", mismatches: [firstMismatch] });
+
+    vi.mocked(sendReconciliationMismatchEmail).mockClear();
+
+    // 2ª execução, mesmo paymentId, divergência DIFERENTE (PAID->REFUNDED): deve ser reivindicada
+    // e alertada normalmente, já que a chave inclui a transição específica.
+    dbMock.alertLog.create.mockResolvedValueOnce({ id: "log-2" });
+    await notifyReconciliationMismatches([laterMismatch]);
+
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledTimes(1);
+    expect(sendReconciliationMismatchEmail).toHaveBeenCalledWith({ to: "admin1@example.com", mismatches: [laterMismatch] });
+  });
 });
