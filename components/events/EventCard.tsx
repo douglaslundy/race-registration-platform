@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { getBatchStatus, type BatchForStatus } from "@/lib/batch-status";
 import type { EventModality, EventStatus } from "@prisma/client";
 
 interface EventCardProps {
@@ -15,7 +16,7 @@ interface EventCardProps {
     state: string;
     bannerUrl: string | null;
     listBannerUrl?: string | null;
-    ticketBatches: { priceAmount: number; soldCount: number; capacity: number }[];
+    ticketBatches: (BatchForStatus & { priceAmount: number })[];
   };
 }
 
@@ -56,6 +57,13 @@ export default function EventCard({ event }: EventCardProps) {
   const lowestBatch = event.ticketBatches[0];
   const days = daysUntilEvent(event.startAt);
   const bannerSrc = event.listBannerUrl ?? event.bannerUrl;
+  const hasActiveBatch = event.ticketBatches.some(
+    (b) => getBatchStatus(b, event.ticketBatches) === "ACTIVE"
+  );
+  const hasUpcomingBatch = event.ticketBatches.some(
+    (b) => getBatchStatus(b, event.ticketBatches) === "UPCOMING"
+  );
+  const canRegister = event.status === "REGISTRATIONS_OPEN" && hasActiveBatch;
 
   return (
     <div className="relative group bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -117,12 +125,22 @@ export default function EventCard({ event }: EventCardProps) {
         {/* Inscreva-se button — z-10 to sit above the overlay link */}
         {event.status !== "REGISTRATIONS_CLOSED" && event.status !== "COMPLETED" && (
           <div className="relative z-10 mt-3">
-            <Link
-              href={`/inscricao/${event.slug}`}
-              className="btn-primary block text-center text-sm py-2"
-            >
-              Inscreva-se
-            </Link>
+            {canRegister ? (
+              <Link
+                href={`/inscricao/${event.slug}`}
+                className="btn-primary block text-center text-sm py-2"
+              >
+                Inscreva-se
+              </Link>
+            ) : hasUpcomingBatch ? (
+              <button disabled className="btn-primary w-full text-sm py-2 opacity-50 cursor-not-allowed">
+                Inscrições em breve
+              </button>
+            ) : (
+              <button disabled className="btn-primary w-full text-sm py-2 opacity-50 cursor-not-allowed">
+                {event.status === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
+              </button>
+            )}
           </div>
         )}
       </div>
