@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/format";
 import { PRIVATE_AD_STATUS } from "@/lib/private-ad-status";
 import { BADGE } from "@/lib/badge-colors";
 import PrivateAdSendReportButtons from "@/components/admin/PrivateAdSendReportButtons";
+import EditPrivateAdLinkForm from "@/components/admin/EditPrivateAdLinkForm";
 
 export const metadata: Metadata = { title: "Detalhe do Anúncio — Admin" };
 export const dynamic = "force-dynamic";
@@ -63,14 +64,7 @@ export default async function AdminPrivateAdDetailPage({
           alt={`Anúncio de ${data.companyName}`}
           className="w-full max-h-64 object-contain rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
         />
-        <a
-          href={data.targetUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline break-all"
-        >
-          {data.targetUrl}
-        </a>
+        <EditPrivateAdLinkForm id={id} currentUrl={data.targetUrl} />
       </div>
 
       <div className="card space-y-2 text-sm">
