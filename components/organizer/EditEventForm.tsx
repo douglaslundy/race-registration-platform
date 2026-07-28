@@ -41,9 +41,13 @@ const MODALITIES = [
   { value: "OTHER", label: "Outro" },
 ];
 
-function toDatetimeLocal(d: Date | string) {
+export function toDatetimeLocal(d: Date | string) {
   const dt = new Date(d);
-  return dt.toISOString().slice(0, 16);
+  // `toISOString()` sozinho sempre retorna o horário em UTC — sem subtrair o offset local, o
+  // input `datetime-local` (que espera o horário de parede local) mostrava o valor UTC cru,
+  // 3h à frente do horário de Brasília digitado originalmente.
+  const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 type EventData = {
