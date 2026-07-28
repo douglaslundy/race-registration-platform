@@ -5,10 +5,21 @@ import { getPaymentProvider } from "@/lib/payment";
 vi.mock("@/lib/payment", () => ({ getPaymentProvider: vi.fn() }));
 vi.mock("@/lib/alerts/alert-settings", () => ({ getReconciliationAlertSettings: vi.fn() }));
 vi.mock("@/lib/notifications", () => ({ notifyOrderConfirmed: vi.fn() }));
+// Mock parcial: preserva o comportamento real de applyGatewayStatus (usado pelos testes já
+// existentes, que dependem da lógica real de transição para gravar payment/order/registration no
+// dbMock), mas permite sobrescrever o retorno só num teste específico (changed:false) — cenário
+// que a lógica real não consegue produzir aqui, porque tanto checkPendingMismatches quanto
+// checkLateApprovalMismatches só entram no branch PAID quando gatewayStatus já é comprovadamente
+// diferente do payment.status lido (o mesmo objeto que applyGatewayStatus compara internamente).
+vi.mock("@/lib/payment/sync-payment-status", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/payment/sync-payment-status")>();
+  return { ...actual, applyGatewayStatus: vi.fn(actual.applyGatewayStatus) };
+});
 
 import { reconcilePayments } from "@/lib/payment/reconciliation";
 import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
+import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 
 const dbMock = db as any;
 
@@ -119,6 +130,24 @@ describe("reconcilePayments", () => {
         { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
       ],
     });
+  });
+
+  it("não chama notifyOrderConfirmed quando applyGatewayStatus resolve changed:false (transição já aplicada por outro processo concorrente)", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID", paidAt: "2026-07-06T10:00:00.000Z", gatewayFeeAmount: 150 }),
+    } as any);
+    vi.mocked(applyGatewayStatus).mockResolvedValueOnce({ changed: false });
+
+    const result = await reconcilePayments();
+
+    expect(dbMock.$transaction).toHaveBeenCalled();
+    expect(notifyOrderConfirmed).not.toHaveBeenCalled();
+    // O mismatch ainda é reportado (a divergência foi detectada), só o disparo de notificação é
+    // que é condicionado ao changed:true.
+    expect(result.mismatches).toEqual([
+      { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
+    ]);
   });
 
   it("usa a data atual como paidAt quando o gateway nao informa date_approved para um PENDING aprovado", async () => {

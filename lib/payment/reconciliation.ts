@@ -77,13 +77,15 @@ async function checkPendingMismatches(
       if (gatewayStatus === payment.status) continue;
 
       if (gatewayStatus === "PAID") {
-        await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
+        const result = await db.$transaction(async (tx) => {
+          return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
             gatewayFeeAmount,
             paidAt: paidAt ? new Date(paidAt) : new Date(),
           });
         });
-        void notifyOrderConfirmed(order.id);
+        if (result.changed) {
+          void notifyOrderConfirmed(order.id);
+        }
         mismatches.push({
           paymentId: payment.id,
           orderId: order.id,
@@ -208,13 +210,15 @@ async function checkLateApprovalMismatches(
       const order = payment.order;
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "PAID") {
-        await db.$transaction(async (tx) => {
-          await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
+        const result = await db.$transaction(async (tx) => {
+          return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
             gatewayFeeAmount,
             paidAt: paidAt ? new Date(paidAt) : new Date(),
           });
         });
-        void notifyOrderConfirmed(order.id);
+        if (result.changed) {
+          void notifyOrderConfirmed(order.id);
+        }
         mismatches.push({
           paymentId: payment.id,
           orderId: order.id,

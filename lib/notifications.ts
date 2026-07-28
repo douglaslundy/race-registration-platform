@@ -5,6 +5,7 @@ import { sendWhatsAppMessage } from "./whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
 import { getConnectionState } from "./whatsapp/evolution-client";
 import { isPlaceholderEmail } from "./proxy-athlete";
+import { claimAlert } from "@/lib/alerts/dedupe";
 
 async function isWhatsAppConnectionActive(): Promise<boolean> {
   const config = await getWhatsAppConfig();
@@ -66,6 +67,16 @@ export async function notifyOrderConfirmed(orderId: string): Promise<void> {
 
   if (!order?.buyer || order.registrations.length === 0) return;
   const registration = order.registrations[0];
+
+  // Reivindica o direito de processar este evento "pedido confirmado" uma única vez, fechando a
+  // janela em que webhook / poller / conciliação decidem, cada um de forma independente, que o
+  // mesmo pedido acabou de ser pago (ver auditoria de duplicidade de mensagem). Usamos "EMAIL"
+  // como canal da reivindicação mesmo esta função disparando e-mail E WhatsApp: essa reivindicação
+  // única serve para portar o evento como um todo, não os canais individualmente — não existe (e
+  // está fora de escopo criar) um valor "ALL" em AlertChannel para expressar isso.
+  const claimed = await claimAlert("ORDER_CONFIRMED", "Order", orderId, "EMAIL");
+  if (!claimed) return;
+
   const eventLabel = order.event?.title ? ` em ${order.event.title}` : "";
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const detailsUrl = `${baseUrl}/dashboard/inscricoes/${registration.id}`;

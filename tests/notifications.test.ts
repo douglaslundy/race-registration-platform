@@ -265,4 +265,19 @@ describe("notifyOrderConfirmed", () => {
       data: { confirmationEmailSentAt: expect.any(Date) },
     });
   });
+
+  it("chamar duas vezes para o mesmo orderId só envia uma vez (reivindicação de idempotência via AlertLog)", async () => {
+    dbMock.order.findUnique.mockResolvedValue(orderFixture);
+    // 1ª chamada: claimAlert grava normalmente. 2ª chamada: a constraint única do AlertLog rejeita
+    // com P2002, simulando que o evento "pedido confirmado" já foi reivindicado por outro disparo
+    // (webhook, poller ou conciliação) para o mesmo orderId.
+    dbMock.alertLog.create
+      .mockResolvedValueOnce({ id: "log-1" })
+      .mockRejectedValueOnce({ code: "P2002" });
+
+    await notifyOrderConfirmed("order-1");
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(1);
+  });
 });
