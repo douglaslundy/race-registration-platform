@@ -209,4 +209,25 @@ describe("sendAbandonedCartAlert", () => {
     expect(unclaimAlert).not.toHaveBeenCalled();
     expect(recordAlert).not.toHaveBeenCalled();
   });
+
+  it("e-mail com sucesso seguido de falha no WhatsApp: ainda lança (comportamento preservado), mas grava auditoria porque um aviso real (o e-mail) foi enviado", async () => {
+    // Reproduz a regressão do Fix D: o e-mail é enviado com sucesso (sentSomething = true) e,
+    // em seguida, o WhatsApp lança. Antes da correção, esse throw saía da função antes de chegar
+    // na linha de auditoria (movida pro fim), perdendo o registro de um envio que genuinamente
+    // aconteceu. Com o try/finally, a auditoria é gravada mesmo com o throw subindo depois.
+    vi.mocked(claimAlert).mockResolvedValue(true);
+    vi.mocked(sendWhatsAppMessage).mockRejectedValueOnce(new Error("WhatsApp API down"));
+
+    await expect(
+      sendAbandonedCartAlert(
+        { ...orderFixture, buyer: { ...orderFixture.buyer, athleteProfile: { phone: "5511988888888" } } },
+        { emailEnabled: true, whatsappEnabled: true },
+      ),
+    ).rejects.toThrow("WhatsApp API down");
+
+    expect(sendAbandonedCartEmail).toHaveBeenCalled();
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "CART_ABANDONED", entityId: "order-1" }) }),
+    );
+  });
 });

@@ -23,54 +23,60 @@ export async function sendAbandonedCartAlert(
 
   let sentSomething = false;
 
-  if (settings.emailEnabled) {
-    const cfg = await getSmtpConfig();
-    if (isSmtpReady(cfg) && (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "EMAIL")))) {
-      try {
-        await sendAbandonedCartEmail({
-          to: order.buyer.email,
-          name: order.buyer.name,
-          eventTitle: order.event.title,
-          orderId: order.id,
-        });
-        if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "EMAIL");
-        sentSomething = true;
-      } catch (err) {
-        if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, order.id, "EMAIL");
-        throw err;
+  try {
+    if (settings.emailEnabled) {
+      const cfg = await getSmtpConfig();
+      if (isSmtpReady(cfg) && (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "EMAIL")))) {
+        try {
+          await sendAbandonedCartEmail({
+            to: order.buyer.email,
+            name: order.buyer.name,
+            eventTitle: order.event.title,
+            orderId: order.id,
+          });
+          if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "EMAIL");
+          sentSomething = true;
+        } catch (err) {
+          if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, order.id, "EMAIL");
+          throw err;
+        }
       }
     }
-  }
 
-  if (settings.whatsappEnabled && order.buyer.athleteProfile?.phone) {
-    if (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP"))) {
-      try {
-        await sendWhatsAppMessage(
-          order.buyer.athleteProfile.phone,
-          `Sua inscrição em "${order.event.title}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
-        );
-        if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
-        sentSomething = true;
-      } catch (err) {
-        if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, order.id, "WHATSAPP");
-        throw err;
+    if (settings.whatsappEnabled && order.buyer.athleteProfile?.phone) {
+      if (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP"))) {
+        try {
+          await sendWhatsAppMessage(
+            order.buyer.athleteProfile.phone,
+            `Sua inscrição em "${order.event.title}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+          );
+          if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
+          sentSomething = true;
+        } catch (err) {
+          if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, order.id, "WHATSAPP");
+          throw err;
+        }
       }
     }
-  }
-
-  // Só grava auditoria quando um aviso real foi enviado — sem isso, checkAbandonedCarts()
-  // reprocessando o mesmo pedido PENDING a cada ciclo de cron gerava uma linha nova por execução,
-  // pra sempre, mesmo quando o dedupe já tinha bloqueado ambos os canais (nada de novo aconteceu).
-  if (sentSomething) {
-    await db.auditLog.create({
-      data: {
-        userId: order.buyerUserId,
-        action: "CART_ABANDONED",
-        entityType: "Order",
-        entityId: order.id,
-        metadata: { eventTitle: order.event.title },
-      },
-    });
+  } finally {
+    // Só grava auditoria quando um aviso real foi enviado — sem isso, checkAbandonedCarts()
+    // reprocessando o mesmo pedido PENDING a cada ciclo de cron gerava uma linha nova por execução,
+    // pra sempre, mesmo quando o dedupe já tinha bloqueado ambos os canais (nada de novo aconteceu).
+    // Fica num finally (em vez de só depois dos dois blocos) porque cada canal lança na própria
+    // falha: se o e-mail for enviado com sucesso (sentSomething = true) e o WhatsApp em seguida
+    // lançar, a função sai por esse throw — sem o finally, a auditoria do envio real do e-mail
+    // nunca seria gravada, mesmo tendo genuinamente acontecido.
+    if (sentSomething) {
+      await db.auditLog.create({
+        data: {
+          userId: order.buyerUserId,
+          action: "CART_ABANDONED",
+          entityType: "Order",
+          entityId: order.id,
+          metadata: { eventTitle: order.event.title },
+        },
+      });
+    }
   }
 
   return { sent: sentSomething };
