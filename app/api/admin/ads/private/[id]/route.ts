@@ -24,12 +24,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: validatedUrl.error }, { status: 400 });
   }
 
-  const ad = await db.privateAd.findUnique({ where: { id }, select: { id: true } });
+  const ad = await db.privateAd.findUnique({ where: { id }, select: { id: true, targetUrl: true } });
   if (!ad) {
     return NextResponse.json({ error: "Anúncio não encontrado" }, { status: 404 });
   }
 
   await db.privateAd.update({ where: { id }, data: { targetUrl: validatedUrl.url } });
+
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "PRIVATE_AD_LINK_UPDATED",
+      entityType: "PrivateAd",
+      entityId: id,
+      metadata: { oldTargetUrl: ad.targetUrl, newTargetUrl: validatedUrl.url, editedByAdmin: true },
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

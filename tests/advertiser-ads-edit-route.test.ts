@@ -22,6 +22,7 @@ describe("PATCH /api/anunciante/ads/[id]", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "u1", role: "ADVERTISER" } } as any);
     dbMock.advertiserProfile.findUnique.mockResolvedValue({ id: "advertiser-1" });
+    dbMock.auditLog.create.mockResolvedValue({});
   });
 
   it("retorna 401 sem sessão", async () => {
@@ -42,7 +43,7 @@ describe("PATCH /api/anunciante/ads/[id]", () => {
     expect(res.status).toBe(404);
     expect(dbMock.privateAd.findFirst).toHaveBeenCalledWith({
       where: { id: "ad-1", adPurchase: { advertiserId: "advertiser-1" } },
-      select: { id: true, status: true },
+      select: { id: true, status: true, targetUrl: true },
     });
   });
 
@@ -54,22 +55,48 @@ describe("PATCH /api/anunciante/ads/[id]", () => {
   });
 
   it("atualiza o link sem mudar o status quando o anúncio está PENDING_APPROVAL", async () => {
-    dbMock.privateAd.findFirst.mockResolvedValueOnce({ id: "ad-1", status: "PENDING_APPROVAL" });
+    dbMock.privateAd.findFirst.mockResolvedValueOnce({ id: "ad-1", status: "PENDING_APPROVAL", targetUrl: "https://empresa.com/antiga" });
     const res = await PATCH(makeRequest({ targetUrl: "https://empresa.com/nova-pagina" }), { params: Promise.resolve({ id: "ad-1" }) });
     expect(res.status).toBe(200);
     expect(dbMock.privateAd.update).toHaveBeenCalledWith({
       where: { id: "ad-1" },
       data: { targetUrl: "https://empresa.com/nova-pagina" },
     });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: "u1",
+        action: "PRIVATE_AD_LINK_UPDATED",
+        entityType: "PrivateAd",
+        entityId: "ad-1",
+        metadata: {
+          oldTargetUrl: "https://empresa.com/antiga",
+          newTargetUrl: "https://empresa.com/nova-pagina",
+          requiresReview: false,
+        },
+      },
+    });
   });
 
   it("atualiza o link e volta pra PENDING_APPROVAL quando o anúncio estava APPROVED", async () => {
-    dbMock.privateAd.findFirst.mockResolvedValueOnce({ id: "ad-1", status: "APPROVED" });
+    dbMock.privateAd.findFirst.mockResolvedValueOnce({ id: "ad-1", status: "APPROVED", targetUrl: "https://empresa.com/antiga" });
     const res = await PATCH(makeRequest({ targetUrl: "https://empresa.com/nova-pagina" }), { params: Promise.resolve({ id: "ad-1" }) });
     expect(res.status).toBe(200);
     expect(dbMock.privateAd.update).toHaveBeenCalledWith({
       where: { id: "ad-1" },
       data: { targetUrl: "https://empresa.com/nova-pagina", status: "PENDING_APPROVAL", rejectionReason: null },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: "u1",
+        action: "PRIVATE_AD_LINK_UPDATED",
+        entityType: "PrivateAd",
+        entityId: "ad-1",
+        metadata: {
+          oldTargetUrl: "https://empresa.com/antiga",
+          newTargetUrl: "https://empresa.com/nova-pagina",
+          requiresReview: true,
+        },
+      },
     });
   });
 });

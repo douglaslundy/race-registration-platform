@@ -21,6 +21,7 @@ describe("PATCH /api/admin/ads/private/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.auditLog.create.mockResolvedValue({});
   });
 
   it("retorna 403 para quem não é admin", async () => {
@@ -42,12 +43,25 @@ describe("PATCH /api/admin/ads/private/[id]", () => {
   });
 
   it("atualiza o link sem mudar o status (admin é quem modera)", async () => {
-    dbMock.privateAd.findUnique.mockResolvedValueOnce({ id: "ad-1", status: "APPROVED" });
+    dbMock.privateAd.findUnique.mockResolvedValueOnce({ id: "ad-1", status: "APPROVED", targetUrl: "https://empresa.com/antiga" });
     const res = await PATCH(makeRequest({ targetUrl: "https://empresa.com/nova" }), { params: Promise.resolve({ id: "ad-1" }) });
     expect(res.status).toBe(200);
     expect(dbMock.privateAd.update).toHaveBeenCalledWith({
       where: { id: "ad-1" },
       data: { targetUrl: "https://empresa.com/nova" },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: {
+        userId: "admin-1",
+        action: "PRIVATE_AD_LINK_UPDATED",
+        entityType: "PrivateAd",
+        entityId: "ad-1",
+        metadata: {
+          oldTargetUrl: "https://empresa.com/antiga",
+          newTargetUrl: "https://empresa.com/nova",
+          editedByAdmin: true,
+        },
+      },
     });
   });
 });

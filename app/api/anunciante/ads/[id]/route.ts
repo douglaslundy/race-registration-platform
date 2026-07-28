@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const ad = await db.privateAd.findFirst({
     where: { id, adPurchase: { advertiserId: check.advertiser.id } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, targetUrl: true },
   });
   if (!ad) {
     return NextResponse.json({ error: "Anúncio não encontrado" }, { status: 404 });
@@ -43,6 +43,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: wasApproved
       ? { targetUrl: validatedUrl.url, status: "PENDING_APPROVAL", rejectionReason: null }
       : { targetUrl: validatedUrl.url },
+  });
+
+  await db.auditLog.create({
+    data: {
+      userId: check.session.user.id,
+      action: "PRIVATE_AD_LINK_UPDATED",
+      entityType: "PrivateAd",
+      entityId: id,
+      metadata: { oldTargetUrl: ad.targetUrl, newTargetUrl: validatedUrl.url, requiresReview: wasApproved },
+    },
   });
 
   return NextResponse.json({ ok: true, requiresReview: wasApproved });

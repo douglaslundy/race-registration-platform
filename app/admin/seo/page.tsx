@@ -40,7 +40,7 @@ export default async function AdminSeoPage() {
       <div className="card">
         <h2 className="font-semibold mb-3">Geração por IA</h2>
         <AiProviderSettingsForm
-          currentProvider={(aiProvider === "OPENAI" || aiProvider === "GOOGLE" ? aiProvider : "CLAUDE") as any}
+          currentProvider={(aiProvider === "OPENAI" || aiProvider === "GOOGLE" ? aiProvider : "CLAUDE") as "CLAUDE" | "OPENAI" | "GOOGLE"}
           claudeConfigured={Boolean(claudeKey)}
           openaiConfigured={Boolean(openaiKey)}
           googleConfigured={Boolean(googleKey)}

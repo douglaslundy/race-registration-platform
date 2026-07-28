@@ -10,7 +10,9 @@ export async function generateMetadata(): Promise<Metadata> {
     getSetting("seo_default_description"),
   ]);
   return {
-    title: defaultTitle || `${appName} — Inscrições para Corridas de Rua, Trail Run e Eventos Esportivos`,
+    title: {
+      absolute: defaultTitle || `${appName} — Inscrições para Corridas de Rua, Trail Run e Eventos Esportivos`,
+    },
     description:
       defaultDescription ||
       "Encontre e se inscreva em corridas de rua, trail run e eventos esportivos perto de você. Inscrição online, pagamento seguro via Pix, cartão ou boleto.",

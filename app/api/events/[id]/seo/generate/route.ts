@@ -42,11 +42,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     brandContext,
   });
 
+  const NOT_CONFIGURED_MESSAGES = [
+    "Chave de API do Claude não configurada",
+    "Chave de API da OpenAI não configurada",
+    "Chave de API do Google não configurada",
+  ];
+
   try {
     const provider = await getAiProvider();
     const generated = await provider.generateText(prompt);
     return NextResponse.json({ text: truncateSeoText(generated, parsed.data.field) });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Falha ao gerar texto" }, { status: 502 });
+    const message = err instanceof Error ? err.message : "Falha ao gerar texto";
+    if (NOT_CONFIGURED_MESSAGES.includes(message)) {
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+    console.error("Erro ao gerar texto com IA (evento):", err);
+    return NextResponse.json({ error: "Falha ao gerar texto com a IA. Tente novamente." }, { status: 502 });
   }
 }

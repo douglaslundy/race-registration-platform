@@ -29,10 +29,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // HTML e monta a <script> de verdade via hidratação no navegador — confirmado direto no HTML
   // servido em produção, não aparecia nenhuma tag <script> literal. Por isso aqui é uma tag
   // <script> nativa, escrita à mão dentro de um <head> explícito, sem passar pelo next/script.
-  const [adSenseClientId, gaId] = await Promise.all([
+  const [adSenseClientId, gaIdRaw] = await Promise.all([
     getSetting("google_adsense_client_id"),
     getSetting("seo_google_analytics_id"),
   ]);
+  const gaId = gaIdRaw && /^G-[A-Z0-9-]+$/i.test(gaIdRaw) ? gaIdRaw : null;
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>

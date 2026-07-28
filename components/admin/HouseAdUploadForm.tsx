@@ -60,7 +60,8 @@ export default function HouseAdUploadForm({ slotId, width, height, initialImageU
           <img src={initialImageUrl} alt="Anúncio da casa atual" className="w-20 h-14 object-cover rounded border border-gray-200 dark:border-gray-700" />
         )}
         <input
-          type="url"
+          type="text"
+          inputMode="url"
           value={targetUrl}
           onChange={(e) => setTargetUrl(e.target.value)}
           placeholder="URL de destino (opcional)"

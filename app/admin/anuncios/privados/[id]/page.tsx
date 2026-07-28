@@ -64,6 +64,14 @@ export default async function AdminPrivateAdDetailPage({
           alt={`Anúncio de ${data.companyName}`}
           className="w-full max-h-64 object-contain rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
         />
+        <a
+          href={data.targetUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary-600 hover:underline"
+        >
+          Abrir destino ↗
+        </a>
         <EditPrivateAdLinkForm id={id} currentUrl={data.targetUrl} />
       </div>
 
