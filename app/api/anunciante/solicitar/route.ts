@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import { z } from "zod";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { requestAdvertiserAccount } from "@/lib/advertisers/request-advertiser";
+import { createAdPlanCheckout } from "@/lib/checkout-ads";
+import { getPaymentProvider } from "@/lib/payment";
+import { getPaymentProviderSetting } from "@/lib/payment-settings";
+import type { PaymentMethod } from "@prisma/client";
+
+const profileSchema = z.object({
+  companyName: z.string().min(2).max(150),
+  document: z.string().min(11).max(18),
+  address: z.string().min(5).max(200),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().min(8).max(20),
+  instagram: z.string().max(100).optional().nullable(),
+  facebook: z.string().max(100).optional().nullable(),
+});
+
+const schema = z.object({
+  newAccount: z.object({
+    name: z.string().min(2).max(100),
+    email: z.string().email(),
+    password: z.string().min(8),
+  }).optional(),
+  profile: profileSchema,
+  adPlanId: z.string().min(1),
+  paymentMethod: z.enum(["PIX", "CREDIT_CARD", "BOLETO"]),
+  cardToken: z.string().optional(),
+  cardBrand: z.string().optional(),
+  installments: z.number().int().min(1).max(12).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+
+  const body = await req.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  if (!session?.user && !parsed.data.newAccount) {
+    return NextResponse.json({ error: "Dados da conta são obrigatórios" }, { status: 400 });
+  }
+
+  const accountResult = await requestAdvertiserAccount({
+    existingUserId: session?.user?.id ?? null,
+    newAccount: session?.user ? null : parsed.data.newAccount!,
+    profile: parsed.data.profile,
+  });
+
+  if (!accountResult.ok) {
+    return NextResponse.json({ error: accountResult.error }, { status: accountResult.status });
+  }
+
+  let checkout;
+  try {
+    checkout = await createAdPlanCheckout(accountResult.advertiserId, parsed.data.adPlanId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Erro ao processar solicitação";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  const buyerName = session?.user?.name ?? parsed.data.newAccount?.name ?? parsed.data.profile.companyName;
+  const buyerEmail = session?.user?.email ?? parsed.data.newAccount?.email ?? parsed.data.profile.contactEmail;
+
+  const provider = await getPaymentProvider();
+  const idempotencyKey = `${checkout.adPurchaseId}_${parsed.data.paymentMethod}_${randomUUID()}`;
+
+  const paymentResult = await provider.createPayment({
+    orderId: checkout.adPurchaseId,
+    amount: checkout.totalAmount,
+    method: parsed.data.paymentMethod,
+    idempotencyKey,
+    buyer: { name: buyerName, email: buyerEmail },
+    description: `Solicitação de conta de anunciante — plano`,
+    cardToken: parsed.data.cardToken,
+    cardBrand: parsed.data.cardBrand,
+    installments: parsed.data.installments,
+  });
+
+  const providerKey = await getPaymentProviderSetting();
+
+  await db.payment.create({
+    data: {
+      adPurchaseId: checkout.adPurchaseId,
+      provider: providerKey,
+      providerPaymentId: paymentResult.providerPaymentId,
+      method: parsed.data.paymentMethod as PaymentMethod,
+      status: paymentResult.status,
+      amount: checkout.totalAmount,
+      pixQrCodeText: paymentResult.pixQrCodeText,
+      boletoUrl: paymentResult.boletoUrl,
+      expiresAt: paymentResult.expiresAt ? new Date(paymentResult.expiresAt) : null,
+      rawPayload: {},
+      idempotencyKey,
+    },
+  });
+
+  return NextResponse.json({
+    adPurchaseId: checkout.adPurchaseId,
+    status: paymentResult.status,
+    pixQrCode: paymentResult.pixQrCode,
+    pixQrCodeText: paymentResult.pixQrCodeText,
+    boletoUrl: paymentResult.boletoUrl,
+    checkoutUrl: paymentResult.checkoutUrl,
+  });
+}
