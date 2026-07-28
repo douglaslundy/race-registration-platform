@@ -154,8 +154,11 @@ export default async function ConfiguracoesPage() {
       <div className="card space-y-4">
         <h2 className="font-semibold text-lg dark:text-gray-100">Marketplace de anunciantes</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Quando ativado, a página de cadastro de anunciantes (<code>/auth/cadastro-anunciante</code>) fica
-          acessível e permite que novas empresas se registrem. Quando desativado, o cadastro é bloqueado.
+          Controla a promoção manual de um atleta existente a anunciante (ação de admin). Quando
+          ativado, essa promoção manual fica liberada; quando desativado, ela é bloqueada. Não afeta
+          a página pública de solicitação de conta de anunciante (<code>/anuncie</code>), que
+          continua sempre disponível — nela, a empresa escolhe um plano, paga e a conta só é
+          liberada depois que um admin aprova a solicitação.
         </p>
         <AdsMarketplaceToggle currentEnabled={adsMarketplaceEnabled} />
       </div>
