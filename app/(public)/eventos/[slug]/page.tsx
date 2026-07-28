@@ -12,6 +12,7 @@ import EventDisclaimer from "@/components/events/EventDisclaimer";
 import AdSlotRenderer from "@/components/ads/AdSlotRenderer";
 import { getAppName, getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin } from "@/lib/settings";
 import { MODALITY_LABEL } from "@/lib/admin/labels";
+import { getBatchStatus } from "@/lib/batch-status";
 import JsonLd from "@/components/seo/JsonLd";
 import { buildEventJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/build-event-json-ld";
 
@@ -86,7 +87,13 @@ export default async function EventoPage({ params }: Props) {
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(event.title, eventUrl, baseUrl);
 
   const isLoggedIn = Boolean(session?.user);
-  const canRegister = event.status === "REGISTRATIONS_OPEN";
+  const hasActiveBatch = event.ticketBatches.some(
+    (b) => getBatchStatus(b, event.ticketBatches) === "ACTIVE"
+  );
+  const hasUpcomingBatch = event.ticketBatches.some(
+    (b) => getBatchStatus(b, event.ticketBatches) === "UPCOMING"
+  );
+  const canRegister = event.status === "REGISTRATIONS_OPEN" && hasActiveBatch;
   const availableBatches = event.ticketBatches.filter(
     (b) => b.soldCount < b.capacity
   );
@@ -225,6 +232,10 @@ export default async function EventoPage({ params }: Props) {
               >
                 Inscrever-se
               </Link>
+            ) : !canRegister && hasUpcomingBatch ? (
+              <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
+                Inscrições em breve
+              </button>
             ) : (
               <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
                 {event.status === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
