@@ -54,11 +54,19 @@ Em `prisma/schema.prisma`, no `model AdvertiserProfile` (perto da linha 652), de
 `contactPhone String`, adicionar:
 
 ```prisma
-  document     String
-  address      String
+  document     String?
+  address      String?
   instagram    String?
   facebook     String?
 ```
+
+**Importante**: `document`/`address` são `String?` (nullable) no banco, não `String` — apesar de
+serem obrigatórios no formulário de solicitação (decisão do usuário, aplicada via Zod na Task 8,
+não no schema). Torná-los `NOT NULL` no banco quebraria 3 call sites existentes que criam
+`AdvertiserProfile` sem esses campos e continuam fora de escopo deste plano:
+`app/api/anunciante/profile/route.ts`, `app/api/auth/register-advertiser/route.ts` (só até a
+Task 14 remover) e, mais importante, `lib/advertisers/promote.ts` (fluxo de promoção manual pelo
+admin, que o plano exige continuar funcionando como está).
 
 No `model AdPurchase` (perto da linha 682), depois de `status String`, adicionar:
 
@@ -73,13 +81,10 @@ Criar `prisma/migrations/20260728000000_add_advertiser_request_fields/migration.
 ```sql
 -- AlterTable
 ALTER TABLE "advertiser_profiles"
-  ADD COLUMN "document" TEXT NOT NULL DEFAULT '',
-  ADD COLUMN "address" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "document" TEXT,
+  ADD COLUMN "address" TEXT,
   ADD COLUMN "instagram" TEXT,
   ADD COLUMN "facebook" TEXT;
-
-ALTER TABLE "advertiser_profiles" ALTER COLUMN "document" DROP DEFAULT;
-ALTER TABLE "advertiser_profiles" ALTER COLUMN "address" DROP DEFAULT;
 
 -- AlterTable
 ALTER TABLE "ad_purchases" ADD COLUMN "rejectionReason" TEXT;

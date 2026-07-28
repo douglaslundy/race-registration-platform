@@ -655,8 +655,8 @@ model AdvertiserProfile {
   companyName  String
   contactEmail String
   contactPhone String
-  document     String
-  address      String
+  document     String?
+  address      String?
   instagram    String?
   facebook     String?
   createdAt    DateTime @default(now())
