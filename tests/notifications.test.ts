@@ -266,18 +266,48 @@ describe("notifyOrderConfirmed", () => {
     });
   });
 
+  // Simula a constraint única do AlertLog (alertType, entityId, channel): a primeira reivindicação
+  // de uma chave específica grava normalmente, qualquer reivindicação repetida da MESMA chave
+  // rejeita com P2002 (como o Postgres faria de verdade), e chaves diferentes (ex.: e-mail do
+  // comprador vs. WhatsApp do comprador) não colidem entre si.
+  function mockPerKeyAlertLog() {
+    const claimedKeys = new Set<string>();
+    dbMock.alertLog.create.mockImplementation(async ({ data }: any) => {
+      const key = `${data.alertType}:${data.entityId}:${data.channel}`;
+      if (claimedKeys.has(key)) {
+        const err: any = new Error("Unique constraint failed");
+        err.code = "P2002";
+        throw err;
+      }
+      claimedKeys.add(key);
+      return { id: `log-${key}` };
+    });
+  }
+
   it("chamar duas vezes para o mesmo orderId só envia uma vez (reivindicação de idempotência via AlertLog)", async () => {
     dbMock.order.findUnique.mockResolvedValue(orderFixture);
-    // 1ª chamada: claimAlert grava normalmente. 2ª chamada: a constraint única do AlertLog rejeita
-    // com P2002, simulando que o evento "pedido confirmado" já foi reivindicado por outro disparo
-    // (webhook, poller ou conciliação) para o mesmo orderId.
-    dbMock.alertLog.create
-      .mockResolvedValueOnce({ id: "log-1" })
-      .mockRejectedValueOnce({ code: "P2002" });
+    mockPerKeyAlertLog();
 
     await notifyOrderConfirmed("order-1");
     await notifyOrderConfirmed("order-1");
 
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("bypassDedupe reenvia mesmo depois de uma reivindicação anterior bem sucedida (reenvio manual/confirmação manual)", async () => {
+    dbMock.order.findUnique.mockResolvedValue(orderFixture);
+    mockPerKeyAlertLog();
+
+    await notifyOrderConfirmed("order-1");
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(1);
+
+    // Uma 2ª chamada sem bypass continuaria bloqueada pela reivindicação da 1ª chamada...
+    await notifyOrderConfirmed("order-1");
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(1);
+
+    // ...mas com bypassDedupe (usado pelas rotas de reenvio/confirmação manual) o envio acontece
+    // de novo, mesmo com a reivindicação anterior ainda em pé.
+    await notifyOrderConfirmed("order-1", { bypassDedupe: true });
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(2);
   });
 });
