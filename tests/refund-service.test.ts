@@ -192,4 +192,46 @@ describe("refundPayment", () => {
       expect.objectContaining({ where: { id: "pay-1" }, data: expect.objectContaining({ status: "REFUNDED" }) }),
     );
   });
+
+  it("estorna pagamento de AdPurchase e atualiza o status pra REJECTED_REFUNDED", async () => {
+    dbMock.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "PAID",
+      providerPaymentId: "pp-1",
+      orderId: null,
+      adPurchaseId: "purchase-1",
+      order: null,
+      adPurchase: { id: "purchase-1", status: "REJECTED" },
+    });
+    // reaproveitar o mock de getPaymentProvider/checkPaymentStatus já configurado nos testes
+    // vizinhos deste arquivo pra simular sucesso do estorno no gateway.
+    getPaymentProviderMock.mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "PAID" }),
+      refundPayment: vi.fn().mockResolvedValueOnce({ providerRefundId: "mp-refund-1" }),
+    } as any);
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(dbMock));
+
+    const result = await refundPayment({ paymentId: "payment-1", initiatedByUserId: "admin-1" });
+
+    expect(result.alreadySynced).toBe(false);
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "payment-1" }, data: expect.objectContaining({ status: "REFUNDED" }) }),
+    );
+  });
+
+  it("lança quando o pagamento não tem nem order nem adPurchase associado", async () => {
+    dbMock.payment.findUnique.mockResolvedValueOnce({
+      id: "payment-1",
+      status: "PAID",
+      providerPaymentId: "pp-1",
+      orderId: null,
+      adPurchaseId: null,
+      order: null,
+      adPurchase: null,
+    });
+
+    await expect(
+      refundPayment({ paymentId: "payment-1", initiatedByUserId: "admin-1" }),
+    ).rejects.toThrow("Pagamento sem pedido ou compra de anúncio associado");
+  });
 });
