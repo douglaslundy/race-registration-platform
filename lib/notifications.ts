@@ -27,9 +27,10 @@ async function sendWhatsAppIfActive(
   bypassDedupe: boolean,
 ): Promise<void> {
   if (!phone) return;
+  let claimed = false;
   try {
     if (!(await isWhatsAppConnectionActive())) return;
-    const claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
+    claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
     if (!claimed) return;
     await sendWhatsAppMessage(
       phone,
@@ -37,7 +38,10 @@ async function sendWhatsAppIfActive(
       eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
     );
   } catch (err) {
-    if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, claimEntityId, "WHATSAPP");
+    // Só desfaz a reivindicação se ESTA chamada realmente a tomou — caso contrário, uma falha
+    // antes do claim (ex.: getWhatsAppConfig lançando) apagaria a reivindicação de um envio
+    // anterior bem-sucedido, reabrindo a janela de duplicidade que esta trava existe pra fechar.
+    if (claimed && !bypassDedupe) await unclaimAlert(ALERT_TYPE, claimEntityId, "WHATSAPP");
     console.error("[notifyOrderConfirmed] whatsapp failed:", err);
   }
 }
@@ -92,11 +96,12 @@ export async function notifyOrderConfirmed(
     // (admin/organizador) vire permanentemente um no-op depois do primeiro envio automático bem
     // sucedido — options.bypassDedupe (usado pelas rotas de reenvio/confirmação manual) ignora a
     // reivindicação sem apagar o registro de quem já reivindicou de forma automática.
+    let buyerEmailClaimed = false;
     try {
       const cfg = await getSmtpConfig();
       if (isSmtpReady(cfg)) {
-        const claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", orderId, "EMAIL");
-        if (claimed) {
+        buyerEmailClaimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", orderId, "EMAIL");
+        if (buyerEmailClaimed) {
           await sendRegistrationConfirmationEmail({
             to: order.buyer.email,
             name: order.buyer.name,
@@ -110,7 +115,9 @@ export async function notifyOrderConfirmed(
         }
       }
     } catch (err) {
-      if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, orderId, "EMAIL");
+      // Só desfaz a reivindicação se ESTA chamada realmente a tomou — ver comentário equivalente
+      // em sendWhatsAppIfActive.
+      if (buyerEmailClaimed && !bypassDedupe) await unclaimAlert(ALERT_TYPE, orderId, "EMAIL");
       console.error("[notifyOrderConfirmed] email failed:", err);
     }
 
@@ -126,11 +133,12 @@ export async function notifyOrderConfirmed(
 
     // Atleta — só quando é procuração (o comprador já foi tratado acima).
     if (!isPlaceholderEmail(registration.athlete.email)) {
+      let athleteEmailClaimed = false;
       try {
         const cfg = await getSmtpConfig();
         if (isSmtpReady(cfg)) {
-          const claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
-          if (claimed) {
+          athleteEmailClaimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
+          if (athleteEmailClaimed) {
             await sendRegistrationConfirmationEmail({
               to: registration.athlete.email,
               name: registration.athlete.name,
@@ -143,7 +151,7 @@ export async function notifyOrderConfirmed(
           }
         }
       } catch (err) {
-        if (!bypassDedupe) await unclaimAlert(ALERT_TYPE, `${orderId}:athlete`, "EMAIL");
+        if (athleteEmailClaimed && !bypassDedupe) await unclaimAlert(ALERT_TYPE, `${orderId}:athlete`, "EMAIL");
         console.error("[notifyOrderConfirmed] athlete email failed:", err);
       }
     }

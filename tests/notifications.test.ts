@@ -141,7 +141,7 @@ describe("notifyOrderConfirmed", () => {
     expect(getConnectionState).not.toHaveBeenCalled();
   });
 
-  it("não envia WhatsApp quando está configurado mas a conexão não está aberta", async () => {
+  it("não envia WhatsApp quando está configurado mas a conexão não está aberta, e não reivindica a chave de dedupe", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
     vi.mocked(getConnectionState).mockResolvedValueOnce("connecting");
@@ -149,6 +149,12 @@ describe("notifyOrderConfirmed", () => {
     await notifyOrderConfirmed("order-1");
 
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    // A reivindicação só deve acontecer depois de confirmar a conexão ativa — caso contrário, uma
+    // instância de WhatsApp fora do ar queimaria a trava à toa e bloquearia uma tentativa futura
+    // legítima do mesmo canal.
+    expect(dbMock.alertLog.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ channel: "WHATSAPP" }) }),
+    );
   });
 
   it("não envia WhatsApp quando a inscrição não tem telefone cadastrado", async () => {
