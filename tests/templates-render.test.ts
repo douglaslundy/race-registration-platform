@@ -24,8 +24,16 @@ describe("renderTemplate", () => {
     expect(renderTemplate("{{x}}", { x: "<b>oi</b>" }, "WHATSAPP")).toBe("<b>oi</b>");
   });
 
-  it("remove caracteres de controle no canal WHATSAPP", () => {
+  it("remove caracteres de controle C0 no canal WHATSAPP", () => {
     expect(renderTemplate("{{x}}", { x: "a\x00b" }, "WHATSAPP")).toBe("ab");
+  });
+
+  it("remove DEL (\\x7F) no canal WHATSAPP", () => {
+    expect(renderTemplate("{{x}}", { x: "a\x7Fb" }, "WHATSAPP")).toBe("ab");
+  });
+
+  it("remove caracteres de controle C1 (\\x9F) no canal WHATSAPP", () => {
+    expect(renderTemplate("{{x}}", { x: "a\x9Fb" }, "WHATSAPP")).toBe("ab");
   });
 
   it("corpo sem nenhuma variável retorna igual", () => {
