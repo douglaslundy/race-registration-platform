@@ -134,7 +134,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
               `<p>Acesse o painel do organizador para aprovar ou rejeitar esta solicitação.</p>`,
           }
         : {
-            body: `{{nome_atleta}} solicitou o cancelamento da inscrição em "{{nome_evento}}". Justificativa: {{motivo_cancelamento}}`,
+            body: `{{nome_atleta}} solicitou o cancelamento da inscrição em "{{nome_evento}}". Motivo: {{motivo_cancelamento}}. Acesse o painel para aprovar ou rejeitar.`,
           },
   },
 

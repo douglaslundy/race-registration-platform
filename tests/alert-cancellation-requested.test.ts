@@ -76,7 +76,7 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
     await notifyCancellationRequested("reg-1");
 
     const expectedText =
-      'Atleta Teste solicitou o cancelamento da inscrição em "Corrida Teste". Justificativa: Contusão no joelho';
+      'Atleta Teste solicitou o cancelamento da inscrição em "Corrida Teste". Motivo: Contusão no joelho. Acesse o painel para aprovar ou rejeitar.';
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988887777", expectedText);
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expectedText);
   });
