@@ -38,6 +38,10 @@ export async function getEffectiveTemplate(
     return factoryFallback(alertKey, channel, recipientRole);
   } catch (err) {
     console.error(`[getEffectiveTemplate] falha ao resolver ${alertKey}/${channel}/${recipientRole}, usando fábrica:`, err);
-    return factoryFallback(alertKey, channel, recipientRole);
+    try {
+      return factoryFallback(alertKey, channel, recipientRole);
+    } catch {
+      return { subject: undefined, body: "", source: "factory" };
+    }
   }
 }

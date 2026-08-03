@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import * as registry from "@/lib/templates/registry";
 
 const dbMock = db as any;
 
@@ -67,6 +68,17 @@ describe("getEffectiveTemplate", () => {
     dbMock.messageTemplate.findFirst.mockResolvedValue(null);
 
     const result = await getEffectiveTemplate("CHAVE_INEXISTENTE", "EMAIL", "ORGANIZER");
+
+    expect(result).toEqual({ subject: undefined, body: "", source: "factory" });
+  });
+
+  it("quando getAlertDefinition lança erro (fallback mesmo falha), retorna safe default sem rejeitar", async () => {
+    dbMock.messageTemplate.findFirst.mockRejectedValue(new Error("db down"));
+    vi.spyOn(registry, "getAlertDefinition").mockImplementation(() => {
+      throw new Error("registry corrupted");
+    });
+
+    const result = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER");
 
     expect(result).toEqual({ subject: undefined, body: "", source: "factory" });
   });
