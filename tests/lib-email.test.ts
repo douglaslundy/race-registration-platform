@@ -18,7 +18,13 @@ vi.mock("@/lib/templates/resolve", () => ({
   getEffectiveTemplate: vi.fn(),
 }));
 
-import { sendMail, sendLowStockEmail, sendAdvertiserRequestPendingEmail, sendReconciliationMismatchEmail } from "@/lib/email";
+import {
+  sendMail,
+  sendLowStockEmail,
+  sendAdvertiserRequestPendingEmail,
+  sendReconciliationMismatchEmail,
+  sendDailySummaryEmail,
+} from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { recordMessageLog } from "@/lib/message-logs";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
@@ -230,5 +236,55 @@ describe("sendAbandonedCartEmail", () => {
     expect(getEffectiveTemplate).toHaveBeenCalledWith("ABANDONED_CART", "EMAIL", "BUYER");
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
     expect(sentHtml).toContain("Olá Maria");
+  });
+});
+
+describe("sendDailySummaryEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  const rows = [
+    { label: "Inscrições pagas", value: "10" },
+    { label: "Receita bruta", value: "R$ 1.000,00" },
+  ];
+
+  it("usa o template resolvido (subject + introdução) por papel; a tabela de métricas continua gerada em código", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto customizado — {{data_resumo}}",
+      body: "<p>Introdução customizada para {{papel_destinatario}} em {{data_resumo}}.</p>",
+      source: "global",
+    });
+
+    await sendDailySummaryEmail({ to: "admin@example.com", role: "ADMIN", dateLabel: "03/08/2026", rows });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("DAILY_SUMMARY", "EMAIL", "ADMIN");
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "admin@example.com", subject: "Assunto customizado — 03/08/2026" }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Introdução customizada para administrador em 03/08/2026.");
+    expect(sentHtml).toContain("Inscrições pagas");
+    expect(sentHtml).toContain("R$ 1.000,00");
+  });
+
+  it("preserva a ordem visual original: introdução e depois a tabela de métricas", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Resumo — {{data_resumo}}",
+      body: "<p>Introdução {{papel_destinatario}}</p>",
+      source: "global",
+    });
+
+    await sendDailySummaryEmail({ to: "org@example.com", role: "ORGANIZER", dateLabel: "03/08/2026", rows });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    const introIndex = sentHtml.indexOf("Introdução organizador");
+    const tableIndex = sentHtml.indexOf("<table");
+    expect(introIndex).toBeGreaterThanOrEqual(0);
+    expect(tableIndex).toBeGreaterThan(introIndex);
   });
 });

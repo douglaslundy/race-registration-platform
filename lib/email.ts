@@ -431,7 +431,8 @@ export async function sendAdvertiserRequestRejectedEmail(params: {
   });
 }
 
-/** E-mail com o resumo diário de atividade (admin ou organizador). */
+/** E-mail com o resumo diário de atividade (admin ou organizador). Subject e introdução são
+ * editáveis via o template do banco; a tabela de métricas continua gerada pelo código. */
 export async function sendDailySummaryEmail(params: {
   to: string;
   role: "ADMIN" | "ORGANIZER";
@@ -440,22 +441,22 @@ export async function sendDailySummaryEmail(params: {
 }): Promise<void> {
   const appName = await getAppName();
   const roleLabel = params.role === "ADMIN" ? "administrador" : "organizador";
+  const values = { data_resumo: params.dateLabel, papel_destinatario: roleLabel };
   const tableRows = params.rows
     .map(
       (r) =>
         `<tr><td style="padding:4px 8px">${r.label}</td><td style="padding:4px 8px;font-weight:bold">${r.value}</td></tr>`,
     )
     .join("");
+  const template = await getEffectiveTemplate("DAILY_SUMMARY", "EMAIL", params.role);
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const intro = renderTemplate(template.body, values, "EMAIL");
   await sendMail({
     to: params.to,
-    subject: `Resumo diário — ${params.dateLabel}`,
+    subject,
     html: layout(
       appName,
-      `<p>Olá,</p>
-       <p>Este é o resumo de atividade do dia <strong>${params.dateLabel}</strong> (visão de ${roleLabel}):</p>
-       <table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">
-         <tbody>${tableRows}</tbody>
-       </table>`,
+      `${intro}\n<table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">\n<tbody>${tableRows}</tbody>\n</table>`,
     ),
   });
 }

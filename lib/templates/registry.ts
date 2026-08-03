@@ -140,14 +140,18 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
 
   DAILY_SUMMARY: {
     alertKey: "DAILY_SUMMARY",
-    description: "Resumo diário — subject e introdução são editáveis; a tabela de métricas continua gerada pelo código (fora do escopo de variáveis desta etapa).",
+    description: "Resumo diário — subject e introdução do e-mail são editáveis (tabela de métricas continua gerada pelo código); o WhatsApp é totalmente editável.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ADMIN", "ORGANIZER"],
-    variables: ["data_resumo", "papel_destinatario"],
-    factoryDefault: (channel) =>
-      channel === "EMAIL"
-        ? { subject: "Resumo diário — {{data_resumo}}", body: `<p>Olá,</p>\n<p>Este é o resumo de atividade do dia <strong>{{data_resumo}}</strong> (visão de {{papel_destinatario}}):</p>` }
-        : { body: `Resumo diário de atividade disponível.` },
+    variables: ["data_resumo", "papel_destinatario", "total_inscricoes_pagas", "receita_periodo", "novos_usuarios", "eventos_criados", "cupons_usados", "link_plataforma"],
+    factoryDefault: (channel, recipientRole) => {
+      if (channel === "EMAIL") {
+        return { subject: "Resumo diário — {{data_resumo}}", body: `<p>Olá,</p>\n<p>Este é o resumo de atividade do dia <strong>{{data_resumo}}</strong> (visão de {{papel_destinatario}}):</p>` };
+      }
+      return recipientRole === "ORGANIZER"
+        ? { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita, {{cupons_usados}} cupons usados. Veja mais em {{link_plataforma}}/organizador.` }
+        : { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita bruta, {{novos_usuarios}} novos usuários, {{eventos_criados}} eventos criados. Veja mais em {{link_plataforma}}/admin.` };
+    },
   },
 
   ADVERTISER_REQUEST_PENDING: {

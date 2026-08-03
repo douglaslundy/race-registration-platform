@@ -78,6 +78,11 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "divergencias_manuais", label: "Divergências que precisam de revisão manual", category: "Pagamento", description: "Quantidade de divergências que precisam de revisão manual. Só disponível no alerta de conciliação.", sample: "1" },
   { name: "data_resumo", label: "Data do resumo", category: "Plataforma", description: "Data de referência do resumo diário (dateLabel). Só disponível no alerta de resumo diário.", sample: "03/08/2026" },
   { name: "papel_destinatario", label: "Papel do destinatário", category: "Plataforma", description: "'administrador' ou 'organizador' — para quem o resumo diário foi gerado. Só disponível no alerta de resumo diário.", sample: "administrador" },
+  { name: "total_inscricoes_pagas", label: "Inscrições pagas no dia", category: "Plataforma", description: "Contagem de inscrições pagas no resumo diário. Só disponível no alerta de resumo diário.", sample: "12" },
+  { name: "receita_periodo", label: "Receita do período", category: "Plataforma", description: "Receita bruta (admin) ou receita do organizador no resumo diário, formatada em R$. Só disponível no alerta de resumo diário.", sample: "R$ 1.850,00" },
+  { name: "novos_usuarios", label: "Novos usuários", category: "Plataforma", description: "Contagem de novos usuários cadastrados no dia. Só disponível no resumo diário do administrador.", sample: "5" },
+  { name: "eventos_criados", label: "Eventos criados", category: "Plataforma", description: "Contagem de eventos criados no dia. Só disponível no resumo diário do administrador.", sample: "2" },
+  { name: "cupons_usados", label: "Cupons usados", category: "Plataforma", description: "Contagem de cupons usados no dia. Só disponível no resumo diário do organizador.", sample: "3" },
 ];
 
 export function getVariablesByNames(names: string[]): VariableDefinition[] {

@@ -3,6 +3,8 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendDailySummaryEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { formatCurrency } from "@/lib/format";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 import { claimAlert, unclaimAlert } from "./dedupe";
 import {
   getAdminDailySummary,
@@ -58,14 +60,35 @@ function buildOrganizerEmailRows(m: OrganizerDailySummary): { label: string; val
   ];
 }
 
-function buildAdminWhatsAppText(m: AdminDailySummary): string {
+async function buildAdminWhatsAppText(m: AdminDailySummary): Promise<string> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  return `Resumo de ontem: ${m.paidRegistrationsCount} inscrições pagas, ${formatCurrency(m.grossRevenue)} em receita bruta, ${m.newUsersCount} novos usuários, ${m.eventsCreatedCount} eventos criados. Veja mais em ${baseUrl}/admin.`;
+  const template = await getEffectiveTemplate("DAILY_SUMMARY", "WHATSAPP", "ADMIN");
+  return renderTemplate(
+    template.body,
+    {
+      total_inscricoes_pagas: String(m.paidRegistrationsCount),
+      receita_periodo: formatCurrency(m.grossRevenue),
+      novos_usuarios: String(m.newUsersCount),
+      eventos_criados: String(m.eventsCreatedCount),
+      link_plataforma: baseUrl,
+    },
+    "WHATSAPP",
+  );
 }
 
-function buildOrganizerWhatsAppText(m: OrganizerDailySummary): string {
+async function buildOrganizerWhatsAppText(m: OrganizerDailySummary): Promise<string> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  return `Resumo de ontem: ${m.paidRegistrationsCount} inscrições pagas, ${formatCurrency(m.grossRevenue)} em receita, ${m.couponsUsedCount} cupons usados. Veja mais em ${baseUrl}/organizador.`;
+  const template = await getEffectiveTemplate("DAILY_SUMMARY", "WHATSAPP", "ORGANIZER");
+  return renderTemplate(
+    template.body,
+    {
+      total_inscricoes_pagas: String(m.paidRegistrationsCount),
+      receita_periodo: formatCurrency(m.grossRevenue),
+      cupons_usados: String(m.couponsUsedCount),
+      link_plataforma: baseUrl,
+    },
+    "WHATSAPP",
+  );
 }
 
 export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Promise<{ sent: number; failed: number }> {
@@ -103,7 +126,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (admin.dailySummaryWhatsappEnabled && admin.phone) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(admin.phone, buildAdminWhatsAppText(metrics));
+            await sendWhatsAppMessage(admin.phone, await buildAdminWhatsAppText(metrics));
             sent++;
           }
         } catch (err) {
@@ -137,7 +160,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(recipient.value, buildAdminWhatsAppText(metrics));
+              await sendWhatsAppMessage(recipient.value, await buildAdminWhatsAppText(metrics));
               sent++;
             }
           } catch (err) {
@@ -211,7 +234,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
       if (organizer.dailySummaryWhatsappEnabled && organizer.organizerProfile!.phone) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(organizer.organizerProfile!.phone, buildOrganizerWhatsAppText(metrics));
+            await sendWhatsAppMessage(organizer.organizerProfile!.phone, await buildOrganizerWhatsAppText(metrics));
             sent++;
           }
         } catch (err) {
@@ -250,7 +273,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(recipient.value, buildOrganizerWhatsAppText(metrics));
+              await sendWhatsAppMessage(recipient.value, await buildOrganizerWhatsAppText(metrics));
               sent++;
             }
           } catch (err) {

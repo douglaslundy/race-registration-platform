@@ -30,6 +30,7 @@ import { sendDailySummaryEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
 import { getAdminDailySummary, getOrganizerDailySummary } from "@/lib/alerts/daily-summary-metrics";
+import { formatCurrency } from "@/lib/format";
 
 const dbMock = db as any;
 
@@ -244,6 +245,25 @@ describe("sendAdminDailySummaries", () => {
     expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:recipient:recipient-1", "EMAIL");
     expect(result).toEqual({ sent: 2, failed: 1 });
   });
+
+  it("envia o texto exato do WhatsApp para admin (zero-regressão, sem mockar resolve/render)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "admin-1",
+        email: "admin1@example.com",
+        phone: "5511999999999",
+        dailySummaryEmailEnabled: false,
+        dailySummaryWhatsappEnabled: true,
+      },
+    ]);
+
+    await sendAdminDailySummaries(dayStart, dayEnd);
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      `Resumo de ontem: 10 inscrições pagas, ${formatCurrency(100000)} em receita bruta, 5 novos usuários, 2 eventos criados. Veja mais em /admin.`,
+    );
+  });
 });
 
 describe("sendOrganizerDailySummaries", () => {
@@ -381,5 +401,24 @@ describe("sendOrganizerDailySummaries", () => {
     );
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("21988887777", expect.any(String));
     expect(result).toEqual({ sent: 1, failed: 0 });
+  });
+
+  it("envia o texto exato do WhatsApp para organizador (zero-regressão, sem mockar resolve/render)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "org-user-1",
+        email: "organizador@example.com",
+        dailySummaryEmailEnabled: false,
+        dailySummaryWhatsappEnabled: true,
+        organizerProfile: { id: "org-1", phone: "5511988888888" },
+      },
+    ]);
+
+    await sendOrganizerDailySummaries(dayStart, dayEnd);
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      `Resumo de ontem: 4 inscrições pagas, ${formatCurrency(40000)} em receita, 2 cupons usados. Veja mais em /organizador.`,
+    );
   });
 });
