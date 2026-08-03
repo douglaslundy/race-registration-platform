@@ -1,0 +1,236 @@
+"use client";
+
+import { useState } from "react";
+import ErrorModal from "@/components/ui/ErrorModal";
+
+interface VariableDef {
+  name: string;
+  label: string;
+  category: string;
+  description: string;
+}
+
+interface VersionRow {
+  id: string;
+  subject: string | null;
+  body: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export default function MessageTemplateEditor({
+  templateId,
+  initialSubject,
+  initialBody,
+  initialActive,
+  channel,
+  variables,
+  versions,
+}: {
+  templateId: string;
+  initialSubject: string | null;
+  initialBody: string;
+  initialActive: boolean;
+  channel: "EMAIL" | "WHATSAPP";
+  variables: VariableDef[];
+  versions: VersionRow[];
+}) {
+  const [subject, setSubject] = useState(initialSubject ?? "");
+  const [body, setBody] = useState(initialBody);
+  const [active, setActive] = useState(initialActive);
+  const [search, setSearch] = useState("");
+  const [preview, setPreview] = useState<{ subject?: string; body: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const filteredVariables = variables.filter(
+    (v) =>
+      v.name.includes(search.toLowerCase()) ||
+      v.label.toLowerCase().includes(search.toLowerCase()),
+  );
+  const categories = [...new Set(filteredVariables.map((v) => v.category))];
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch(`/api/admin/message-templates/${templateId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subject: channel === "EMAIL" ? subject : undefined,
+        body,
+        active,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(
+        data.unknownVariables?.length
+          ? `Variáveis desconhecidas: ${data.unknownVariables.map((v: string) => `{{${v}}}`).join(", ")}`
+          : data.error ?? "Erro ao salvar",
+      );
+      return;
+    }
+    setMessage("Salvo com sucesso.");
+  }
+
+  async function handlePreview() {
+    const res = await fetch(`/api/admin/message-templates/${templateId}/preview`, {
+      method: "POST",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) setPreview(data);
+  }
+
+  async function handleTestSend() {
+    setError(null);
+    setMessage(null);
+    const res = await fetch(`/api/admin/message-templates/${templateId}/test-send`, {
+      method: "POST",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Erro ao enviar teste");
+      return;
+    }
+    setMessage("Teste enviado para o seu e-mail/WhatsApp cadastrado.");
+  }
+
+  async function handleRevert(versionId: string) {
+    setError(null);
+    const res = await fetch(
+      `/api/admin/message-templates/${templateId}/revert/${versionId}`,
+      { method: "POST" },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Erro ao reverter");
+      return;
+    }
+    setSubject(data.template.subject ?? "");
+    setBody(data.template.body);
+    setActive(data.template.active);
+    setMessage("Revertido — revise e salve para confirmar.");
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="card space-y-4">
+        {channel === "EMAIL" && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Assunto</label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className="input-field"
+            />
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium mb-1">Corpo da mensagem</label>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            className="input-field font-mono text-sm"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+            className="h-4 w-4"
+          />
+          Ativo
+        </label>
+
+        {message && <p className="text-sm text-green-700 dark:text-green-400">{message}</p>}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary px-6 disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+          <button type="button" onClick={handlePreview} className="btn-secondary px-4">
+            Pré-visualizar
+          </button>
+          <button type="button" onClick={handleTestSend} className="btn-secondary px-4">
+            Enviar teste pra mim
+          </button>
+        </div>
+
+        {preview && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+            {preview.subject && <p className="font-semibold mb-2">{preview.subject}</p>}
+            {channel === "EMAIL" ? (
+              <div dangerouslySetInnerHTML={{ __html: preview.body }} />
+            ) : (
+              <p className="whitespace-pre-wrap">{preview.body}</p>
+            )}
+          </div>
+        )}
+
+        {versions.length > 0 && (
+          <details className="text-sm">
+            <summary className="cursor-pointer text-gray-500">
+              Histórico ({versions.length})
+            </summary>
+            <ul className="mt-2 space-y-2">
+              {versions.map((v) => (
+                <li key={v.id} className="flex items-center justify-between gap-2">
+                  <span className="text-gray-500">
+                    {new Date(v.createdAt).toLocaleString("pt-BR")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRevert(v.id)}
+                    className="text-primary-700 dark:text-primary-400 hover:underline"
+                  >
+                    Reverter pra esta versão
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </div>
+
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Variáveis disponíveis</h2>
+        <input
+          placeholder="Buscar variável..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input-field"
+        />
+        {categories.map((cat) => (
+          <div key={cat}>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mt-2">{cat}</h3>
+            <ul className="space-y-1 mt-1">
+              {filteredVariables
+                .filter((v) => v.category === cat)
+                .map((v) => (
+                  <li key={v.name} className="text-sm">
+                    <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                      {`{{${v.name}}}`}
+                    </code>{" "}
+                    <span className="text-gray-500">{v.label}</span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <ErrorModal message={error} onClose={() => setError(null)} />
+    </div>
+  );
+}

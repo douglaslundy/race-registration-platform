@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/auth/rbac";
 import AlertConfigCard from "@/components/admin/AlertConfigCard";
+import MessageTemplateList from "@/components/admin/MessageTemplateList";
+import { listTemplatesForAdmin } from "@/lib/templates/list";
 import {
   getLowStockAlertSettings,
   getAbandonedCartAlertSettings,
@@ -99,6 +101,11 @@ export default async function AdminAlertasPage() {
         currentEmailEnabled={advertiserRequest.emailEnabled}
         currentWhatsappEnabled={advertiserRequest.whatsappEnabled}
       />
+
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Templates de mensagem</h2>
+        <MessageTemplateList templates={await listTemplatesForAdmin()} />
+      </div>
     </div>
   );
 }
