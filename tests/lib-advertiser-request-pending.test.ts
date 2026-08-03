@@ -64,4 +64,13 @@ describe("notifyAdvertiserRequestPending", () => {
     await notifyAdvertiserRequestPending("purchase-1");
     expect(sendAdvertiserRequestPendingEmail).not.toHaveBeenCalled();
   });
+
+  it("com o banco sem template salvo, o texto do WhatsApp é idêntico ao hardcoded anterior", async () => {
+    await notifyAdvertiserRequestPending("purchase-1");
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      "Nova solicitação de anunciante: Empresa X (plano Plano Básico). Acesse o painel pra aprovar ou rejeitar.",
+    );
+  });
 });

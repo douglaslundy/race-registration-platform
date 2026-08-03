@@ -18,7 +18,7 @@ vi.mock("@/lib/templates/resolve", () => ({
   getEffectiveTemplate: vi.fn(),
 }));
 
-import { sendMail, sendLowStockEmail } from "@/lib/email";
+import { sendMail, sendLowStockEmail, sendAdvertiserRequestPendingEmail } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { recordMessageLog } from "@/lib/message-logs";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
@@ -131,6 +131,30 @@ describe("sendLowStockEmail", () => {
     }));
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
     expect(sentHtml).toContain("Vendeu 95/100");
+  });
+});
+
+describe("sendAdvertiserRequestPendingEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("usa o template resolvido em vez de string fixa", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Nova solicitação — {{nome_plataforma}}", body: "Empresa: {{empresa_anunciante}}, plano: {{nome_plano}}, link: {{link_solicitacoes_pendentes}}", source: "global",
+    });
+
+    await sendAdvertiserRequestPendingEmail({ to: "admin@example.com", companyName: "Empresa X", planName: "Plano Básico" });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ADVERTISER_REQUEST_PENDING", "EMAIL", "ADMIN");
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({
+      to: "admin@example.com",
+    }));
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Empresa: Empresa X, plano: Plano Básico");
   });
 });
 

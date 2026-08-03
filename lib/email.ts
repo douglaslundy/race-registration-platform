@@ -362,18 +362,16 @@ export async function sendAdvertiserRequestPendingEmail(params: {
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const url = `${baseUrl}/admin/anunciantes/solicitacoes`;
-  await sendMail({
-    to: params.to,
-    subject: `Nova solicitação de anunciante — ${appName}`,
-    html: layout(
-      appName,
-      `<p>Uma nova solicitação de conta de anunciante chegou e está aguardando aprovação.</p>
-       <p><strong>Empresa:</strong> ${params.companyName}<br/>
-          <strong>Plano:</strong> ${params.planName}</p>
-       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Ver solicitações pendentes</a></p>`
-    ),
-  });
+  const values = {
+    nome_plataforma: appName,
+    empresa_anunciante: params.companyName,
+    nome_plano: params.planName,
+    link_solicitacoes_pendentes: `${baseUrl}/admin/anunciantes/solicitacoes`,
+  };
+  const template = await getEffectiveTemplate("ADVERTISER_REQUEST_PENDING", "EMAIL", "ADMIN");
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }
 
 /** E-mail pro anunciante avisando que a solicitação de conta foi aprovada. */

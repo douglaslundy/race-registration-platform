@@ -4,6 +4,8 @@ import { sendAdvertiserRequestPendingEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAdvertiserRequestAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 
 const ALERT_TYPE = "ADVERTISER_REQUEST_PENDING";
 
@@ -55,10 +57,12 @@ export async function notifyAdvertiserRequestPending(adPurchaseId: string): Prom
         const claimed = await claimAlert(ALERT_TYPE, "AdPurchase", `${adPurchaseId}:${admin.phone}`, "WHATSAPP");
         if (!claimed) continue;
         try {
-          await sendWhatsAppMessage(
-            admin.phone,
-            `Nova solicitação de anunciante: ${purchase.advertiser.companyName} (plano ${purchase.adPlan.name}). Acesse o painel pra aprovar ou rejeitar.`,
-          );
+          const template = await getEffectiveTemplate("ADVERTISER_REQUEST_PENDING", "WHATSAPP", "ADMIN");
+          const text = renderTemplate(template.body, {
+            empresa_anunciante: purchase.advertiser.companyName,
+            nome_plano: purchase.adPlan.name,
+          }, "WHATSAPP");
+          await sendWhatsAppMessage(admin.phone, text);
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, `${adPurchaseId}:${admin.phone}`, "WHATSAPP");
           console.error("[notifyAdvertiserRequestPending] whatsapp failed for", admin.phone, err);
