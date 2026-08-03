@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
 import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
+import { extractApiErrorMessage } from "@/lib/checkout-validation";
 
 interface RequestAdvertiserResult {
   adPurchaseId: string;
@@ -52,33 +53,46 @@ export default function RequestAdvertiserForm({
       ? undefined
       : { name: data.name!, email: data.email!, password: data.password! };
 
-    const res = await fetch("/api/anunciante/solicitar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        newAccount,
-        profile: {
-          companyName: data.companyName,
-          document: data.document,
-          address: data.address,
-          contactEmail: data.contactEmail,
-          contactPhone: data.contactPhone,
-          instagram: data.instagram || null,
-          facebook: data.facebook || null,
-        },
-        adPlanId,
-        paymentMethod: "PIX",
-      }),
-    });
+    try {
+      const res = await fetch("/api/anunciante/solicitar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newAccount,
+          profile: {
+            companyName: data.companyName,
+            document: data.document,
+            address: data.address,
+            contactEmail: data.contactEmail,
+            contactPhone: data.contactPhone,
+            instagram: data.instagram || null,
+            facebook: data.facebook || null,
+          },
+          adPlanId,
+          paymentMethod: "PIX",
+        }),
+      });
+      const raw = await res.text();
+      const body = raw ? JSON.parse(raw) : {};
 
-    if (!res.ok) {
-      const body = await res.json();
-      setError(typeof body.error === "string" ? body.error : "Erro ao enviar solicitação");
-      return;
+      if (!res.ok) {
+        setError(extractApiErrorMessage(body.error) ?? extractApiErrorMessage(body) ?? "Erro ao enviar solicitação");
+        return;
+      }
+
+      if (!body.pixQrCodeText) {
+        setError(
+          "Solicitação enviada, mas não conseguimos gerar o QR Code do Pix agora. Entre em contato com o suporte informando o pedido " +
+            (body.adPurchaseId ?? "") +
+            ".",
+        );
+        return;
+      }
+
+      setResult(body);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar solicitação");
     }
-
-    const body = await res.json();
-    setResult(body);
   }
 
   if (result?.pixQrCodeText) {

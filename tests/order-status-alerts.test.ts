@@ -72,4 +72,55 @@ describe("order status route alert hook", () => {
 
     expect(notifyPaymentError).not.toHaveBeenCalled();
   });
+
+  it("aprovação via polling grava auditoria, igual ao webhook", async () => {
+    dbMock.order.findFirst.mockResolvedValueOnce({
+      id: "order-1",
+      status: "PENDING",
+      totalAmount: 10000,
+      payments: [{ id: "payment-1", providerPaymentId: "mp-1", status: "PENDING" }],
+      registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" }],
+    });
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: "approved" }),
+    });
+
+    await GET(
+      new Request("http://localhost/api/orders/order-1/status") as any,
+      { params: Promise.resolve({ id: "order-1" }) },
+    );
+
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "PAYMENT_STATUS_SYNCED_POLL", entityType: "Payment", entityId: "payment-1" }),
+    });
+    expect(dbMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: { status: "CONFIRMED" } });
+  });
+
+  it("cancelamento via polling libera a vaga reservada, igual ao webhook", async () => {
+    dbMock.order.findFirst.mockResolvedValueOnce({
+      id: "order-1",
+      status: "PENDING",
+      totalAmount: 10000,
+      payments: [{ id: "payment-1", providerPaymentId: "mp-1", status: "PENDING" }],
+      registrations: [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" }],
+    });
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: "cancelled" }),
+    });
+
+    await GET(
+      new Request("http://localhost/api/orders/order-1/status") as any,
+      { params: Promise.resolve({ id: "order-1" }) },
+    );
+
+    expect(dbMock.ticketBatch.update).toHaveBeenCalledWith({
+      where: { id: "batch-1" },
+      data: { soldCount: { decrement: 1 } },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "PAYMENT_STATUS_SYNCED_POLL" }),
+    });
+  });
 });

@@ -17,6 +17,7 @@ vi.mock("@/lib/alerts/alert-settings", () => ({
 vi.mock("@/lib/alerts/dedupe", () => ({
   claimAlert: vi.fn(),
   unclaimAlert: vi.fn(),
+  recordAlert: vi.fn(),
 }));
 
 import { notifyPaymentError, notifyOrderCancelledWithoutPayment } from "@/lib/alerts/payment-error";
@@ -24,7 +25,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getPaymentErrorAlertSettings } from "@/lib/alerts/alert-settings";
-import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
 
 const dbMock = db as any;
 
@@ -135,6 +136,15 @@ describe("notifyPaymentError", () => {
     expect(unclaimAlert).not.toHaveBeenCalled();
   });
 
+  it("com bypassDedupe: grava recordAlert depois do envio, pra rodadas automáticas futuras verem a reivindicação", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+
+    await notifyPaymentError("payment-1", { bypassDedupe: true });
+
+    expect(recordAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Payment", "payment-1", "EMAIL");
+  });
+
   it("não reivindica o alerta de e-mail quando o SMTP não está pronto (evita travar o alerta pra sempre)", async () => {
     vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
     vi.mocked(isSmtpReady).mockReturnValue(false);
@@ -241,5 +251,14 @@ describe("notifyOrderCancelledWithoutPayment", () => {
 
     expect(claimAlert).not.toHaveBeenCalled();
     expect(sendPaymentErrorEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "atleta@example.com" }));
+  });
+
+  it("com bypassDedupe: grava recordAlert com entityType Order", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+
+    await notifyOrderCancelledWithoutPayment("order-1", { bypassDedupe: true });
+
+    expect(recordAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Order", "order-1", "EMAIL");
   });
 });

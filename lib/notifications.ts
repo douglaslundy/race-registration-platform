@@ -5,7 +5,7 @@ import { sendWhatsAppMessage } from "./whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
 import { getConnectionState } from "./whatsapp/evolution-client";
 import { isPlaceholderEmail } from "./proxy-athlete";
-import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
 
 const ALERT_TYPE = "ORDER_CONFIRMED";
 
@@ -37,6 +37,7 @@ async function sendWhatsAppIfActive(
       text,
       eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
     );
+    if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
   } catch (err) {
     // Só desfaz a reivindicação se ESTA chamada realmente a tomou — caso contrário, uma falha
     // antes do claim (ex.: getWhatsAppConfig lançando) apagaria a reivindicação de um envio
@@ -112,6 +113,7 @@ export async function notifyOrderConfirmed(
             notes: registration.notes ?? undefined,
           });
           await db.order.update({ where: { id: orderId }, data: { confirmationEmailSentAt: new Date() } });
+          if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", orderId, "EMAIL");
         }
       }
     } catch (err) {
@@ -148,6 +150,7 @@ export async function notifyOrderConfirmed(
               eventId: order.event?.id,
               notes: registration.notes ?? undefined,
             });
+            if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
           }
         }
       } catch (err) {

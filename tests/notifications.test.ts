@@ -316,4 +316,17 @@ describe("notifyOrderConfirmed", () => {
     await notifyOrderConfirmed("order-1", { bypassDedupe: true });
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(2);
   });
+
+  it("bypassDedupe grava recordAlert (upsert em AlertLog) mesmo ignorando a reivindicação", async () => {
+    dbMock.order.findUnique.mockResolvedValue(orderFixture);
+    mockPerKeyAlertLog();
+
+    await notifyOrderConfirmed("order-1", { bypassDedupe: true });
+
+    expect(dbMock.alertLog.upsert).toHaveBeenCalledWith({
+      where: { alertType_entityId_channel: { alertType: "ORDER_CONFIRMED", entityId: "order-1", channel: "EMAIL" } },
+      create: { alertType: "ORDER_CONFIRMED", entityType: "Order", entityId: "order-1", channel: "EMAIL" },
+      update: { sentAt: expect.any(Date) },
+    });
+  });
 });

@@ -54,15 +54,14 @@ export default function AdvertiserRequestRow({
     });
     setLoading(false);
     setRejecting(false);
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      const data = await res.json().catch(() => ({}));
       router.refresh();
       if (data.refundFailed) {
         setError("Solicitação rejeitada, mas o estorno automático falhou — verifique manualmente o pagamento.");
       }
       return;
     }
-    const data = await res.json().catch(() => ({}));
     setError(data.error ?? "Erro ao rejeitar solicitação.");
   }
 

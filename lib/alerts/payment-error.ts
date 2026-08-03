@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getPaymentErrorAlertSettings } from "./alert-settings";
-import { claimAlert, unclaimAlert } from "./dedupe";
+import { claimAlert, unclaimAlert, recordAlert } from "./dedupe";
 
 const ALERT_TYPE = "PAYMENT_ERROR";
 
@@ -34,6 +34,7 @@ async function sendCancellationInviteNotification(
             eventTitle: params.event.title,
             eventSlug: params.event.slug,
           });
+          if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "EMAIL");
         } catch (err) {
           if (!params.bypassDedupe) await unclaimAlert(ALERT_TYPE, params.entityId, "EMAIL");
           throw err;
@@ -50,6 +51,7 @@ async function sendCancellationInviteNotification(
           params.buyer.athleteProfile.phone,
           `Sua inscrição em "${params.event.title}" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${eventUrl}`,
         );
+        if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
       } catch (err) {
         if (!params.bypassDedupe) await unclaimAlert(ALERT_TYPE, params.entityId, "WHATSAPP");
         throw err;

@@ -1298,3 +1298,73 @@ achado durante o próprio plano: `refundPayment()` precisa reescrever o arquivo 
 guard) porque `applyGatewayStatus` é acoplado a Order/Registration — plano já tem o código completo
 das duas versões (antes/depois). Próxima ação real: escolher entre execução via
 subagent-driven-development (recomendado) ou executing-plans.
+
+## Sessão 2026-07-28/29 — Frente 2 (anunciante) deployada + módulo de alertas endurecido
+
+Concluído e em produção nesta sessão:
+- Plano "Solicitação de conta de anunciante" (14 tasks + revisão final + fix round) — deployado
+  (commits até `ca4a9df`). Migração de schema aplicada (`db push`).
+- Bug crítico achado na própria revisão final (RequestAdvertiserForm descartava os dados do PIX,
+  ninguém conseguia pagar) — corrigido antes do deploy.
+- Auditoria do módulo de alertas (frente 3) — 5 riscos encontrados, todos corrigidos em 3 rodadas
+  de fix + revisão (commits até `3f05e67`, deployado sem migração de schema): bug de mensagem
+  duplicada em `notifyOrderConfirmed` (a rodada 2 pegou uma regressão crítica própria — o fix
+  original quebrava o botão de reenviar e-mail — corrigida), dedupe da conciliação, segunda
+  solicitação de cancelamento silenciada, e-mail de compra de anúncio sem try/catch no webhook,
+  AuditLog de carrinho abandonado sem limite.
+- Worktrees órfãos de agentes antigos (`.claude/worktrees/agent-a76951544142c2ede`,
+  `agent-a9b61986e3557b4d3`) removidos — só continham relatórios já extraídos.
+
+## Backlog de baixa prioridade (registrado 2026-07-29, retomar só com pedido explícito)
+
+**Módulo de alertas** (nada bloqueante, decisões deliberadas de escopo):
+- `app/api/orders/[id]/status/route.ts` (poller de status) ainda usa transação própria em vez de
+  reaproveitar `applyGatewayStatus` — a trava em `notifyOrderConfirmed` já impede mensagem
+  duplicada mesmo assim, mas esse caminho não tem paridade de capacidade/auditoria com o webhook.
+- Reenvios manuais com `bypassDedupe` não gravam `recordAlert` (inofensivo hoje, rastreado).
+- Divergência de conciliação não resolvida alerta 1x só, pra sempre — `/admin/conciliacao` é o
+  único backstop pra revisão manual (comportamento intencional, não bug).
+
+**Frente de anunciante** (cosméticos, não bloqueantes):
+- `RequestAdvertiserForm.tsx`: tela fica muda se o gateway devolver PIX sem `pixQrCodeText`
+  (herdado do padrão do `SubscribeButton`); `res.json()` sem guard (`SubscribeButton` usa
+  `res.text()` + parse protegido).
+- `/anuncie/enviado` virou página morta (não removida de propósito).
+- Duplicação cosmética de `const data` em `AdvertiserRequestRow.tsx`.
+
+**Sem spec ainda, aguardando pedido explícito do usuário:**
+- Tela de entrega de kits.
+- Sistema de rating (precisa de pontuação retroativa pros atletas já cadastrados/inscritos).
+
+## Backlog de baixa prioridade resolvido (2026-08-02)
+
+Usuário pediu pra resolver todos os itens do backlog acima (rating e tela de entrega de kits
+ficaram de fora — são features novas sem spec, não itens de backlog). TDD em cada item
+comportamental, suíte completa 200 arquivos/1301 testes, `tsc --noEmit` limpo, `npm run build` OK.
+Nada commitado/deployado ainda — perguntar ao usuário antes.
+
+1. **Poller de status sem paridade com o webhook** (`app/api/orders/[id]/status/route.ts`): agora
+   reusa `applyGatewayStatus` (mesma função do webhook/conciliação) em vez de reimplementar a
+   transação na mão. Corrige 2 lacunas reais, não só cosméticas: (a) cancelamento via polling nunca
+   liberava a vaga reservada (`ticketBatch.soldCount` não decrementava) — bug de capacidade real,
+   não só falta de auditoria; (b) nenhuma linha de `AuditLog` era gravada nessa via. Novo
+   `SyncSource` `"status_poll"` em `lib/payment/sync-payment-status.ts` (ação
+   `PAYMENT_STATUS_SYNCED_POLL`, label em `lib/admin/labels.ts`). Testes novos em
+   `tests/order-status-alerts.test.ts`.
+2. **`recordAlert` ausente em envios com `bypassDedupe`** (`lib/notifications.ts` e
+   `lib/alerts/payment-error.ts`): reenvio manual/confirmação manual (admin/organizador) ignorava a
+   reivindicação anterior pra reenviar, mas nunca deixava rastro pra uma rodada automática futura
+   ver que já houve envio — `lib/alerts/abandoned-cart.ts` já fazia certo, os outros dois não.
+   Corrigido nos 4 pontos de envio (e-mail comprador, e-mail atleta, WhatsApp, e os 2 canais de
+   `notifyPaymentError`/`notifyOrderCancelledWithoutPayment`).
+3. **`RequestAdvertiserForm.tsx`**: alinhado ao padrão do `SubscribeButton.tsx` —
+   `res.text()`+`JSON.parse` protegido em vez de `res.json()` cru (evitava crash se o servidor
+   devolvesse corpo vazio/não-JSON), e novo guard quando o resultado não vem com `pixQrCodeText`
+   (antes a tela voltava muda pro formulário vazio sem avisar que a solicitação já tinha sido
+   enviada, risco de o usuário reenviar e duplicar).
+4. **`AdvertiserRequestRow.tsx`**: `const data = await res.json()` duplicado nos 2 branches de
+   `handleReject` virou uma leitura só, reaproveitada nos dois casos.
+
+## Próxima tarefa
+Nenhuma pendente — perguntar ao usuário sobre commit/push/deploy desta leva antes de prosseguir.
+Fora isso, aguardar pedido explícito pra rating de atletas ou tela de entrega de kits.

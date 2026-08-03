@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { checkMPPaymentStatus } from "@/lib/payment/check-mp-status";
+import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
 
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         take: 1,
         select: { id: true, providerPaymentId: true, status: true },
       },
-      registrations: { select: { id: true } },
+      registrations: { select: { id: true, ticketBatchId: true, status: true } },
     },
   });
 
@@ -36,22 +37,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (providerSetting === "mercadopago") {
         const mpStatus = await checkMPPaymentStatus(payment.providerPaymentId);
         if (mpStatus === "PAID" && payment.status !== "PAID") {
-          await db.$transaction([
-            db.payment.update({ where: { id: payment.id }, data: { status: "PAID", paidAt: new Date() } }),
-            db.order.update({ where: { id: order.id }, data: { status: "PAID" } }),
-            ...order.registrations.map((r) =>
-              db.registration.update({ where: { id: r.id }, data: { status: "CONFIRMED" } })
-            ),
-          ]);
-          void notifyOrderConfirmed(order.id);
+          const result = await db.$transaction((tx) =>
+            applyGatewayStatus(tx, payment, order, order.registrations, "PAID", "status_poll", { paidAt: new Date() }),
+          );
+          if (result.changed) void notifyOrderConfirmed(order.id);
           return NextResponse.json({ status: "PAID", totalAmount: order.totalAmount });
         }
         if (mpStatus === "CANCELLED" && payment.status !== "CANCELLED") {
-          await db.$transaction([
-            db.payment.update({ where: { id: payment.id }, data: { status: "CANCELLED" } }),
-            db.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } }),
-          ]);
-          void notifyPaymentError(payment.id);
+          const result = await db.$transaction((tx) =>
+            applyGatewayStatus(tx, payment, order, order.registrations, "CANCELLED", "status_poll"),
+          );
+          if (result.changed) void notifyPaymentError(payment.id);
           return NextResponse.json({ status: "CANCELLED", totalAmount: order.totalAmount });
         }
       }
