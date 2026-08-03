@@ -250,11 +250,33 @@ conforme decisão de deploy conservador registrada na spec (commit `e62de96`).
 - TypeScript (tsc --noEmit): limpo
 - npm run build: limpo
 
+**Revisão final de branch inteira (2026-08-03):** "Ready to merge: With fixes" — 0 Critical, 3
+Important (achados cross-task que nenhuma revisão de task isolada conseguiria ver), 10 Minor
+(registrados, não bloqueantes). Corrigidos numa única rodada (commits `adbba9a`/`5d45672`/`08d21cb`,
+re-revisão confirmou os 3 endereçados sem regressão):
+1. WhatsApp de `ABANDONED_CART` não preenchia `link_finalizar_pagamento` (variável declarada mas
+   renderizava vazia numa mensagem real).
+2. `SAMPLE_VALUES` de preview/test-send era mantido à mão e ficou desatualizado (faltavam 9
+   variáveis) — agora derivado do catálogo (`ALL_VARIABLES`), com teste garantindo que toda
+   variável nova sempre tem exemplo.
+3. Checkbox "Ativo" no editor confundia com os toggles de liga/desliga do alerta (que são coisa
+   separada) — relabeled pra deixar claro que controla "usar texto personalizado vs. padrão do
+   sistema", não se o alerta é enviado.
+
+**DEPLOY CONCLUÍDO (2026-08-03):** `git push origin main` (`3f05e67..08d21cb`, 22 commits) → VPS:
+`git pull` → `docker build` → `prisma db push --skip-generate` (aditivo, sem `--accept-data-loss`
+necessário) → `docker compose up -d --no-deps app` → **seed rodado contra produção**
+(`seedMessageTemplatesFromRegistry()`, executado via `ts-node` com `tsconfig-paths` registrado
+manualmente dentro do container — a imagem de produção não tem `tsconfig.json` nem roda
+`prisma/seed.ts` inteiro de propósito, pra não recriar as contas de teste admin/organizador que
+esse script também cria). Resultado: **25 linhas criadas, 0 puladas** (11 alertas × combinações de
+canal/destinatário), confirmado via `psql` direto (`SELECT count(*) FROM message_templates` = 25).
+Smoke test: `/`, `/eventos` 200, container sem erros nos logs.
+
 **Pendência registrada:** 6 alertas restantes (`ADVERTISER_REQUEST_PENDING` → `CANCELLATION_REQUESTED`
 → conciliação → `DAILY_SUMMARY` → `PAYMENT_ERROR` → confirmação de inscrição) seguirão o mesmo padrão
 de Tasks 10/11 (migração incremental). Não requer plano novo — apenas repetir a receita para cada
-alerta. Seed contra banco real adiado pra pós-deploy (banco de dev local inacessível nesta máquina,
-restrição confirmada em Task 1).
+alerta.
 
 ### Etapa 3 — Global × por-evento + resumo diário por evento — PENDENTE (Etapa 2 completa, pronto para começar)
 

@@ -1365,6 +1365,43 @@ Nada commitado/deployado ainda — perguntar ao usuário antes.
 4. **`AdvertiserRequestRow.tsx`**: `const data = await res.json()` duplicado nos 2 branches de
    `handleReject` virou uma leitura só, reaproveitada nos dois casos.
 
+## Mega-prompt de 10 etapas (2026-08-02/03) — Etapa 2 concluída e deployada
+
+Usuário colou um pedido grande de uma vez (central de alertas com templates editáveis, home
+pública, fluxo de anunciante, redes sociais, entrega de kits, rating de atletas). Criado
+`IMPLEMENTATION_PLAN.md` (persistência exigida pelo próprio prompt) com auditoria completa +
+plano técnico das 10 etapas — **é o arquivo de referência pra retomar isso**, não repetir aqui.
+Ordem confirmada com o usuário: Etapas 2-5 (central de alertas) → 6-8 (home/anunciante/social) →
+9-10 (kits/rating, continuam bloqueadas até concluir e validar as anteriores — usuário já tinha
+pedido explicitamente pra elas esperarem, mega-prompt não muda isso).
+
+**Etapa 2 (central de alertas/templates) — CONCLUÍDA e DEPLOYADA em produção (2026-08-03).**
+Brainstorm → spec (`docs/superpowers/specs/2026-08-03-central-alertas-templates.md`) → plano de 12
+tasks (`docs/superpowers/plans/2026-08-03-central-alertas-templates.md`) → executado via
+`superpowers:subagent-driven-development` (22 commits, revisão individual por task + revisão final
+de branch inteira: "Ready to merge: With fixes", 3 achados Important corrigidos numa rodada só).
+Detalhe técnico completo em `IMPLEMENTATION_PLAN.md` §Etapa 2. Deploy: push + VPS (`prisma db push`
+aditivo + seed rodado contra produção via `ts-node` manual dentro do container, já que a imagem de
+produção não tem `tsconfig.json` nem deve rodar `prisma/seed.ts` inteiro — 25 templates criados).
+Suite 207 arquivos/1351 testes, `tsc`/`build` limpos.
+
+**Pendência real**: 6 dos 8 fluxos de alerta ainda usam texto hardcoded (só `LOW_STOCK` e
+`ABANDONED_CART` migrados, decisão deliberada de rollout incremental) — retomar repetindo a receita
+das Tasks 10/11 do plano, sem precisar de plano novo.
+
+## Incidente VPS resolvido (2026-08-03): swap alto (73,6%)
+
+Investigado e corrigido na mesma sessão. Causa: 48 containers (4 stacks do usuário: corridas,
+mecanicapro, xadrez-essencial, syscursos — 2 delas com stack Supabase completa própria) em só 6
+vCPUs/11GB. Não era emergência ativa (`vmstat` mostrou swap-in/out ~0, 4,4GB ainda disponível).
+Ações aplicadas: 2º swapfile de 4GB criado (`/swapfile2`, total 8GB agora, persistido em
+`/etc/fstab`) — resolveu o alerta na hora (uso caiu pra 36%); `monitor-backend` (o próprio serviço
+de monitoramento, sem limite de CPU/memória, 106% de CPU) limitado a 1,5 CPU/512MB via
+`docker-compose.override.yml` em `/opt/vps-monitor/monitor/` (persistente, sobrevive a
+redeploy do monitor). Achado à parte não corrigido: access log do Traefik que o monitor lê está
+vazio desde 20/07 (`/var/log/traefik/access.log`, volume `traefik_access_logs`) — estatística de
+acesso do monitor está morta silenciosamente, causa raiz não investigada, retomar só se pedido.
+
 ## Próxima tarefa
-Nenhuma pendente — perguntar ao usuário sobre commit/push/deploy desta leva antes de prosseguir.
-Fora isso, aguardar pedido explícito pra rating de atletas ou tela de entrega de kits.
+Nenhuma pendente — aguardar pedido explícito pra continuar as Etapas 3+ do mega-prompt (home,
+anunciante, redes sociais, ou os 6 alertas restantes da Etapa 2), ou pra rating/kits.
