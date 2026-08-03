@@ -157,8 +157,12 @@ export default function MessageTemplateEditor({
             onChange={(e) => setActive(e.target.checked)}
             className="h-4 w-4"
           />
-          Ativo
+          Usar este texto personalizado (desmarcado = volta pro texto padrão do sistema)
         </label>
+        <p className="text-xs text-gray-500">
+          Isso não liga nem desliga o alerta — ele continua sendo enviado normalmente nos dois
+          casos. Essa opção só decide se usa o seu texto ou o texto padrão do sistema.
+        </p>
 
         {message && <p className="text-sm text-green-700 dark:text-green-400">{message}</p>}
 
