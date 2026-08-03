@@ -12,6 +12,13 @@ describe("ALL_VARIABLES", () => {
       expect(v.name).toMatch(/^[a-z][a-z0-9_]*$/);
     }
   });
+
+  it("toda variável do catálogo tem um valor de amostra não vazio (usado no preview/test-send)", () => {
+    for (const v of ALL_VARIABLES) {
+      expect(v.sample, `variável "${v.name}" está sem sample`).toBeTruthy();
+      expect(v.sample.trim().length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("getVariablesByNames", () => {

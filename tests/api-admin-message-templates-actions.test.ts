@@ -35,6 +35,11 @@ describe("POST .../preview", () => {
     expect(res.status).toBe(200);
     expect(data.subject).not.toContain("{{");
     expect(data.body).not.toContain("{{");
+    // Não basta não conter "{{" — precisa conter o valor de amostra real substituído,
+    // senão uma variável rendendo como string vazia também passaria nessa checagem.
+    expect(data.subject).toContain("Corrida Exemplo 5k");
+    expect(data.body).toContain("João Organizador");
+    expect(data.body).toContain("95/100");
     expect(sendMail).not.toHaveBeenCalled();
   });
 });

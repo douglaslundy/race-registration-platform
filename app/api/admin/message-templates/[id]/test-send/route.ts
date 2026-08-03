@@ -4,14 +4,11 @@ import { db } from "@/lib/db";
 import { renderTemplate, renderTemplateSubject } from "@/lib/templates/render";
 import { sendMail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { ALL_VARIABLES } from "@/lib/templates/variables";
 
-const SAMPLE_VALUES: Record<string, string> = {
-  nome_atleta: "Maria Exemplo", nome_organizador: "João Organizador", nome_evento: "Corrida Exemplo 5k",
-  nome_lote: "Lote 1", vagas_vendidas: "95", capacidade_lote: "100", percentual_vendido: "95",
-  codigo_confirmacao: "ord_exemplo123", link_evento: "https://exemplo.com/eventos/corrida-exemplo",
-  link_finalizar_pagamento: "https://exemplo.com/dashboard/inscricoes",
-  motivo_cancelamento: "Não poderei comparecer", nome_plataforma: "Circuito das Corridas",
-};
+const SAMPLE_VALUES: Record<string, string> = Object.fromEntries(
+  ALL_VARIABLES.map((v) => [v.name, v.sample]),
+);
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const check = await checkAdminOnlyApiPermission("message-templates.manage");
