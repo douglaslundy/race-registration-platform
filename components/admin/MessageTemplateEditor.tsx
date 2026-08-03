@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ErrorModal from "@/components/ui/ErrorModal";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 interface VariableDef {
   name: string;
@@ -43,6 +44,8 @@ export default function MessageTemplateEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [reverting, setReverting] = useState<{ versionId: string } | null>(null);
+  const [reverting_loading, setRevertingLoading] = useState(false);
 
   const filteredVariables = variables.filter(
     (v) =>
@@ -78,11 +81,16 @@ export default function MessageTemplateEditor({
   }
 
   async function handlePreview() {
+    setError(null);
     const res = await fetch(`/api/admin/message-templates/${templateId}/preview`, {
       method: "POST",
     });
     const data = await res.json().catch(() => ({}));
-    if (res.ok) setPreview(data);
+    if (!res.ok) {
+      setError(data.error ?? "Erro ao gerar pré-visualização");
+      return;
+    }
+    setPreview(data);
   }
 
   async function handleTestSend() {
@@ -100,20 +108,24 @@ export default function MessageTemplateEditor({
   }
 
   async function handleRevert(versionId: string) {
+    setRevertingLoading(true);
     setError(null);
     const res = await fetch(
       `/api/admin/message-templates/${templateId}/revert/${versionId}`,
       { method: "POST" },
     );
     const data = await res.json().catch(() => ({}));
+    setRevertingLoading(false);
     if (!res.ok) {
       setError(data.error ?? "Erro ao reverter");
+      setReverting(null);
       return;
     }
     setSubject(data.template.subject ?? "");
     setBody(data.template.body);
     setActive(data.template.active);
-    setMessage("Revertido — revise e salve para confirmar.");
+    setMessage("Revertido com sucesso — o template já está usando o conteúdo da versão anterior.");
+    setReverting(null);
   }
 
   return (
@@ -191,7 +203,7 @@ export default function MessageTemplateEditor({
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleRevert(v.id)}
+                    onClick={() => setReverting({ versionId: v.id })}
                     className="text-primary-700 dark:text-primary-400 hover:underline"
                   >
                     Reverter pra esta versão
@@ -231,6 +243,16 @@ export default function MessageTemplateEditor({
       </div>
 
       <ErrorModal message={error} onClose={() => setError(null)} />
+      <ConfirmModal
+        open={reverting !== null}
+        title="Reverter para esta versão"
+        message="Esta ação vai restaurar o conteúdo da versão anterior. A mudança será aplicada imediatamente."
+        confirmLabel="Reverter"
+        tone="default"
+        loading={reverting_loading}
+        onConfirm={() => reverting && handleRevert(reverting.versionId)}
+        onCancel={() => setReverting(null)}
+      />
     </div>
   );
 }
