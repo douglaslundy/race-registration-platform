@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from "next/server";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
+import { db } from "@/lib/db";
+import { renderTemplate } from "@/lib/templates/render";
+import { sendMail } from "@/lib/email";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
+
+const SAMPLE_VALUES: Record<string, string> = {
+  nome_atleta: "Maria Exemplo", nome_organizador: "João Organizador", nome_evento: "Corrida Exemplo 5k",
+  nome_lote: "Lote 1", vagas_vendidas: "95", capacidade_lote: "100", percentual_vendido: "95",
+  codigo_confirmacao: "ord_exemplo123", link_evento: "https://exemplo.com/eventos/corrida-exemplo",
+  link_finalizar_pagamento: "https://exemplo.com/dashboard/inscricoes",
+  motivo_cancelamento: "Não poderei comparecer", nome_plataforma: "Circuito das Corridas",
+};
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const check = await checkAdminOnlyApiPermission("message-templates.manage");
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  const { id } = await params;
+  const template = await db.messageTemplate.findUnique({ where: { id } });
+  if (!template) return NextResponse.json({ error: "Template não encontrado" }, { status: 404 });
+
+  // Nunca lê destinatário do corpo da requisição — sempre o contato da própria sessão.
+  const admin = await db.user.findUnique({ where: { id: session.user.id }, select: { email: true, phone: true, name: true } });
+  if (!admin) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+  const channel = template.channel as "EMAIL" | "WHATSAPP";
+  const renderedBody = renderTemplate(template.body, SAMPLE_VALUES, channel);
+
+  if (channel === "EMAIL") {
+    const subject = template.subject ? renderTemplate(template.subject, SAMPLE_VALUES, "EMAIL") : "Teste de template";
+    await sendMail({ to: admin.email, subject: `[TESTE] ${subject}`, html: renderedBody });
+  } else {
+    if (!admin.phone) return NextResponse.json({ error: "Sua conta não tem telefone cadastrado" }, { status: 400 });
+    await sendWhatsAppMessage(admin.phone, `[TESTE] ${renderedBody}`);
+  }
+
+  return NextResponse.json({ ok: true });
+}
