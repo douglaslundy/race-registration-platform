@@ -113,12 +113,72 @@ On `model Event`, inside its relations block (near `fileAssets FileAsset[]`), ad
   messageTemplates MessageTemplate[]
 ```
 
-- [ ] **Step 2: Generate and apply the migration**
+- [ ] **Step 2: Hand-author the migration (local dev DB is unreachable from this machine — confirmed
+  via `npx prisma db execute`, `P1001` — this is a known, standing constraint of this project, not
+  something to troubleshoot; production always gets schema changes via `prisma db push` at deploy
+  time, never via this migration file being executed against a live connection here)**
 
-Run: `npx prisma migrate dev --name add_message_templates`
-Expected: creates `prisma/migrations/<timestamp>_add_message_templates/migration.sql` with two
-`CREATE TABLE` statements (additive only, no `ALTER`/`DROP` on existing tables), applies cleanly
-to the local dev database, regenerates the Prisma client.
+Create `prisma/migrations/20260803000000_add_message_templates/migration.sql` by hand, matching
+Prisma's exact generated conventions (verified against `prisma/migrations/20260717000000_add_message_log/migration.sql`
+in this repo — same PK/index/FK naming pattern):
+
+```sql
+-- CreateTable
+CREATE TABLE "message_templates" (
+    "id" TEXT NOT NULL,
+    "alertKey" TEXT NOT NULL,
+    "channel" TEXT NOT NULL,
+    "recipientRole" TEXT NOT NULL,
+    "scope" TEXT NOT NULL DEFAULT 'GLOBAL',
+    "eventId" TEXT,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "subject" TEXT,
+    "body" TEXT NOT NULL,
+    "updatedByUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "message_templates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "message_template_versions" (
+    "id" TEXT NOT NULL,
+    "templateId" TEXT NOT NULL,
+    "subject" TEXT,
+    "body" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL,
+    "changedByUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "message_template_versions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "message_templates_eventId_idx" ON "message_templates"("eventId");
+
+-- CreateIndex
+CREATE INDEX "message_templates_alertKey_channel_recipientRole_idx" ON "message_templates"("alertKey", "channel", "recipientRole");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "message_templates_alertKey_channel_recipientRole_scope_eventId_key" ON "message_templates"("alertKey", "channel", "recipientRole", "scope", "eventId");
+
+-- CreateIndex
+CREATE INDEX "message_template_versions_templateId_idx" ON "message_template_versions"("templateId");
+
+-- AddForeignKey
+ALTER TABLE "message_templates" ADD CONSTRAINT "message_templates_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "message_templates" ADD CONSTRAINT "message_templates_updatedByUserId_fkey" FOREIGN KEY ("updatedByUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "message_template_versions" ADD CONSTRAINT "message_template_versions_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "message_templates"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+Then run: `npx prisma generate` (schema-only, no DB connection needed) to regenerate the Prisma
+Client types so `db.messageTemplate`/`db.messageTemplateVersion` typecheck in later tasks.
+Expected: completes without trying to reach the database; `node_modules/.prisma/client` regenerated.
 
 - [ ] **Step 3: Add the two models to the shared test mock**
 
@@ -2251,11 +2311,14 @@ plano.
 Run: `npx tsc --noEmit` — expected: limpo.
 Run: `npm run build` — expected: limpo.
 
-- [ ] **Step 2: Rodar o seed localmente e validar via banco de dev**
+- [ ] **Step 2: Seed contra banco real — adiado pra depois do deploy (banco de dev local
+  inacessível a partir desta máquina, mesma restrição confirmada na Task 1)**
 
-Run: `npm run db:seed`
-Expected: log confirma "Templates de mensagem: N criados, 0 já existiam" na primeira execução, e
-"0 criados, N já existiam" numa segunda execução (idempotência real, não só testada em mock).
+Não rodar `npm run db:seed` agora — vai falhar por falta de conexão, não por erro de código
+(idempotência já está coberta pelos 3 testes com mock em `tests/templates-seed.test.ts`, Task 6).
+Registrar em `IMPLEMENTATION_PLAN.md` (Step 3 abaixo) que `seedMessageTemplatesFromRegistry()`
+precisa ser executada uma vez contra o banco de produção depois do próximo deploy (mesmo padrão
+manual já usado pros seeds de `ad_slots`/`ad_plans`).
 
 - [ ] **Step 3: Atualizar `IMPLEMENTATION_PLAN.md`**
 
