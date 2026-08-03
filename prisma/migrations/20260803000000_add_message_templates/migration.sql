@@ -36,7 +36,7 @@ CREATE INDEX "message_templates_eventId_idx" ON "message_templates"("eventId");
 CREATE INDEX "message_templates_alertKey_channel_recipientRole_idx" ON "message_templates"("alertKey", "channel", "recipientRole");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "message_templates_alertKey_channel_recipientRole_scope_eventId_key" ON "message_templates"("alertKey", "channel", "recipientRole", "scope", "eventId");
+CREATE UNIQUE INDEX "message_templates_alertKey_channel_recipientRole_scope_even_key" ON "message_templates"("alertKey", "channel", "recipientRole", "scope", "eventId");
 
 -- CreateIndex
 CREATE INDEX "message_template_versions_templateId_idx" ON "message_template_versions"("templateId");
