@@ -68,6 +68,15 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "capacidade_lote", label: "Capacidade do lote", category: "Vagas", description: "TicketBatch.capacity. Só disponível no alerta de vagas se esgotando." },
   { name: "percentual_vendido", label: "Percentual vendido", category: "Vagas", description: "Calculado (vagas_vendidas/capacidade_lote). Só disponível no alerta de vagas se esgotando." },
   { name: "link_finalizar_pagamento", label: "Link para finalizar pagamento", category: "Inscrição", description: "URL de /dashboard/inscricoes. Só disponível no alerta de carrinho abandonado." },
+  { name: "nome_comprador", label: "Nome do comprador", category: "Inscrição", description: "Order.buyer.name — quem comprou/criou a inscrição, pode diferir do atleta em inscrição por procuração. Só disponível nos alertas de confirmação por procuração." },
+  { name: "empresa_anunciante", label: "Empresa do anunciante", category: "Anunciante", description: "AdvertiserProfile.companyName. Só disponível no alerta de solicitação de anunciante pendente." },
+  { name: "nome_plano", label: "Nome do plano", category: "Anunciante", description: "AdPlan.name. Só disponível no alerta de solicitação de anunciante pendente." },
+  { name: "link_solicitacoes_pendentes", label: "Link das solicitações pendentes", category: "Anunciante", description: "URL de /admin/anunciantes/solicitacoes. Só disponível no alerta de solicitação de anunciante pendente." },
+  { name: "total_divergencias", label: "Total de divergências", category: "Pagamento", description: "Quantidade total de divergências encontradas pela conciliação. Só disponível no alerta de conciliação." },
+  { name: "divergencias_corrigidas", label: "Divergências corrigidas", category: "Pagamento", description: "Quantidade de divergências corrigidas automaticamente pela conciliação. Só disponível no alerta de conciliação." },
+  { name: "divergencias_manuais", label: "Divergências que precisam de revisão manual", category: "Pagamento", description: "Quantidade de divergências que precisam de revisão manual. Só disponível no alerta de conciliação." },
+  { name: "data_resumo", label: "Data do resumo", category: "Plataforma", description: "Data de referência do resumo diário (dateLabel). Só disponível no alerta de resumo diário." },
+  { name: "papel_destinatario", label: "Papel do destinatário", category: "Plataforma", description: "'administrador' ou 'organizador' — para quem o resumo diário foi gerado. Só disponível no alerta de resumo diário." },
 ];
 
 export function getVariablesByNames(names: string[]): VariableDefinition[] {

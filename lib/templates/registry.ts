@@ -97,14 +97,24 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
 
   RECONCILIATION_MISMATCH: {
     alertKey: "RECONCILIATION_MISMATCH",
-    description: "Divergência de conciliação — avisa todos os admins quando o cron encontra pagamentos pendentes divergentes do gateway.",
+    description: "Divergência de conciliação — avisa todos os admins quando o cron encontra pagamentos pendentes divergentes do gateway. Subject e introdução são editáveis; a tabela de divergências individuais continua gerada pelo código (mesmo padrão do resumo diário, fora do escopo de variáveis desta etapa).",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ADMIN"],
-    variables: [],
+    variables: ["total_divergencias", "divergencias_corrigidas", "divergencias_manuais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
-        ? { subject: "Conciliação de pagamentos — divergência(s) encontrada(s)", body: `<p>A rotina de conciliação encontrou divergências entre o status local e o status no gateway de pagamento. Acesse Admin → Conciliação para revisar.</p>` }
-        : { body: `A rotina de conciliação encontrou divergências entre o status local e o status no gateway de pagamento. Acesse Admin → Conciliação para revisar.` },
+        ? {
+            subject: "Conciliação de pagamentos — {{total_divergencias}} divergência(s) encontrada(s)",
+            body:
+              `<p>A rotina de conciliação encontrou divergências entre o status local e o status no gateway de\n` +
+              `pagamento ({{divergencias_corrigidas}} corrigida(s) automaticamente, {{divergencias_manuais}} precisa(m) de revisão\n` +
+              `manual).</p>\n` +
+              `<p>Divergências marcadas como "Requer verificação manual" precisam de revisão em Admin →\n` +
+              `Conciliação.</p>`,
+          }
+        : {
+            body: `Conciliação de pagamentos: {{divergencias_corrigidas}} corrigida(s) automaticamente, {{divergencias_manuais}} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`,
+          },
   },
 
   CANCELLATION_REQUESTED: {
@@ -133,10 +143,10 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Resumo diário — subject e introdução são editáveis; a tabela de métricas continua gerada pelo código (fora do escopo de variáveis desta etapa).",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ADMIN", "ORGANIZER"],
-    variables: [],
+    variables: ["data_resumo", "papel_destinatario"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
-        ? { subject: "Resumo diário", body: `<p>Olá,</p>\n<p>Este é o resumo de atividade do dia.</p>` }
+        ? { subject: "Resumo diário — {{data_resumo}}", body: `<p>Olá,</p>\n<p>Este é o resumo de atividade do dia <strong>{{data_resumo}}</strong> (visão de {{papel_destinatario}}):</p>` }
         : { body: `Resumo diário de atividade disponível.` },
   },
 
@@ -145,19 +155,23 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Solicitação de conta de anunciante — avisa todos os admins imediatamente.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ADMIN"],
-    variables: ["nome_plataforma"],
+    variables: ["nome_plataforma", "empresa_anunciante", "nome_plano", "link_solicitacoes_pendentes"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? {
             subject: "Nova solicitação de anunciante — {{nome_plataforma}}",
-            body: `<p>Uma nova solicitação de conta de anunciante chegou e está aguardando aprovação.</p>\n<p>Acesse Admin → Solicitações de anunciante para revisar.</p>`,
+            body:
+              `<p>Uma nova solicitação de conta de anunciante chegou e está aguardando aprovação.</p>\n` +
+              `<p><strong>Empresa:</strong> {{empresa_anunciante}}<br/>\n` +
+              `   <strong>Plano:</strong> {{nome_plano}}</p>\n` +
+              `<p><a href="{{link_solicitacoes_pendentes}}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Ver solicitações pendentes</a></p>`,
           }
-        : { body: `Nova solicitação de conta de anunciante aguardando aprovação. Acesse Admin → Solicitações de anunciante.` },
+        : { body: `Nova solicitação de anunciante: {{empresa_anunciante}} (plano {{nome_plano}}). Acesse o painel pra aprovar ou rejeitar.` },
   },
 
   ORDER_CONFIRMED: {
     alertKey: "ORDER_CONFIRMED",
-    description: "Confirmação de inscrição — comprador confirmando a própria inscrição.",
+    description: "Confirmação de inscrição — comprador confirmando a própria inscrição. Quando a inscrição tem uma observação registrada, a produção anexa um parágrafo extra com o texto — fora do escopo desta etapa (bloco condicional, o motor de renderização não suporta condicionais).",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["BUYER"],
     variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento"],
@@ -189,11 +203,11 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — atleta convidado por procuração.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ATHLETE"],
-    variables: ["nome_atleta", "nome_organizador", "nome_evento", "codigo_confirmacao", "link_evento"],
+    variables: ["nome_atleta", "nome_comprador", "nome_evento", "codigo_confirmacao", "link_evento"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? ALERT_REGISTRY.ORDER_CONFIRMED.factoryDefault("EMAIL", "ATHLETE")
-        : { body: `{{nome_organizador}} criou uma inscrição pra você em {{nome_evento}}! Pedido {{codigo_confirmacao}}. Detalhes: {{link_evento}}` },
+        : { body: `{{nome_comprador}} criou uma inscrição pra você em {{nome_evento}}! Pedido {{codigo_confirmacao}}. Detalhes: {{link_evento}}` },
   },
 };
 
