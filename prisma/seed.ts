@@ -111,6 +111,10 @@ async function main() {
     ensurePlatformSetting("legal.privacy_updated", LEGAL_CONTENT_UPDATED_AT),
   ]);
 
+  const { seedMessageTemplatesFromRegistry } = await import("../lib/templates/seed");
+  const templateResult = await seedMessageTemplatesFromRegistry();
+  console.log(`✅ Templates de mensagem: ${templateResult.created} criados, ${templateResult.skipped} já existiam`);
+
   console.log("\n🎉 Seed concluído!");
   console.log("\nTodos os usuários usam senha: 12345678");
   console.log("  Admin:       admin@corridasapp.com.br");
