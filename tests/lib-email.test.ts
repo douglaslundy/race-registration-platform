@@ -18,7 +18,7 @@ vi.mock("@/lib/templates/resolve", () => ({
   getEffectiveTemplate: vi.fn(),
 }));
 
-import { sendMail, sendLowStockEmail, sendAdvertiserRequestPendingEmail } from "@/lib/email";
+import { sendMail, sendLowStockEmail, sendAdvertiserRequestPendingEmail, sendReconciliationMismatchEmail } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { recordMessageLog } from "@/lib/message-logs";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
@@ -155,6 +155,59 @@ describe("sendAdvertiserRequestPendingEmail", () => {
     }));
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
     expect(sentHtml).toContain("Empresa: Empresa X, plano: Plano Básico");
+  });
+});
+
+describe("sendReconciliationMismatchEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  const mismatches = [
+    { paymentId: "pay-1", orderId: "ord-1", eventTitle: "Corrida X", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
+    { paymentId: "pay-2", orderId: "ord-2", eventTitle: "Corrida Y", localStatus: "PENDING", gatewayStatus: "REFUNDED", corrected: false },
+  ];
+
+  it("usa o template resolvido (subject + introdução) em vez de string fixa; a tabela continua gerada em código", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto customizado — {{total_divergencias}}",
+      body: "<p>Intro {{divergencias_corrigidas}}/{{divergencias_manuais}}</p><p>Aviso final</p>",
+      source: "global",
+    });
+
+    await sendReconciliationMismatchEmail({ to: "admin@example.com", mismatches });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "admin@example.com", subject: "Assunto customizado — 2" }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Intro 1/1");
+    expect(sentHtml).toContain("Corrida X");
+    expect(sentHtml).toContain("Corrida Y");
+    expect(sentHtml).toContain("Aviso final");
+  });
+
+  it("preserva a ordem visual original: introdução, tabela de divergências e depois o aviso", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{total_divergencias}}",
+      body: "<p>Intro {{divergencias_corrigidas}}/{{divergencias_manuais}}</p><p>Aviso final</p>",
+      source: "global",
+    });
+
+    await sendReconciliationMismatchEmail({ to: "admin@example.com", mismatches });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    const introIndex = sentHtml.indexOf("Intro 1/1");
+    const tableIndex = sentHtml.indexOf("<table");
+    const avisoIndex = sentHtml.indexOf("Aviso final");
+    expect(introIndex).toBeGreaterThanOrEqual(0);
+    expect(tableIndex).toBeGreaterThan(introIndex);
+    expect(avisoIndex).toBeGreaterThan(tableIndex);
   });
 });
 

@@ -4,6 +4,8 @@ import { sendReconciliationMismatchEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getReconciliationAlertSettings } from "./alert-settings";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 import type { PaymentMismatch } from "@/lib/payment/reconciliation";
 
 const ALERT_TYPE = "PAYMENT_RECONCILIATION_MISMATCH";
@@ -77,10 +79,16 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
         const correctedCount = newMismatches.filter((m) => m.corrected).length;
         const manualCount = newMismatches.length - correctedCount;
         try {
-          await sendWhatsAppMessage(
-            admin.phone,
-            `Conciliação de pagamentos: ${correctedCount} corrigida(s) automaticamente, ${manualCount} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`,
+          const template = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "WHATSAPP", "ADMIN");
+          const text = renderTemplate(
+            template.body,
+            {
+              divergencias_corrigidas: String(correctedCount),
+              divergencias_manuais: String(manualCount),
+            },
+            "WHATSAPP",
           );
+          await sendWhatsAppMessage(admin.phone, text);
         } catch (err) {
           for (const mismatch of newMismatches) {
             await unclaimAlert(

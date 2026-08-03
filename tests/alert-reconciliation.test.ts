@@ -136,6 +136,21 @@ describe("notifyReconciliationMismatches", () => {
     expect(sendReconciliationMismatchEmail).not.toHaveBeenCalled();
   });
 
+  it("zero-regressão: texto de WhatsApp vem do template de fábrica de RECONCILIATION_MISMATCH (sem mock de resolve/render, sem override no banco)", async () => {
+    // Este teste NÃO mocka @/lib/templates/resolve nem @/lib/templates/render — só o db (via
+    // tests/setup.ts, onde messageTemplate.findFirst já vem como vi.fn() sem implementação, ou
+    // seja, resolve undefined e força o caminho real de fallback pro texto de fábrica do registry).
+    vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true, minutesThreshold: 15 });
+    dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: "5511999999999" }]);
+
+    await notifyReconciliationMismatches(mismatchFixture);
+
+    const correctedCount = mismatchFixture.filter((m) => m.corrected).length;
+    const manualCount = mismatchFixture.length - correctedCount;
+    const expectedText = `Conciliação de pagamentos: ${correctedCount} corrigida(s) automaticamente, ${manualCount} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`;
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expectedText);
+  });
+
   it("uma divergência DIFERENTE no MESMO paymentId (ex.: correção pending->paid antiga seguida de um estorno depois) ainda é alertada", async () => {
     // Reproduz a regressão real: um pagamento teve uma primeira divergência (PENDING->PAID) já
     // alertada e corrigida. Semanas depois, o MESMO paymentId tem uma divergência diferente
