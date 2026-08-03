@@ -49,7 +49,16 @@ export async function sendAbandonedCartAlert(
       if (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP"))) {
         try {
           const template = await getEffectiveTemplate("ABANDONED_CART", "WHATSAPP", "BUYER");
-          const text = renderTemplate(template.body, { nome_atleta: order.buyer.name, nome_evento: order.event.title }, "WHATSAPP");
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+          const text = renderTemplate(
+            template.body,
+            {
+              nome_atleta: order.buyer.name,
+              nome_evento: order.event.title,
+              link_finalizar_pagamento: `${baseUrl}/dashboard/inscricoes`,
+            },
+            "WHATSAPP",
+          );
           await sendWhatsAppMessage(order.buyer.athleteProfile.phone, text);
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
           sentSomething = true;

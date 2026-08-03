@@ -245,4 +245,28 @@ describe("sendAbandonedCartAlert", () => {
       `Sua inscrição em "Corrida Teste" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
     );
   });
+
+  it("preenche link_finalizar_pagamento também no WhatsApp quando o template customizado o referencia (Finding 1: variável documentada não pode renderizar vazia)", async () => {
+    vi.mocked(claimAlert).mockResolvedValue(true);
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: null,
+      body: "Link: {{link_finalizar_pagamento}}",
+    });
+
+    await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: false, whatsappEnabled: true },
+      { bypassDedupe: true },
+    );
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      `Link: ${baseUrl}/dashboard/inscricoes`,
+    );
+    // Garante que a variável não vira string vazia: o texto final não pode terminar em "Link: " puro.
+    const sentText = vi.mocked(sendWhatsAppMessage).mock.calls[0][1];
+    expect(sentText).not.toBe("Link: ");
+    expect(sentText.length).toBeGreaterThan("Link: ".length);
+  });
 });
