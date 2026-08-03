@@ -24,6 +24,7 @@ import {
   sendAdvertiserRequestPendingEmail,
   sendReconciliationMismatchEmail,
   sendDailySummaryEmail,
+  sendPaymentErrorEmail,
 } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { recordMessageLog } from "@/lib/message-logs";
@@ -236,6 +237,59 @@ describe("sendAbandonedCartEmail", () => {
     expect(getEffectiveTemplate).toHaveBeenCalledWith("ABANDONED_CART", "EMAIL", "BUYER");
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
     expect(sentHtml).toContain("Olá Maria");
+  });
+});
+
+describe("sendPaymentErrorEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("usa o template resolvido em vez de string fixa", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Cancelada — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}, link: {{link_evento}}</p>",
+      source: "global",
+    });
+
+    await sendPaymentErrorEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", eventSlug: "corrida-x" });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("PAYMENT_ERROR", "EMAIL", "BUYER");
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta@example.com", subject: "Cancelada — Corrida X" }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Olá Maria");
+  });
+
+  it("com o template de fábrica do registry (mesmo texto do hardcoded anterior), assunto e corpo renderizam idênticos ao hardcoded anterior", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    const { getAlertDefinition } = await import("@/lib/templates/registry");
+    const factory = getAlertDefinition("PAYMENT_ERROR")!.factoryDefault("EMAIL", "BUYER");
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: factory.subject,
+      body: factory.body,
+      source: "factory",
+    });
+
+    await sendPaymentErrorEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", eventSlug: "corrida-x" });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "atleta@example.com",
+        subject: "Inscrição cancelada — pagamento não identificado — Corrida X",
+      }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Olá Maria,");
+    expect(sentHtml).toContain(
+      "Não conseguimos identificar o pagamento da sua inscrição em <strong>Corrida X</strong>, por isso ela foi cancelada.",
+    );
+    expect(sentHtml).toContain(`href="${baseUrl}/eventos/corrida-x"`);
   });
 });
 

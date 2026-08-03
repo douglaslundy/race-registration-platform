@@ -155,6 +155,19 @@ describe("notifyPaymentError", () => {
     expect(claimAlert).not.toHaveBeenCalled();
     expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
   });
+
+  it("com o banco sem nenhum template salvo (fallback de fábrica), o texto do WhatsApp é idêntico ao hardcoded anterior", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+
+    await notifyPaymentError("payment-1");
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
+    );
+  });
 });
 
 const orderFixture = {
@@ -260,5 +273,18 @@ describe("notifyOrderCancelledWithoutPayment", () => {
     await notifyOrderCancelledWithoutPayment("order-1", { bypassDedupe: true });
 
     expect(recordAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Order", "order-1", "EMAIL");
+  });
+
+  it("com o banco sem nenhum template salvo (fallback de fábrica), o texto do WhatsApp é idêntico ao hardcoded anterior", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+
+    await notifyOrderCancelledWithoutPayment("order-1");
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
+    );
   });
 });

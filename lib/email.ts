@@ -217,18 +217,15 @@ export async function sendPaymentErrorEmail(params: {
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const url = `${baseUrl}/eventos/${params.eventSlug}`;
-  await sendMail({
-    to: params.to,
-    subject: `Inscrição cancelada — pagamento não identificado — ${params.eventTitle}`,
-    html: layout(
-      appName,
-      `<p>Olá ${params.name},</p>
-       <p>Não conseguimos identificar o pagamento da sua inscrição em <strong>${params.eventTitle}</strong>, por isso ela foi cancelada.</p>
-       <p>Não fique de fora! Faça agora mesmo uma nova inscrição e venha participar conosco.</p>
-       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Fazer nova inscrição</a></p>`
-    ),
-  });
+  const values = {
+    nome_atleta: params.name,
+    nome_evento: params.eventTitle,
+    link_evento: `${baseUrl}/eventos/${params.eventSlug}`,
+  };
+  const template = await getEffectiveTemplate("PAYMENT_ERROR", "EMAIL", "BUYER");
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o admin sobre divergências encontradas na conciliação de pagamentos. */

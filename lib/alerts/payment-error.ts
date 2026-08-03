@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 import { getPaymentErrorAlertSettings } from "./alert-settings";
 import { claimAlert, unclaimAlert, recordAlert } from "./dedupe";
 
@@ -10,6 +12,7 @@ const ALERT_TYPE = "PAYMENT_ERROR";
 interface CancellationNotificationTarget {
   entityId: string;
   entityType: "Payment" | "Order";
+  alertKey: "PAYMENT_ERROR" | "PAYMENT_ERROR_ORDER_CANCELLED";
   buyer: { name: string; email: string; athleteProfile: { phone: string | null } | null };
   event: { title: string; slug: string };
   bypassDedupe?: boolean;
@@ -47,10 +50,12 @@ async function sendCancellationInviteNotification(
     const claimed = params.bypassDedupe ? true : await claimAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
     if (claimed) {
       try {
-        await sendWhatsAppMessage(
-          params.buyer.athleteProfile.phone,
-          `Sua inscrição em "${params.event.title}" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${eventUrl}`,
-        );
+        const template = await getEffectiveTemplate(params.alertKey, "WHATSAPP", "BUYER");
+        const text = renderTemplate(template.body, {
+          nome_evento: params.event.title,
+          link_evento: eventUrl,
+        }, "WHATSAPP");
+        await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text);
         if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
       } catch (err) {
         if (!params.bypassDedupe) await unclaimAlert(ALERT_TYPE, params.entityId, "WHATSAPP");
@@ -90,6 +95,7 @@ export async function notifyPaymentError(
     await sendCancellationInviteNotification(settings, {
       entityId: paymentId,
       entityType: "Payment",
+      alertKey: "PAYMENT_ERROR",
       buyer: payment.order.buyer,
       event: payment.order.event,
       bypassDedupe: options?.bypassDedupe,
@@ -120,6 +126,7 @@ export async function notifyOrderCancelledWithoutPayment(
     await sendCancellationInviteNotification(settings, {
       entityId: orderId,
       entityType: "Order",
+      alertKey: "PAYMENT_ERROR_ORDER_CANCELLED",
       buyer: order.buyer,
       event: order.event,
       bypassDedupe: options?.bypassDedupe,
