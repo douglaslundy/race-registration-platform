@@ -6,6 +6,8 @@ import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
 import { getConnectionState } from "./whatsapp/evolution-client";
 import { isPlaceholderEmail } from "./proxy-athlete";
 import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 
 const ALERT_TYPE = "ORDER_CONFIRMED";
 
@@ -21,7 +23,9 @@ async function isWhatsAppConnectionActive(): Promise<boolean> {
 
 async function sendWhatsAppIfActive(
   phone: string | null | undefined,
-  text: string,
+  alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_BUYER" | "ORDER_CONFIRMED_PROXY_ATHLETE",
+  recipientRole: "BUYER" | "ATHLETE",
+  values: Record<string, string | undefined>,
   eventId: string | undefined,
   claimEntityId: string,
   bypassDedupe: boolean,
@@ -32,6 +36,8 @@ async function sendWhatsAppIfActive(
     if (!(await isWhatsAppConnectionActive())) return;
     claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
     if (!claimed) return;
+    const template = await getEffectiveTemplate(alertKey, "WHATSAPP", recipientRole);
+    const text = renderTemplate(template.body, values, "WHATSAPP");
     await sendWhatsAppMessage(
       phone,
       text,
@@ -85,7 +91,6 @@ export async function notifyOrderConfirmed(
     if (!order?.buyer || order.registrations.length === 0) return;
     const registration = order.registrations[0];
 
-    const eventLabel = order.event?.title ? ` em ${order.event.title}` : "";
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
     const detailsUrl = `${baseUrl}/dashboard/inscricoes/${registration.id}`;
     const isProxyRegistration = order.buyerUserId !== registration.athleteUserId;
@@ -111,6 +116,8 @@ export async function notifyOrderConfirmed(
             eventTitle: order.event?.title,
             eventId: order.event?.id,
             notes: registration.notes ?? undefined,
+            alertKey: "ORDER_CONFIRMED",
+            recipientRole: "BUYER",
           });
           await db.order.update({ where: { id: orderId }, data: { confirmationEmailSentAt: new Date() } });
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", orderId, "EMAIL");
@@ -126,10 +133,21 @@ export async function notifyOrderConfirmed(
     const buyerWhatsappPhone = isProxyRegistration
       ? order.buyer.athleteProfile?.phone
       : registration.athlete.athleteProfile?.phone;
-    const buyerWhatsappText = isProxyRegistration
-      ? `Você inscreveu ${registration.proxyAthleteDisplayName ?? registration.athlete.name}${eventLabel}! Pedido ${orderId}. Detalhes: ${detailsUrl}`
-      : `Sua inscrição${eventLabel} foi confirmada! Pedido ${orderId}. Detalhes: ${detailsUrl}`;
-    await sendWhatsAppIfActive(buyerWhatsappPhone, buyerWhatsappText, order.event?.id, `${orderId}:buyer`, bypassDedupe);
+    const buyerWhatsappAlertKey = isProxyRegistration ? "ORDER_CONFIRMED_PROXY_BUYER" : "ORDER_CONFIRMED";
+    await sendWhatsAppIfActive(
+      buyerWhatsappPhone,
+      buyerWhatsappAlertKey,
+      "BUYER",
+      {
+        nome_atleta: registration.proxyAthleteDisplayName ?? registration.athlete.name,
+        nome_evento: order.event?.title ?? "",
+        codigo_confirmacao: orderId,
+        link_evento: detailsUrl,
+      },
+      order.event?.id,
+      `${orderId}:buyer`,
+      bypassDedupe,
+    );
 
     if (!isProxyRegistration) return;
 
@@ -149,6 +167,8 @@ export async function notifyOrderConfirmed(
               eventTitle: order.event?.title,
               eventId: order.event?.id,
               notes: registration.notes ?? undefined,
+              alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
+              recipientRole: "ATHLETE",
             });
             if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
           }
@@ -161,7 +181,14 @@ export async function notifyOrderConfirmed(
 
     await sendWhatsAppIfActive(
       registration.athlete.athleteProfile?.phone,
-      `${order.buyer.name} criou uma inscrição pra você${eventLabel}! Pedido ${orderId}. Detalhes: ${detailsUrl}`,
+      "ORDER_CONFIRMED_PROXY_ATHLETE",
+      "ATHLETE",
+      {
+        nome_comprador: order.buyer.name,
+        nome_evento: order.event?.title ?? "",
+        codigo_confirmacao: orderId,
+        link_evento: detailsUrl,
+      },
       order.event?.id,
       `${orderId}:athlete`,
       bypassDedupe,

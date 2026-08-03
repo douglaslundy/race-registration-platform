@@ -317,6 +317,67 @@ describe("notifyOrderConfirmed", () => {
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(2);
   });
 
+  // Zero-regressão: os 3 cenários da tabela alertKey × canal × recipientRole (task 18) devem
+  // renderizar o MESMO texto que era hardcoded antes da migração pro template do banco. Estes
+  // testes não mockam @/lib/templates/resolve nem @/lib/templates/render — exercitam o caminho
+  // real de fallback pra fábrica (db.messageTemplate.findFirst mockado em tests/setup.ts retorna
+  // undefined por padrão, então getEffectiveTemplate cai no factoryDefault do registry).
+  describe("zero-regressão: texto do WhatsApp idêntico ao hardcoded anterior (task 18)", () => {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    const detailsUrl = `${baseUrl}/dashboard/inscricoes/reg-1`;
+
+    beforeEach(() => {
+      // vi.clearAllMocks() (no beforeEach externo) não remove um mockImplementation deixado por
+      // mockPerKeyAlertLog() em testes anteriores do arquivo — sem este reset, a reivindicação de
+      // dedupe (chave "order-1:buyer"/"order-1:athlete") vaza de teste pra teste (todas as fixtures
+      // deste arquivo reusam o mesmo orderId "order-1") e bloqueia falsamente o envio de WhatsApp
+      // aqui. Isso é só isolamento de mock — não altera a lógica real de dedupe.
+      dbMock.alertLog.create.mockReset();
+    });
+
+    it("comprador confirmando a própria inscrição (ORDER_CONFIRMED/BUYER)", async () => {
+      dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+      vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+
+      await notifyOrderConfirmed("order-1");
+
+      expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+        "5511999999999",
+        `Sua inscrição em Corrida Teste foi confirmada! Pedido order-1. Detalhes: ${detailsUrl}`,
+        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+      );
+    });
+
+    it("comprador que inscreveu outra pessoa por procuração (ORDER_CONFIRMED_PROXY_BUYER/BUYER)", async () => {
+      dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+      vi.mocked(getConnectionState).mockResolvedValue("open");
+
+      await notifyOrderConfirmed("order-1");
+
+      expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+        "5511777777777",
+        `Você inscreveu Nome Digitado Pelo Comprador em Corrida Teste! Pedido order-1. Detalhes: ${detailsUrl}`,
+        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+      );
+    });
+
+    it("atleta convidado por procuração (ORDER_CONFIRMED_PROXY_ATHLETE/ATHLETE)", async () => {
+      dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+      vi.mocked(getConnectionState).mockResolvedValue("open");
+
+      await notifyOrderConfirmed("order-1");
+
+      expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+        "5511888888888",
+        `Comprador Teste criou uma inscrição pra você em Corrida Teste! Pedido order-1. Detalhes: ${detailsUrl}`,
+        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+      );
+    });
+  });
+
   it("bypassDedupe grava recordAlert (upsert em AlertLog) mesmo ignorando a reivindicação", async () => {
     dbMock.order.findUnique.mockResolvedValue(orderFixture);
     mockPerKeyAlertLog();

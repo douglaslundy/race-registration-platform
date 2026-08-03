@@ -93,7 +93,13 @@ function layout(appName: string, body: string): string {
   </div>`;
 }
 
-/** E-mail de confirmação de inscrição (enviado quando o pagamento é confirmado). */
+/** E-mail de confirmação de inscrição (enviado quando o pagamento é confirmado).
+ *
+ * Nota: `notes` deixa de ser usada na montagem do corpo — o motor de renderização de templates
+ * não suporta blocos condicionais, então o parágrafo extra de observação (existente no texto
+ * hardcoded anterior) fica fora do escopo desta migração. Isso já está documentado na
+ * `description` do alerta `ORDER_CONFIRMED` no registry. O parâmetro é mantido na assinatura só
+ * pra não quebrar os call sites existentes que ainda o passam. */
 export async function sendRegistrationConfirmationEmail(params: {
   to: string;
   name: string;
@@ -102,22 +108,25 @@ export async function sendRegistrationConfirmationEmail(params: {
   eventTitle?: string;
   eventId?: string;
   notes?: string;
+  alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_ATHLETE";
+  recipientRole: "BUYER" | "ATHLETE";
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const url = `${baseUrl}/dashboard/inscricoes/${params.registrationId}`;
+  const values = {
+    nome_atleta: params.name,
+    nome_evento: params.eventTitle ?? "",
+    codigo_confirmacao: params.orderId,
+    link_evento: url,
+  };
+  const template = await getEffectiveTemplate(params.alertKey, "EMAIL", params.recipientRole);
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({
     to: params.to,
-    subject: `Inscrição confirmada${params.eventTitle ? ` — ${params.eventTitle}` : ""} 🏅`,
-    html: layout(
-      appName,
-      `<p>Olá ${params.name},</p>
-       <p>Sua inscrição${params.eventTitle ? ` em <strong>${params.eventTitle}</strong>` : ""} foi <strong>confirmada</strong> com sucesso! 🎉</p>
-       <p>O pagamento foi aprovado e sua vaga está garantida.</p>
-       <p>Código do pedido: <strong>${params.orderId}</strong></p>
-       ${params.notes ? `<p>Observação registrada: ${params.notes}</p>` : ""}
-       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Ver detalhes da inscrição</a></p>`
-    ),
+    subject,
+    html: layout(appName, body),
     ...(params.eventId ? { relatedEntityType: "Event", relatedEntityId: params.eventId } : {}),
   });
 }

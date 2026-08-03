@@ -25,6 +25,7 @@ import {
   sendReconciliationMismatchEmail,
   sendDailySummaryEmail,
   sendPaymentErrorEmail,
+  sendRegistrationConfirmationEmail,
 } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { recordMessageLog } from "@/lib/message-logs";
@@ -290,6 +291,94 @@ describe("sendPaymentErrorEmail", () => {
       "Não conseguimos identificar o pagamento da sua inscrição em <strong>Corrida X</strong>, por isso ela foi cancelada.",
     );
     expect(sentHtml).toContain(`href="${baseUrl}/eventos/corrida-x"`);
+  });
+});
+
+describe("sendRegistrationConfirmationEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("resolve o template com alertKey/recipientRole do comprador confirmando a própria inscrição", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto customizado — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}, pedido {{codigo_confirmacao}}, link {{link_evento}}</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      registrationId: "reg-1",
+      orderId: "order-1",
+      eventTitle: "Corrida X",
+      eventId: "event-1",
+      alertKey: "ORDER_CONFIRMED",
+      recipientRole: "BUYER",
+    });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED", "EMAIL", "BUYER");
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta@example.com", subject: "Assunto customizado — Corrida X" }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Olá Maria, pedido order-1");
+  });
+
+  it("resolve o template com alertKey/recipientRole do atleta convidado por procuração", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta-convidado@example.com",
+      name: "João",
+      registrationId: "reg-2",
+      orderId: "order-2",
+      eventTitle: "Corrida Y",
+      alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
+      recipientRole: "ATHLETE",
+    });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED_PROXY_ATHLETE", "EMAIL", "ATHLETE");
+  });
+
+  it("com o template de fábrica do registry (mesmo texto do hardcoded anterior), assunto e corpo renderizam idênticos ao hardcoded anterior", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    const { getAlertDefinition } = await import("@/lib/templates/registry");
+    const factory = getAlertDefinition("ORDER_CONFIRMED")!.factoryDefault("EMAIL", "BUYER");
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({ subject: factory.subject, body: factory.body, source: "factory" });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      registrationId: "reg-1",
+      orderId: "order-1",
+      eventTitle: "Corrida X",
+      eventId: "event-1",
+      notes: "Chegarei atrasado",
+      alertKey: "ORDER_CONFIRMED",
+      recipientRole: "BUYER",
+    });
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "atleta@example.com", subject: "Inscrição confirmada — Corrida X 🏅" }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Olá Maria,");
+    expect(sentHtml).toContain("Sua inscrição em <strong>Corrida X</strong> foi <strong>confirmada</strong> com sucesso! 🎉");
+    expect(sentHtml).toContain("Código do pedido: <strong>order-1</strong>");
+    expect(sentHtml).toContain(`href="${baseUrl}/dashboard/inscricoes/reg-1"`);
+    // notes não é renderizado (limitação aceita e documentada — motor de renderização sem
+    // suporte a blocos condicionais; ver description do ORDER_CONFIRMED no registry).
+    expect(sentHtml).not.toContain("Chegarei atrasado");
   });
 });
 
