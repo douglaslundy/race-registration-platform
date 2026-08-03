@@ -4,6 +4,8 @@ import { sendCancellationRequestedEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getCancellationAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 
 const ALERT_TYPE = "CANCELLATION_REQUESTED";
 
@@ -35,6 +37,11 @@ export async function notifyCancellationRequested(registrationId: string): Promi
 
     const admins = await db.user.findMany({ where: { role: "ADMIN" }, select: { email: true, phone: true } });
     const recipients = [...admins, registration.event.organizer.user];
+    const organizerUser = registration.event.organizer.user;
+    // Mesmo texto de fábrica hoje pros dois papéis, mas resolver por destinatário real (em vez de
+    // fixar "ADMIN" pra todos) permite customização futura de ADMIN vs ORGANIZER sem tocar aqui de novo.
+    const recipientRoleFor = (recipient: (typeof recipients)[number]): "ADMIN" | "ORGANIZER" =>
+      recipient === organizerUser ? "ORGANIZER" : "ADMIN";
     const reason = registration.cancellationReason ?? "";
     // Escopa a chave de dedupe por solicitação (não só por inscrição): sem o timestamp, uma
     // segunda solicitação de cancelamento na MESMA inscrição (ex.: admin rejeita a primeira, o
@@ -57,6 +64,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
               athleteName: registration.athlete.name,
               eventTitle: registration.event.title,
               reason,
+              recipientRole: recipientRoleFor(recipient),
             });
           } catch (err) {
             await unclaimAlert(ALERT_TYPE, `${requestKey}:${recipient.email}`, "EMAIL");
@@ -72,10 +80,17 @@ export async function notifyCancellationRequested(registrationId: string): Promi
         const claimed = await claimAlert(ALERT_TYPE, "Registration", `${requestKey}:${recipient.phone}`, "WHATSAPP");
         if (!claimed) continue;
         try {
-          await sendWhatsAppMessage(
-            recipient.phone,
-            `${registration.athlete.name} solicitou o cancelamento da inscrição em "${registration.event.title}". Motivo: ${reason}. Acesse o painel para aprovar ou rejeitar.`,
+          const template = await getEffectiveTemplate("CANCELLATION_REQUESTED", "WHATSAPP", recipientRoleFor(recipient));
+          const text = renderTemplate(
+            template.body,
+            {
+              nome_atleta: registration.athlete.name,
+              nome_evento: registration.event.title,
+              motivo_cancelamento: reason,
+            },
+            "WHATSAPP",
           );
+          await sendWhatsAppMessage(recipient.phone, text);
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, `${requestKey}:${recipient.phone}`, "WHATSAPP");
           console.error("[notifyCancellationRequested] whatsapp failed for", recipient.phone, err);

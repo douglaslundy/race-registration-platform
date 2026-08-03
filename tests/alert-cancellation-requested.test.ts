@@ -66,6 +66,21 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expect.stringContaining("Corrida Teste"));
   });
 
+  it("zero-regressão: texto de WhatsApp vem do template de fábrica de CANCELLATION_REQUESTED (sem mock de resolve/render, sem override no banco)", async () => {
+    // Este teste NÃO mocka @/lib/templates/resolve nem @/lib/templates/render — só o db (via
+    // tests/setup.ts, onde messageTemplate.findFirst já vem como vi.fn() sem implementação, ou
+    // seja, resolve undefined e força o caminho real de fallback pro texto de fábrica do registry).
+    vi.mocked(getCancellationAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
+    dbMock.registration.findUnique.mockResolvedValueOnce(registrationFixture);
+
+    await notifyCancellationRequested("reg-1");
+
+    const expectedText =
+      'Atleta Teste solicitou o cancelamento da inscrição em "Corrida Teste". Justificativa: Contusão no joelho';
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988887777", expectedText);
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expectedText);
+  });
+
   it("não lança exceção quando o envio de e-mail falha", async () => {
     vi.mocked(getCancellationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false });
     dbMock.registration.findUnique.mockResolvedValueOnce(registrationFixture);

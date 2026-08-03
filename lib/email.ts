@@ -149,19 +149,18 @@ export async function sendCancellationRequestedEmail(params: {
   athleteName: string;
   eventTitle?: string;
   reason: string;
+  recipientRole: "ADMIN" | "ORGANIZER";
 }): Promise<void> {
   const appName = await getAppName();
-  await sendMail({
-    to: params.to,
-    subject: `Solicitação de cancelamento${params.eventTitle ? ` — ${params.eventTitle}` : ""}`,
-    html: layout(
-      appName,
-      `<p>Olá,</p>
-       <p><strong>${params.athleteName}</strong> solicitou o cancelamento da inscrição${params.eventTitle ? ` em <strong>${params.eventTitle}</strong>` : ""}.</p>
-       <p><strong>Justificativa:</strong> ${params.reason}</p>
-       <p>Acesse o painel do organizador para aprovar ou rejeitar esta solicitação.</p>`
-    ),
-  });
+  const values = {
+    nome_atleta: params.athleteName,
+    nome_evento: params.eventTitle ?? "",
+    motivo_cancelamento: params.reason,
+  };
+  const template = await getEffectiveTemplate("CANCELLATION_REQUESTED", "EMAIL", params.recipientRole);
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o organizador que um lote está quase esgotado. */
