@@ -14,9 +14,14 @@ vi.mock("@/lib/message-logs", () => ({
   recordMessageLog: vi.fn(),
 }));
 
-import { sendMail } from "@/lib/email";
+vi.mock("@/lib/templates/resolve", () => ({
+  getEffectiveTemplate: vi.fn(),
+}));
+
+import { sendMail, sendLowStockEmail } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { recordMessageLog } from "@/lib/message-logs";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
 
 const smtpConfig = { host: "smtp.example.com", port: 587, user: "u", pass: "p", from: "noreply@example.com", secure: false };
 
@@ -101,5 +106,30 @@ describe("sendMail", () => {
     expect(sendMailMock).toHaveBeenCalledWith(
       expect.objectContaining({ attachments }),
     );
+  });
+});
+
+describe("sendLowStockEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("usa o template resolvido (evento/global/fábrica) em vez de string fixa", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto customizado {{nome_evento}}", body: "Vendeu {{vagas_vendidas}}/{{capacidade_lote}}", source: "global",
+    });
+
+    const { sendLowStockEmail: importedFunc } = await import("@/lib/email");
+    await importedFunc({ to: "org@example.com", organizerName: "Org", eventTitle: "Corrida X", batchName: "Lote 1", soldCount: 95, capacity: 100 });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("LOW_STOCK", "EMAIL", "ORGANIZER");
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({
+      to: "org@example.com",
+    }));
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Vendeu 95/100");
   });
 });

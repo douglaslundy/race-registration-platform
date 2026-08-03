@@ -4,6 +4,8 @@ import { sendLowStockEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getLowStockAlertSettings } from "./alert-settings";
 import { claimAlert, unclaimAlert } from "./dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 
 const ALERT_TYPE = "LOW_STOCK";
 
@@ -59,10 +61,17 @@ export async function checkLowStockAlert(ticketBatchId: string): Promise<void> {
     if (settings.whatsappEnabled && organizer.phone) {
       if (await claimAlert(ALERT_TYPE, "TicketBatch", ticketBatchId, "WHATSAPP")) {
         try {
-          await sendWhatsAppMessage(
-            organizer.phone,
-            `Alerta: o lote "${batch.name}" do evento "${batch.event.title}" já vendeu ${batch.soldCount} de ${batch.capacity} vagas.`,
-          );
+          const template = await getEffectiveTemplate("LOW_STOCK", "WHATSAPP", "ORGANIZER");
+          const percent = Math.round((batch.soldCount / batch.capacity) * 100);
+          const text = renderTemplate(template.body, {
+            nome_organizador: organizer.user.name,
+            nome_evento: batch.event.title,
+            nome_lote: batch.name,
+            vagas_vendidas: String(batch.soldCount),
+            capacidade_lote: String(batch.capacity),
+            percentual_vendido: String(percent),
+          }, "WHATSAPP");
+          await sendWhatsAppMessage(organizer.phone, text);
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, ticketBatchId, "WHATSAPP");
           throw err;

@@ -137,4 +137,17 @@ describe("checkLowStockAlert", () => {
 
     await expect(checkLowStockAlert("batch-1")).resolves.toBeUndefined();
   });
+
+  it("com o banco sem nenhum template salvo (fallback de fábrica), o texto do WhatsApp é idêntico ao hardcoded anterior", async () => {
+    vi.mocked(getLowStockAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true, thresholdPercent: 90 });
+    dbMock.ticketBatch.findUnique.mockResolvedValueOnce(batchFixture);
+    vi.mocked(claimAlert).mockResolvedValue(true);
+
+    await checkLowStockAlert("batch-1");
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      'Alerta: o lote "Lote 1" do evento "Corrida Teste" já vendeu 95 de 100 vagas.',
+    );
+  });
 });

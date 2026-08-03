@@ -2,6 +2,8 @@ import nodemailer from "nodemailer";
 import { getSmtpConfig, isSmtpReady, type SmtpConfig } from "./smtp-settings";
 import { getAppName } from "./settings";
 import { recordMessageLog } from "./message-logs";
+import { getEffectiveTemplate } from "./templates/resolve";
+import { renderTemplate } from "./templates/render";
 
 function buildTransport(cfg: SmtpConfig) {
   return nodemailer.createTransport({
@@ -173,17 +175,18 @@ export async function sendLowStockEmail(params: {
 }): Promise<void> {
   const appName = await getAppName();
   const percent = Math.round((params.soldCount / params.capacity) * 100);
-  await sendMail({
-    to: params.to,
-    subject: `Vagas se esgotando — ${params.eventTitle}`,
-    html: layout(
-      appName,
-      `<p>Olá ${params.organizerName},</p>
-       <p>O lote <strong>${params.batchName}</strong> do evento <strong>${params.eventTitle}</strong> já vendeu
-       <strong>${params.soldCount} de ${params.capacity}</strong> vagas (${percent}%).</p>
-       <p>Considere abrir um novo lote em breve.</p>`
-    ),
-  });
+  const values = {
+    nome_organizador: params.organizerName,
+    nome_evento: params.eventTitle,
+    nome_lote: params.batchName,
+    vagas_vendidas: String(params.soldCount),
+    capacidade_lote: String(params.capacity),
+    percentual_vendido: String(percent),
+  };
+  const template = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER");
+  const subject = renderTemplate(template.subject ?? "", values, "EMAIL");
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o atleta que o pedido está pendente há tempo demais. */
