@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { renderTemplate } from "@/lib/templates/render";
+import { renderTemplate, renderTemplateSubject } from "@/lib/templates/render";
 
 const SAMPLE_VALUES: Record<string, string> = {
   nome_atleta: "Maria Exemplo", primeiro_nome_atleta: "Maria", email_atleta: "maria@exemplo.com",
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const channel = template.channel as "EMAIL" | "WHATSAPP";
   return NextResponse.json({
-    subject: template.subject ? renderTemplate(template.subject, SAMPLE_VALUES, channel) : undefined,
+    subject: template.subject ? renderTemplateSubject(template.subject, SAMPLE_VALUES) : undefined,
     body: renderTemplate(template.body, SAMPLE_VALUES, channel),
   });
 }

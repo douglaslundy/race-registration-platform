@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { renderTemplate } from "@/lib/templates/render";
+import { renderTemplate, renderTemplateSubject } from "@/lib/templates/render";
 import { sendMail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const renderedBody = renderTemplate(template.body, SAMPLE_VALUES, channel);
 
   if (channel === "EMAIL") {
-    const subject = template.subject ? renderTemplate(template.subject, SAMPLE_VALUES, "EMAIL") : "Teste de template";
+    const subject = template.subject ? renderTemplateSubject(template.subject, SAMPLE_VALUES) : "Teste de template";
     await sendMail({ to: admin.email, subject: `[TESTE] ${subject}`, html: renderedBody });
   } else {
     if (!admin.phone) return NextResponse.json({ error: "Sua conta não tem telefone cadastrado" }, { status: 400 });

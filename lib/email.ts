@@ -3,7 +3,7 @@ import { getSmtpConfig, isSmtpReady, type SmtpConfig } from "./smtp-settings";
 import { getAppName } from "./settings";
 import { recordMessageLog } from "./message-logs";
 import { getEffectiveTemplate } from "./templates/resolve";
-import { renderTemplate } from "./templates/render";
+import { renderTemplate, renderTemplateSubject } from "./templates/render";
 
 function buildTransport(cfg: SmtpConfig) {
   return nodemailer.createTransport({
@@ -184,7 +184,7 @@ export async function sendLowStockEmail(params: {
     percentual_vendido: String(percent),
   };
   const template = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER");
-  const subject = renderTemplate(template.subject ?? "", values, "EMAIL");
+  const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }

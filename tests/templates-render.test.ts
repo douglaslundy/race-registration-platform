@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderTemplate, validateTemplateVariables } from "@/lib/templates/render";
+import { renderTemplate, renderTemplateSubject, validateTemplateVariables } from "@/lib/templates/render";
 
 describe("renderTemplate", () => {
   it("substitui uma variável conhecida", () => {
@@ -38,6 +38,12 @@ describe("renderTemplate", () => {
 
   it("corpo sem nenhuma variável retorna igual", () => {
     expect(renderTemplate("texto fixo", {}, "EMAIL")).toBe("texto fixo");
+  });
+});
+
+describe("renderTemplateSubject", () => {
+  it("nunca faz HTML-escape (assunto é texto puro, não HTML)", () => {
+    expect(renderTemplateSubject("{{x}}", { x: "Corrida & Cia" })).toBe("Corrida & Cia");
   });
 });
 

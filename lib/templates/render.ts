@@ -25,6 +25,10 @@ export function renderTemplate(
   });
 }
 
+export function renderTemplateSubject(subject: string, values: Record<string, string | undefined>): string {
+  return renderTemplate(subject, values, "WHATSAPP");
+}
+
 export function validateTemplateVariables(
   body: string,
   allowedVariables: string[],
