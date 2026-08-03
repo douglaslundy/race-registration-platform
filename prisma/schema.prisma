@@ -133,6 +133,7 @@ model User {
   createdAssistants User[]  @relation("AssistantCreator")
   assistantPermissions AssistantPermission[]
   messageLogs MessageLog[]
+  updatedMessageTemplates MessageTemplate[]
 
   @@index([createdAt])
   @@map("users")
@@ -265,6 +266,7 @@ model Event {
   resultImports ResultImport[]
   fileAssets    FileAsset[]
   payouts       TransferPayout[]
+  messageTemplates MessageTemplate[]
 
   @@index([status, startAt])
   @@index([city, modality])
@@ -610,6 +612,45 @@ model MessageLog {
   @@index([recipientUserId, channel, createdAt])
   @@index([providerMessageId])
   @@map("message_logs")
+}
+
+model MessageTemplate {
+  id              String   @id @default(cuid())
+  alertKey        String
+  channel         String
+  recipientRole   String
+  scope           String   @default("GLOBAL")
+  eventId         String?
+  active          Boolean  @default(true)
+  subject         String?
+  body            String   @db.Text
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event     Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  versions  MessageTemplateVersion[]
+
+  @@unique([alertKey, channel, recipientRole, scope, eventId])
+  @@index([eventId])
+  @@index([alertKey, channel, recipientRole])
+  @@map("message_templates")
+}
+
+model MessageTemplateVersion {
+  id              String   @id @default(cuid())
+  templateId      String
+  subject         String?
+  body            String   @db.Text
+  active          Boolean
+  changedByUserId String?
+  createdAt       DateTime @default(now())
+
+  template MessageTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@map("message_template_versions")
 }
 
 model AdSlot {
