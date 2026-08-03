@@ -198,17 +198,15 @@ export async function sendAbandonedCartEmail(params: {
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const url = `${baseUrl}/dashboard/inscricoes`;
-  await sendMail({
-    to: params.to,
-    subject: `Finalize sua inscrição — ${params.eventTitle}`,
-    html: layout(
-      appName,
-      `<p>Olá ${params.name},</p>
-       <p>Notamos que você iniciou uma inscrição em <strong>${params.eventTitle}</strong> mas o pagamento ainda não foi concluído.</p>
-       <p><a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Finalizar pagamento</a></p>`
-    ),
-  });
+  const values = {
+    nome_atleta: params.name,
+    nome_evento: params.eventTitle,
+    link_finalizar_pagamento: `${baseUrl}/dashboard/inscricoes`,
+  };
+  const template = await getEffectiveTemplate("ABANDONED_CART", "EMAIL", "BUYER");
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o atleta que a inscrição foi cancelada por pagamento não identificado. */

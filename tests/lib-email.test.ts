@@ -133,3 +133,25 @@ describe("sendLowStockEmail", () => {
     expect(sentHtml).toContain("Vendeu 95/100");
   });
 });
+
+describe("sendAbandonedCartEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("usa o template resolvido em vez de string fixa", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Finalize já — {{nome_evento}}", body: "Olá {{nome_atleta}}, link: {{link_finalizar_pagamento}}", source: "global",
+    });
+
+    const { sendAbandonedCartEmail } = await import("@/lib/email");
+    await sendAbandonedCartEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", orderId: "ord-1" });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ABANDONED_CART", "EMAIL", "BUYER");
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Olá Maria");
+  });
+});

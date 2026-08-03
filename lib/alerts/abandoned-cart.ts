@@ -4,6 +4,8 @@ import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "./alert-settings";
 import { claimAlert, recordAlert, unclaimAlert } from "./dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 
 const ALERT_TYPE = "ABANDONED_CART";
 
@@ -46,10 +48,9 @@ export async function sendAbandonedCartAlert(
     if (settings.whatsappEnabled && order.buyer.athleteProfile?.phone) {
       if (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP"))) {
         try {
-          await sendWhatsAppMessage(
-            order.buyer.athleteProfile.phone,
-            `Sua inscrição em "${order.event.title}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
-          );
+          const template = await getEffectiveTemplate("ABANDONED_CART", "WHATSAPP", "BUYER");
+          const text = renderTemplate(template.body, { nome_atleta: order.buyer.name, nome_evento: order.event.title }, "WHATSAPP");
+          await sendWhatsAppMessage(order.buyer.athleteProfile.phone, text);
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
           sentSomething = true;
         } catch (err) {

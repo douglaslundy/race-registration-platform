@@ -19,6 +19,18 @@ vi.mock("@/lib/alerts/dedupe", () => ({
   unclaimAlert: vi.fn(),
   recordAlert: vi.fn(),
 }));
+vi.mock("@/lib/templates/resolve", () => ({
+  getEffectiveTemplate: vi.fn(),
+}));
+vi.mock("@/lib/templates/render", () => ({
+  renderTemplate: vi.fn((body, values, channel) => {
+    let result = body;
+    for (const [key, value] of Object.entries(values)) {
+      result = result.replace(`{{${key}}}`, value ?? "");
+    }
+    return result;
+  }),
+}));
 
 import { checkAbandonedCarts, sendAbandonedCartAlert } from "@/lib/alerts/abandoned-cart";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
@@ -26,6 +38,8 @@ import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, recordAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { getEffectiveTemplate } from "@/lib/templates/resolve";
+import { renderTemplate } from "@/lib/templates/render";
 
 const dbMock = db as any;
 
@@ -42,6 +56,10 @@ describe("checkAbandonedCarts", () => {
     vi.mocked(isSmtpReady).mockReturnValue(true);
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
     vi.mocked(claimAlert).mockResolvedValue(true);
+    vi.mocked(getEffectiveTemplate).mockResolvedValue({
+      body: `Sua inscrição em "{{nome_evento}}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+      source: "factory",
+    });
   });
 
   it("consulta pedidos e NÃO grava auditoria quando os dois canais estão desligados (nenhum aviso real foi enviado)", async () => {
@@ -140,6 +158,10 @@ describe("sendAbandonedCartAlert", () => {
     vi.clearAllMocks();
     vi.mocked(isSmtpReady).mockReturnValue(true);
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
+    vi.mocked(getEffectiveTemplate).mockResolvedValue({
+      body: `Sua inscrição em "{{nome_evento}}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+      source: "factory",
+    });
   });
 
   it("com bypassDedupe, envia e-mail sem chamar claimAlert", async () => {
@@ -229,5 +251,25 @@ describe("sendAbandonedCartAlert", () => {
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "CART_ABANDONED", entityId: "order-1" }) }),
     );
+  });
+
+  it("WhatsApp com fallback de fábrica: mensagem renderizada é byte-idêntica ao texto hardcoded anterior", async () => {
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      body: `Sua inscrição em "{{nome_evento}}" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+      source: "factory",
+    });
+
+    const result = await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: false, whatsappEnabled: true },
+      { bypassDedupe: true },
+    );
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ABANDONED_CART", "WHATSAPP", "BUYER");
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      `Sua inscrição em "Corrida Teste" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+    );
+    expect(result).toEqual({ sent: true });
   });
 });
