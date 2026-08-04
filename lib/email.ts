@@ -159,6 +159,7 @@ export async function sendCancellationRequestedEmail(params: {
   to: string;
   athleteName: string;
   eventTitle?: string;
+  eventId?: string;
   reason: string;
   recipientRole: "ADMIN" | "ORGANIZER";
 }): Promise<void> {
@@ -168,7 +169,7 @@ export async function sendCancellationRequestedEmail(params: {
     nome_evento: params.eventTitle ?? "",
     motivo_cancelamento: params.reason,
   };
-  const template = await getEffectiveTemplate("CANCELLATION_REQUESTED", "EMAIL", params.recipientRole);
+  const template = await getEffectiveTemplate("CANCELLATION_REQUESTED", "EMAIL", params.recipientRole, params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({ to: params.to, subject, html: layout(appName, body) });

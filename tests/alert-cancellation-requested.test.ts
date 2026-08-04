@@ -20,6 +20,7 @@ const registrationFixture = {
   cancellationReason: "Contusão no joelho",
   athlete: { name: "Atleta Teste" },
   event: {
+    id: "event-1",
     title: "Corrida Teste",
     organizer: { user: { email: "org@example.com", phone: "5511999998888" } },
   },
@@ -49,10 +50,15 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
     await notifyCancellationRequested("reg-1");
 
     expect(sendCancellationRequestedEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "admin@example.com", athleteName: "Atleta Teste", reason: "Contusão no joelho" }),
+      expect.objectContaining({
+        to: "admin@example.com",
+        athleteName: "Atleta Teste",
+        reason: "Contusão no joelho",
+        eventId: "event-1",
+      }),
     );
     expect(sendCancellationRequestedEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "org@example.com", athleteName: "Atleta Teste" }),
+      expect.objectContaining({ to: "org@example.com", athleteName: "Atleta Teste", eventId: "event-1" }),
     );
   });
 
@@ -79,6 +85,13 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
       'Atleta Teste solicitou o cancelamento da inscrição em "Corrida Teste". Motivo: Contusão no joelho. Acesse o painel para aprovar ou rejeitar.';
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988887777", expectedText);
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expectedText);
+
+    // Prova que o eventId chega no resolver: getEffectiveTemplate não é mockado aqui (ver
+    // comentário acima), então a única forma de confirmar o 4º argumento é observar que ele
+    // repassa eventId pro lookup de override por evento em db.messageTemplate.findFirst.
+    expect(dbMock.messageTemplate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ eventId: "event-1", scope: "EVENT" }) }),
+    );
   });
 
   it("não lança exceção quando o envio de e-mail falha", async () => {

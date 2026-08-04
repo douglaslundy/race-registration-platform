@@ -27,6 +27,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
         athlete: { select: { name: true } },
         event: {
           select: {
+            id: true,
             title: true,
             organizer: { select: { user: { select: { email: true, phone: true } } } },
           },
@@ -63,6 +64,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
               to: recipient.email,
               athleteName: registration.athlete.name,
               eventTitle: registration.event.title,
+              eventId: registration.event.id,
               reason,
               recipientRole: recipientRoleFor(recipient),
             });
@@ -80,7 +82,12 @@ export async function notifyCancellationRequested(registrationId: string): Promi
         const claimed = await claimAlert(ALERT_TYPE, "Registration", `${requestKey}:${recipient.phone}`, "WHATSAPP");
         if (!claimed) continue;
         try {
-          const template = await getEffectiveTemplate("CANCELLATION_REQUESTED", "WHATSAPP", recipientRoleFor(recipient));
+          const template = await getEffectiveTemplate(
+            "CANCELLATION_REQUESTED",
+            "WHATSAPP",
+            recipientRoleFor(recipient),
+            registration.event.id,
+          );
           const text = renderTemplate(
             template.body,
             {
