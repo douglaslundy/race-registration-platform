@@ -24,6 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 const putSchema = z.object({
   subject: z.string().max(998).optional(),
   body: z.string().min(1),
+  rowTemplate: z.string().optional(),
   active: z.boolean(),
 });
 
@@ -38,13 +39,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const parsed = putSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  const { subject, body, active } = parsed.data;
+  const { subject, body, rowTemplate, active } = parsed.data;
 
   const def = getAlertDefinition(existing.alertKey);
-  const allowedVariables = def?.variables ?? [];
-  const { valid, unknown } = validateTemplateVariables(`${subject ?? ""} ${body}`, allowedVariables);
+  const { valid, unknown } = validateTemplateVariables(`${subject ?? ""} ${body}`, def?.variables ?? []);
   if (!valid) {
     return NextResponse.json({ error: "Variável desconhecida no template", unknownVariables: unknown }, { status: 400 });
+  }
+  if (def?.rowVariables) {
+    const rowCheck = validateTemplateVariables(rowTemplate ?? "", def.rowVariables);
+    if (!rowCheck.valid) {
+      return NextResponse.json({ error: "Variável desconhecida no template de cada linha", unknownVariables: rowCheck.unknown }, { status: 400 });
+    }
   }
 
   await db.messageTemplateVersion.create({
@@ -52,6 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       templateId: id,
       subject: existing.subject,
       body: existing.body,
+      rowTemplate: existing.rowTemplate,
       active: existing.active,
       changedByUserId: session.user.id,
     },
@@ -59,7 +66,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const template = await db.messageTemplate.update({
     where: { id },
-    data: { subject, body, active, updatedByUserId: session.user.id },
+    data: { subject, body, rowTemplate, active, updatedByUserId: session.user.id },
   });
 
   return NextResponse.json({ template });

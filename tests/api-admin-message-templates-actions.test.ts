@@ -79,23 +79,23 @@ describe("POST .../test-send", () => {
 describe("POST .../revert/[versionId]", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("restaura o conteúdo da versão e grava o estado atual como novo histórico", async () => {
+  it("restaura o conteúdo da versão e grava o estado atual como novo histórico, incluindo rowTemplate", async () => {
     allow();
-    dbMock.messageTemplate.findUnique.mockResolvedValueOnce({ id: "tpl-1", subject: "Atual", body: "Corpo atual", active: true });
+    dbMock.messageTemplate.findUnique.mockResolvedValueOnce({ id: "tpl-1", subject: "Atual", body: "Corpo atual", rowTemplate: "Linha atual", active: true });
     dbMock.messageTemplateVersion.findMany.mockResolvedValueOnce([
-      { id: "ver-1", templateId: "tpl-1", subject: "Antigo", body: "Corpo antigo", active: true },
+      { id: "ver-1", templateId: "tpl-1", subject: "Antigo", body: "Corpo antigo", rowTemplate: "Linha antiga", active: true },
     ]);
-    dbMock.messageTemplate.update.mockResolvedValueOnce({ id: "tpl-1", subject: "Antigo", body: "Corpo antigo" });
+    dbMock.messageTemplate.update.mockResolvedValueOnce({ id: "tpl-1", subject: "Antigo", body: "Corpo antigo", rowTemplate: "Linha antiga" });
 
     const res = await revert(new Request("http://localhost", { method: "POST" }) as any, { params: Promise.resolve({ id: "tpl-1", versionId: "ver-1" }) });
 
     expect(res.status).toBe(200);
     expect(dbMock.messageTemplateVersion.create).toHaveBeenCalledWith({
-      data: { templateId: "tpl-1", subject: "Atual", body: "Corpo atual", active: true, changedByUserId: "admin-1" },
+      data: { templateId: "tpl-1", subject: "Atual", body: "Corpo atual", rowTemplate: "Linha atual", active: true, changedByUserId: "admin-1" },
     });
     expect(dbMock.messageTemplate.update).toHaveBeenCalledWith({
       where: { id: "tpl-1" },
-      data: { subject: "Antigo", body: "Corpo antigo", active: true, updatedByUserId: "admin-1" },
+      data: { subject: "Antigo", body: "Corpo antigo", rowTemplate: "Linha antiga", active: true, updatedByUserId: "admin-1" },
     });
   });
 

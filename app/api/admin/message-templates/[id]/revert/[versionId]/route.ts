@@ -19,12 +19,12 @@ export async function POST(
   if (!target) return NextResponse.json({ error: "Versão não encontrada" }, { status: 404 });
 
   await db.messageTemplateVersion.create({
-    data: { templateId: id, subject: template.subject, body: template.body, active: template.active, changedByUserId: session.user.id },
+    data: { templateId: id, subject: template.subject, body: template.body, rowTemplate: template.rowTemplate, active: template.active, changedByUserId: session.user.id },
   });
 
   const updated = await db.messageTemplate.update({
     where: { id },
-    data: { subject: target.subject, body: target.body, active: target.active, updatedByUserId: session.user.id },
+    data: { subject: target.subject, body: target.body, rowTemplate: target.rowTemplate, active: target.active, updatedByUserId: session.user.id },
   });
 
   return NextResponse.json({ template: updated });

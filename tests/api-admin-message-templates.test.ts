@@ -89,11 +89,58 @@ describe("PUT /api/admin/message-templates/[id]", () => {
 
     expect(res.status).toBe(200);
     expect(dbMock.messageTemplateVersion.create).toHaveBeenCalledWith({
-      data: { templateId: "tpl-1", subject: "Assunto antigo", body: "Corpo antigo", active: true, changedByUserId: "admin-1" },
+      data: { templateId: "tpl-1", subject: "Assunto antigo", body: "Corpo antigo", rowTemplate: undefined, active: true, changedByUserId: "admin-1" },
     });
     expect(dbMock.messageTemplate.update).toHaveBeenCalledWith({
       where: { id: "tpl-1" },
-      data: { subject: "Novo {{nome_evento}}", body: "Novo corpo {{nome_organizador}}", active: true, updatedByUserId: "admin-1" },
+      data: { subject: "Novo {{nome_evento}}", body: "Novo corpo {{nome_organizador}}", rowTemplate: undefined, active: true, updatedByUserId: "admin-1" },
+    });
+  });
+
+  it("rejeita variável desconhecida dentro do rowTemplate sem misturar com a lista de variáveis do body", async () => {
+    allow();
+    dbMock.messageTemplate.findUnique.mockResolvedValueOnce({
+      id: "tpl-1", alertKey: "RECONCILIATION_MISMATCH", channel: "EMAIL", recipientRole: "ADMIN",
+      subject: "S", body: "B", rowTemplate: "R", active: true,
+    });
+
+    const res = await putTemplate(
+      new Request("http://localhost", {
+        method: "PUT",
+        body: JSON.stringify({ subject: "S", body: "B", rowTemplate: "{{campo_inventado}}", active: true }),
+      }) as any,
+      { params: Promise.resolve({ id: "tpl-1" }) },
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.unknownVariables).toContain("campo_inventado");
+    expect(dbMock.messageTemplate.update).not.toHaveBeenCalled();
+  });
+
+  it("salva rowTemplate com sucesso e grava a versão anterior (incluindo o rowTemplate antigo)", async () => {
+    allow();
+    dbMock.messageTemplate.findUnique.mockResolvedValueOnce({
+      id: "tpl-1", alertKey: "RECONCILIATION_MISMATCH", channel: "EMAIL", recipientRole: "ADMIN",
+      subject: "S antigo", body: "B antigo", rowTemplate: "R antigo", active: true,
+    });
+    dbMock.messageTemplate.update.mockResolvedValueOnce({ id: "tpl-1" });
+
+    const res = await putTemplate(
+      new Request("http://localhost", {
+        method: "PUT",
+        body: JSON.stringify({ subject: "S novo", body: "B novo", rowTemplate: "<tr><td>{{evento}}</td></tr>", active: true }),
+      }) as any,
+      { params: Promise.resolve({ id: "tpl-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.messageTemplateVersion.create).toHaveBeenCalledWith({
+      data: { templateId: "tpl-1", subject: "S antigo", body: "B antigo", rowTemplate: "R antigo", active: true, changedByUserId: "admin-1" },
+    });
+    expect(dbMock.messageTemplate.update).toHaveBeenCalledWith({
+      where: { id: "tpl-1" },
+      data: { subject: "S novo", body: "B novo", rowTemplate: "<tr><td>{{evento}}</td></tr>", active: true, updatedByUserId: "admin-1" },
     });
   });
 
