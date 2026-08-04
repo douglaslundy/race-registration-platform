@@ -12,6 +12,8 @@ import ServiceFeeForm from "@/components/admin/ServiceFeeForm";
 import BannerIntervalForm from "@/components/admin/BannerIntervalForm";
 import CancellationPolicyToggleForm from "@/components/admin/CancellationPolicyToggleForm";
 import AdsMarketplaceToggle from "@/components/admin/AdsMarketplaceToggle";
+import SocialLinksForm from "@/components/admin/SocialLinksForm";
+import { SOCIAL_NETWORK_KEYS } from "@/lib/social-links";
 import { parseEnabledPaymentMethods } from "@/lib/payment-methods";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
@@ -27,7 +29,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting, socialLinkValuesArray] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, status: true },
@@ -61,9 +63,11 @@ export default async function ConfiguracoesPage() {
     getSmtpConfig(),
     getCancellationPolicyEnabled(),
     getSetting("ads_marketplace_enabled"),
+    Promise.all(SOCIAL_NETWORK_KEYS.map(async (key) => [key, await getSetting(key)] as const)),
   ]);
 
   const adsMarketplaceEnabled = adsMarketplaceEnabledSetting === "true";
+  const socialLinkValues = Object.fromEntries(socialLinkValuesArray);
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
@@ -75,6 +79,15 @@ export default async function ConfiguracoesPage() {
           Nome exibido no cabeçalho, rodapé, e-mails e título das páginas.
         </p>
         <AppNameForm currentName={appName} />
+      </div>
+
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Redes sociais</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Links exibidos como ícones no rodapé do site. Deixe em branco a rede que não deve
+          aparecer.
+        </p>
+        <SocialLinksForm currentValues={socialLinkValues} />
       </div>
 
       <div className="card space-y-4">
