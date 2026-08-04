@@ -273,12 +273,45 @@ esse script também cria). Resultado: **25 linhas criadas, 0 puladas** (11 alert
 canal/destinatário), confirmado via `psql` direto (`SELECT count(*) FROM message_templates` = 25).
 Smoke test: `/`, `/eventos` 200, container sem erros nos logs.
 
-**Pendência registrada:** 6 alertas restantes (`ADVERTISER_REQUEST_PENDING` → `CANCELLATION_REQUESTED`
-→ conciliação → `DAILY_SUMMARY` → `PAYMENT_ERROR` → confirmação de inscrição) seguirão o mesmo padrão
-de Tasks 10/11 (migração incremental). Não requer plano novo — apenas repetir a receita para cada
-alerta.
+**Rollout 100% concluído (2026-08-03) — os 8 alertas migrados.** Plano
+`docs/superpowers/plans/2026-08-03-migrar-alertas-restantes.md` (Tasks 13-19), via
+`superpowers:subagent-driven-development`, commits `a4d252e..8c827fd`:
+- Task 13 `a4d252e` — `ADVERTISER_REQUEST_PENDING`.
+- Task 14 `59de47d`+`eee20b9` — `CANCELLATION_REQUESTED`; achou e corrigiu um bug real
+  pré-existente no registry (WhatsApp dizia "Justificativa:" sem call-to-action, produção real
+  dizia "Motivo:" com CTA — divergência da Task 4 original, não pega por nenhuma revisão até
+  aqui).
+- Task 15 `f8153a3` — `RECONCILIATION_MISMATCH` (e-mail parcial: assunto+introdução editáveis,
+  tabela de divergências continua no código; WhatsApp migrado por completo).
+- Task 16 `def69ed` — `DAILY_SUMMARY` (e-mail parcial igual acima; WhatsApp migrado por completo,
+  registry estendido com 5 variáveis novas pra cobrir os textos ricos de admin/organizador).
+- Task 17 `ccd550a` — `PAYMENT_ERROR` + `PAYMENT_ERROR_ORDER_CANCELLED`.
+- Task 18 `cfb08ad`+`8c827fd` — `ORDER_CONFIRMED` + variantes de procuração (maior risco da leva,
+  arquivo com histórico de bugs de mensagem duplicada — revisão extra com modelo mais capaz
+  confirmou dedupe/claim intocado; achou e corrigiu um gap real: `ORDER_CONFIRMED_PROXY_ATHLETE`
+  declarava `nome_atleta`/`nome_comprador` sem os call sites preencherem — inofensivo com o texto
+  de fábrica, mas renderizaria em branco se um admin customizasse).
 
-### Etapa 3 — Global × por-evento + resumo diário por evento — PENDENTE (Etapa 2 completa, pronto para começar)
+Suíte final 207 arquivos / 1373 testes, `tsc --noEmit` limpo. **Ainda não deployado** — a leva
+anterior (2 alertas) já está em produção; esta leva (6 alertas + 1 fix) está só local, aguardando
+autorização pra push/deploy (mesmo padrão de sempre — esta vez não perguntado ainda porque o
+usuário interrompeu o meio da leva com dois pedidos novos, ver abaixo).
+
+**Pedido novo do usuário no meio da execução (2026-08-03), decisões de sequenciamento fechadas:**
+1. **Templates completamente editáveis** — usuário não aceita a simplificação "tabela continua no
+   código" usada em `RECONCILIATION_MISMATCH`/`DAILY_SUMMARY`. Direção já validada com o usuário:
+   dar ao admin um **template de linha** editável (ex.: `{{label}}: {{value}}`) que o código aplica
+   em loop — resolve o pedido sem violar a regra de segurança "sem eval, sem loop/condicional no
+   motor" (o loop continua no código, só o formato de cada linha vira editável).
+2. **Alerta diário por evento** — cadastrar um contato (e-mail/telefone) pra receber resumo diário
+   de só um evento específico. Confirmado que é exatamente a Etapa 3 (`Global × por-evento`)
+   chegando mais cedo.
+3. **Sequenciamento combinado**: usuário escolheu terminar a migração mecânica primeiro (Tasks
+   13-19, já concluída) e fazer os dois pedidos acima **juntos**, num brainstorm só (já que os dois
+   mexem na mesma área de resumo diário/tabelas) — próxima ação real desta sessão.
+
+### Etapa 3 — Global × por-evento + resumo diário por evento — PENDENTE (Etapa 2 100% completa;
+próximo brainstorm já teria que cobrir isso + o template de linha editável, por pedido do usuário)
 
 ### Etapa 4 — Novos alertas (desativados por padrão) — PENDENTE (depende da 2)
 

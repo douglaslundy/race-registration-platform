@@ -1402,6 +1402,28 @@ redeploy do monitor). Achado à parte não corrigido: access log do Traefik que 
 vazio desde 20/07 (`/var/log/traefik/access.log`, volume `traefik_access_logs`) — estatística de
 acesso do monitor está morta silenciosamente, causa raiz não investigada, retomar só se pedido.
 
+## Etapa 2 — 100% concluída (2026-08-03): os 8 alertas migrados pra templates do banco
+
+Plano `docs/superpowers/plans/2026-08-03-migrar-alertas-restantes.md` (Tasks 13-19), mesma receita
+das Tasks 10/11 anteriores. Migrados: `ADVERTISER_REQUEST_PENDING`, `CANCELLATION_REQUESTED`,
+`RECONCILIATION_MISMATCH`, `DAILY_SUMMARY`, `PAYMENT_ERROR`(+`ORDER_CANCELLED`), `ORDER_CONFIRMED`
+(+2 variantes de procuração). Detalhe técnico completo em `IMPLEMENTATION_PLAN.md` §Etapa 2 —
+inclui 2 bugs reais pré-existentes achados e corrigidos durante a migração (texto de
+`CANCELLATION_REQUESTED` divergente da Task 4 original; variáveis não preenchidas em
+`ORDER_CONFIRMED_PROXY_ATHLETE`). Suíte 207/1373, `tsc` limpo. **Ainda não deployado** (só a leva
+anterior de 2 alertas está em produção).
+
+**Pedido novo do usuário no meio da execução, direção já fechada com ele:**
+1. Quer templates **totalmente** editáveis (não só assunto/introdução) — a solução combinada é dar
+   ao admin um "template de linha" (`{{label}}: {{value}}`) que o código aplica em loop, sem violar
+   a regra de "sem eval/loop no motor de renderização".
+2. Quer alerta diário **por evento** (contato e-mail/telefone só pra um evento específico) — é a
+   Etapa 3 chegando adiantada.
+3. Usuário confirmou: os dois pedidos entram **juntos** num brainstorm só (mesma área de resumo
+   diário/tabelas), depois de terminar a migração mecânica (já terminada).
+
 ## Próxima tarefa
-Nenhuma pendente — aguardar pedido explícito pra continuar as Etapas 3+ do mega-prompt (home,
-anunciante, redes sociais, ou os 6 alertas restantes da Etapa 2), ou pra rating/kits.
+Brainstorm combinado: template de linha editável (tabelas de `RECONCILIATION_MISMATCH`/
+`DAILY_SUMMARY`) + alerta diário por evento (Etapa 3). Antes disso, perguntar ao usuário sobre
+push/deploy da leva dos 6 alertas + fix (commits `a4d252e..8c827fd`, sem migração de schema nesta
+leva — só a Etapa 2 original teve migração).
