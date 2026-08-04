@@ -140,13 +140,54 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
 
   DAILY_SUMMARY: {
     alertKey: "DAILY_SUMMARY",
-    description: "Resumo diário — subject e introdução do e-mail são editáveis (tabela de métricas continua gerada pelo código); o WhatsApp é totalmente editável.",
+    description: "Resumo diário — 100% editável (e-mail e WhatsApp, admin e organizador), incluindo a tabela de métricas.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ADMIN", "ORGANIZER"],
-    variables: ["data_resumo", "papel_destinatario", "total_inscricoes_pagas", "receita_periodo", "novos_usuarios", "eventos_criados", "cupons_usados", "link_plataforma"],
+    variables: [
+      "data_resumo", "papel_destinatario", "total_inscricoes_pagas", "receita_periodo",
+      "novos_usuarios", "eventos_criados", "cupons_usados", "link_plataforma",
+      "novos_organizadores", "taxa_plataforma", "taxa_servico",
+      "repasses_gerados", "valor_repasses", "cancelamentos_estornos",
+      "cancelamentos_solicitados", "lotes_esgotados",
+    ],
     factoryDefault: (channel, recipientRole) => {
       if (channel === "EMAIL") {
-        return { subject: "Resumo diário — {{data_resumo}}", body: `<p>Olá,</p>\n<p>Este é o resumo de atividade do dia <strong>{{data_resumo}}</strong> (visão de {{papel_destinatario}}):</p>` };
+        if (recipientRole === "ORGANIZER") {
+          return {
+            subject: "Resumo diário — {{data_resumo}}",
+            body:
+              `<p>Olá,</p>\n` +
+              `<p>Resumo de <strong>{{data_resumo}}</strong> (visão de {{papel_destinatario}}):</p>\n` +
+              `<table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">\n` +
+              `  <tbody>\n` +
+              `    <tr><td>Inscrições pagas</td><td><strong>{{total_inscricoes_pagas}}</strong></td></tr>\n` +
+              `    <tr><td>Receita</td><td><strong>{{receita_periodo}}</strong></td></tr>\n` +
+              `    <tr><td>Cupons usados</td><td><strong>{{cupons_usados}}</strong></td></tr>\n` +
+              `    <tr><td>Cancelamentos solicitados</td><td><strong>{{cancelamentos_solicitados}}</strong></td></tr>\n` +
+              `    <tr><td>Lotes esgotados</td><td><strong>{{lotes_esgotados}}</strong></td></tr>\n` +
+              `  </tbody>\n` +
+              `</table>`,
+          };
+        }
+        return {
+          subject: "Resumo diário — {{data_resumo}}",
+          body:
+            `<p>Olá,</p>\n` +
+            `<p>Resumo de <strong>{{data_resumo}}</strong> (visão de {{papel_destinatario}}):</p>\n` +
+            `<table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">\n` +
+            `  <tbody>\n` +
+            `    <tr><td>Novos usuários</td><td><strong>{{novos_usuarios}}</strong></td></tr>\n` +
+            `    <tr><td>Novos organizadores</td><td><strong>{{novos_organizadores}}</strong></td></tr>\n` +
+            `    <tr><td>Eventos criados</td><td><strong>{{eventos_criados}}</strong></td></tr>\n` +
+            `    <tr><td>Inscrições pagas</td><td><strong>{{total_inscricoes_pagas}}</strong></td></tr>\n` +
+            `    <tr><td>Receita bruta</td><td><strong>{{receita_periodo}}</strong></td></tr>\n` +
+            `    <tr><td>Taxa da plataforma</td><td><strong>{{taxa_plataforma}}</strong></td></tr>\n` +
+            `    <tr><td>Taxa de serviço</td><td><strong>{{taxa_servico}}</strong></td></tr>\n` +
+            `    <tr><td>Repasses gerados</td><td><strong>{{repasses_gerados}} ({{valor_repasses}})</strong></td></tr>\n` +
+            `    <tr><td>Cancelamentos/estornos</td><td><strong>{{cancelamentos_estornos}}</strong></td></tr>\n` +
+            `  </tbody>\n` +
+            `</table>`,
+        };
       }
       return recipientRole === "ORGANIZER"
         ? { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita, {{cupons_usados}} cupons usados. Veja mais em {{link_plataforma}}/organizador.` }

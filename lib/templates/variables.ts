@@ -83,6 +83,14 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "novos_usuarios", label: "Novos usuários", category: "Plataforma", description: "Contagem de novos usuários cadastrados no dia. Só disponível no resumo diário do administrador.", sample: "5" },
   { name: "eventos_criados", label: "Eventos criados", category: "Plataforma", description: "Contagem de eventos criados no dia. Só disponível no resumo diário do administrador.", sample: "2" },
   { name: "cupons_usados", label: "Cupons usados", category: "Plataforma", description: "Contagem de cupons usados no dia. Só disponível no resumo diário do organizador.", sample: "3" },
+  { name: "novos_organizadores", label: "Novos organizadores", category: "Plataforma", description: "Contagem de novos organizadores cadastrados no dia. Só disponível no resumo diário do administrador.", sample: "1" },
+  { name: "taxa_plataforma", label: "Taxa da plataforma", category: "Plataforma", description: "Soma de Order.platformFeeAmount no período, formatada em R$. Só disponível no resumo diário do administrador.", sample: "R$ 150,00" },
+  { name: "taxa_servico", label: "Taxa de serviço", category: "Plataforma", description: "Soma de Order.paymentFeeAmount no período, formatada em R$. Só disponível no resumo diário do administrador.", sample: "R$ 45,00" },
+  { name: "repasses_gerados", label: "Repasses gerados", category: "Plataforma", description: "Quantidade de repasses (TransferPayout) gerados no período. Só disponível no resumo diário do administrador.", sample: "3" },
+  { name: "valor_repasses", label: "Valor dos repasses", category: "Plataforma", description: "Valor total dos repasses gerados no período, formatado em R$. Só disponível no resumo diário do administrador.", sample: "R$ 900,00" },
+  { name: "cancelamentos_estornos", label: "Cancelamentos/estornos", category: "Plataforma", description: "Cancelamentos solicitados + pagamentos estornados/chargeback no período. Só disponível no resumo diário do administrador.", sample: "2" },
+  { name: "cancelamentos_solicitados", label: "Cancelamentos solicitados", category: "Plataforma", description: "Cancelamentos solicitados no período. Disponível no resumo diário do organizador e no resumo diário por evento.", sample: "1" },
+  { name: "lotes_esgotados", label: "Lotes esgotados", category: "Plataforma", description: "Lotes que esgotaram no período. Só disponível no resumo diário do organizador.", sample: "1" },
 ];
 
 export function getVariablesByNames(names: string[]): VariableDefinition[] {

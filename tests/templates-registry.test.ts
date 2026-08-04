@@ -55,6 +55,22 @@ describe("ALERT_REGISTRY", () => {
       }
     }
   });
+
+  it("DAILY_SUMMARY: o corpo de e-mail de fábrica não tem mais tabela hardcoded — toda métrica vem de variável", () => {
+    const adminEmail = ALERT_REGISTRY.DAILY_SUMMARY.factoryDefault("EMAIL", "ADMIN");
+    for (const v of [
+      "novos_usuarios", "novos_organizadores", "eventos_criados", "total_inscricoes_pagas",
+      "receita_periodo", "taxa_plataforma", "taxa_servico", "repasses_gerados", "valor_repasses",
+      "cancelamentos_estornos",
+    ]) {
+      expect(adminEmail.body).toContain(`{{${v}}}`);
+    }
+
+    const organizerEmail = ALERT_REGISTRY.DAILY_SUMMARY.factoryDefault("EMAIL", "ORGANIZER");
+    for (const v of ["total_inscricoes_pagas", "receita_periodo", "cupons_usados", "cancelamentos_solicitados", "lotes_esgotados"]) {
+      expect(organizerEmail.body).toContain(`{{${v}}}`);
+    }
+  });
 });
 
 describe("getAlertDefinition", () => {
