@@ -6,6 +6,7 @@ import { getAdvertiserRequestAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
+import { getAppName } from "@/lib/settings";
 
 const ALERT_TYPE = "ADVERTISER_REQUEST_PENDING";
 
@@ -30,6 +31,9 @@ export async function notifyAdvertiserRequestPending(adPurchaseId: string): Prom
     if (!purchase) return;
 
     const admins = await db.user.findMany({ where: { role: "ADMIN" }, select: { email: true, phone: true } });
+    const appName = await getAppName();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    const pendingRequestsUrl = `${baseUrl}/admin/anunciantes/solicitacoes`;
 
     if (settings.emailEnabled) {
       const cfg = await getSmtpConfig();
@@ -59,8 +63,10 @@ export async function notifyAdvertiserRequestPending(adPurchaseId: string): Prom
         try {
           const template = await getEffectiveTemplate("ADVERTISER_REQUEST_PENDING", "WHATSAPP", "ADMIN");
           const text = renderTemplate(template.body, {
+            nome_plataforma: appName,
             empresa_anunciante: purchase.advertiser.companyName,
             nome_plano: purchase.adPlan.name,
+            link_solicitacoes_pendentes: pendingRequestsUrl,
           }, "WHATSAPP");
           await sendWhatsAppMessage(admin.phone, text);
         } catch (err) {

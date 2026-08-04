@@ -73,4 +73,21 @@ describe("notifyAdvertiserRequestPending", () => {
       "Nova solicitação de anunciante: Empresa X (plano Plano Básico). Acesse o painel pra aprovar ou rejeitar.",
     );
   });
+
+  it("um template customizado que referencia {{nome_plataforma}} e {{link_solicitacoes_pendentes}} (antes não supridos) renderiza os dois, não em branco", async () => {
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: null,
+      body: "[{{nome_plataforma}}] Nova solicitação de {{empresa_anunciante}}. Ver: {{link_solicitacoes_pendentes}}",
+    });
+
+    await notifyAdvertiserRequestPending("purchase-1");
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    const [phone, text] = vi.mocked(sendWhatsAppMessage).mock.calls[0];
+    expect(phone).toBe("5511999999999");
+    expect(text).toContain("Nova solicitação de Empresa X");
+    expect(text).toContain(`Ver: ${baseUrl}/admin/anunciantes/solicitacoes`);
+    expect(text).not.toContain("{{nome_plataforma}}");
+    expect(text).not.toContain("{{link_solicitacoes_pendentes}}");
+  });
 });

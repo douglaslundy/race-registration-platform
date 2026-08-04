@@ -168,6 +168,22 @@ describe("notifyPaymentError", () => {
       `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
     );
   });
+
+  it("um template customizado que referencia {{nome_atleta}} (antes não suprido) renderiza o nome, não em branco", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: null,
+      body: "Olá {{nome_atleta}}, sua inscrição em {{nome_evento}} foi cancelada.",
+    });
+
+    await notifyPaymentError("payment-1");
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      "Olá Atleta, sua inscrição em Corrida Teste foi cancelada.",
+    );
+  });
 });
 
 const orderFixture = {

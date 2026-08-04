@@ -446,10 +446,14 @@ export async function sendDailySummaryEmail(params: {
   role: "ADMIN" | "ORGANIZER";
   dateLabel: string;
   rows: { label: string; value: string }[];
+  /** Métricas cruas (total_inscricoes_pagas, receita_periodo, etc.) — mesmo mapa usado pelo texto
+   * de WhatsApp deste alerta (ver lib/alerts/daily-summary.ts), pra que o admin também possa
+   * referenciar essas variáveis no template de EMAIL sem renderizar em branco. */
+  metrics?: Record<string, string>;
 }): Promise<void> {
   const appName = await getAppName();
   const roleLabel = params.role === "ADMIN" ? "administrador" : "organizador";
-  const values = { data_resumo: params.dateLabel, papel_destinatario: roleLabel };
+  const values = { data_resumo: params.dateLabel, papel_destinatario: roleLabel, ...params.metrics };
   const tableRows = params.rows
     .map(
       (r) =>

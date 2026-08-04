@@ -264,6 +264,29 @@ describe("sendAdminDailySummaries", () => {
       `Resumo de ontem: 10 inscrições pagas, ${formatCurrency(100000)} em receita bruta, 5 novos usuários, 2 eventos criados. Veja mais em /admin.`,
     );
   });
+
+  it("um template customizado que referencia {{data_resumo}} e {{papel_destinatario}} (antes não supridos) renderiza os dois, não em branco", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "admin-1",
+        email: "admin1@example.com",
+        phone: "5511999999999",
+        dailySummaryEmailEnabled: false,
+        dailySummaryWhatsappEnabled: true,
+      },
+    ]);
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: null,
+      body: "Resumo de {{data_resumo}} para {{papel_destinatario}}: {{total_inscricoes_pagas}} inscrições.",
+    });
+
+    await sendAdminDailySummaries(dayStart, dayEnd);
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      "Resumo de 12/07/2026 para administrador: 10 inscrições.",
+    );
+  });
 });
 
 describe("sendOrganizerDailySummaries", () => {
@@ -419,6 +442,29 @@ describe("sendOrganizerDailySummaries", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       `Resumo de ontem: 4 inscrições pagas, ${formatCurrency(40000)} em receita, 2 cupons usados. Veja mais em /organizador.`,
+    );
+  });
+
+  it("um template customizado que referencia {{data_resumo}} e {{papel_destinatario}} (antes não supridos) renderiza os dois, não em branco", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      {
+        id: "org-user-1",
+        email: "organizador@example.com",
+        dailySummaryEmailEnabled: false,
+        dailySummaryWhatsappEnabled: true,
+        organizerProfile: { id: "org-1", phone: "5511988888888" },
+      },
+    ]);
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: null,
+      body: "Resumo de {{data_resumo}} para {{papel_destinatario}}: {{total_inscricoes_pagas}} inscrições.",
+    });
+
+    await sendOrganizerDailySummaries(dayStart, dayEnd);
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988888888",
+      "Resumo de 12/07/2026 para organizador: 4 inscrições.",
     );
   });
 });

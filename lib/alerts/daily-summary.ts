@@ -60,32 +60,50 @@ function buildOrganizerEmailRows(m: OrganizerDailySummary): { label: string; val
   ];
 }
 
-async function buildAdminWhatsAppText(m: AdminDailySummary): Promise<string> {
+/** Métricas do admin mapeadas pras variáveis do template — reaproveitado pelo WhatsApp e pelo e-mail. */
+function buildAdminMetricsValues(m: AdminDailySummary, baseUrl: string): Record<string, string> {
+  return {
+    total_inscricoes_pagas: String(m.paidRegistrationsCount),
+    receita_periodo: formatCurrency(m.grossRevenue),
+    novos_usuarios: String(m.newUsersCount),
+    eventos_criados: String(m.eventsCreatedCount),
+    link_plataforma: baseUrl,
+  };
+}
+
+/** Métricas do organizador mapeadas pras variáveis do template — reaproveitado pelo WhatsApp e pelo e-mail. */
+function buildOrganizerMetricsValues(m: OrganizerDailySummary, baseUrl: string): Record<string, string> {
+  return {
+    total_inscricoes_pagas: String(m.paidRegistrationsCount),
+    receita_periodo: formatCurrency(m.grossRevenue),
+    cupons_usados: String(m.couponsUsedCount),
+    link_plataforma: baseUrl,
+  };
+}
+
+async function buildAdminWhatsAppText(m: AdminDailySummary, dateLabel: string): Promise<string> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const template = await getEffectiveTemplate("DAILY_SUMMARY", "WHATSAPP", "ADMIN");
   return renderTemplate(
     template.body,
     {
-      total_inscricoes_pagas: String(m.paidRegistrationsCount),
-      receita_periodo: formatCurrency(m.grossRevenue),
-      novos_usuarios: String(m.newUsersCount),
-      eventos_criados: String(m.eventsCreatedCount),
-      link_plataforma: baseUrl,
+      data_resumo: dateLabel,
+      papel_destinatario: "administrador",
+      ...buildAdminMetricsValues(m, baseUrl),
     },
     "WHATSAPP",
   );
 }
 
-async function buildOrganizerWhatsAppText(m: OrganizerDailySummary): Promise<string> {
+async function buildOrganizerWhatsAppText(m: OrganizerDailySummary, dateLabel: string): Promise<string> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const template = await getEffectiveTemplate("DAILY_SUMMARY", "WHATSAPP", "ORGANIZER");
   return renderTemplate(
     template.body,
     {
-      total_inscricoes_pagas: String(m.paidRegistrationsCount),
-      receita_periodo: formatCurrency(m.grossRevenue),
-      cupons_usados: String(m.couponsUsedCount),
-      link_plataforma: baseUrl,
+      data_resumo: dateLabel,
+      papel_destinatario: "organizador",
+      ...buildOrganizerMetricsValues(m, baseUrl),
     },
     "WHATSAPP",
   );
@@ -105,6 +123,8 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
     const smtpReady = isSmtpReady(cfg);
     const key = dateKey(dayStart);
     const dateLabel = formatDateLabel(dayStart);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    const emailMetrics = buildAdminMetricsValues(metrics, baseUrl);
 
     for (const admin of admins) {
       const entityId = `${key}:${admin.id}`;
@@ -113,7 +133,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (admin.dailySummaryEmailEnabled && smtpReady) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "EMAIL")) {
-            await sendDailySummaryEmail({ to: admin.email, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics) });
+            await sendDailySummaryEmail({ to: admin.email, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics), metrics: emailMetrics });
             sent++;
           }
         } catch (err) {
@@ -126,7 +146,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (admin.dailySummaryWhatsappEnabled && admin.phone) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(admin.phone, await buildAdminWhatsAppText(metrics));
+            await sendWhatsAppMessage(admin.phone, await buildAdminWhatsAppText(metrics, dateLabel));
             sent++;
           }
         } catch (err) {
@@ -147,7 +167,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         if (recipient.type === "EMAIL" && smtpReady) {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "EMAIL")) {
-              await sendDailySummaryEmail({ to: recipient.value, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics) });
+              await sendDailySummaryEmail({ to: recipient.value, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics), metrics: emailMetrics });
               sent++;
             }
           } catch (err) {
@@ -160,7 +180,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(recipient.value, await buildAdminWhatsAppText(metrics));
+              await sendWhatsAppMessage(recipient.value, await buildAdminWhatsAppText(metrics, dateLabel));
               sent++;
             }
           } catch (err) {
@@ -198,6 +218,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
     const smtpReady = isSmtpReady(cfg);
     const key = dateKey(dayStart);
     const dateLabel = formatDateLabel(dayStart);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
 
     for (const organizer of organizers) {
       const organizerId = organizer.organizerProfile!.id;
@@ -212,6 +233,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
         console.error("[sendOrganizerDailySummaries] failed for", organizer.email, err);
         continue;
       }
+      const emailMetrics = buildOrganizerMetricsValues(metrics, baseUrl);
 
       if (organizer.dailySummaryEmailEnabled && smtpReady) {
         try {
@@ -221,6 +243,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
               role: "ORGANIZER",
               dateLabel,
               rows: buildOrganizerEmailRows(metrics),
+              metrics: emailMetrics,
             });
             sent++;
           }
@@ -234,7 +257,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
       if (organizer.dailySummaryWhatsappEnabled && organizer.organizerProfile!.phone) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(organizer.organizerProfile!.phone, await buildOrganizerWhatsAppText(metrics));
+            await sendWhatsAppMessage(organizer.organizerProfile!.phone, await buildOrganizerWhatsAppText(metrics, dateLabel));
             sent++;
           }
         } catch (err) {
@@ -260,6 +283,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
                 role: "ORGANIZER",
                 dateLabel,
                 rows: buildOrganizerEmailRows(metrics),
+                metrics: emailMetrics,
               });
               sent++;
             }
@@ -273,7 +297,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(recipient.value, await buildOrganizerWhatsAppText(metrics));
+              await sendWhatsAppMessage(recipient.value, await buildOrganizerWhatsAppText(metrics, dateLabel));
               sent++;
             }
           } catch (err) {

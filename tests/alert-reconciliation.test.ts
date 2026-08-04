@@ -186,4 +186,20 @@ describe("notifyReconciliationMismatches", () => {
     expect(sendReconciliationMismatchEmail).toHaveBeenCalledTimes(1);
     expect(sendReconciliationMismatchEmail).toHaveBeenCalledWith({ to: "admin1@example.com", mismatches: [laterMismatch] });
   });
+
+  it("um template customizado que referencia {{total_divergencias}} (antes não suprido) renderiza a contagem, não em branco", async () => {
+    vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true, minutesThreshold: 15 });
+    dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: "5511999999999" }]);
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: null,
+      body: "Encontramos {{total_divergencias}} divergência(s): {{divergencias_corrigidas}} corrigida(s), {{divergencias_manuais}} manual(is).",
+    });
+
+    await notifyReconciliationMismatches(mismatchFixture);
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      "Encontramos 1 divergência(s): 0 corrigida(s), 1 manual(is).",
+    );
+  });
 });

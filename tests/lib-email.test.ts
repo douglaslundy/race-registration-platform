@@ -453,4 +453,24 @@ describe("sendDailySummaryEmail", () => {
     expect(introIndex).toBeGreaterThanOrEqual(0);
     expect(tableIndex).toBeGreaterThan(introIndex);
   });
+
+  it("um template customizado que referencia variáveis de métrica (ex.: {{receita_periodo}}) renderiza o valor suprido via params.metrics, não em branco", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Resumo — {{data_resumo}}",
+      body: "<p>Receita do período: {{receita_periodo}}. Novos usuários: {{novos_usuarios}}.</p>",
+      source: "global",
+    });
+
+    await sendDailySummaryEmail({
+      to: "admin@example.com",
+      role: "ADMIN",
+      dateLabel: "03/08/2026",
+      rows,
+      metrics: { receita_periodo: "R$ 1.000,00", novos_usuarios: "5" },
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Receita do período: R$ 1.000,00. Novos usuários: 5.");
+  });
 });

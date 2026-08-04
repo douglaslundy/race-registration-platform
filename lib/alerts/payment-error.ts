@@ -52,6 +52,7 @@ async function sendCancellationInviteNotification(
       try {
         const template = await getEffectiveTemplate(params.alertKey, "WHATSAPP", "BUYER");
         const text = renderTemplate(template.body, {
+          nome_atleta: params.buyer.name,
           nome_evento: params.event.title,
           link_evento: eventUrl,
         }, "WHATSAPP");

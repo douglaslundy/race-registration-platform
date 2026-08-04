@@ -83,6 +83,7 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
           const text = renderTemplate(
             template.body,
             {
+              total_divergencias: String(newMismatches.length),
               divergencias_corrigidas: String(correctedCount),
               divergencias_manuais: String(manualCount),
             },
