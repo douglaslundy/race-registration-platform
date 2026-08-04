@@ -136,7 +136,7 @@ describe("notifyReconciliationMismatches", () => {
     expect(sendReconciliationMismatchEmail).not.toHaveBeenCalled();
   });
 
-  it("zero-regressão: texto de WhatsApp vem do template de fábrica de RECONCILIATION_MISMATCH (sem mock de resolve/render, sem override no banco)", async () => {
+  it("zero-regressão: texto de WhatsApp vem do template de fábrica de RECONCILIATION_MISMATCH, incluindo a linha de cada divergência (sem mock de resolve/render, sem override no banco)", async () => {
     // Este teste NÃO mocka @/lib/templates/resolve nem @/lib/templates/render — só o db (via
     // tests/setup.ts, onde messageTemplate.findFirst já vem como vi.fn() sem implementação, ou
     // seja, resolve undefined e força o caminho real de fallback pro texto de fábrica do registry).
@@ -147,8 +147,9 @@ describe("notifyReconciliationMismatches", () => {
 
     const correctedCount = mismatchFixture.filter((m) => m.corrected).length;
     const manualCount = mismatchFixture.length - correctedCount;
-    const expectedText = `Conciliação de pagamentos: ${correctedCount} corrigida(s) automaticamente, ${manualCount} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`;
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expectedText);
+    const expectedIntro = `Conciliação de pagamentos: ${correctedCount} corrigida(s) automaticamente, ${manualCount} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`;
+    const expectedRow = `Corrida Teste — Pedido order-1: Requer verificação manual`;
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", `${expectedIntro}\n${expectedRow}`);
   });
 
   it("uma divergência DIFERENTE no MESMO paymentId (ex.: correção pending->paid antiga seguida de um estorno depois) ainda é alertada", async () => {
@@ -187,7 +188,7 @@ describe("notifyReconciliationMismatches", () => {
     expect(sendReconciliationMismatchEmail).toHaveBeenCalledWith({ to: "admin1@example.com", mismatches: [laterMismatch] });
   });
 
-  it("um template customizado que referencia {{total_divergencias}} (antes não suprido) renderiza a contagem, não em branco", async () => {
+  it("um template customizado que referencia {{total_divergencias}} (antes não suprido) renderiza a contagem, não em branco, e ainda inclui a linha de cada divergência", async () => {
     vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true, minutesThreshold: 15 });
     dbMock.user.findMany.mockResolvedValue([{ email: "admin1@example.com", phone: "5511999999999" }]);
     dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
@@ -199,7 +200,7 @@ describe("notifyReconciliationMismatches", () => {
 
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
-      "Encontramos 1 divergência(s): 0 corrigida(s), 1 manual(is).",
+      "Encontramos 1 divergência(s): 0 corrigida(s), 1 manual(is).\nCorrida Teste — Pedido order-1: Requer verificação manual",
     );
   });
 });

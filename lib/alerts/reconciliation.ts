@@ -80,7 +80,7 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
         const manualCount = newMismatches.length - correctedCount;
         try {
           const template = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "WHATSAPP", "ADMIN");
-          const text = renderTemplate(
+          const introText = renderTemplate(
             template.body,
             {
               total_divergencias: String(newMismatches.length),
@@ -89,6 +89,22 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
             },
             "WHATSAPP",
           );
+          const rowsText = newMismatches
+            .map((m) =>
+              renderTemplate(
+                template.rowTemplate ?? "",
+                {
+                  evento: m.eventTitle,
+                  pedido: m.orderId,
+                  status_local: m.localStatus,
+                  status_gateway: m.gatewayStatus,
+                  situacao: m.corrected ? "Corrigido automaticamente" : "Requer verificação manual",
+                },
+                "WHATSAPP",
+              ),
+            )
+            .join("\n");
+          const text = rowsText ? `${introText}\n${rowsText}` : introText;
           await sendWhatsAppMessage(admin.phone, text);
         } catch (err) {
           for (const mismatch of newMismatches) {
