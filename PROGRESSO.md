@@ -1529,10 +1529,36 @@ nova entrada por último em ambos os lados, nenhuma entrada existente tocada.
 Suite 211/1421, `tsc`/`build` limpos (verificação combinada rodada duas vezes: por task e no final).
 Nada commitado além do que já está local em `main`, nenhum push ainda.
 
+## Deploy em produção concluído (2026-08-04): Etapa 3 (parte 5) + Etapa 6 + Etapa 8
+
+Push `6e57340..5f21638` → VPS `git pull` (75 arquivos) → `docker build` → `prisma db push
+--skip-generate` (sync ok, sem migração pendente) → `docker compose up -d --no-deps app`. Smoke
+test via domínio público (não `localhost`, porta 3000 não é publicada pro host — só acessível via
+rede `proxy` do Traefik): `/`, `/eventos`, `/admin/alertas`, `/admin/configuracoes` todos OK.
+
+**Falso alarme durante a verificação**: `WebFetch` no domínio público voltou sem a seção "Próximos
+eventos" nem os ícones de rede social — parecia bug real (`/eventos` mostrava os mesmos 2 eventos
+corretamente). Causa: cache interno de 15 min do próprio `WebFetch`, de uma consulta ao mesmo
+domínio *antes* do deploy, nesta mesma conversa. `curl` direto confirmou o HTML novo já estava no
+ar, correto, desde o primeiro restart — não houve bug nenhum.
+
+**2 passos manuais de deploy executados com sucesso**:
+1. `refresh-templates.ts` rodado contra produção (procedimento: sem `tsconfig.json` no container de
+   runtime, foi necessário montar um `tsconfig.tmp.json` temporário via bind mount com
+   `baseUrl`/`paths` pro alias `@/*` + `TS_NODE_PROJECT=tsconfig.tmp.json npx ts-node -r
+   tsconfig-paths/register prisma/refresh-templates.ts` — `--compiler-options` sozinho não basta,
+   `paths` não é aceito inline). Resultado: 2 templates novos criados, 6 re-sincronizados, 21
+   pulados (customizados ou já em dia) — confirmado antes que **nenhum** `DAILY_SUMMARY`/e-mail
+   tinha customização manual em produção, então não houve perda de tabela de métricas.
+2. Os 2 novos `ad_slots` (`HOME_ABAIXO_BANNER`, `HOME_ENTRE_EVENTOS_CTA`) inseridos via SQL direto,
+   `enabled=false` como planejado — confirmado via `SELECT`, os 7 slots (5 antigos + 2 novos) presentes.
+
+Nenhuma pendência de deploy restante destas 3 frentes.
+
 ## Próxima tarefa
 
-Usuário confirmou a ordem: Etapa 6 (✅) → Etapa 8 (✅ acima) → **Etapa 7 (fluxo de anunciante)**,
-a última das três que o usuário pediu pra fazer nesta sequência.
+Usuário confirmou a ordem: Etapa 6 (✅ deployada) → Etapa 8 (✅ deployada) → **Etapa 7 (fluxo de
+anunciante)**, a última das três que o usuário pediu pra fazer nesta sequência.
 
 ### Contexto necessário pra Etapa 7 (fluxo de anunciante)
 
