@@ -227,6 +227,7 @@ export async function sendPaymentErrorEmail(params: {
   name: string;
   eventTitle: string;
   eventSlug: string;
+  eventId?: string;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -235,7 +236,7 @@ export async function sendPaymentErrorEmail(params: {
     nome_evento: params.eventTitle,
     link_evento: `${baseUrl}/eventos/${params.eventSlug}`,
   };
-  const template = await getEffectiveTemplate("PAYMENT_ERROR", "EMAIL", "BUYER");
+  const template = await getEffectiveTemplate("PAYMENT_ERROR", "EMAIL", "BUYER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({ to: params.to, subject, html: layout(appName, body) });

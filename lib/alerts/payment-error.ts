@@ -14,7 +14,7 @@ interface CancellationNotificationTarget {
   entityType: "Payment" | "Order";
   alertKey: "PAYMENT_ERROR" | "PAYMENT_ERROR_ORDER_CANCELLED";
   buyer: { name: string; email: string; athleteProfile: { phone: string | null } | null };
-  event: { title: string; slug: string };
+  event: { id: string; title: string; slug: string };
   bypassDedupe?: boolean;
 }
 
@@ -36,6 +36,7 @@ async function sendCancellationInviteNotification(
             name: params.buyer.name,
             eventTitle: params.event.title,
             eventSlug: params.event.slug,
+            eventId: params.event.id,
           });
           if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "EMAIL");
         } catch (err) {
@@ -50,7 +51,7 @@ async function sendCancellationInviteNotification(
     const claimed = params.bypassDedupe ? true : await claimAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
     if (claimed) {
       try {
-        const template = await getEffectiveTemplate(params.alertKey, "WHATSAPP", "BUYER");
+        const template = await getEffectiveTemplate(params.alertKey, "WHATSAPP", "BUYER", params.event.id);
         const text = renderTemplate(template.body, {
           nome_atleta: params.buyer.name,
           nome_evento: params.event.title,
@@ -79,7 +80,7 @@ export async function notifyPaymentError(
       select: {
         order: {
           select: {
-            event: { select: { title: true, slug: true } },
+            event: { select: { id: true, title: true, slug: true } },
             buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
           },
         },
@@ -117,7 +118,7 @@ export async function notifyOrderCancelledWithoutPayment(
     const order = await db.order.findUnique({
       where: { id: orderId },
       select: {
-        event: { select: { title: true, slug: true } },
+        event: { select: { id: true, title: true, slug: true } },
         buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
       },
     });

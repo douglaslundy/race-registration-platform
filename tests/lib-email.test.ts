@@ -261,9 +261,9 @@ describe("sendPaymentErrorEmail", () => {
       source: "global",
     });
 
-    await sendPaymentErrorEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", eventSlug: "corrida-x" });
+    await sendPaymentErrorEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", eventSlug: "corrida-x", eventId: "event-1" });
 
-    expect(getEffectiveTemplate).toHaveBeenCalledWith("PAYMENT_ERROR", "EMAIL", "BUYER");
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("PAYMENT_ERROR", "EMAIL", "BUYER", "event-1");
     expect(sendMailMock).toHaveBeenCalledWith(
       expect.objectContaining({ to: "atleta@example.com", subject: "Cancelada — Corrida X" }),
     );

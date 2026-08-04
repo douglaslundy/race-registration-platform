@@ -26,13 +26,14 @@ import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getPaymentErrorAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
+import * as resolveModule from "@/lib/templates/resolve";
 
 const dbMock = db as any;
 
 const paymentFixture = {
   order: {
     id: "order-1",
-    event: { title: "Corrida Teste", slug: "corrida-teste" },
+    event: { id: "event-1", title: "Corrida Teste", slug: "corrida-teste" },
     buyer: { name: "Atleta", email: "atleta@example.com", athleteProfile: { phone: "5511988888888" } },
   },
 };
@@ -70,7 +71,7 @@ describe("notifyPaymentError", () => {
 
     expect(claimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Payment", "payment-1", "EMAIL");
     expect(sendPaymentErrorEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta@example.com", eventSlug: "corrida-teste" }),
+      expect.objectContaining({ to: "atleta@example.com", eventSlug: "corrida-teste", eventId: "event-1" }),
     );
   });
 
@@ -157,6 +158,7 @@ describe("notifyPaymentError", () => {
   });
 
   it("com o banco sem nenhum template salvo (fallback de fábrica), o texto do WhatsApp é idêntico ao hardcoded anterior", async () => {
+    const resolveSpy = vi.spyOn(resolveModule, "getEffectiveTemplate");
     vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
     dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
 
@@ -167,6 +169,7 @@ describe("notifyPaymentError", () => {
       "5511988888888",
       `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
     );
+    expect(resolveSpy).toHaveBeenCalledWith("PAYMENT_ERROR", "WHATSAPP", "BUYER", "event-1");
   });
 
   it("um template customizado que referencia {{nome_atleta}} (antes não suprido) renderiza o nome, não em branco", async () => {
@@ -187,7 +190,7 @@ describe("notifyPaymentError", () => {
 });
 
 const orderFixture = {
-  event: { title: "Corrida Teste", slug: "corrida-teste" },
+  event: { id: "event-1", title: "Corrida Teste", slug: "corrida-teste" },
   buyer: { name: "Atleta", email: "atleta@example.com", athleteProfile: { phone: "5511988888888" } },
 };
 
@@ -224,11 +227,12 @@ describe("notifyOrderCancelledWithoutPayment", () => {
 
     expect(claimAlert).toHaveBeenCalledWith("PAYMENT_ERROR", "Order", "order-1", "EMAIL");
     expect(sendPaymentErrorEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta@example.com", eventSlug: "corrida-teste" }),
+      expect.objectContaining({ to: "atleta@example.com", eventSlug: "corrida-teste", eventId: "event-1" }),
     );
   });
 
   it("envia WhatsApp quando o atleta tem telefone cadastrado", async () => {
+    const resolveSpy = vi.spyOn(resolveModule, "getEffectiveTemplate");
     vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true });
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
 
@@ -239,6 +243,7 @@ describe("notifyOrderCancelledWithoutPayment", () => {
       "5511988888888",
       expect.stringContaining("Corrida Teste"),
     );
+    expect(resolveSpy).toHaveBeenCalledWith("PAYMENT_ERROR_ORDER_CANCELLED", "WHATSAPP", "BUYER", "event-1");
   });
 
   it("pula o WhatsApp sem quebrar quando o atleta não tem telefone cadastrado", async () => {
