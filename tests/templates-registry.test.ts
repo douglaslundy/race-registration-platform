@@ -71,6 +71,14 @@ describe("ALERT_REGISTRY", () => {
       expect(organizerEmail.body).toContain(`{{${v}}}`);
     }
   });
+
+  it("DAILY_SUMMARY_EVENT: existe no registry, com EMAIL e WHATSAPP, e o corpo de fábrica usa nome_evento", () => {
+    const def = ALERT_REGISTRY.DAILY_SUMMARY_EVENT;
+    expect(def).toBeDefined();
+    expect(def.channels).toEqual(["EMAIL", "WHATSAPP"]);
+    expect(def.factoryDefault("EMAIL", "ADMIN").body).toContain("{{nome_evento}}");
+    expect(def.factoryDefault("WHATSAPP", "ADMIN").body).toContain("{{nome_evento}}");
+  });
 });
 
 describe("getAlertDefinition", () => {

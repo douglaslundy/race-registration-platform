@@ -9,6 +9,7 @@ export type AlertKey =
   | "RECONCILIATION_MISMATCH"
   | "CANCELLATION_REQUESTED"
   | "DAILY_SUMMARY"
+  | "DAILY_SUMMARY_EVENT"
   | "ADVERTISER_REQUEST_PENDING"
   | "ORDER_CONFIRMED"
   | "ORDER_CONFIRMED_PROXY_BUYER"
@@ -204,6 +205,34 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
         ? { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita, {{cupons_usados}} cupons usados. Veja mais em {{link_plataforma}}/organizador.` }
         : { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita bruta, {{novos_usuarios}} novos usuários, {{eventos_criados}} eventos criados. Veja mais em {{link_plataforma}}/admin.` };
     },
+  },
+
+  DAILY_SUMMARY_EVENT: {
+    alertKey: "DAILY_SUMMARY_EVENT",
+    description: "Resumo diário de um evento específico — enviado só pros contatos cadastrados na tela de edição do evento.",
+    channels: ["EMAIL", "WHATSAPP"],
+    recipientRoles: ["ADMIN"],
+    variables: ["data_resumo", "nome_evento", "inscricoes_pagas", "receita_evento", "cupons_usados", "cancelamentos_solicitados", "vagas_restantes"],
+    factoryDefault: (channel) =>
+      channel === "EMAIL"
+        ? {
+            subject: "Resumo diário — {{nome_evento}} — {{data_resumo}}",
+            body:
+              `<p>Olá,</p>\n` +
+              `<p>Resumo de <strong>{{nome_evento}}</strong> em <strong>{{data_resumo}}</strong>:</p>\n` +
+              `<table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">\n` +
+              `  <tbody>\n` +
+              `    <tr><td>Inscrições pagas</td><td><strong>{{inscricoes_pagas}}</strong></td></tr>\n` +
+              `    <tr><td>Receita</td><td><strong>{{receita_evento}}</strong></td></tr>\n` +
+              `    <tr><td>Cupons usados</td><td><strong>{{cupons_usados}}</strong></td></tr>\n` +
+              `    <tr><td>Cancelamentos solicitados</td><td><strong>{{cancelamentos_solicitados}}</strong></td></tr>\n` +
+              `    <tr><td>Vagas restantes</td><td><strong>{{vagas_restantes}}</strong></td></tr>\n` +
+              `  </tbody>\n` +
+              `</table>`,
+          }
+        : {
+            body: `Resumo de {{nome_evento}} ({{data_resumo}}): {{inscricoes_pagas}} inscrições pagas, {{receita_evento}} em receita, {{cupons_usados}} cupons usados, {{cancelamentos_solicitados}} cancelamentos solicitados, {{vagas_restantes}} vagas restantes.`,
+          },
   },
 
   ADVERTISER_REQUEST_PENDING: {

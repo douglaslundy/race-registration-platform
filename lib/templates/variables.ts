@@ -91,6 +91,9 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "cancelamentos_estornos", label: "Cancelamentos/estornos", category: "Plataforma", description: "Cancelamentos solicitados + pagamentos estornados/chargeback no período. Só disponível no resumo diário do administrador.", sample: "2" },
   { name: "cancelamentos_solicitados", label: "Cancelamentos solicitados", category: "Plataforma", description: "Cancelamentos solicitados no período. Disponível no resumo diário do organizador e no resumo diário por evento.", sample: "1" },
   { name: "lotes_esgotados", label: "Lotes esgotados", category: "Plataforma", description: "Lotes que esgotaram no período. Só disponível no resumo diário do organizador.", sample: "1" },
+  { name: "inscricoes_pagas", label: "Inscrições pagas (evento)", category: "Evento", description: "Inscrições pagas no dia, só deste evento. Só disponível no resumo diário por evento.", sample: "4" },
+  { name: "receita_evento", label: "Receita do evento", category: "Evento", description: "Receita bruta do evento no dia, formatada em R$. Só disponível no resumo diário por evento.", sample: "R$ 360,00" },
+  { name: "vagas_restantes", label: "Vagas restantes", category: "Evento", description: "Soma de (capacidade - vendidas) dos lotes ativos do evento. Só disponível no resumo diário por evento.", sample: "56" },
 
   // Linha de divergência (rowVariables do alerta de conciliação)
   { name: "evento", label: "Evento (linha de divergência)", category: "Conciliação", description: "Event.title da divergência. Só disponível no template de cada linha do alerta de conciliação.", sample: "Corrida Exemplo 5k" },
