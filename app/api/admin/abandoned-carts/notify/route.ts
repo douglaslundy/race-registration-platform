@@ -8,7 +8,7 @@ import { buildAbandonedCartWhere } from "@/lib/alerts/abandoned-cart-query";
 const ORDER_SELECT = {
   id: true,
   buyerUserId: true,
-  event: { select: { title: true } },
+  event: { select: { id: true, title: true } },
   buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
 } as const;
 

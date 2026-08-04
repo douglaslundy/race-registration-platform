@@ -26,13 +26,14 @@ import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, recordAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import * as resolveModule from "@/lib/templates/resolve";
 
 const dbMock = db as any;
 
 const orderFixture = {
   id: "order-1",
   buyerUserId: "athlete-1",
-  event: { title: "Corrida Teste" },
+  event: { id: "event-1", title: "Corrida Teste" },
   buyer: { name: "Atleta", email: "atleta@example.com", athleteProfile: { phone: "5511988888888" } },
 };
 
@@ -79,7 +80,7 @@ describe("checkAbandonedCarts", () => {
     );
     expect(claimAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
     expect(sendAbandonedCartEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),
+      expect.objectContaining({ to: "atleta@example.com", orderId: "order-1", eventId: "event-1" }),
     );
     expect(result).toEqual({ checked: 1, notified: 1 });
   });
@@ -151,12 +152,14 @@ describe("sendAbandonedCartAlert", () => {
 
     expect(claimAlert).not.toHaveBeenCalled();
     expect(sendAbandonedCartEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta@example.com", orderId: "order-1" }),
+      expect.objectContaining({ to: "atleta@example.com", orderId: "order-1", eventId: "event-1" }),
     );
     expect(result).toEqual({ sent: true });
   });
 
   it("com bypassDedupe, envia WhatsApp mesmo se um alerta automático já tiver sido enviado antes", async () => {
+    const resolveSpy = vi.spyOn(resolveModule, "getEffectiveTemplate");
+
     const result = await sendAbandonedCartAlert(
       orderFixture,
       { emailEnabled: false, whatsappEnabled: true },
@@ -165,6 +168,7 @@ describe("sendAbandonedCartAlert", () => {
 
     expect(claimAlert).not.toHaveBeenCalled();
     expect(sendWhatsAppMessage).toHaveBeenCalled();
+    expect(resolveSpy).toHaveBeenCalledWith("ABANDONED_CART", "WHATSAPP", "BUYER", "event-1");
     expect(result).toEqual({ sent: true });
   });
 

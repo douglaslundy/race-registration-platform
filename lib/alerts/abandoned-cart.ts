@@ -12,7 +12,7 @@ const ALERT_TYPE = "ABANDONED_CART";
 export interface AbandonedOrder {
   id: string;
   buyerUserId: string;
-  event: { title: string };
+  event: { id: string; title: string };
   buyer: { name: string; email: string; athleteProfile: { phone: string | null } | null };
 }
 
@@ -35,6 +35,7 @@ export async function sendAbandonedCartAlert(
             name: order.buyer.name,
             eventTitle: order.event.title,
             orderId: order.id,
+            eventId: order.event.id,
           });
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "EMAIL");
           sentSomething = true;
@@ -48,7 +49,7 @@ export async function sendAbandonedCartAlert(
     if (settings.whatsappEnabled && order.buyer.athleteProfile?.phone) {
       if (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP"))) {
         try {
-          const template = await getEffectiveTemplate("ABANDONED_CART", "WHATSAPP", "BUYER");
+          const template = await getEffectiveTemplate("ABANDONED_CART", "WHATSAPP", "BUYER", order.event.id);
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
           const text = renderTemplate(
             template.body,
@@ -101,7 +102,7 @@ export async function checkAbandonedCarts(): Promise<{ checked: number; notified
     select: {
       id: true,
       buyerUserId: true,
-      event: { select: { title: true } },
+      event: { select: { id: true, title: true } },
       buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
     },
   });
