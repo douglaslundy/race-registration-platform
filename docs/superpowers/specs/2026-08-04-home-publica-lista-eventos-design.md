@@ -38,9 +38,15 @@ que convida a visitar `/eventos`.
 
 - `/eventos` continua idêntico: mesmos filtros, paginação, banner, 3 posições de anúncio
   (`EVENTOS_ABAIXO_BANNER`, `EVENTOS_COLUNA_ESQUERDA`, `EVENTOS_ENTRE_RESULTADOS`), `OrganizerCTA`.
-- Nenhuma migração de schema — `AdSlot.position` já é uma string livre (`AdSlotRenderer`'s prop
-  `position: string`, sem enum), as 2 posições novas só precisam ser configuradas em
-  `/admin/anuncios` depois do deploy, mesmo fluxo já usado pra criar qualquer `AdSlot` hoje.
+- Nenhuma migração de **schema** — a tabela `AdSlot` já existe com todas as colunas necessárias.
+  **Correção após investigação (não havia flow de criação pelo admin como o design original
+  supunha):** `AdSlot` não tem uma tela de "criar novo slot" — `/admin/anuncios` só lista e
+  configura slots que já existem (`lib/ad-slots.ts::listAdSlots`/`updateAdSlot`, sem `create`). Os 5
+  slots atuais (`EVENTOS_ABAIXO_BANNER` etc.) foram inseridos uma única vez via `INSERT INTO
+  "ad_slots"` manual contra produção (mesmo padrão manual já usado pro seed de `MessageTemplate`
+  nesta sessão). As 2 posições novas da home seguem o mesmo caminho: 2 linhas de `INSERT` a rodar
+  manualmente contra produção depois do deploy — documentado no plano de implementação, não
+  automático.
 - Nenhum campo novo no `Event` — a seleção dos eventos da prévia é 100% derivada (próximos por
   data), sem curadoria manual, sem tela de admin nova.
 - Sem JSON-LD novo para os eventos listados na home — a home já emite `Organization` JSON-LD hoje;
