@@ -23,6 +23,7 @@ export async function checkLowStockAlert(ticketBatchId: string): Promise<void> {
         soldCount: true,
         event: {
           select: {
+            id: true,
             title: true,
             organizer: {
               select: { phone: true, user: { select: { name: true, email: true } } },
@@ -50,6 +51,7 @@ export async function checkLowStockAlert(ticketBatchId: string): Promise<void> {
             batchName: batch.name,
             soldCount: batch.soldCount,
             capacity: batch.capacity,
+            eventId: batch.event.id,
           });
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, ticketBatchId, "EMAIL");
@@ -61,7 +63,7 @@ export async function checkLowStockAlert(ticketBatchId: string): Promise<void> {
     if (settings.whatsappEnabled && organizer.phone) {
       if (await claimAlert(ALERT_TYPE, "TicketBatch", ticketBatchId, "WHATSAPP")) {
         try {
-          const template = await getEffectiveTemplate("LOW_STOCK", "WHATSAPP", "ORGANIZER");
+          const template = await getEffectiveTemplate("LOW_STOCK", "WHATSAPP", "ORGANIZER", batch.event.id);
           const percent = Math.round((batch.soldCount / batch.capacity) * 100);
           const text = renderTemplate(template.body, {
             nome_organizador: organizer.user.name,

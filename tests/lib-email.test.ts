@@ -131,9 +131,9 @@ describe("sendLowStockEmail", () => {
     });
 
     const { sendLowStockEmail: importedFunc } = await import("@/lib/email");
-    await importedFunc({ to: "org@example.com", organizerName: "Org", eventTitle: "Corrida X", batchName: "Lote 1", soldCount: 95, capacity: 100 });
+    await importedFunc({ to: "org@example.com", organizerName: "Org", eventTitle: "Corrida X", batchName: "Lote 1", soldCount: 95, capacity: 100, eventId: "event-1" });
 
-    expect(getEffectiveTemplate).toHaveBeenCalledWith("LOW_STOCK", "EMAIL", "ORGANIZER");
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("LOW_STOCK", "EMAIL", "ORGANIZER", "event-1");
     expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({
       to: "org@example.com",
     }));

@@ -182,6 +182,7 @@ export async function sendLowStockEmail(params: {
   batchName: string;
   soldCount: number;
   capacity: number;
+  eventId?: string;
 }): Promise<void> {
   const appName = await getAppName();
   const percent = Math.round((params.soldCount / params.capacity) * 100);
@@ -193,7 +194,7 @@ export async function sendLowStockEmail(params: {
     capacidade_lote: String(params.capacity),
     percentual_vendido: String(percent),
   };
-  const template = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER");
+  const template = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({ to: params.to, subject, html: layout(appName, body) });

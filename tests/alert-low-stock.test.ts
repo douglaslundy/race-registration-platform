@@ -25,6 +25,7 @@ import { sendLowStockEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getLowStockAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import * as resolveModule from "@/lib/templates/resolve";
 
 const dbMock = db as any;
 
@@ -34,6 +35,7 @@ const batchFixture = {
   capacity: 100,
   soldCount: 95,
   event: {
+    id: "event-1",
     title: "Corrida Teste",
     organizer: {
       phone: "5511999999999",
@@ -75,7 +77,7 @@ describe("checkLowStockAlert", () => {
 
     expect(claimAlert).toHaveBeenCalledWith("LOW_STOCK", "TicketBatch", "batch-1", "EMAIL");
     expect(sendLowStockEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "organizador@example.com", soldCount: 95, capacity: 100 }),
+      expect.objectContaining({ to: "organizador@example.com", soldCount: 95, capacity: 100, eventId: "event-1" }),
     );
   });
 
@@ -100,6 +102,7 @@ describe("checkLowStockAlert", () => {
   });
 
   it("envia WhatsApp quando habilitado e o organizador tem telefone", async () => {
+    const resolveSpy = vi.spyOn(resolveModule, "getEffectiveTemplate");
     vi.mocked(getLowStockAlertSettings).mockResolvedValue({ emailEnabled: false, whatsappEnabled: true, thresholdPercent: 90 });
     dbMock.ticketBatch.findUnique.mockResolvedValueOnce(batchFixture);
 
@@ -107,6 +110,7 @@ describe("checkLowStockAlert", () => {
 
     expect(claimAlert).toHaveBeenCalledWith("LOW_STOCK", "TicketBatch", "batch-1", "WHATSAPP");
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(resolveSpy).toHaveBeenCalledWith("LOW_STOCK", "WHATSAPP", "ORGANIZER", "event-1");
   });
 
   it("pula o WhatsApp sem quebrar quando o organizador não tem telefone cadastrado", async () => {
