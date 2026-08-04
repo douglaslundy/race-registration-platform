@@ -26,6 +26,7 @@ export default async function EditMessageTemplatePage({
   });
   const def = getAlertDefinition(template.alertKey);
   const variables = getVariablesByNames(def?.variables ?? []);
+  const rowVariables = def?.rowVariables ? getVariablesByNames(def.rowVariables) : undefined;
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
@@ -34,9 +35,11 @@ export default async function EditMessageTemplatePage({
         templateId={template.id}
         initialSubject={template.subject}
         initialBody={template.body}
+        initialRowTemplate={template.rowTemplate}
         initialActive={template.active}
         channel={template.channel as "EMAIL" | "WHATSAPP"}
         variables={variables}
+        rowVariables={rowVariables}
         versions={versions.map((v) => ({
           id: v.id,
           subject: v.subject,

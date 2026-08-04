@@ -23,21 +23,26 @@ export default function MessageTemplateEditor({
   templateId,
   initialSubject,
   initialBody,
+  initialRowTemplate,
   initialActive,
   channel,
   variables,
+  rowVariables,
   versions,
 }: {
   templateId: string;
   initialSubject: string | null;
   initialBody: string;
+  initialRowTemplate?: string | null;
   initialActive: boolean;
   channel: "EMAIL" | "WHATSAPP";
   variables: VariableDef[];
+  rowVariables?: VariableDef[];
   versions: VersionRow[];
 }) {
   const [subject, setSubject] = useState(initialSubject ?? "");
   const [body, setBody] = useState(initialBody);
+  const [rowTemplate, setRowTemplate] = useState(initialRowTemplate ?? "");
   const [active, setActive] = useState(initialActive);
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState<{ subject?: string; body: string } | null>(null);
@@ -64,6 +69,7 @@ export default function MessageTemplateEditor({
       body: JSON.stringify({
         subject: channel === "EMAIL" ? subject : undefined,
         body,
+        ...(rowVariables && rowVariables.length > 0 ? { rowTemplate } : {}),
         active,
       }),
     });
@@ -150,6 +156,20 @@ export default function MessageTemplateEditor({
             className="input-field font-mono text-sm"
           />
         </div>
+        {rowVariables && rowVariables.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Template de cada linha</label>
+            <textarea
+              value={rowTemplate}
+              onChange={(e) => setRowTemplate(e.target.value)}
+              rows={3}
+              className="input-field font-mono text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Aplicado a cada item da lista (ex.: cada divergência de conciliação), repetido automaticamente pelo sistema.
+            </p>
+          </div>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -244,6 +264,19 @@ export default function MessageTemplateEditor({
             </ul>
           </div>
         ))}
+        {rowVariables && rowVariables.length > 0 && (
+          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mt-2">Variáveis do template de cada linha</h3>
+            <ul className="space-y-1 mt-1">
+              {rowVariables.map((v) => (
+                <li key={v.name} className="text-sm">
+                  <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{`{{${v.name}}}`}</code>{" "}
+                  <span className="text-gray-500">{v.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <ErrorModal message={error} onClose={() => setError(null)} />
