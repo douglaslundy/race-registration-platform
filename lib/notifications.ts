@@ -169,6 +169,7 @@ export async function notifyOrderConfirmed(
               notes: registration.notes ?? undefined,
               alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
               recipientRole: "ATHLETE",
+              buyerName: order.buyer.name,
             });
             if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
           }
@@ -184,6 +185,7 @@ export async function notifyOrderConfirmed(
       "ORDER_CONFIRMED_PROXY_ATHLETE",
       "ATHLETE",
       {
+        nome_atleta: registration.proxyAthleteDisplayName ?? registration.athlete.name,
         nome_comprador: order.buyer.name,
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,

@@ -376,6 +376,25 @@ describe("notifyOrderConfirmed", () => {
         { relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
+
+    it("preenche nome_atleta quando um template customizado da procuração usa essa variável (não fica em branco)", async () => {
+      dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
+      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+      vi.mocked(getConnectionState).mockResolvedValue("open");
+      dbMock.messageTemplate.findFirst.mockImplementation(async ({ where }: any) =>
+        where.alertKey === "ORDER_CONFIRMED_PROXY_ATHLETE"
+          ? { subject: null, body: "Oi {{nome_atleta}}, {{nome_comprador}} te inscreveu!" }
+          : null,
+      );
+
+      await notifyOrderConfirmed("order-1");
+
+      expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+        "5511888888888",
+        "Oi Nome Digitado Pelo Comprador, Comprador Teste te inscreveu!",
+        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+      );
+    });
   });
 
   it("bypassDedupe grava recordAlert (upsert em AlertLog) mesmo ignorando a reivindicação", async () => {

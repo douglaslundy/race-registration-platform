@@ -349,6 +349,29 @@ describe("sendRegistrationConfirmationEmail", () => {
     expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED_PROXY_ATHLETE", "EMAIL", "ATHLETE");
   });
 
+  it("preenche nome_comprador quando um template customizado da procuração usa essa variável (não fica em branco)", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}, {{nome_comprador}} te inscreveu</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta-convidado@example.com",
+      name: "João",
+      registrationId: "reg-2",
+      orderId: "order-2",
+      eventTitle: "Corrida Y",
+      alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
+      recipientRole: "ATHLETE",
+      buyerName: "Comprador Teste",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Olá João, Comprador Teste te inscreveu");
+  });
+
   it("com o template de fábrica do registry (mesmo texto do hardcoded anterior), assunto e corpo renderizam idênticos ao hardcoded anterior", async () => {
     sendMailMock.mockResolvedValueOnce({});
     const { getAlertDefinition } = await import("@/lib/templates/registry");

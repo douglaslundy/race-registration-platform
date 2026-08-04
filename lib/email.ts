@@ -110,12 +110,14 @@ export async function sendRegistrationConfirmationEmail(params: {
   notes?: string;
   alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_ATHLETE";
   recipientRole: "BUYER" | "ATHLETE";
+  buyerName?: string;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const url = `${baseUrl}/dashboard/inscricoes/${params.registrationId}`;
   const values = {
     nome_atleta: params.name,
+    nome_comprador: params.buyerName ?? params.name,
     nome_evento: params.eventTitle ?? "",
     codigo_confirmacao: params.orderId,
     link_evento: url,
