@@ -1422,8 +1422,35 @@ anterior de 2 alertas está em produção).
 3. Usuário confirmou: os dois pedidos entram **juntos** num brainstorm só (mesma área de resumo
    diário/tabelas), depois de terminar a migração mecânica (já terminada).
 
+**Revisão final de branch inteira (2026-08-03) achou 1 Crítico + 2 Importantes, todos corrigidos**
+(commits `4cbf04f`/`b75b59b`, re-revisão confirmou tudo endereçado, suíte final 207/1383):
+- **Crítico**: os 25 templates já semeados em produção (leva anterior) têm o texto da FASE 1 — como
+  o banco tem prioridade sobre o registry, as 2 mudanças de texto desta leva (fix do
+  `CANCELLATION_REQUESTED`, conteúdo real do WhatsApp de `DAILY_SUMMARY`) nunca chegariam em
+  produção sem uma sincronização manual. Criada `refreshUnmodifiedTemplatesFromRegistry()`
+  (`lib/templates/seed.ts`) — só re-sincroniza linhas com **zero** histórico de versão (nunca
+  editadas por um admin), nunca sobrescreve customização real.
+- 2 Importantes: mais 4 variáveis declaradas no registry mas nunca preenchidas nos call sites
+  (`PAYMENT_ERROR`/WhatsApp, `RECONCILIATION_MISMATCH`/WhatsApp, `ADVERTISER_REQUEST_PENDING`/
+  WhatsApp, `DAILY_SUMMARY`/WhatsApp nos 2 papéis); `DAILY_SUMMARY` vazava 6 variáveis só-de-WhatsApp
+  pra legenda do editor de e-mail (renderizavam em branco) — `sendDailySummaryEmail` ganhou um
+  parâmetro `metrics` opcional preenchido pelos 4 call sites.
+
+**⚠️ PASSO DE DEPLOY OBRIGATÓRIO, NÃO AUTOMÁTICO** — depois do `git pull`/build/restart de sempre,
+rodar UMA VEZ contra o banco de produção (mesmo padrão manual do seed original — VPS sem
+`tsconfig.json`, precisa registrar `tsconfig-paths` na mão dentro do container, ver a leva anterior
+desta mesma seção pro procedimento exato):
+```
+npx ts-node --compiler-options {"module":"CommonJS"} prisma/refresh-templates.ts
+```
+(script novo, `prisma/refresh-templates.ts` — **não** usar `prisma/seed.ts` inteiro em produção,
+ele também cria uma conta admin de demonstração com senha padrão). Sem esse passo, o fix de
+`CANCELLATION_REQUESTED` e o WhatsApp novo de `DAILY_SUMMARY` ficam mudos em produção mesmo depois
+do deploy.
+
 ## Próxima tarefa
 Brainstorm combinado: template de linha editável (tabelas de `RECONCILIATION_MISMATCH`/
 `DAILY_SUMMARY`) + alerta diário por evento (Etapa 3). Antes disso, perguntar ao usuário sobre
-push/deploy da leva dos 6 alertas + fix (commits `a4d252e..8c827fd`, sem migração de schema nesta
-leva — só a Etapa 2 original teve migração).
+push/deploy da leva dos 6 alertas + fixes (commits `a4d252e..b75b59b`, sem migração de schema nesta
+leva — só a Etapa 2 original teve migração — mas COM o passo obrigatório de
+`prisma/refresh-templates.ts` acima).

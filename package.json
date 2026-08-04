@@ -15,6 +15,7 @@
     "db:generate": "prisma generate",
     "db:seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
     "db:backfill-stuck-card-payments": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/backfill-stuck-card-payments.ts",
+    "db:refresh-templates": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/refresh-templates.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },

@@ -275,7 +275,7 @@ Smoke test: `/`, `/eventos` 200, container sem erros nos logs.
 
 **Rollout 100% concluído (2026-08-03) — os 8 alertas migrados.** Plano
 `docs/superpowers/plans/2026-08-03-migrar-alertas-restantes.md` (Tasks 13-19), via
-`superpowers:subagent-driven-development`, commits `a4d252e..8c827fd`:
+`superpowers:subagent-driven-development`, commits `a4d252e..b75b59b`:
 - Task 13 `a4d252e` — `ADVERTISER_REQUEST_PENDING`.
 - Task 14 `59de47d`+`eee20b9` — `CANCELLATION_REQUESTED`; achou e corrigiu um bug real
   pré-existente no registry (WhatsApp dizia "Justificativa:" sem call-to-action, produção real
@@ -292,10 +292,38 @@ Smoke test: `/`, `/eventos` 200, container sem erros nos logs.
   declarava `nome_atleta`/`nome_comprador` sem os call sites preencherem — inofensivo com o texto
   de fábrica, mas renderizaria em branco se um admin customizasse).
 
-Suíte final 207 arquivos / 1373 testes, `tsc --noEmit` limpo. **Ainda não deployado** — a leva
-anterior (2 alertas) já está em produção; esta leva (6 alertas + 1 fix) está só local, aguardando
+**Revisão final de branch inteira (2026-08-03):** "Ready to merge: With fixes" — 1 Critical + 2
+Important, todos corrigidos numa rodada só (commits `4cbf04f`/`b75b59b`, re-revisão confirmou tudo
+endereçado sem regressão, suíte final 207 arquivos / 1383 testes):
+- **Critical** (o mais sério de toda a Etapa 2): os 25 templates já semeados em produção na leva
+  anterior contêm o texto da FASE 1. Como `resolve.ts` dá prioridade ao banco sobre o registry, e
+  `seedMessageTemplatesFromRegistry()` pula linhas existentes, as 2 mudanças de texto desta leva
+  (fix do `CANCELLATION_REQUESTED`, WhatsApp real de `DAILY_SUMMARY`) **nunca chegariam em
+  produção** sem uma sincronização manual — regredindo silenciosamente o resumo diário por WhatsApp
+  pra um placeholder sem métricas. Corrigido: `refreshUnmodifiedTemplatesFromRegistry()`
+  (`lib/templates/seed.ts`) — só re-sincroniza linhas com **zero** `MessageTemplateVersion` (nunca
+  editadas por um admin desde a criação; qualquer edição real sempre grava uma versão antes de
+  sobrescrever, então zero-versão prova "nunca customizado"), nunca sobrescreve customização real.
+  Script standalone novo `prisma/refresh-templates.ts` (`npm run db:refresh-templates`) — não usa
+  `prisma/seed.ts` inteiro de propósito (cria conta admin de demonstração, não deve rodar em prod).
+- **Important** (×2): mais 4 variáveis declaradas no registry sem preenchimento no call site —
+  mesma classe do achado de `ORDER_CONFIRMED_PROXY_ATHLETE` na Task 18 — em `PAYMENT_ERROR`/
+  WhatsApp, `RECONCILIATION_MISMATCH`/WhatsApp, `ADVERTISER_REQUEST_PENDING`/WhatsApp e
+  `DAILY_SUMMARY`/WhatsApp (2 papéis); e `DAILY_SUMMARY` vazando 6 variáveis só-de-WhatsApp pra
+  legenda do editor de e-mail (`sendDailySummaryEmail` ganhou parâmetro `metrics` opcional,
+  preenchido pelos 4 call sites, compartilhando a mesma extração de métricas que o WhatsApp já usa).
+
+Suíte final 207 arquivos / 1383 testes, `tsc --noEmit` limpo. **Ainda não deployado** — a leva
+anterior (2 alertas) já está em produção; esta leva (6 alertas + fixes) está só local, aguardando
 autorização pra push/deploy (mesmo padrão de sempre — esta vez não perguntado ainda porque o
 usuário interrompeu o meio da leva com dois pedidos novos, ver abaixo).
+
+**⚠️ Passo de deploy obrigatório e não automático desta vez**: além do `git pull`/build/restart de
+sempre (sem migração de schema nesta leva), rodar UMA VEZ contra produção:
+`npx ts-node --compiler-options {"module":"CommonJS"} prisma/refresh-templates.ts` (mesmo
+procedimento manual de `tsconfig-paths` já usado pro seed original, ver seção anterior). Sem isso,
+o fix de `CANCELLATION_REQUESTED` e o WhatsApp novo de `DAILY_SUMMARY` continuam mudos em produção
+mesmo depois do deploy — é a causa raiz do achado Critical acima.
 
 **Pedido novo do usuário no meio da execução (2026-08-03), decisões de sequenciamento fechadas:**
 1. **Templates completamente editáveis** — usuário não aceita a simplificação "tabela continua no
