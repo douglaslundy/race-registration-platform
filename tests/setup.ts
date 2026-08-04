@@ -44,7 +44,7 @@ vi.mock("@/lib/db", () => ({
       create: vi.fn(), update: vi.fn(), upsert: vi.fn(), delete: vi.fn(),
     },
     messageTemplateVersion: {
-      findMany: vi.fn(), create: vi.fn(),
+      findMany: vi.fn(), create: vi.fn(), count: vi.fn(),
     },
     $transaction: vi.fn(async (fn: any) => fn({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },

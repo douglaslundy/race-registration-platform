@@ -111,9 +111,11 @@ async function main() {
     ensurePlatformSetting("legal.privacy_updated", LEGAL_CONTENT_UPDATED_AT),
   ]);
 
-  const { seedMessageTemplatesFromRegistry } = await import("../lib/templates/seed");
+  const { seedMessageTemplatesFromRegistry, refreshUnmodifiedTemplatesFromRegistry } = await import("../lib/templates/seed");
   const templateResult = await seedMessageTemplatesFromRegistry();
   console.log(`✅ Templates de mensagem: ${templateResult.created} criados, ${templateResult.skipped} já existiam`);
+  const refreshResult = await refreshUnmodifiedTemplatesFromRegistry();
+  console.log(`✅ Templates de mensagem: ${refreshResult.refreshed} re-sincronizados com o registry, ${refreshResult.skipped} pulados (customizados ou já em dia)`);
 
   console.log("\n🎉 Seed concluído!");
   console.log("\nTodos os usuários usam senha: 12345678");
