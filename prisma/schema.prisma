@@ -267,6 +267,7 @@ model Event {
   fileAssets    FileAsset[]
   payouts       TransferPayout[]
   messageTemplates MessageTemplate[]
+  dailySummaryRecipients DailySummaryRecipient[]
 
   @@index([status, startAt])
   @@index([city, modality])
@@ -780,10 +781,13 @@ model DailySummaryRecipient {
   name      String
   type      DailySummaryRecipientType
   value     String
+  eventId   String?
   createdAt DateTime                   @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([eventId])
   @@map("daily_summary_recipients")
 }
