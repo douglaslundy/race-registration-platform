@@ -8,7 +8,7 @@ const dbMock = db as any;
 
 describe("getEffectiveTemplate", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("usa o template de evento quando existe e está ativo", async () => {
@@ -21,7 +21,7 @@ describe("getEffectiveTemplate", () => {
     expect(result).toEqual({ subject: "Assunto do evento", body: "Corpo do evento", source: "event" });
     expect(dbMock.messageTemplate.findFirst).toHaveBeenCalledWith({
       where: { alertKey: "LOW_STOCK", channel: "EMAIL", recipientRole: "ORGANIZER", scope: "EVENT", eventId: "event-1", active: true },
-      select: { subject: true, body: true },
+      select: { subject: true, body: true, rowTemplate: true },
     });
   });
 
@@ -60,7 +60,7 @@ describe("getEffectiveTemplate", () => {
     expect(dbMock.messageTemplate.findFirst).toHaveBeenCalledTimes(1);
     expect(dbMock.messageTemplate.findFirst).toHaveBeenCalledWith({
       where: { alertKey: "LOW_STOCK", channel: "EMAIL", recipientRole: "ORGANIZER", scope: "GLOBAL", eventId: null, active: true },
-      select: { subject: true, body: true },
+      select: { subject: true, body: true, rowTemplate: true },
     });
   });
 
@@ -81,5 +81,24 @@ describe("getEffectiveTemplate", () => {
     const result = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER");
 
     expect(result).toEqual({ subject: undefined, body: "", source: "factory" });
+  });
+
+  it("quando o alertKey tem rowTemplate no registry e a linha do banco não tem um customizado, usa o de fábrica", async () => {
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({ subject: "S", body: "B", rowTemplate: null });
+
+    const result = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
+
+    const factory = registry.ALERT_REGISTRY.RECONCILIATION_MISMATCH.rowTemplate!("EMAIL");
+    expect(result.rowTemplate).toBe(factory);
+  });
+
+  it("quando a linha do banco já tem um rowTemplate customizado, usa ele em vez do de fábrica", async () => {
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
+      subject: "S", body: "B", rowTemplate: "<tr><td>{{evento}}</td></tr>",
+    });
+
+    const result = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
+
+    expect(result.rowTemplate).toBe("<tr><td>{{evento}}</td></tr>");
   });
 });

@@ -91,6 +91,13 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "cancelamentos_estornos", label: "Cancelamentos/estornos", category: "Plataforma", description: "Cancelamentos solicitados + pagamentos estornados/chargeback no período. Só disponível no resumo diário do administrador.", sample: "2" },
   { name: "cancelamentos_solicitados", label: "Cancelamentos solicitados", category: "Plataforma", description: "Cancelamentos solicitados no período. Disponível no resumo diário do organizador e no resumo diário por evento.", sample: "1" },
   { name: "lotes_esgotados", label: "Lotes esgotados", category: "Plataforma", description: "Lotes que esgotaram no período. Só disponível no resumo diário do organizador.", sample: "1" },
+
+  // Linha de divergência (rowVariables do alerta de conciliação)
+  { name: "evento", label: "Evento (linha de divergência)", category: "Conciliação", description: "Event.title da divergência. Só disponível no template de cada linha do alerta de conciliação.", sample: "Corrida Exemplo 5k" },
+  { name: "pedido", label: "Pedido (linha de divergência)", category: "Conciliação", description: "Order.id da divergência. Só disponível no template de cada linha do alerta de conciliação.", sample: "ord_exemplo123" },
+  { name: "status_local", label: "Status local (linha de divergência)", category: "Conciliação", description: "Status do pagamento no banco local antes da correção. Só disponível no template de cada linha do alerta de conciliação.", sample: "PENDING" },
+  { name: "status_gateway", label: "Status no gateway (linha de divergência)", category: "Conciliação", description: "Status do pagamento no gateway. Só disponível no template de cada linha do alerta de conciliação.", sample: "PAID" },
+  { name: "situacao", label: "Situação (linha de divergência)", category: "Conciliação", description: "'Corrigido automaticamente' ou 'Requer verificação manual'. Só disponível no template de cada linha do alerta de conciliação.", sample: "Corrigido automaticamente" },
 ];
 
 export function getVariablesByNames(names: string[]): VariableDefinition[] {

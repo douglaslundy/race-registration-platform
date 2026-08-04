@@ -21,6 +21,12 @@ export interface AlertTemplateDefinition {
   recipientRoles: RecipientRole[];
   variables: string[];
   factoryDefault: (channel: AlertChannel, recipientRole: string) => { subject?: string; body: string };
+  /** Só pra alertas com uma lista de tamanho variável (hoje: RECONCILIATION_MISMATCH) — aplicado
+   * pelo código a cada item da lista, editável pelo admin. */
+  rowTemplate?: (channel: AlertChannel) => string;
+  /** Variáveis válidas dentro do rowTemplate — subconjunto SEPARADO de `variables`, nunca misturado
+   * na mesma validação (ver validateTemplateVariables em cada call site). */
+  rowVariables?: string[];
 }
 
 export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
@@ -97,7 +103,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
 
   RECONCILIATION_MISMATCH: {
     alertKey: "RECONCILIATION_MISMATCH",
-    description: "Divergência de conciliação — avisa todos os admins quando o cron encontra pagamentos pendentes divergentes do gateway. Subject e introdução são editáveis; a tabela de divergências individuais continua gerada pelo código (mesmo padrão do resumo diário, fora do escopo de variáveis desta etapa).",
+    description: "Divergência de conciliação — avisa todos os admins quando o cron encontra pagamentos pendentes divergentes do gateway. 100% editável, incluindo o texto de cada linha da lista de divergências.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ADMIN"],
     variables: ["total_divergencias", "divergencias_corrigidas", "divergencias_manuais"],
@@ -115,6 +121,11 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
         : {
             body: `Conciliação de pagamentos: {{divergencias_corrigidas}} corrigida(s) automaticamente, {{divergencias_manuais}} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`,
           },
+    rowTemplate: (channel) =>
+      channel === "EMAIL"
+        ? `<tr><td>{{evento}}</td><td>{{pedido}}</td><td>{{status_local}}</td><td>{{status_gateway}}</td><td>{{situacao}}</td></tr>`
+        : `{{evento}} — Pedido {{pedido}}: {{situacao}}`,
+    rowVariables: ["evento", "pedido", "status_local", "status_gateway", "situacao"],
   },
 
   CANCELLATION_REQUESTED: {
