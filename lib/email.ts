@@ -464,3 +464,16 @@ export async function sendDailySummaryEmail(params: {
   const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }
+
+/** E-mail com o resumo diário de UM evento específico, enviado aos contatos cadastrados na tela de
+ * edição do evento (não confundir com sendDailySummaryEmail, que é o agregado admin/organizador). */
+export async function sendEventDailySummaryEmail(params: {
+  to: string;
+  values: Record<string, string>;
+}): Promise<void> {
+  const appName = await getAppName();
+  const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "EMAIL", "ADMIN");
+  const subject = renderTemplateSubject(template.subject ?? "", params.values);
+  const body = renderTemplate(template.body, params.values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+}

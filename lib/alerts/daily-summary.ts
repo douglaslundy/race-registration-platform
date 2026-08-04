@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
-import { sendDailySummaryEmail } from "@/lib/email";
+import { sendDailySummaryEmail, sendEventDailySummaryEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { formatCurrency } from "@/lib/format";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
@@ -9,12 +9,16 @@ import { claimAlert, unclaimAlert } from "./dedupe";
 import {
   getAdminDailySummary,
   getOrganizerDailySummary,
+  getEventDailySummary,
   type AdminDailySummary,
   type OrganizerDailySummary,
+  type EventDailySummary,
 } from "./daily-summary-metrics";
 
 const ALERT_TYPE = "DAILY_SUMMARY";
 const ENTITY_TYPE = "DailySummary";
+const ALERT_TYPE_EVENT = "DAILY_SUMMARY_EVENT";
+const ENTITY_TYPE_EVENT = "DailySummaryEvent";
 
 /**
  * "Ontem" no horário de Brasília, expresso como uma janela UTC. O Brasil não observa
@@ -142,7 +146,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
       }
 
       const extraRecipients = await db.dailySummaryRecipient.findMany({
-        where: { userId: admin.id },
+        where: { userId: admin.id, eventId: null },
         select: { id: true, name: true, type: true, value: true },
       });
 
@@ -252,7 +256,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
       }
 
       const extraRecipients = await db.dailySummaryRecipient.findMany({
-        where: { userId: organizer.id },
+        where: { userId: organizer.id, eventId: null },
         select: { id: true, name: true, type: true, value: true },
       });
 
@@ -295,6 +299,96 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
     }
   } catch (err) {
     console.error("[sendOrganizerDailySummaries] failed:", err);
+  }
+  return { sent, failed };
+}
+
+function buildEventMetricsValues(m: EventDailySummary, eventTitle: string, dateLabel: string): Record<string, string> {
+  return {
+    data_resumo: dateLabel,
+    nome_evento: eventTitle,
+    inscricoes_pagas: String(m.paidRegistrationsCount),
+    receita_evento: formatCurrency(m.grossRevenue),
+    cupons_usados: String(m.couponsUsedCount),
+    cancelamentos_solicitados: String(m.cancellationsRequestedCount),
+    vagas_restantes: String(m.vagasRestantes),
+  };
+}
+
+async function buildEventWhatsAppText(values: Record<string, string>): Promise<string> {
+  const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "WHATSAPP", "ADMIN");
+  return renderTemplate(template.body, values, "WHATSAPP");
+}
+
+export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+  try {
+    const recipients = await db.dailySummaryRecipient.findMany({
+      where: { eventId: { not: null } },
+      select: { id: true, name: true, type: true, value: true, eventId: true },
+    });
+    if (recipients.length === 0) return { sent, failed };
+
+    const eventIds = [...new Set(recipients.map((r) => r.eventId as string))];
+    const events = await db.event.findMany({ where: { id: { in: eventIds } }, select: { id: true, title: true } });
+    const eventTitleMap = new Map(events.map((e) => [e.id, e.title]));
+
+    const cfg = await getSmtpConfig();
+    const smtpReady = isSmtpReady(cfg);
+    const key = dateKey(dayStart);
+    const dateLabel = formatDateLabel(dayStart);
+
+    // Calcula a métrica UMA vez por evento (não uma vez por contato) — vários contatos do mesmo
+    // evento reaproveitam o mesmo resultado.
+    const metricsCache = new Map<string, EventDailySummary>();
+    for (const eventId of eventIds) {
+      try {
+        metricsCache.set(eventId, await getEventDailySummary(eventId, dayStart, dayEnd));
+      } catch (err) {
+        console.error("[sendEventDailySummaries] failed to compute metrics for event", eventId, err);
+      }
+    }
+
+    for (const recipient of recipients) {
+      const eventId = recipient.eventId as string;
+      const metrics = metricsCache.get(eventId);
+      if (!metrics) {
+        failed++;
+        continue;
+      }
+      const eventTitle = eventTitleMap.get(eventId) ?? "Evento removido";
+      const values = buildEventMetricsValues(metrics, eventTitle, dateLabel);
+      const entityId = `${key}:recipient:${recipient.id}`;
+
+      if (recipient.type === "EMAIL" && smtpReady) {
+        try {
+          if (await claimAlert(ALERT_TYPE_EVENT, ENTITY_TYPE_EVENT, entityId, "EMAIL")) {
+            await sendEventDailySummaryEmail({ to: recipient.value, values });
+            sent++;
+          }
+        } catch (err) {
+          failed++;
+          await unclaimAlert(ALERT_TYPE_EVENT, entityId, "EMAIL");
+          console.error("[sendEventDailySummaries] failed for", recipient.name, err);
+        }
+      }
+
+      if (recipient.type === "WHATSAPP") {
+        try {
+          if (await claimAlert(ALERT_TYPE_EVENT, ENTITY_TYPE_EVENT, entityId, "WHATSAPP")) {
+            await sendWhatsAppMessage(recipient.value, await buildEventWhatsAppText(values));
+            sent++;
+          }
+        } catch (err) {
+          failed++;
+          await unclaimAlert(ALERT_TYPE_EVENT, entityId, "WHATSAPP");
+          console.error("[sendEventDailySummaries] failed for", recipient.name, err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[sendEventDailySummaries] failed:", err);
   }
   return { sent, failed };
 }

@@ -7,6 +7,7 @@ vi.mock("@/lib/smtp-settings", () => ({
 }));
 vi.mock("@/lib/email", () => ({
   sendDailySummaryEmail: vi.fn(),
+  sendEventDailySummaryEmail: vi.fn(),
 }));
 vi.mock("@/lib/whatsapp", () => ({
   sendWhatsAppMessage: vi.fn(),
@@ -18,18 +19,20 @@ vi.mock("@/lib/alerts/dedupe", () => ({
 vi.mock("@/lib/alerts/daily-summary-metrics", () => ({
   getAdminDailySummary: vi.fn(),
   getOrganizerDailySummary: vi.fn(),
+  getEventDailySummary: vi.fn(),
 }));
 
 import {
   getYesterdayBrasiliaWindow,
   sendAdminDailySummaries,
   sendOrganizerDailySummaries,
+  sendEventDailySummaries,
 } from "@/lib/alerts/daily-summary";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
-import { sendDailySummaryEmail } from "@/lib/email";
+import { sendDailySummaryEmail, sendEventDailySummaryEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { claimAlert, unclaimAlert } from "@/lib/alerts/dedupe";
-import { getAdminDailySummary, getOrganizerDailySummary } from "@/lib/alerts/daily-summary-metrics";
+import { getAdminDailySummary, getOrganizerDailySummary, getEventDailySummary } from "@/lib/alerts/daily-summary-metrics";
 import { formatCurrency } from "@/lib/format";
 
 const dbMock = db as any;
@@ -203,7 +206,7 @@ describe("sendAdminDailySummaries", () => {
     const result = await sendAdminDailySummaries(dayStart, dayEnd);
 
     expect(dbMock.dailySummaryRecipient.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "admin-1" } }),
+      expect.objectContaining({ where: { userId: "admin-1", eventId: null } }),
     );
     expect(sendDailySummaryEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "maria@example.com", role: "ADMIN" }),
@@ -421,7 +424,7 @@ describe("sendOrganizerDailySummaries", () => {
     const result = await sendOrganizerDailySummaries(dayStart, dayEnd);
 
     expect(dbMock.dailySummaryRecipient.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "org-user-1" } }),
+      expect.objectContaining({ where: { userId: "org-user-1", eventId: null } }),
     );
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("21988887777", expect.any(String));
     expect(result).toEqual({ sent: 1, failed: 0 });
@@ -467,5 +470,86 @@ describe("sendOrganizerDailySummaries", () => {
       "5511988888888",
       "Resumo de 12/07/2026 para organizador: 4 inscrições.",
     );
+  });
+});
+
+describe("sendAdminDailySummaries — não inclui destinatários de resumo por evento", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+    vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
+    vi.mocked(claimAlert).mockResolvedValue(true);
+    vi.mocked(getAdminDailySummary).mockResolvedValue(adminMetricsFixture);
+  });
+
+  it("filtra destinatários extras por eventId: null — um contato de resumo por evento não recebe o agregado", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "admin-1", email: "admin1@example.com", phone: null, dailySummaryEmailEnabled: false, dailySummaryWhatsappEnabled: false },
+    ]);
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([]);
+
+    await sendAdminDailySummaries(dayStart, dayEnd);
+
+    expect(dbMock.dailySummaryRecipient.findMany).toHaveBeenCalledWith({
+      where: { userId: "admin-1", eventId: null },
+      select: { id: true, name: true, type: true, value: true },
+    });
+  });
+});
+
+describe("sendEventDailySummaries", () => {
+  const eventMetricsFixture = {
+    paidRegistrationsCount: 4,
+    grossRevenue: 40000,
+    couponsUsedCount: 1,
+    cancellationsRequestedCount: 0,
+    vagasRestantes: 20,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+    vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
+    vi.mocked(claimAlert).mockResolvedValue(true);
+    vi.mocked(getEventDailySummary).mockResolvedValue(eventMetricsFixture);
+  });
+
+  it("não faz nada quando não há contatos de resumo por evento cadastrados", async () => {
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([]);
+
+    const result = await sendEventDailySummaries(dayStart, dayEnd);
+
+    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(sendEventDailySummaryEmail).not.toHaveBeenCalled();
+  });
+
+  it("calcula as métricas do evento uma única vez, mesmo com 2 contatos do mesmo evento", async () => {
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([
+      { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
+      { id: "r2", name: "João", type: "WHATSAPP", value: "5511999999999", eventId: "event-1" },
+    ]);
+    dbMock.event.findMany.mockResolvedValueOnce([{ id: "event-1", title: "Corrida X" }]);
+
+    const result = await sendEventDailySummaries(dayStart, dayEnd);
+
+    expect(getEventDailySummary).toHaveBeenCalledTimes(1);
+    expect(sendEventDailySummaryEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "maria@example.com", values: expect.objectContaining({ nome_evento: "Corrida X" }) }),
+    );
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(result).toEqual({ sent: 2, failed: 0 });
+  });
+
+  it("não reenvia quando o dia já foi reivindicado (dedupe por contato)", async () => {
+    vi.mocked(claimAlert).mockResolvedValue(false);
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([
+      { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
+    ]);
+    dbMock.event.findMany.mockResolvedValueOnce([{ id: "event-1", title: "Corrida X" }]);
+
+    const result = await sendEventDailySummaries(dayStart, dayEnd);
+
+    expect(sendEventDailySummaryEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ sent: 0, failed: 0 });
   });
 });
