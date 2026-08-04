@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { getVariablesByNames } from "@/lib/templates/variables";
-import { getAlertDefinition } from "@/lib/templates/registry";
+import { getAlertDefinition, type AlertChannel } from "@/lib/templates/registry";
 import MessageTemplateEditor from "@/components/admin/MessageTemplateEditor";
 import type { Metadata } from "next";
 
@@ -28,6 +28,12 @@ export default async function EditMessageTemplatePage({
   const variables = getVariablesByNames(def?.variables ?? []);
   const rowVariables = def?.rowVariables ? getVariablesByNames(def.rowVariables) : undefined;
 
+  // Template de linha EFETIVO (o que realmente é usado no envio): se a coluna estiver vazia/null,
+  // o resolve.ts cai pro texto de fábrica — o editor precisa refletir isso, senão o admin salva um
+  // textarea vazio por cima do conteúdo que estava valendo. `||` cobre null E string vazia.
+  const effectiveRowTemplate =
+    template.rowTemplate || def?.rowTemplate?.(template.channel as AlertChannel) || null;
+
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <h1 className="text-xl font-bold">{def?.description ?? template.alertKey}</h1>
@@ -36,7 +42,7 @@ export default async function EditMessageTemplatePage({
         saveUrl={`/api/admin/message-templates/${template.id}`}
         initialSubject={template.subject}
         initialBody={template.body}
-        initialRowTemplate={template.rowTemplate}
+        initialRowTemplate={effectiveRowTemplate}
         initialActive={template.active}
         channel={template.channel as "EMAIL" | "WHATSAPP"}
         variables={variables}

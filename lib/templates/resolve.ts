@@ -31,7 +31,9 @@ export async function getEffectiveTemplate(
         return {
           subject: eventRow.subject ?? undefined,
           body: eventRow.body,
-          rowTemplate: eventRow.rowTemplate ?? getAlertDefinition(alertKey)?.rowTemplate?.(channel),
+          // `||` (e não `??`) de propósito: uma string vazia gravada no banco por engano precisa
+          // cair pro texto de fábrica, senão a lista de linhas do alerta sai vazia.
+          rowTemplate: eventRow.rowTemplate || getAlertDefinition(alertKey)?.rowTemplate?.(channel),
           source: "event",
         };
       }
@@ -45,7 +47,8 @@ export async function getEffectiveTemplate(
       return {
         subject: globalRow.subject ?? undefined,
         body: globalRow.body,
-        rowTemplate: globalRow.rowTemplate ?? getAlertDefinition(alertKey)?.rowTemplate?.(channel),
+        // `||` (e não `??`) de propósito: ver comentário no branch de evento acima.
+        rowTemplate: globalRow.rowTemplate || getAlertDefinition(alertKey)?.rowTemplate?.(channel),
         source: "global",
       };
     }

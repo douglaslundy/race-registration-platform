@@ -96,6 +96,10 @@ export default function MessageTemplateEditor({
       return;
     }
     setMessage("Salvo com sucesso.");
+    // Re-executa o Server Component que renderizou esta página: na tela de personalização por
+    // evento, o primeiro save CRIA o override, e sem isso a página continuaria dizendo "ainda usa o
+    // texto global" e escondendo o botão de remover até um reload manual.
+    router.refresh();
   }
 
   async function handlePreview() {
@@ -141,6 +145,7 @@ export default function MessageTemplateEditor({
     }
     setSubject(data.template.subject ?? "");
     setBody(data.template.body);
+    setRowTemplate(data.template.rowTemplate ?? "");
     setActive(data.template.active);
     setMessage("Revertido com sucesso — o template já está usando o conteúdo da versão anterior.");
     setReverting(null);

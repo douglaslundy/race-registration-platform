@@ -144,6 +144,33 @@ describe("PUT /api/admin/message-templates/[id]", () => {
     });
   });
 
+  it("normaliza rowTemplate vazio pra null em vez de gravar string vazia no banco", async () => {
+    allow();
+    dbMock.messageTemplate.findUnique.mockResolvedValueOnce({
+      id: "tpl-1", alertKey: "RECONCILIATION_MISMATCH", channel: "EMAIL", recipientRole: "ADMIN",
+      subject: "S antigo", body: "B antigo", rowTemplate: "R antigo", active: true,
+    });
+    dbMock.messageTemplate.update.mockResolvedValueOnce({ id: "tpl-1" });
+
+    const res = await putTemplate(
+      new Request("http://localhost", {
+        method: "PUT",
+        body: JSON.stringify({ subject: "S novo", body: "B novo", rowTemplate: "", active: true }),
+      }) as any,
+      { params: Promise.resolve({ id: "tpl-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.messageTemplate.update).toHaveBeenCalledWith({
+      where: { id: "tpl-1" },
+      data: { subject: "S novo", body: "B novo", rowTemplate: null, active: true, updatedByUserId: "admin-1" },
+    });
+    // a versão-snapshot continua guardando o valor ANTERIOR, não o normalizado
+    expect(dbMock.messageTemplateVersion.create).toHaveBeenCalledWith({
+      data: { templateId: "tpl-1", subject: "S antigo", body: "B antigo", rowTemplate: "R antigo", active: true, changedByUserId: "admin-1" },
+    });
+  });
+
   it("404 quando o template não existe", async () => {
     allow();
     dbMock.messageTemplate.findUnique.mockResolvedValueOnce(null);

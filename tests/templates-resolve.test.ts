@@ -92,6 +92,15 @@ describe("getEffectiveTemplate", () => {
     expect(result.rowTemplate).toBe(factory);
   });
 
+  it("quando a linha do banco tem rowTemplate string vazia (salvo por engano pelo editor), usa o de fábrica", async () => {
+    dbMock.messageTemplate.findFirst.mockResolvedValueOnce({ subject: "S", body: "B", rowTemplate: "" });
+
+    const result = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
+
+    const factory = registry.ALERT_REGISTRY.RECONCILIATION_MISMATCH.rowTemplate!("EMAIL");
+    expect(result.rowTemplate).toBe(factory);
+  });
+
   it("quando a linha do banco já tem um rowTemplate customizado, usa ele em vez do de fábrica", async () => {
     dbMock.messageTemplate.findFirst.mockResolvedValueOnce({
       subject: "S", body: "B", rowTemplate: "<tr><td>{{evento}}</td></tr>",

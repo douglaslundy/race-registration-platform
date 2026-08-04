@@ -76,6 +76,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const parsed = putSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const { subject, body, rowTemplate, active } = parsed.data;
+  // Ver comentário equivalente em app/api/admin/message-templates/[id]/route.ts: "" nunca vai pro
+  // banco (vira null, pra cair no texto de fábrica); undefined segue significando "não mexe".
+  const normalizedRowTemplate =
+    rowTemplate === undefined ? undefined : rowTemplate.trim() ? rowTemplate : null;
 
   const def = getAlertDefinition(globalTemplate.alertKey);
   const { valid, unknown } = validateTemplateVariables(`${subject ?? ""} ${body}`, def?.variables ?? []);
@@ -98,7 +102,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     });
     eventRow = await db.messageTemplate.update({
       where: { id: existing.id },
-      data: { subject, body, rowTemplate, active, updatedByUserId: session.user.id },
+      data: { subject, body, rowTemplate: normalizedRowTemplate, active, updatedByUserId: session.user.id },
     });
   } else {
     eventRow = await db.messageTemplate.create({
@@ -110,7 +114,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         eventId,
         subject,
         body,
-        rowTemplate,
+        rowTemplate: normalizedRowTemplate,
         active,
         updatedByUserId: session.user.id,
       },

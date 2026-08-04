@@ -40,6 +40,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const parsed = putSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const { subject, body, rowTemplate, active } = parsed.data;
+  // Um rowTemplate vazio nunca deve ser gravado como "": o resolve.ts trata null/"" como "sem
+  // customização" e cai pro texto de fábrica, mas gravar "" persistiria uma lista de linhas vazia.
+  // `undefined` (campo não enviado) continua significando "não mexe nessa coluna".
+  const normalizedRowTemplate =
+    rowTemplate === undefined ? undefined : rowTemplate.trim() ? rowTemplate : null;
 
   const def = getAlertDefinition(existing.alertKey);
   const { valid, unknown } = validateTemplateVariables(`${subject ?? ""} ${body}`, def?.variables ?? []);
@@ -66,7 +71,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const template = await db.messageTemplate.update({
     where: { id },
-    data: { subject, body, rowTemplate, active, updatedByUserId: session.user.id },
+    data: { subject, body, rowTemplate: normalizedRowTemplate, active, updatedByUserId: session.user.id },
   });
 
   return NextResponse.json({ template });
