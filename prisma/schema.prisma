@@ -624,6 +624,7 @@ model MessageTemplate {
   active          Boolean  @default(true)
   subject         String?
   body            String   @db.Text
+  rowTemplate     String?  @db.Text
   updatedByUserId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -643,6 +644,7 @@ model MessageTemplateVersion {
   templateId      String
   subject         String?
   body            String   @db.Text
+  rowTemplate     String?  @db.Text
   active          Boolean
   changedByUserId String?
   createdAt       DateTime @default(now())
