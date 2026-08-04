@@ -315,8 +315,8 @@ function buildEventMetricsValues(m: EventDailySummary, eventTitle: string, dateL
   };
 }
 
-async function buildEventWhatsAppText(values: Record<string, string>): Promise<string> {
-  const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "WHATSAPP", "ADMIN");
+async function buildEventWhatsAppText(values: Record<string, string>, eventId: string): Promise<string> {
+  const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "WHATSAPP", "ADMIN", eventId);
   return renderTemplate(template.body, values, "WHATSAPP");
 }
 
@@ -364,7 +364,7 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (recipient.type === "EMAIL" && smtpReady) {
         try {
           if (await claimAlert(ALERT_TYPE_EVENT, ENTITY_TYPE_EVENT, entityId, "EMAIL")) {
-            await sendEventDailySummaryEmail({ to: recipient.value, values });
+            await sendEventDailySummaryEmail({ to: recipient.value, values, eventId });
             sent++;
           }
         } catch (err) {
@@ -377,7 +377,7 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (recipient.type === "WHATSAPP") {
         try {
           if (await claimAlert(ALERT_TYPE_EVENT, ENTITY_TYPE_EVENT, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(recipient.value, await buildEventWhatsAppText(values));
+            await sendWhatsAppMessage(recipient.value, await buildEventWhatsAppText(values, eventId));
             sent++;
           }
         } catch (err) {

@@ -534,7 +534,11 @@ describe("sendEventDailySummaries", () => {
 
     expect(getEventDailySummary).toHaveBeenCalledTimes(1);
     expect(sendEventDailySummaryEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "maria@example.com", values: expect.objectContaining({ nome_evento: "Corrida X" }) }),
+      expect.objectContaining({
+        to: "maria@example.com",
+        values: expect.objectContaining({ nome_evento: "Corrida X" }),
+        eventId: "event-1",
+      }),
     );
     expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
     expect(result).toEqual({ sent: 2, failed: 0 });

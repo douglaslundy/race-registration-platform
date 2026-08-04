@@ -470,9 +470,10 @@ export async function sendDailySummaryEmail(params: {
 export async function sendEventDailySummaryEmail(params: {
   to: string;
   values: Record<string, string>;
+  eventId?: string;
 }): Promise<void> {
   const appName = await getAppName();
-  const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "EMAIL", "ADMIN");
+  const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "EMAIL", "ADMIN", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", params.values);
   const body = renderTemplate(template.body, params.values, "EMAIL");
   await sendMail({ to: params.to, subject, html: layout(appName, body) });
