@@ -1448,9 +1448,108 @@ ele também cria uma conta admin de demonstração com senha padrão). Sem esse 
 `CANCELLATION_REQUESTED` e o WhatsApp novo de `DAILY_SUMMARY` ficam mudos em produção mesmo depois
 do deploy.
 
+## Etapa 3 concluída (2026-08-04): templates 100% editáveis + alerta por evento
+
+Spec `docs/superpowers/specs/2026-08-04-templates-editaveis-e-alerta-por-evento.md` → plano
+`docs/superpowers/plans/2026-08-04-templates-editaveis-e-alerta-por-evento.md` (26 tasks, executado
+via `superpowers:subagent-driven-development`). 4 partes: (1) `DAILY_SUMMARY` 100% editável (tabela
+de métricas sai do código, vira template) + separação taxa de plataforma/taxa de serviço; (2)
+`RECONCILIATION_MISMATCH` ganha `rowTemplate` (mecanismo de "linha repetida", primeiro do sistema);
+(3) `DailySummaryRecipient.eventId` — contato de resumo diário escopado a um evento só; (4)
+`MessageTemplate.scope="EVENT"` ganha UI (admin personaliza texto de qualquer alerta por evento, em
+`/admin/alertas`).
+
+**Revisão final de branch inteira achou 1 Crítico + 5 Importantes** — o Crítico (perda silenciosa
+do `rowTemplate` da conciliação ao salvar qualquer edição no editor global — cadeia de 4 tasks,
+`""` não caía no fallback de fábrica por usar `??` em vez de `||`) foi corrigido numa rodada de fix
+(commit `a75ee95`), re-revisão confirmou tudo endereçado.
+
+**Achado Important #2 da revisão** — a personalização por evento (parte 4) não tinha efeito
+nenhum no envio real (nenhum remetente passava `eventId` pro resolver de template) — era um gap da
+spec, não desvio de implementação. Usuário pediu pra ampliar o escopo e resolver: **Tasks 21-26**
+(commits `22315f6..7db9227`) conectaram `eventId` nos ~8 pontos de envio real que fazem sentido
+(`ORDER_CONFIRMED`+variantes, `LOW_STOCK`, `ABANDONED_CART`, `PAYMENT_ERROR`+variante,
+`CANCELLATION_REQUESTED`, `DAILY_SUMMARY_EVENT`) — `RECONCILIATION_MISMATCH`/`DAILY_SUMMARY`
+agregado/`ADVERTISER_REQUEST_PENDING` continuam sem `eventId` de propósito (não são de 1 evento só).
+
+**Pendências reais, ainda em aberto:**
+- Verificação manual no navegador das 2 telas novas (contato de resumo por evento na edição de
+  evento; personalização de template por evento em `/admin/alertas`) — nunca foi feita, sem acesso
+  a navegador durante a implementação.
+- Deploy: checar produção por templates `DAILY_SUMMARY`/e-mail já customizados manualmente (têm
+  `MessageTemplateVersion`) antes do deploy — perdem a tabela de métricas, já que
+  `refresh-templates.ts` pula de propósito linha já editada por admin.
+- Nada commitado além do que já está local em `main`. Nenhum push ainda.
+
+Suite 210 arquivos / 1416 testes, `tsc --noEmit` limpo, `npm run build` limpo.
+
+Detalhe técnico completo: `docs/superpowers/plans/2026-08-04-templates-editaveis-e-alerta-por-evento.md`
+e o ledger em `.superpowers/sdd/2026-08-04-templates-editaveis-e-alerta-por-evento/progress.md`.
+
+## Etapa 6 concluída (2026-08-04): home pública mostra os próximos 6 eventos
+
+Brainstorm → spec (`docs/superpowers/specs/2026-08-04-home-publica-lista-eventos-design.md`) →
+plano de 1 task (`docs/superpowers/plans/2026-08-04-home-publica-lista-eventos.md`) → executado via
+`superpowers:subagent-driven-development` (commit `4f31797`). Home (`/`) ganhou: banner rotativo
+(`EventsBanner`, reaproveitado), slot de anúncio `HOME_ABAIXO_BANNER`, seção "Próximos eventos" com
+até 6 `EventCard`s (via `listPublicEvents({ pageSize: 6 })`, já ordenado por data mais próxima —
+some inteira se não houver evento futuro), botão "Ver todos" pra `/eventos`, slot de anúncio
+`HOME_ENTRE_EVENTOS_CTA`, `OrganizerCTA` no rodapé. `/eventos` continua 100% inalterado.
+
+**Correção feita durante o plano**: a spec original assumia que dava pra criar `AdSlot` novo pelo
+admin — investigação mostrou que não existe esse fluxo (`/admin/anuncios` só lista/configura slots
+já existentes, `lib/ad-slots.ts` não tem `create`). Os 2 slots novos seguem o mesmo padrão manual já
+usado pros 5 slots originais: `INSERT` SQL documentado no plano, a rodar uma vez contra produção
+depois do deploy (nasce `enabled: false`, não quebra nada se não rodar, só fica inativo).
+
+**Pendente**: verificação manual no navegador — bloqueada por limitação de ambiente (servidor dev
+não sobe aqui, Supabase inacessível localmente, confirmado que é pré-existente, não é regressão
+desta mudança). Suite 210/1416, `tsc`/`build` limpos. Nada commitado além do que já está local em
+`main`, nenhum push ainda.
+
+## Etapa 8 concluída (2026-08-04): redes sociais administráveis
+
+Brainstorm → spec (`docs/superpowers/specs/2026-08-04-redes-sociais-design.md`) → plano de 3 tasks
+(`docs/superpowers/plans/2026-08-04-redes-sociais.md`) → executado via
+`superpowers:subagent-driven-development` (commits `97134e8`, `0272438`, `ce4c99c`). Admin configura
+URL de 6 redes (Instagram, Facebook, WhatsApp, YouTube, TikTok, X) em `/admin/configuracoes`, um
+botão "Salvar" só; rodapé (`components/layout/Footer.tsx`, aparece em toda página pública) mostra um
+ícone SVG inline por rede preenchida — rede vazia não mostra ícone, todas vazias somem a fileira
+inteira. Zero código de backend novo: reaproveitou o endpoint genérico já existente
+`POST /api/admin/settings` (admin-only, já audita, já revalida o layout público) com 6 chaves novas
+de `PlatformSetting` (`social_instagram` etc.). Lógica de "quais redes mostrar" isolada em
+`lib/social-links.ts` (função pura, testada) — `Footer`/`SocialLinksForm` ficam sem teste dedicado,
+convenção já estabelecida do projeto.
+
+**Ponto de maior risco do plano**: Task 3 inseriu 1 entrada nova num `Promise.all` de ~20 itens já
+existente em `app/admin/configuracoes/page.tsx` — revisor re-traçou o alinhamento array↔
+desestruturação par a par contra o arquivo real (não só o diff), confirmou as 20 posições corretas,
+nova entrada por último em ambos os lados, nenhuma entrada existente tocada.
+
+Suite 211/1421, `tsc`/`build` limpos (verificação combinada rodada duas vezes: por task e no final).
+Nada commitado além do que já está local em `main`, nenhum push ainda.
+
 ## Próxima tarefa
-Brainstorm combinado: template de linha editável (tabelas de `RECONCILIATION_MISMATCH`/
-`DAILY_SUMMARY`) + alerta diário por evento (Etapa 3). Antes disso, perguntar ao usuário sobre
-push/deploy da leva dos 6 alertas + fixes (commits `a4d252e..b75b59b`, sem migração de schema nesta
-leva — só a Etapa 2 original teve migração — mas COM o passo obrigatório de
-`prisma/refresh-templates.ts` acima).
+
+Usuário confirmou a ordem: Etapa 6 (✅) → Etapa 8 (✅ acima) → **Etapa 7 (fluxo de anunciante)**,
+a última das três que o usuário pediu pra fazer nesta sequência.
+
+### Contexto necessário pra Etapa 7 (fluxo de anunciante)
+
+- Auditoria da Etapa 1 (`IMPLEMENTATION_PLAN.md` §2.5) já identificou o gap concreto: `/anuncie`
+  (`app/(public)/anuncie/page.tsx`) já é público (sem exigir login) e já reaproveita o padrão de
+  `SubscribeButton`/PIX, MAS sempre submete `plans[0].id`
+  (`RequestAdvertiserForm adPlanId={plans[0].id}`) — **não existe seleção de plano pelo visitante**,
+  mesmo havendo cards visuais pra vários planos.
+- Mencionado também: fluxo de "login adiado até o checkout" quando o usuário logado tem outro papel
+  — verificar se isso já existe ou também falta.
+- Regra fixa do `CLAUDE.md`: nunca `alert()`/`confirm()`/`prompt()`.
+- Próxima ação real: brainstorm da Etapa 7 via `superpowers:brainstorming` antes de qualquer spec/
+  plano/código.
+
+### Depois da Etapa 7
+
+Etapas 6, 7 e 8 (as 3 que o usuário pediu) estarão completas. Etapas 4 (novos alertas) e 5
+(auditoria de envio, hoje parcial) continuam pendentes, sem pedido explícito ainda. Etapas 9/10
+(kits, rating) continuam bloqueadas até 1-8 estarem 100% concluídas, testadas e deployadas — e até
+pedido explícito do usuário.

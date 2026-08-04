@@ -338,19 +338,26 @@ mesmo depois do deploy — é a causa raiz do achado Critical acima.
    13-19, já concluída) e fazer os dois pedidos acima **juntos**, num brainstorm só (já que os dois
    mexem na mesma área de resumo diário/tabelas) — próxima ação real desta sessão.
 
-### Etapa 3 — Global × por-evento + resumo diário por evento — PENDENTE (Etapa 2 100% completa;
-próximo brainstorm já teria que cobrir isso + o template de linha editável, por pedido do usuário)
+### Etapa 3 — Global × por-evento + resumo diário por evento — **CONCLUÍDA (2026-08-04)**. Detalhe
+completo em `PROGRESSO.md` §"Etapa 3 concluída" e no plano
+`docs/superpowers/plans/2026-08-04-templates-editaveis-e-alerta-por-evento.md`. Pendências reais:
+verificação manual no navegador (2 telas novas) + checagem de produção antes do deploy + nenhum
+push feito ainda.
 
 ### Etapa 4 — Novos alertas (desativados por padrão) — PENDENTE (depende da 2)
 
 ### Etapa 5 — Logs/auditoria de envio — PARCIAL hoje via `MessageLog`/`AlertLog`; falta versão de
 template e retry — PENDENTE
 
-### Etapa 6 — Home lista eventos — PENDENTE (independente, pode começar em paralelo)
+### Etapa 6 — Home lista eventos — **CONCLUÍDA (2026-08-04)**. Detalhe completo em `PROGRESSO.md`
+§"Etapa 6 concluída". Pendência real: verificação manual no navegador (ambiente sem acesso a DB
+local) + nenhum push feito ainda.
 
 ### Etapa 7 — Fluxo público de anunciante com auth adiada — PENDENTE (independente)
 
-### Etapa 8 — Redes sociais administráveis — PENDENTE (independente, menor risco/esforço)
+### Etapa 8 — Redes sociais administráveis — **CONCLUÍDA (2026-08-04)**. Detalhe completo em
+`PROGRESSO.md` §"Etapa 8 concluída". Pendência real: verificação manual no navegador (ambiente sem
+acesso a DB local) + nenhum push feito ainda.
 
 ### Etapa 9 — Entrega de kits — BLOQUEADO (aguarda etapas 1-8 + validação do rascunho de spec)
 
