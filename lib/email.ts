@@ -439,36 +439,21 @@ export async function sendAdvertiserRequestRejectedEmail(params: {
   });
 }
 
-/** E-mail com o resumo diário de atividade (admin ou organizador). Subject e introdução são
- * editáveis via o template do banco; a tabela de métricas continua gerada pelo código. */
+/** E-mail com o resumo diário de atividade (admin ou organizador) — 100% gerado a partir do
+ * template do banco; nenhuma parte é montada em código. */
 export async function sendDailySummaryEmail(params: {
   to: string;
   role: "ADMIN" | "ORGANIZER";
   dateLabel: string;
-  rows: { label: string; value: string }[];
-  /** Métricas cruas (total_inscricoes_pagas, receita_periodo, etc.) — mesmo mapa usado pelo texto
-   * de WhatsApp deste alerta (ver lib/alerts/daily-summary.ts), pra que o admin também possa
-   * referenciar essas variáveis no template de EMAIL sem renderizar em branco. */
+  /** Métricas cruas (total_inscricoes_pagas, receita_periodo, taxa_plataforma etc.) — mesmo mapa
+   * usado pelo texto de WhatsApp deste alerta (ver lib/alerts/daily-summary.ts). */
   metrics?: Record<string, string>;
 }): Promise<void> {
   const appName = await getAppName();
   const roleLabel = params.role === "ADMIN" ? "administrador" : "organizador";
   const values = { data_resumo: params.dateLabel, papel_destinatario: roleLabel, ...params.metrics };
-  const tableRows = params.rows
-    .map(
-      (r) =>
-        `<tr><td style="padding:4px 8px">${r.label}</td><td style="padding:4px 8px;font-weight:bold">${r.value}</td></tr>`,
-    )
-    .join("");
   const template = await getEffectiveTemplate("DAILY_SUMMARY", "EMAIL", params.role);
   const subject = renderTemplateSubject(template.subject ?? "", values);
-  const intro = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({
-    to: params.to,
-    subject,
-    html: layout(
-      appName,
-      `${intro}\n<table style="width:100%;border-collapse:collapse" border="1" cellpadding="6">\n<tbody>${tableRows}</tbody>\n</table>`,
-    ),
-  });
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, subject, html: layout(appName, body) });
 }

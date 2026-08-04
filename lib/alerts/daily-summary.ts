@@ -37,36 +37,19 @@ function formatDateLabel(day: Date): string {
   return `${dd}/${mm}/${day.getUTCFullYear()}`;
 }
 
-function buildAdminEmailRows(m: AdminDailySummary): { label: string; value: string }[] {
-  return [
-    { label: "Novos usuários", value: String(m.newUsersCount) },
-    { label: "Novos organizadores", value: String(m.newOrganizersCount) },
-    { label: "Eventos criados", value: String(m.eventsCreatedCount) },
-    { label: "Inscrições pagas", value: String(m.paidRegistrationsCount) },
-    { label: "Receita bruta", value: formatCurrency(m.grossRevenue) },
-    { label: "Taxas retidas pela plataforma", value: formatCurrency(m.platformFeesRetained) },
-    { label: "Repasses gerados", value: `${m.payoutsGeneratedCount} (${formatCurrency(m.payoutsGeneratedAmount)})` },
-    { label: "Cancelamentos/estornos", value: String(m.cancelledOrRefundedCount) },
-  ];
-}
-
-function buildOrganizerEmailRows(m: OrganizerDailySummary): { label: string; value: string }[] {
-  return [
-    { label: "Inscrições pagas", value: String(m.paidRegistrationsCount) },
-    { label: "Receita", value: formatCurrency(m.grossRevenue) },
-    { label: "Cupons usados", value: String(m.couponsUsedCount) },
-    { label: "Cancelamentos solicitados", value: String(m.cancellationsRequestedCount) },
-    { label: "Lotes esgotados", value: String(m.soldOutBatchesCount) },
-  ];
-}
-
 /** Métricas do admin mapeadas pras variáveis do template — reaproveitado pelo WhatsApp e pelo e-mail. */
 function buildAdminMetricsValues(m: AdminDailySummary, baseUrl: string): Record<string, string> {
   return {
     total_inscricoes_pagas: String(m.paidRegistrationsCount),
     receita_periodo: formatCurrency(m.grossRevenue),
     novos_usuarios: String(m.newUsersCount),
+    novos_organizadores: String(m.newOrganizersCount),
     eventos_criados: String(m.eventsCreatedCount),
+    taxa_plataforma: formatCurrency(m.platformFeeAmount),
+    taxa_servico: formatCurrency(m.serviceFeeAmount),
+    repasses_gerados: String(m.payoutsGeneratedCount),
+    valor_repasses: formatCurrency(m.payoutsGeneratedAmount),
+    cancelamentos_estornos: String(m.cancelledOrRefundedCount),
     link_plataforma: baseUrl,
   };
 }
@@ -77,6 +60,8 @@ function buildOrganizerMetricsValues(m: OrganizerDailySummary, baseUrl: string):
     total_inscricoes_pagas: String(m.paidRegistrationsCount),
     receita_periodo: formatCurrency(m.grossRevenue),
     cupons_usados: String(m.couponsUsedCount),
+    cancelamentos_solicitados: String(m.cancellationsRequestedCount),
+    lotes_esgotados: String(m.soldOutBatchesCount),
     link_plataforma: baseUrl,
   };
 }
@@ -133,7 +118,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (admin.dailySummaryEmailEnabled && smtpReady) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "EMAIL")) {
-            await sendDailySummaryEmail({ to: admin.email, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics), metrics: emailMetrics });
+            await sendDailySummaryEmail({ to: admin.email, role: "ADMIN", dateLabel, metrics: emailMetrics });
             sent++;
           }
         } catch (err) {
@@ -167,7 +152,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         if (recipient.type === "EMAIL" && smtpReady) {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "EMAIL")) {
-              await sendDailySummaryEmail({ to: recipient.value, role: "ADMIN", dateLabel, rows: buildAdminEmailRows(metrics), metrics: emailMetrics });
+              await sendDailySummaryEmail({ to: recipient.value, role: "ADMIN", dateLabel, metrics: emailMetrics });
               sent++;
             }
           } catch (err) {
@@ -242,7 +227,6 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
               to: organizer.email,
               role: "ORGANIZER",
               dateLabel,
-              rows: buildOrganizerEmailRows(metrics),
               metrics: emailMetrics,
             });
             sent++;
@@ -282,7 +266,6 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
                 to: recipient.value,
                 role: "ORGANIZER",
                 dateLabel,
-                rows: buildOrganizerEmailRows(metrics),
                 metrics: emailMetrics,
               });
               sent++;

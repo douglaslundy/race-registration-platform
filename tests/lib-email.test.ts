@@ -412,53 +412,11 @@ describe("sendDailySummaryEmail", () => {
     vi.mocked(isSmtpReady).mockReturnValue(true);
   });
 
-  const rows = [
-    { label: "Inscrições pagas", value: "10" },
-    { label: "Receita bruta", value: "R$ 1.000,00" },
-  ];
-
-  it("usa o template resolvido (subject + introdução) por papel; a tabela de métricas continua gerada em código", async () => {
+  it("renderiza o corpo inteiro a partir do template — nenhuma tabela é gerada em código", async () => {
     sendMailMock.mockResolvedValueOnce({});
     vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
       subject: "Assunto customizado — {{data_resumo}}",
-      body: "<p>Introdução customizada para {{papel_destinatario}} em {{data_resumo}}.</p>",
-      source: "global",
-    });
-
-    await sendDailySummaryEmail({ to: "admin@example.com", role: "ADMIN", dateLabel: "03/08/2026", rows });
-
-    expect(getEffectiveTemplate).toHaveBeenCalledWith("DAILY_SUMMARY", "EMAIL", "ADMIN");
-    expect(sendMailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "admin@example.com", subject: "Assunto customizado — 03/08/2026" }),
-    );
-    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
-    expect(sentHtml).toContain("Introdução customizada para administrador em 03/08/2026.");
-    expect(sentHtml).toContain("Inscrições pagas");
-    expect(sentHtml).toContain("R$ 1.000,00");
-  });
-
-  it("preserva a ordem visual original: introdução e depois a tabela de métricas", async () => {
-    sendMailMock.mockResolvedValueOnce({});
-    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
-      subject: "Resumo — {{data_resumo}}",
-      body: "<p>Introdução {{papel_destinatario}}</p>",
-      source: "global",
-    });
-
-    await sendDailySummaryEmail({ to: "org@example.com", role: "ORGANIZER", dateLabel: "03/08/2026", rows });
-
-    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
-    const introIndex = sentHtml.indexOf("Introdução organizador");
-    const tableIndex = sentHtml.indexOf("<table");
-    expect(introIndex).toBeGreaterThanOrEqual(0);
-    expect(tableIndex).toBeGreaterThan(introIndex);
-  });
-
-  it("um template customizado que referencia variáveis de métrica (ex.: {{receita_periodo}}) renderiza o valor suprido via params.metrics, não em branco", async () => {
-    sendMailMock.mockResolvedValueOnce({});
-    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
-      subject: "Resumo — {{data_resumo}}",
-      body: "<p>Receita do período: {{receita_periodo}}. Novos usuários: {{novos_usuarios}}.</p>",
+      body: "<p>Introdução para {{papel_destinatario}} em {{data_resumo}}.</p><p>Inscrições: {{total_inscricoes_pagas}}, receita: {{receita_periodo}}</p>",
       source: "global",
     });
 
@@ -466,11 +424,36 @@ describe("sendDailySummaryEmail", () => {
       to: "admin@example.com",
       role: "ADMIN",
       dateLabel: "03/08/2026",
-      rows,
-      metrics: { receita_periodo: "R$ 1.000,00", novos_usuarios: "5" },
+      metrics: { total_inscricoes_pagas: "10", receita_periodo: "R$ 1.000,00" },
+    });
+
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("DAILY_SUMMARY", "EMAIL", "ADMIN");
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "admin@example.com", subject: "Assunto customizado — 03/08/2026" }),
+    );
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Introdução para administrador em 03/08/2026.");
+    expect(sentHtml).toContain("Inscrições: 10, receita: R$ 1.000,00");
+    // Sem tabela hardcoded — só o que o template devolveu.
+    expect(sentHtml).not.toContain("<table");
+  });
+
+  it("um template customizado que referencia novas variáveis de taxa renderiza os valores supridos via params.metrics", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Resumo — {{data_resumo}}",
+      body: "<p>Taxa da plataforma: {{taxa_plataforma}}. Taxa de serviço: {{taxa_servico}}.</p>",
+      source: "global",
+    });
+
+    await sendDailySummaryEmail({
+      to: "admin@example.com",
+      role: "ADMIN",
+      dateLabel: "03/08/2026",
+      metrics: { taxa_plataforma: "R$ 150,00", taxa_servico: "R$ 45,00" },
     });
 
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
-    expect(sentHtml).toContain("Receita do período: R$ 1.000,00. Novos usuários: 5.");
+    expect(sentHtml).toContain("Taxa da plataforma: R$ 150,00. Taxa de serviço: R$ 45,00.");
   });
 });
