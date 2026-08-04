@@ -36,7 +36,7 @@ async function sendWhatsAppIfActive(
     if (!(await isWhatsAppConnectionActive())) return;
     claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
     if (!claimed) return;
-    const template = await getEffectiveTemplate(alertKey, "WHATSAPP", recipientRole);
+    const template = await getEffectiveTemplate(alertKey, "WHATSAPP", recipientRole, eventId);
     const text = renderTemplate(template.body, values, "WHATSAPP");
     await sendWhatsAppMessage(
       phone,

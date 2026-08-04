@@ -122,7 +122,7 @@ export async function sendRegistrationConfirmationEmail(params: {
     codigo_confirmacao: params.orderId,
     link_evento: url,
   };
-  const template = await getEffectiveTemplate(params.alertKey, "EMAIL", params.recipientRole);
+  const template = await getEffectiveTemplate(params.alertKey, "EMAIL", params.recipientRole, params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
   await sendMail({

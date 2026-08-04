@@ -325,7 +325,7 @@ describe("sendRegistrationConfirmationEmail", () => {
       recipientRole: "BUYER",
     });
 
-    expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED", "EMAIL", "BUYER");
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED", "EMAIL", "BUYER", "event-1");
     expect(sendMailMock).toHaveBeenCalledWith(
       expect.objectContaining({ to: "atleta@example.com", subject: "Assunto customizado — Corrida X" }),
     );
@@ -351,7 +351,7 @@ describe("sendRegistrationConfirmationEmail", () => {
       recipientRole: "ATHLETE",
     });
 
-    expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED_PROXY_ATHLETE", "EMAIL", "ATHLETE");
+    expect(getEffectiveTemplate).toHaveBeenCalledWith("ORDER_CONFIRMED_PROXY_ATHLETE", "EMAIL", "ATHLETE", undefined);
   });
 
   it("preenche nome_comprador quando um template customizado da procuração usa essa variável (não fica em branco)", async () => {
