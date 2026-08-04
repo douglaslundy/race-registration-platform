@@ -3,6 +3,7 @@ import {
   getYesterdayBrasiliaWindow,
   sendAdminDailySummaries,
   sendOrganizerDailySummaries,
+  sendEventDailySummaries,
 } from "@/lib/alerts/daily-summary";
 
 export async function POST(req: NextRequest) {
@@ -14,9 +15,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { dayStart, dayEnd } = getYesterdayBrasiliaWindow();
-  const [admins, organizers] = await Promise.all([
+  const [admins, organizers, events] = await Promise.all([
     sendAdminDailySummaries(dayStart, dayEnd),
     sendOrganizerDailySummaries(dayStart, dayEnd),
+    sendEventDailySummaries(dayStart, dayEnd),
   ]);
 
   return NextResponse.json({
@@ -24,5 +26,7 @@ export async function POST(req: NextRequest) {
     adminsFailed: admins.failed,
     organizersSent: organizers.sent,
     organizersFailed: organizers.failed,
+    eventsSent: events.sent,
+    eventsFailed: events.failed,
   });
 }
