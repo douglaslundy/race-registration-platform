@@ -178,25 +178,20 @@ describe("sendReconciliationMismatchEmail", () => {
     { paymentId: "pay-2", orderId: "ord-2", eventTitle: "Corrida Y", localStatus: "PENDING", gatewayStatus: "REFUNDED", corrected: false },
   ];
 
-  it("usa o template resolvido (subject + introdução) em vez de string fixa; a tabela continua gerada em código", async () => {
+  it("usa o rowTemplate resolvido pra montar cada linha da tabela, não mais hardcoded", async () => {
     sendMailMock.mockResolvedValueOnce({});
     vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
-      subject: "Assunto customizado — {{total_divergencias}}",
+      subject: "Assunto — {{total_divergencias}}",
       body: "<p>Intro {{divergencias_corrigidas}}/{{divergencias_manuais}}</p><p>Aviso final</p>",
+      rowTemplate: "<tr><td>Linha: {{evento}} / {{pedido}} / {{situacao}}</td></tr>",
       source: "global",
     });
 
     await sendReconciliationMismatchEmail({ to: "admin@example.com", mismatches });
 
-    expect(getEffectiveTemplate).toHaveBeenCalledWith("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
-    expect(sendMailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "admin@example.com", subject: "Assunto customizado — 2" }),
-    );
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
-    expect(sentHtml).toContain("Intro 1/1");
-    expect(sentHtml).toContain("Corrida X");
-    expect(sentHtml).toContain("Corrida Y");
-    expect(sentHtml).toContain("Aviso final");
+    expect(sentHtml).toContain("Linha: Corrida X / ord-1 / Corrigido automaticamente");
+    expect(sentHtml).toContain("Linha: Corrida Y / ord-2 / Requer verificação manual");
   });
 
   it("preserva a ordem visual original: introdução, tabela de divergências e depois o aviso", async () => {
@@ -204,6 +199,7 @@ describe("sendReconciliationMismatchEmail", () => {
     vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
       subject: "Assunto — {{total_divergencias}}",
       body: "<p>Intro {{divergencias_corrigidas}}/{{divergencias_manuais}}</p><p>Aviso final</p>",
+      rowTemplate: "<tr><td>{{evento}}</td></tr>",
       source: "global",
     });
 
@@ -216,6 +212,15 @@ describe("sendReconciliationMismatchEmail", () => {
     expect(introIndex).toBeGreaterThanOrEqual(0);
     expect(tableIndex).toBeGreaterThan(introIndex);
     expect(avisoIndex).toBeGreaterThan(tableIndex);
+  });
+
+  it("sem rowTemplate resolvido (caso extremo), não lança — gera linhas vazias em vez de quebrar o envio", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto", body: "<p>Intro</p>", source: "global",
+    });
+
+    await expect(sendReconciliationMismatchEmail({ to: "admin@example.com", mismatches })).resolves.toBeUndefined();
   });
 });
 

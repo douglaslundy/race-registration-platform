@@ -252,10 +252,22 @@ export async function sendReconciliationMismatchEmail(params: {
     divergencias_corrigidas: String(correctedCount),
     divergencias_manuais: String(manualCount),
   };
+  const template = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const intro = renderTemplate(template.body, values, "EMAIL");
   const rows = params.mismatches
-    .map(
-      (m) =>
-        `<tr><td>${m.eventTitle}</td><td>${m.orderId}</td><td>${m.localStatus}</td><td>${m.gatewayStatus}</td><td>${m.corrected ? "Corrigido automaticamente" : "Requer verificação manual"}</td></tr>`,
+    .map((m) =>
+      renderTemplate(
+        template.rowTemplate ?? "",
+        {
+          evento: m.eventTitle,
+          pedido: m.orderId,
+          status_local: m.localStatus,
+          status_gateway: m.gatewayStatus,
+          situacao: m.corrected ? "Corrigido automaticamente" : "Requer verificação manual",
+        },
+        "EMAIL",
+      ),
     )
     .join("");
   const table =
@@ -263,13 +275,8 @@ export async function sendReconciliationMismatchEmail(params: {
     `  <thead><tr><th>Evento</th><th>Pedido</th><th>Status local</th><th>Status no gateway</th><th>Situação</th></tr></thead>\n` +
     `  <tbody>${rows}</tbody>\n` +
     `</table>`;
-  const template = await getEffectiveTemplate("RECONCILIATION_MISMATCH", "EMAIL", "ADMIN");
-  const subject = renderTemplateSubject(template.subject ?? "", values);
-  const intro = renderTemplate(template.body, values, "EMAIL");
-  // O corpo editável (registry) traz os 2 parágrafos originais (introdução + aviso de revisão
-  // manual) concatenados num único bloco; a tabela — que fica de fora do escopo de variáveis —
-  // precisa ser reinserida entre eles pra preservar a ordem visual original (introdução, tabela,
-  // aviso), então quebramos no fim do primeiro parágrafo em vez de só concatenar no final.
+  // O corpo editável traz os 2 parágrafos originais (introdução + aviso de revisão manual)
+  // concatenados; a tabela precisa ser reinserida entre eles pra preservar a ordem visual original.
   const firstParagraphEnd = intro.indexOf("</p>");
   const introHead = firstParagraphEnd === -1 ? intro : intro.slice(0, firstParagraphEnd + 4);
   const introTail = firstParagraphEnd === -1 ? "" : intro.slice(firstParagraphEnd + 4);
