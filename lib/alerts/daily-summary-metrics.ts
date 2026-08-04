@@ -6,7 +6,8 @@ export interface AdminDailySummary {
   eventsCreatedCount: number;
   paidRegistrationsCount: number;
   grossRevenue: number;
-  platformFeesRetained: number;
+  platformFeeAmount: number;
+  serviceFeeAmount: number;
   payoutsGeneratedCount: number;
   payoutsGeneratedAmount: number;
   cancelledOrRefundedCount: number;
@@ -54,7 +55,8 @@ export async function getAdminDailySummary(dayStart: Date, dayEnd: Date): Promis
     eventsCreatedCount,
     paidRegistrationsCount,
     grossRevenue: grossRevenueAgg._sum.amount ?? 0,
-    platformFeesRetained: (feeAgg._sum.platformFeeAmount ?? 0) + (feeAgg._sum.paymentFeeAmount ?? 0),
+    platformFeeAmount: feeAgg._sum.platformFeeAmount ?? 0,
+    serviceFeeAmount: feeAgg._sum.paymentFeeAmount ?? 0,
     payoutsGeneratedCount: payoutAgg._count,
     payoutsGeneratedAmount: payoutAgg._sum.grossAmount ?? 0,
     cancelledOrRefundedCount: cancelledRegistrationsCount + refundedPaymentsCount,

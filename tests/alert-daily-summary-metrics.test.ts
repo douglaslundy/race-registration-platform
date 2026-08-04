@@ -31,7 +31,7 @@ describe("getAdminDailySummary", () => {
     expect(result.newOrganizersCount).toBe(2);
   });
 
-  it("soma taxa de plataforma e taxa de pagamento das ordens pagas no período", async () => {
+  it("retorna a taxa de plataforma e a taxa de pagamento separadamente (não somadas)", async () => {
     dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { platformFeeAmount: 1000, paymentFeeAmount: 250 } });
 
     const result = await getAdminDailySummary(dayStart, dayEnd);
@@ -40,7 +40,8 @@ describe("getAdminDailySummary", () => {
       _sum: { platformFeeAmount: true, paymentFeeAmount: true },
       where: { status: "PAID", createdAt: { gte: dayStart, lt: dayEnd } },
     });
-    expect(result.platformFeesRetained).toBe(1250);
+    expect(result.platformFeeAmount).toBe(1000);
+    expect(result.serviceFeeAmount).toBe(250);
   });
 
   it("usa 0 como padrão quando as agregações retornam null (dia sem atividade)", async () => {
@@ -48,7 +49,8 @@ describe("getAdminDailySummary", () => {
 
     expect(result.grossRevenue).toBe(0);
     expect(result.payoutsGeneratedAmount).toBe(0);
-    expect(result.platformFeesRetained).toBe(0);
+    expect(result.platformFeeAmount).toBe(0);
+    expect(result.serviceFeeAmount).toBe(0);
     expect(result.payoutsGeneratedCount).toBe(0);
   });
 
