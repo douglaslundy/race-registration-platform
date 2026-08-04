@@ -33,6 +33,7 @@ export default async function EditMessageTemplatePage({
       <h1 className="text-xl font-bold">{def?.description ?? template.alertKey}</h1>
       <MessageTemplateEditor
         templateId={template.id}
+        saveUrl={`/api/admin/message-templates/${template.id}`}
         initialSubject={template.subject}
         initialBody={template.body}
         initialRowTemplate={template.rowTemplate}

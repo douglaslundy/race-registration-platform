@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import ErrorModal from "@/components/ui/ErrorModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 
@@ -21,6 +22,10 @@ interface VersionRow {
 
 export default function MessageTemplateEditor({
   templateId,
+  saveUrl,
+  showPreviewAndTestSend = true,
+  isOverride = false,
+  deleteUrl,
   initialSubject,
   initialBody,
   initialRowTemplate,
@@ -30,7 +35,11 @@ export default function MessageTemplateEditor({
   rowVariables,
   versions,
 }: {
-  templateId: string;
+  templateId: string | null;
+  saveUrl: string;
+  showPreviewAndTestSend?: boolean;
+  isOverride?: boolean;
+  deleteUrl?: string;
   initialSubject: string | null;
   initialBody: string;
   initialRowTemplate?: string | null;
@@ -40,6 +49,7 @@ export default function MessageTemplateEditor({
   rowVariables?: VariableDef[];
   versions: VersionRow[];
 }) {
+  const router = useRouter();
   const [subject, setSubject] = useState(initialSubject ?? "");
   const [body, setBody] = useState(initialBody);
   const [rowTemplate, setRowTemplate] = useState(initialRowTemplate ?? "");
@@ -51,6 +61,8 @@ export default function MessageTemplateEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [reverting, setReverting] = useState<{ versionId: string } | null>(null);
   const [reverting_loading, setRevertingLoading] = useState(false);
+  const [confirmingDeleteOverride, setConfirmingDeleteOverride] = useState(false);
+  const [deletingOverride, setDeletingOverride] = useState(false);
 
   const filteredVariables = variables.filter(
     (v) =>
@@ -63,7 +75,7 @@ export default function MessageTemplateEditor({
     setSaving(true);
     setError(null);
     setMessage(null);
-    const res = await fetch(`/api/admin/message-templates/${templateId}`, {
+    const res = await fetch(saveUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -134,6 +146,21 @@ export default function MessageTemplateEditor({
     setReverting(null);
   }
 
+  async function handleDeleteOverride() {
+    if (!deleteUrl) return;
+    setDeletingOverride(true);
+    setError(null);
+    const res = await fetch(deleteUrl, { method: "DELETE" });
+    setDeletingOverride(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Erro ao remover personalização");
+      setConfirmingDeleteOverride(false);
+      return;
+    }
+    router.push("/admin/alertas");
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <div className="card space-y-4">
@@ -195,12 +222,25 @@ export default function MessageTemplateEditor({
           >
             {saving ? "Salvando..." : "Salvar"}
           </button>
-          <button type="button" onClick={handlePreview} className="btn-secondary px-4">
-            Pré-visualizar
-          </button>
-          <button type="button" onClick={handleTestSend} className="btn-secondary px-4">
-            Enviar teste pra mim
-          </button>
+          {showPreviewAndTestSend && templateId && (
+            <>
+              <button type="button" onClick={handlePreview} className="btn-secondary px-4">
+                Pré-visualizar
+              </button>
+              <button type="button" onClick={handleTestSend} className="btn-secondary px-4">
+                Enviar teste pra mim
+              </button>
+            </>
+          )}
+          {deleteUrl && isOverride && (
+            <button
+              type="button"
+              onClick={() => setConfirmingDeleteOverride(true)}
+              className="btn-secondary px-4 text-red-600"
+            >
+              Remover personalização (voltar ao texto global)
+            </button>
+          )}
         </div>
 
         {preview && (
@@ -289,6 +329,16 @@ export default function MessageTemplateEditor({
         loading={reverting_loading}
         onConfirm={() => reverting && handleRevert(reverting.versionId)}
         onCancel={() => setReverting(null)}
+      />
+      <ConfirmModal
+        open={confirmingDeleteOverride}
+        title="Remover personalização"
+        message="Isso remove o texto customizado deste evento — ele volta a usar o texto global."
+        confirmLabel="Remover"
+        tone="danger"
+        loading={deletingOverride}
+        onConfirm={handleDeleteOverride}
+        onCancel={() => setConfirmingDeleteOverride(false)}
       />
     </div>
   );
