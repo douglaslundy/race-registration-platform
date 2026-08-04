@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 
-import { getAdminDailySummary, getOrganizerDailySummary } from "@/lib/alerts/daily-summary-metrics";
+import { getAdminDailySummary, getOrganizerDailySummary, getEventDailySummary } from "@/lib/alerts/daily-summary-metrics";
 
 const dbMock = db as any;
 
@@ -121,5 +121,55 @@ describe("getOrganizerDailySummary", () => {
 
     expect(dbMock.registration.findMany).not.toHaveBeenCalled();
     expect(result.soldOutBatchesCount).toBe(0);
+  });
+});
+
+describe("getEventDailySummary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.registration.count.mockResolvedValue(0);
+    dbMock.order.aggregate.mockResolvedValue({ _sum: { subtotalAmount: null } });
+    dbMock.order.count.mockResolvedValue(0);
+    dbMock.ticketBatch.findMany.mockResolvedValue([]);
+  });
+
+  it("escopa todas as métricas ao eventId informado (não ao organizerId)", async () => {
+    dbMock.registration.count.mockResolvedValueOnce(4);
+    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { subtotalAmount: 40000 } });
+
+    const result = await getEventDailySummary("event-1", dayStart, dayEnd);
+
+    expect(dbMock.registration.count).toHaveBeenCalledWith({
+      where: { eventId: "event-1", status: "CONFIRMED", createdAt: { gte: dayStart, lt: dayEnd } },
+    });
+    expect(dbMock.order.aggregate).toHaveBeenCalledWith({
+      _sum: { subtotalAmount: true },
+      where: { status: "PAID", eventId: "event-1", createdAt: { gte: dayStart, lt: dayEnd } },
+    });
+    expect(result.paidRegistrationsCount).toBe(4);
+    expect(result.grossRevenue).toBe(40000);
+  });
+
+  it("calcula vagasRestantes como a soma de (capacidade - vendidas) dos lotes ativos do evento", async () => {
+    dbMock.ticketBatch.findMany.mockResolvedValueOnce([
+      { capacity: 100, soldCount: 60 },
+      { capacity: 50, soldCount: 50 },
+    ]);
+
+    const result = await getEventDailySummary("event-1", dayStart, dayEnd);
+
+    expect(dbMock.ticketBatch.findMany).toHaveBeenCalledWith({
+      where: { eventId: "event-1", active: true },
+      select: { capacity: true, soldCount: true },
+    });
+    expect(result.vagasRestantes).toBe(40);
+  });
+
+  it("nunca deixa vagasRestantes negativa quando um lote vendeu acima da capacidade", async () => {
+    dbMock.ticketBatch.findMany.mockResolvedValueOnce([{ capacity: 10, soldCount: 15 }]);
+
+    const result = await getEventDailySummary("event-1", dayStart, dayEnd);
+
+    expect(result.vagasRestantes).toBe(0);
   });
 });

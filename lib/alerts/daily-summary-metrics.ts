@@ -21,6 +21,14 @@ export interface OrganizerDailySummary {
   soldOutBatchesCount: number;
 }
 
+export interface EventDailySummary {
+  paidRegistrationsCount: number;
+  grossRevenue: number;
+  couponsUsedCount: number;
+  cancellationsRequestedCount: number;
+  vagasRestantes: number;
+}
+
 export async function getAdminDailySummary(dayStart: Date, dayEnd: Date): Promise<AdminDailySummary> {
   const period = { gte: dayStart, lt: dayEnd };
 
@@ -107,5 +115,34 @@ export async function getOrganizerDailySummary(
     couponsUsedCount,
     cancellationsRequestedCount,
     soldOutBatchesCount,
+  };
+}
+
+export async function getEventDailySummary(eventId: string, dayStart: Date, dayEnd: Date): Promise<EventDailySummary> {
+  const period = { gte: dayStart, lt: dayEnd };
+
+  const [paidRegistrationsCount, revenueAgg, couponsUsedCount, cancellationsRequestedCount, batches] =
+    await Promise.all([
+      db.registration.count({ where: { eventId, status: "CONFIRMED", createdAt: period } }),
+      db.order.aggregate({
+        _sum: { subtotalAmount: true },
+        where: { status: "PAID", eventId, createdAt: period },
+      }),
+      db.order.count({ where: { eventId, couponId: { not: null }, createdAt: period } }),
+      db.registration.count({ where: { eventId, cancellationRequestedAt: period } }),
+      db.ticketBatch.findMany({
+        where: { eventId, active: true },
+        select: { capacity: true, soldCount: true },
+      }),
+    ]);
+
+  const vagasRestantes = batches.reduce((sum, b) => sum + Math.max(0, b.capacity - b.soldCount), 0);
+
+  return {
+    paidRegistrationsCount,
+    grossRevenue: revenueAgg._sum.subtotalAmount ?? 0,
+    couponsUsedCount,
+    cancellationsRequestedCount,
+    vagasRestantes,
   };
 }
