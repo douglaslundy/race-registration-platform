@@ -1,6 +1,14 @@
 import Link from "next/link";
+import { getSetting } from "@/lib/settings";
+import { buildSocialLinks, SOCIAL_NETWORK_KEYS } from "@/lib/social-links";
+import { SOCIAL_ICON_BY_KEY } from "./SocialIcons";
 
-export default function Footer({ appName }: { appName: string }) {
+export default async function Footer({ appName }: { appName: string }) {
+  const values = Object.fromEntries(
+    await Promise.all(SOCIAL_NETWORK_KEYS.map(async (key) => [key, await getSetting(key)] as const)),
+  );
+  const socialLinks = buildSocialLinks(values);
+
   return (
     <footer className="bg-gray-900 text-gray-400 mt-auto">
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -8,6 +16,25 @@ export default function Footer({ appName }: { appName: string }) {
           <div>
             <p className="text-white font-bold text-lg mb-2">🏃 {appName}</p>
             <p className="text-sm">Plataforma de inscrições para corridas de rua, trail run e eventos esportivos.</p>
+            {socialLinks.length > 0 && (
+              <div className="flex items-center gap-3 mt-4">
+                {socialLinks.map((link) => {
+                  const Icon = SOCIAL_ICON_BY_KEY[link.key];
+                  return (
+                    <Link
+                      key={link.key}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={link.label}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      <Icon className="w-5 h-5" />
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div>
             <p className="text-white font-medium mb-3">Links úteis</p>
