@@ -5,8 +5,10 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNudge";
+import type { SocialLink } from "@/lib/social-links";
+import { SOCIAL_ICON_BY_KEY } from "./SocialIcons";
 
-export default function Header({ appName }: { appName: string }) {
+export default function Header({ appName, socialLinks }: { appName: string; socialLinks: SocialLink[] }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -32,6 +34,26 @@ export default function Header({ appName }: { appName: string }) {
             </Link>
           )}
         </nav>
+
+        {socialLinks.length > 0 && (
+          <div className="hidden md:flex items-center gap-3 mx-3 pl-3 border-l border-gray-200 dark:border-gray-700">
+            {socialLinks.map((link) => {
+              const Icon = SOCIAL_ICON_BY_KEY[link.key];
+              return (
+                <Link
+                  key={link.key}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={link.label}
+                  className="text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+                >
+                  <Icon className="w-4 h-4" />
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         <div className="hidden md:flex items-center gap-2">
           <ThemeToggle />
@@ -75,6 +97,25 @@ export default function Header({ appName }: { appName: string }) {
               <Link href="/auth/login" className="block py-2 text-gray-700 dark:text-gray-300" onClick={() => setMenuOpen(false)}>Entrar</Link>
               <Link href="/auth/cadastro" className="block py-2 text-primary-600 dark:text-primary-400 font-medium" onClick={() => setMenuOpen(false)}>Cadastrar</Link>
             </>
+          )}
+          {socialLinks.length > 0 && (
+            <div className="flex items-center gap-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+              {socialLinks.map((link) => {
+                const Icon = SOCIAL_ICON_BY_KEY[link.key];
+                return (
+                  <Link
+                    key={link.key}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={link.label}
+                    className="text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+                  >
+                    <Icon className="w-5 h-5" />
+                  </Link>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

@@ -20,15 +20,34 @@ export interface SocialLink {
   url: string;
 }
 
+/**
+ * O admin cadastra só DDD + número (sem +55) pro WhatsApp — mesma convenção já usada em
+ * EventDailySummaryRecipientsManager. Não importa lib/whatsapp.ts (infra de envio) aqui só pra
+ * reaproveitar a normalização — duplicar essas poucas linhas mantém este arquivo livre de
+ * dependência com o envio de mensagens, sendo usado no caminho de renderização pública.
+ */
+function normalizePhoneDigits(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
+  return `55${digits}`;
+}
+
+function buildWhatsAppLink(phone: string, appName: string): string {
+  const message = `Olá, gostaria de falar com a equipe ${appName}`;
+  return `https://wa.me/${normalizePhoneDigits(phone)}?text=${encodeURIComponent(message)}`;
+}
+
 /** Retorna só as redes com valor preenchido (não vazio/whitespace), na ordem de SOCIAL_NETWORKS. */
-export function buildSocialLinks(values: Record<string, string | null | undefined>): SocialLink[] {
+export function buildSocialLinks(values: Record<string, string | null | undefined>, appName: string): SocialLink[] {
   const result: SocialLink[] = [];
   for (const network of SOCIAL_NETWORKS) {
     const raw = values[network.key];
     const trimmed = raw?.trim();
-    if (trimmed) {
-      result.push({ key: network.key, label: network.label, url: trimmed });
-    }
+    if (!trimmed) continue;
+    const url = network.key === "social_whatsapp" ? buildWhatsAppLink(trimmed, appName) : trimmed;
+    result.push({ key: network.key, label: network.label, url });
   }
   return result;
 }

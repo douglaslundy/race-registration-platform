@@ -42,21 +42,29 @@ export default function SocialLinksForm({
 
   return (
     <div className="space-y-3">
-      {SOCIAL_NETWORKS.map((network) => (
-        <div key={network.key}>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{network.label}</label>
-          <input
-            type="text"
-            value={values[network.key]}
-            onChange={(e) => {
-              setValues((prev) => ({ ...prev, [network.key]: e.target.value }));
-              setSaved(false);
-            }}
-            placeholder={`https://...`}
-            className="input-field text-sm py-1"
-          />
-        </div>
-      ))}
+      {SOCIAL_NETWORKS.map((network) => {
+        const isWhatsapp = network.key === "social_whatsapp";
+        return (
+          <div key={network.key}>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{network.label}</label>
+            <input
+              type={isWhatsapp ? "tel" : "text"}
+              value={values[network.key]}
+              onChange={(e) => {
+                setValues((prev) => ({ ...prev, [network.key]: e.target.value }));
+                setSaved(false);
+              }}
+              placeholder={isWhatsapp ? "11999999999" : "https://..."}
+              className="input-field text-sm py-1"
+            />
+            {isWhatsapp && (
+              <p className="text-xs text-gray-500 mt-1">
+                Só DDD + número, sem o +55 — a plataforma gera o link do WhatsApp automaticamente.
+              </p>
+            )}
+          </div>
+        );
+      })}
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}

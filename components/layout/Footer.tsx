@@ -1,14 +1,8 @@
 import Link from "next/link";
-import { getSetting } from "@/lib/settings";
-import { buildSocialLinks, SOCIAL_NETWORK_KEYS } from "@/lib/social-links";
+import type { SocialLink } from "@/lib/social-links";
 import { SOCIAL_ICON_BY_KEY } from "./SocialIcons";
 
-export default async function Footer({ appName }: { appName: string }) {
-  const values = Object.fromEntries(
-    await Promise.all(SOCIAL_NETWORK_KEYS.map(async (key) => [key, await getSetting(key)] as const)),
-  );
-  const socialLinks = buildSocialLinks(values);
-
+export default function Footer({ appName, socialLinks }: { appName: string; socialLinks: SocialLink[] }) {
   return (
     <footer className="bg-gray-900 text-gray-400 mt-auto">
       <div className="max-w-7xl mx-auto px-4 py-10">
