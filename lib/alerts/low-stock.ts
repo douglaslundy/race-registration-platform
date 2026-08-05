@@ -73,7 +73,7 @@ export async function checkLowStockAlert(ticketBatchId: string): Promise<void> {
             capacidade_lote: String(batch.capacity),
             percentual_vendido: String(percent),
           }, "WHATSAPP");
-          await sendWhatsAppMessage(organizer.phone, text);
+          await sendWhatsAppMessage(organizer.phone, text, "LOW_STOCK");
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, ticketBatchId, "WHATSAPP");
           throw err;

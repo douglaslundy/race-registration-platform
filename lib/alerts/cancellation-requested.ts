@@ -97,7 +97,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
             },
             "WHATSAPP",
           );
-          await sendWhatsAppMessage(recipient.phone, text);
+          await sendWhatsAppMessage(recipient.phone, text, "CANCELLATION_REQUESTED");
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, `${requestKey}:${recipient.phone}`, "WHATSAPP");
           console.error("[notifyCancellationRequested] whatsapp failed for", recipient.phone, err);

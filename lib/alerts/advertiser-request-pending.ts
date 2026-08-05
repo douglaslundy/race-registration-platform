@@ -68,7 +68,7 @@ export async function notifyAdvertiserRequestPending(adPurchaseId: string): Prom
             nome_plano: purchase.adPlan.name,
             link_solicitacoes_pendentes: pendingRequestsUrl,
           }, "WHATSAPP");
-          await sendWhatsAppMessage(admin.phone, text);
+          await sendWhatsAppMessage(admin.phone, text, "ADVERTISER_REQUEST_PENDING");
         } catch (err) {
           await unclaimAlert(ALERT_TYPE, `${adPurchaseId}:${admin.phone}`, "WHATSAPP");
           console.error("[notifyAdvertiserRequestPending] whatsapp failed for", admin.phone, err);

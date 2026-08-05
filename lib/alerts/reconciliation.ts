@@ -105,7 +105,7 @@ export async function notifyReconciliationMismatches(mismatches: PaymentMismatch
             )
             .join("\n");
           const text = rowsText ? `${introText}\n${rowsText}` : introText;
-          await sendWhatsAppMessage(admin.phone, text);
+          await sendWhatsAppMessage(admin.phone, text, "RECONCILIATION_MISMATCH");
         } catch (err) {
           for (const mismatch of newMismatches) {
             await unclaimAlert(

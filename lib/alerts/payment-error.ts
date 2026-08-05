@@ -57,7 +57,7 @@ async function sendCancellationInviteNotification(
           nome_evento: params.event.title,
           link_evento: eventUrl,
         }, "WHATSAPP");
-        await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text);
+        await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text, params.alertKey);
         if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
       } catch (err) {
         if (!params.bypassDedupe) await unclaimAlert(ALERT_TYPE, params.entityId, "WHATSAPP");

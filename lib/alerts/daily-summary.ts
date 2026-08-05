@@ -135,7 +135,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (admin.dailySummaryWhatsappEnabled && admin.phone) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(admin.phone, await buildAdminWhatsAppText(metrics, dateLabel));
+            await sendWhatsAppMessage(admin.phone, await buildAdminWhatsAppText(metrics, dateLabel), "DAILY_SUMMARY");
             sent++;
           }
         } catch (err) {
@@ -169,7 +169,7 @@ export async function sendAdminDailySummaries(dayStart: Date, dayEnd: Date): Pro
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(recipient.value, await buildAdminWhatsAppText(metrics, dateLabel));
+              await sendWhatsAppMessage(recipient.value, await buildAdminWhatsAppText(metrics, dateLabel), "DAILY_SUMMARY");
               sent++;
             }
           } catch (err) {
@@ -245,7 +245,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
       if (organizer.dailySummaryWhatsappEnabled && organizer.organizerProfile!.phone) {
         try {
           if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(organizer.organizerProfile!.phone, await buildOrganizerWhatsAppText(metrics, dateLabel));
+            await sendWhatsAppMessage(organizer.organizerProfile!.phone, await buildOrganizerWhatsAppText(metrics, dateLabel), "DAILY_SUMMARY");
             sent++;
           }
         } catch (err) {
@@ -284,7 +284,7 @@ export async function sendOrganizerDailySummaries(dayStart: Date, dayEnd: Date):
         if (recipient.type === "WHATSAPP") {
           try {
             if (await claimAlert(ALERT_TYPE, ENTITY_TYPE, recipientEntityId, "WHATSAPP")) {
-              await sendWhatsAppMessage(recipient.value, await buildOrganizerWhatsAppText(metrics, dateLabel));
+              await sendWhatsAppMessage(recipient.value, await buildOrganizerWhatsAppText(metrics, dateLabel), "DAILY_SUMMARY");
               sent++;
             }
           } catch (err) {
@@ -377,7 +377,7 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
       if (recipient.type === "WHATSAPP") {
         try {
           if (await claimAlert(ALERT_TYPE_EVENT, ENTITY_TYPE_EVENT, entityId, "WHATSAPP")) {
-            await sendWhatsAppMessage(recipient.value, await buildEventWhatsAppText(values, eventId));
+            await sendWhatsAppMessage(recipient.value, await buildEventWhatsAppText(values, eventId), "DAILY_SUMMARY_EVENT");
             sent++;
           }
         } catch (err) {

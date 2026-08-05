@@ -60,7 +60,7 @@ export async function sendAbandonedCartAlert(
             },
             "WHATSAPP",
           );
-          await sendWhatsAppMessage(order.buyer.athleteProfile.phone, text);
+          await sendWhatsAppMessage(order.buyer.athleteProfile.phone, text, "ABANDONED_CART");
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
           sentSomething = true;
         } catch (err) {
