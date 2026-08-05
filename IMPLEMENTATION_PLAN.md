@@ -353,7 +353,9 @@ template e retry — PENDENTE
 §"Etapa 6 concluída". Pendência real: verificação manual no navegador (ambiente sem acesso a DB
 local) + nenhum push feito ainda.
 
-### Etapa 7 — Fluxo público de anunciante com auth adiada — PENDENTE (independente)
+### Etapa 7 — Fluxo público de anunciante com auth adiada — **CONCLUÍDA (2026-08-04)**. Visitante
+seleciona o plano clicando no card em `/anuncie` (antes sempre submetia o primeiro). Detalhe
+completo em `PROGRESSO.md` §"Etapa 7 concluída". Deployada, sem pendência.
 
 ### Etapa 8 — Redes sociais administráveis — **CONCLUÍDA (2026-08-04)**. Detalhe completo em
 `PROGRESSO.md` §"Etapa 8 concluída". Pendência real: verificação manual no navegador (ambiente sem
