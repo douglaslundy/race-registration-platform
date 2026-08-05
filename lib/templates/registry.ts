@@ -202,8 +202,30 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
         };
       }
       return recipientRole === "ORGANIZER"
-        ? { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita, {{cupons_usados}} cupons usados. Veja mais em {{link_plataforma}}/organizador.` }
-        : { body: `Resumo de ontem: {{total_inscricoes_pagas}} inscrições pagas, {{receita_periodo}} em receita bruta, {{novos_usuarios}} novos usuários, {{eventos_criados}} eventos criados. Veja mais em {{link_plataforma}}/admin.` };
+        ? {
+            body:
+              `Resumo de {{data_resumo}}:\n` +
+              `Inscrições pagas: {{total_inscricoes_pagas}}\n` +
+              `Receita: {{receita_periodo}}\n` +
+              `Cupons usados: {{cupons_usados}}\n` +
+              `Cancelamentos solicitados: {{cancelamentos_solicitados}}\n` +
+              `Lotes esgotados: {{lotes_esgotados}}\n` +
+              `Veja mais em {{link_plataforma}}/organizador.`,
+          }
+        : {
+            body:
+              `Resumo de {{data_resumo}}:\n` +
+              `Novos usuários: {{novos_usuarios}}\n` +
+              `Novos organizadores: {{novos_organizadores}}\n` +
+              `Eventos criados: {{eventos_criados}}\n` +
+              `Inscrições pagas: {{total_inscricoes_pagas}}\n` +
+              `Receita bruta: {{receita_periodo}}\n` +
+              `Taxa da plataforma: {{taxa_plataforma}}\n` +
+              `Taxa de serviço: {{taxa_servico}}\n` +
+              `Repasses gerados: {{repasses_gerados}} ({{valor_repasses}})\n` +
+              `Cancelamentos/estornos: {{cancelamentos_estornos}}\n` +
+              `Veja mais em {{link_plataforma}}/admin.`,
+          };
     },
   },
 
@@ -231,7 +253,13 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
               `</table>`,
           }
         : {
-            body: `Resumo de {{nome_evento}} ({{data_resumo}}): {{inscricoes_pagas}} inscrições pagas, {{receita_evento}} em receita, {{cupons_usados}} cupons usados, {{cancelamentos_solicitados}} cancelamentos solicitados, {{vagas_restantes}} vagas restantes.`,
+            body:
+              `Resumo de {{nome_evento}} ({{data_resumo}}):\n` +
+              `Inscrições pagas: {{inscricoes_pagas}}\n` +
+              `Receita: {{receita_evento}}\n` +
+              `Cupons usados: {{cupons_usados}}\n` +
+              `Cancelamentos solicitados: {{cancelamentos_solicitados}}\n` +
+              `Vagas restantes: {{vagas_restantes}}`,
           },
   },
 

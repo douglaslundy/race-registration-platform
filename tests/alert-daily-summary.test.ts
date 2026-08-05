@@ -265,7 +265,17 @@ describe("sendAdminDailySummaries", () => {
 
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
-      `Resumo de ontem: 10 inscrições pagas, ${formatCurrency(100000)} em receita bruta, 5 novos usuários, 2 eventos criados. Veja mais em /admin.`,
+      `Resumo de 12/07/2026:\n` +
+        `Novos usuários: 5\n` +
+        `Novos organizadores: 1\n` +
+        `Eventos criados: 2\n` +
+        `Inscrições pagas: 10\n` +
+        `Receita bruta: ${formatCurrency(100000)}\n` +
+        `Taxa da plataforma: ${formatCurrency(3000)}\n` +
+        `Taxa de serviço: ${formatCurrency(2000)}\n` +
+        `Repasses gerados: 1 (${formatCurrency(90000)})\n` +
+        `Cancelamentos/estornos: 3\n` +
+        `Veja mais em /admin.`,
     );
   });
 
@@ -445,7 +455,13 @@ describe("sendOrganizerDailySummaries", () => {
 
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
-      `Resumo de ontem: 4 inscrições pagas, ${formatCurrency(40000)} em receita, 2 cupons usados. Veja mais em /organizador.`,
+      `Resumo de 12/07/2026:\n` +
+        `Inscrições pagas: 4\n` +
+        `Receita: ${formatCurrency(40000)}\n` +
+        `Cupons usados: 2\n` +
+        `Cancelamentos solicitados: 1\n` +
+        `Lotes esgotados: 0\n` +
+        `Veja mais em /organizador.`,
     );
   });
 
