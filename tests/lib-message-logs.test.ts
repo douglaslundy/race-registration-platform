@@ -30,6 +30,7 @@ describe("recordMessageLog", () => {
     expect(dbMock.messageLog.create).toHaveBeenCalledWith({
       data: {
         channel: "EMAIL",
+        messageType: null,
         subject: "Assunto",
         recipientAddress: "atleta@example.com",
         recipientUserId: "user-1",
@@ -58,6 +59,7 @@ describe("recordMessageLog", () => {
     expect(dbMock.messageLog.create).toHaveBeenCalledWith({
       data: {
         channel: "WHATSAPP",
+        messageType: null,
         subject: "Prévia da mensagem",
         recipientAddress: "5511999999999",
         recipientUserId: "user-2",
@@ -131,6 +133,34 @@ describe("recordMessageLog", () => {
       recordMessageLog({ channel: "EMAIL", subject: "x", recipientAddress: "a@b.com", status: "SENT" }),
     ).resolves.toBeUndefined();
   });
+
+  it("grava messageType quando informado, e null quando omitido", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+
+    await recordMessageLog({
+      channel: "EMAIL",
+      subject: "Assunto",
+      recipientAddress: "atleta@example.com",
+      status: "SENT",
+      messageType: "LOW_STOCK",
+    });
+
+    expect(dbMock.messageLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ messageType: "LOW_STOCK" }) }),
+    );
+
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+    await recordMessageLog({
+      channel: "EMAIL",
+      subject: "Assunto",
+      recipientAddress: "atleta@example.com",
+      status: "SENT",
+    });
+
+    expect(dbMock.messageLog.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ messageType: null }) }),
+    );
+  });
 });
 
 describe("updateMessageLogStatusByProviderMessageId", () => {
@@ -191,6 +221,14 @@ describe("listMessageLogs", () => {
         skip: 0,
         take: 20,
       }),
+    );
+  });
+
+  it("filtra por messageType", async () => {
+    await listMessageLogs({ messageType: "LOW_STOCK" });
+
+    expect(dbMock.messageLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { messageType: "LOW_STOCK" } }),
     );
   });
 

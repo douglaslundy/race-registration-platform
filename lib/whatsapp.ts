@@ -26,6 +26,7 @@ export function normalizePhoneForWhatsApp(phone: string): string {
 export async function sendWhatsAppMessage(
   phone: string,
   text: string,
+  messageType?: string,
   options?: { relatedEntityType?: string; relatedEntityId?: string },
 ): Promise<void> {
   const config = await getWhatsAppConfig();
@@ -44,6 +45,7 @@ export async function sendWhatsAppMessage(
     const { providerMessageId } = await sendTextMessage(config, normalizedPhone, text);
     await recordMessageLog({
       channel: "WHATSAPP",
+      messageType,
       subject,
       recipientAddress: normalizedPhone,
       status: "SENT",
@@ -53,6 +55,7 @@ export async function sendWhatsAppMessage(
   } catch (err) {
     await recordMessageLog({
       channel: "WHATSAPP",
+      messageType,
       subject,
       recipientAddress: normalizedPhone,
       status: "FAILED",

@@ -6,8 +6,32 @@ export type MessageLogStatus = "SENT" | "DELIVERED" | "READ" | "FAILED";
 
 const STATUS_RANK: Record<MessageLogStatus, number> = { SENT: 0, FAILED: 0, DELIVERED: 1, READ: 2 };
 
+export const MESSAGE_TYPE_LABEL: Record<string, string> = {
+  LOW_STOCK: "Vagas se esgotando",
+  ABANDONED_CART: "Carrinho abandonado",
+  PAYMENT_ERROR: "Erro de pagamento",
+  PAYMENT_ERROR_ORDER_CANCELLED: "Erro de pagamento (pedido cancelado)",
+  RECONCILIATION_MISMATCH: "Divergência de conciliação",
+  CANCELLATION_REQUESTED: "Solicitação de cancelamento",
+  DAILY_SUMMARY: "Resumo diário",
+  DAILY_SUMMARY_EVENT: "Resumo diário do evento",
+  ADVERTISER_REQUEST_PENDING: "Solicitação de anunciante pendente",
+  ORDER_CONFIRMED: "Confirmação de inscrição",
+  ORDER_CONFIRMED_PROXY_BUYER: "Confirmação de inscrição (procuração — comprador)",
+  ORDER_CONFIRMED_PROXY_ATHLETE: "Confirmação de inscrição (procuração — atleta)",
+  PASSWORD_RESET: "Redefinição de senha",
+  ASSISTANT_INVITE: "Convite de assistente",
+  PROXY_REGISTRATION_INVITE: "Convite de inscrição por procuração",
+  AD_PURCHASE_CONFIRMATION: "Confirmação de compra de anúncio",
+  ADVERTISER_PROMOTION: "Promoção a anunciante",
+  ADVERTISER_REQUEST_APPROVED: "Solicitação de anunciante aprovada",
+  ADVERTISER_REQUEST_REJECTED: "Solicitação de anunciante rejeitada",
+  AD_REPORT: "Relatório de anúncio",
+};
+
 export interface RecordMessageLogParams {
   channel: MessageChannel;
+  messageType?: string;
   subject: string;
   recipientAddress: string;
   status: "SENT" | "FAILED";
@@ -39,6 +63,7 @@ export async function recordMessageLog(params: RecordMessageLogParams): Promise<
     await db.messageLog.create({
       data: {
         channel: params.channel,
+        messageType: params.messageType ?? null,
         subject: params.subject,
         recipientAddress: params.recipientAddress,
         recipientUserId,
@@ -77,6 +102,7 @@ export async function updateMessageLogStatusByProviderMessageId(
 
 export interface MessageLogFilters {
   channel?: MessageChannel;
+  messageType?: string;
   recipientUserId?: string;
   /** IDs de eventos do organizador — ORed com recipientUserId, para incluir mensagens enviadas
    * aos atletas inscritos nesses eventos (não só mensagens endereçadas ao próprio organizador). */
@@ -90,7 +116,7 @@ export interface MessageLogFilters {
 }
 
 export async function listMessageLogs(filters: MessageLogFilters = {}) {
-  const { channel, recipientUserId, eventIds, status, q, from, to, page = 1, pageSize = 20 } = filters;
+  const { channel, messageType, recipientUserId, eventIds, status, q, from, to, page = 1, pageSize = 20 } = filters;
 
   const scopeClause: Record<string, unknown> | null = recipientUserId
     ? eventIds && eventIds.length > 0
@@ -109,6 +135,7 @@ export async function listMessageLogs(filters: MessageLogFilters = {}) {
 
   const baseWhere = {
     ...(channel ? { channel } : {}),
+    ...(messageType ? { messageType } : {}),
     ...(status ? { status } : {}),
     ...(from || to
       ? {

@@ -594,6 +594,7 @@ model AlertLog {
 model MessageLog {
   id                String    @id @default(cuid())
   channel           String
+  messageType       String?
   subject           String
   recipientAddress  String
   recipientUserId   String?
@@ -610,6 +611,7 @@ model MessageLog {
   recipientUser User? @relation(fields: [recipientUserId], references: [id])
 
   @@index([channel, createdAt])
+  @@index([messageType, createdAt])
   @@index([recipientUserId, channel, createdAt])
   @@index([providerMessageId])
   @@map("message_logs")

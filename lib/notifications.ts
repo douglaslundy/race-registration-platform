@@ -41,6 +41,7 @@ async function sendWhatsAppIfActive(
     await sendWhatsAppMessage(
       phone,
       text,
+      alertKey,
       eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
     );
     if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");

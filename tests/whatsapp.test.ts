@@ -96,10 +96,11 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
     vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
 
-    await sendWhatsAppMessage("5511999999999", "Olá!", { relatedEntityType: "Event", relatedEntityId: "event-1" });
+    await sendWhatsAppMessage("5511999999999", "Olá!", "TEST", { relatedEntityType: "Event", relatedEntityId: "event-1" });
 
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "WHATSAPP",
+      messageType: "TEST",
       subject: "Olá!",
       recipientAddress: "5511999999999",
       status: "SENT",

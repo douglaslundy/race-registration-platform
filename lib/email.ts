@@ -19,6 +19,7 @@ export async function sendMail(opts: {
   to: string;
   subject: string;
   html: string;
+  messageType?: string;
   attachments?: { filename: string; content: Buffer }[];
   relatedEntityType?: string;
   relatedEntityId?: string;
@@ -44,6 +45,7 @@ export async function sendMail(opts: {
   } catch (err) {
     await recordMessageLog({
       channel: "EMAIL",
+      messageType: opts.messageType,
       subject: opts.subject,
       recipientAddress: opts.to,
       status: "FAILED",
@@ -55,6 +57,7 @@ export async function sendMail(opts: {
 
   await recordMessageLog({
     channel: "EMAIL",
+    messageType: opts.messageType,
     subject: opts.subject,
     recipientAddress: opts.to,
     status: "SENT",

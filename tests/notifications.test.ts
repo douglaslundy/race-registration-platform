@@ -127,6 +127,7 @@ describe("notifyOrderConfirmed", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       expect.stringContaining("Corrida Teste"),
+      "ORDER_CONFIRMED",
       { relatedEntityType: "Event", relatedEntityId: "event-1" },
     );
   });
@@ -222,6 +223,7 @@ describe("notifyOrderConfirmed", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511777777777",
       expect.stringContaining("Você inscreveu Nome Digitado Pelo Comprador"),
+      "ORDER_CONFIRMED_PROXY_BUYER",
       expect.anything(),
     );
   });
@@ -239,6 +241,7 @@ describe("notifyOrderConfirmed", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511888888888",
       expect.stringContaining("Comprador Teste criou uma inscrição pra você"),
+      "ORDER_CONFIRMED_PROXY_ATHLETE",
       expect.anything(),
     );
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(2);
@@ -257,7 +260,12 @@ describe("notifyOrderConfirmed", () => {
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "comprador@example.com" }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511888888888", expect.any(String), expect.anything());
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511888888888",
+      expect.any(String),
+      "ORDER_CONFIRMED_PROXY_ATHLETE",
+      expect.anything(),
+    );
   });
 
   it("procuração: confirmationEmailSentAt é gravado só 1x, refletindo o e-mail do comprador", async () => {
@@ -345,6 +353,7 @@ describe("notifyOrderConfirmed", () => {
       expect(sendWhatsAppMessage).toHaveBeenCalledWith(
         "5511999999999",
         `Sua inscrição em Corrida Teste foi confirmada! Pedido order-1. Detalhes: ${detailsUrl}`,
+        "ORDER_CONFIRMED",
         { relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
@@ -359,6 +368,7 @@ describe("notifyOrderConfirmed", () => {
       expect(sendWhatsAppMessage).toHaveBeenCalledWith(
         "5511777777777",
         `Você inscreveu Nome Digitado Pelo Comprador em Corrida Teste! Pedido order-1. Detalhes: ${detailsUrl}`,
+        "ORDER_CONFIRMED_PROXY_BUYER",
         { relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
@@ -373,6 +383,7 @@ describe("notifyOrderConfirmed", () => {
       expect(sendWhatsAppMessage).toHaveBeenCalledWith(
         "5511888888888",
         `Comprador Teste criou uma inscrição pra você em Corrida Teste! Pedido order-1. Detalhes: ${detailsUrl}`,
+        "ORDER_CONFIRMED_PROXY_ATHLETE",
         { relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
@@ -392,6 +403,7 @@ describe("notifyOrderConfirmed", () => {
       expect(sendWhatsAppMessage).toHaveBeenCalledWith(
         "5511888888888",
         "Oi Nome Digitado Pelo Comprador, Comprador Teste te inscreveu!",
+        "ORDER_CONFIRMED_PROXY_ATHLETE",
         { relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
