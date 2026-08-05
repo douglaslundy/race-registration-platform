@@ -1626,20 +1626,27 @@ Commits: `f7e02e7` (itens 1+4), `d4fcdea` (item 2), `c7dba03` (item 3). Suite 21
 `npm run build` limpos (build limpo rodado do zero, `rm -rf .next` antes, pra garantir que as
 rotas removidas realmente sumiram do build).
 
-**Pendência real**: verificação manual no navegador de nenhuma das 4 correções — sem acesso a
-navegador nesta sessão, mesma limitação de sempre.
+**DEPLOYADA em produção (2026-08-04)**: push `a3757b7..6434aa3` → VPS (`cd /opt/corridas/src && git
+pull`, fast-forward 15 arquivos) → `docker build` → `docker compose up -d --no-deps app` — sem
+`prisma db push` (nenhuma migração). Smoke test: `/` e `/eventos` 200; `/admin/alertas` e a rota
+removida (`/admin/alertas/templates/.../eventos/...`) ambas 307 (auth gate, esperado). Confirmado
+via `curl` no HTML de produção: ícones de Instagram e WhatsApp já configurados pelo usuário
+(`social_instagram`, `social_whatsapp="+5535984060343"`) renderizam certo no cabeçalho e rodapé —
+WhatsApp virou `wa.me/5535984060343?text=Olá, gostaria de falar com a equipe Circuito das
+Corridas` automaticamente, confirmando que a normalização do "+55" já digitado não duplicou o DDI.
+
+`refresh-templates.ts` rodado logo em seguida: 3 templates re-sincronizados (os 3 textos de
+WhatsApp do resumo diário que mudaram), 24 pulados (já em dia ou customizados por admin — nenhum
+customizado de fato, confirmado antes). Novo texto uma-métrica-por-linha já ativo em produção.
+
+**Pendência real**: verificação manual no navegador de nenhuma das 4 correções (clicar de fato nos
+ícones, testar o formulário do admin) — sem acesso a navegador nesta sessão, mesma limitação de
+sempre.
 
 ## Próxima tarefa
 
-Fazer o deploy das 4 correções acima (perguntar ao usuário antes — mesmo padrão de sempre).
-Nenhuma migração de schema, nenhuma variável de ambiente nova — deploy simples (`cd
-/opt/corridas/src && git pull` → `docker build` → `docker compose up -d --no-deps app` de
-`/opt/corridas`). Depois de deployar, considerar rodar `refresh-templates.ts` de novo (item 3
-mudou `factoryDefault`, mas como só afeta linhas **sem** histórico de versão — e não há nenhuma
-linha `DAILY_SUMMARY`/WhatsApp customizada por admin em produção, confirmado antes — é seguro
-rodar, mesmo procedimento manual já documentado nesta sessão).
-
-Depois do deploy: perguntar ao usuário o que vem a seguir. Etapa 4 (novos alertas recomendados) e
-Etapa 5 (auditoria/log de envio mais completo, hoje parcial) continuam pendentes, sem pedido
-explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas até 1-8 estarem 100% concluídas,
-testadas e deployadas — e até pedido explícito do usuário.
+As 4 correções estão deployadas e completas, sem passo manual pendente. Perguntar ao usuário o que
+vem a seguir. Etapa 4 (novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais completo,
+hoje parcial) continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam
+bloqueadas até 1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito do
+usuário.
