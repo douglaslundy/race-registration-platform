@@ -1555,27 +1555,38 @@ ar, correto, desde o primeiro restart — não houve bug nenhum.
 
 Nenhuma pendência de deploy restante destas 3 frentes.
 
+## Etapa 7 concluída (2026-08-04): seleção de plano em /anuncie
+
+Brainstorm → spec (`docs/superpowers/specs/2026-08-04-anuncie-selecao-plano-design.md`) → plano de
+1 task (`docs/superpowers/plans/2026-08-04-anuncie-selecao-plano.md`) → executado via
+`superpowers:subagent-driven-development` (commit `7fb2e1c`). Novo componente
+`components/advertiser/AdvertiserPlanPicker.tsx` (client) junta a grade de cards de plano + o
+`RequestAdvertiserForm` já existente: clicar num card seleciona o plano (destaque visual,
+`aria-pressed`, botão nativo — acessível por teclado), plano mais barato (`plans[0]`) vem
+pré-selecionado, troca de plano não reseta o formulário (sem `key` forçando remount).
+`app/(public)/anuncie/page.tsx` encolheu pra só buscar dados e delegar a renderização. Zero mudança
+em `RequestAdvertiserForm.tsx` ou `app/api/anunciante/solicitar/route.ts` — nenhum dos dois
+precisava mudar. Fluxo de "login adiado até o checkout" já existia e continua intacto (não era um
+gap de verdade, só precisava confirmação).
+
+Revisão de task única (não houve revisão de branch inteira separada — task única, revisor já
+verificou tudo direto contra o diff): **Approved**, zero Critical/Important, só 2 sugestões Minor
+de acessibilidade (usar `role="radiogroup"`/`radio` em vez de botões com `aria-pressed`, daria
+navegação por setas — não é falha de spec, adiado). Suite 211/211 arquivos, 1421/1421 testes,
+`tsc`/`build` limpos.
+
+**Pendências reais**: verificação manual no navegador nunca foi feita (sem acesso a navegador
+durante a implementação, mesma limitação de sempre nesta sessão). Nada além disso — sem deploy
+ainda (nada commitado aqui precisa de passo manual de deploy, é só código, ver nota no próprio
+plano).
+
 ## Próxima tarefa
 
-Usuário confirmou a ordem: Etapa 6 (✅ deployada) → Etapa 8 (✅ deployada) → **Etapa 7 (fluxo de
-anunciante)**, a última das três que o usuário pediu pra fazer nesta sequência.
+Etapas 6, 7 e 8 — as 3 que o usuário pediu nesta sequência — estão todas **concluídas**. Etapa 7
+(este commit) ainda não foi deployada em produção; as outras duas (6 e 8) já foram (ver seção de
+deploy acima, 2026-08-04). Perguntar ao usuário se quer deployar a Etapa 7 agora (deploy simples,
+sem schema/passo manual) antes de seguir pra qualquer coisa nova.
 
-### Contexto necessário pra Etapa 7 (fluxo de anunciante)
-
-- Auditoria da Etapa 1 (`IMPLEMENTATION_PLAN.md` §2.5) já identificou o gap concreto: `/anuncie`
-  (`app/(public)/anuncie/page.tsx`) já é público (sem exigir login) e já reaproveita o padrão de
-  `SubscribeButton`/PIX, MAS sempre submete `plans[0].id`
-  (`RequestAdvertiserForm adPlanId={plans[0].id}`) — **não existe seleção de plano pelo visitante**,
-  mesmo havendo cards visuais pra vários planos.
-- Mencionado também: fluxo de "login adiado até o checkout" quando o usuário logado tem outro papel
-  — verificar se isso já existe ou também falta.
-- Regra fixa do `CLAUDE.md`: nunca `alert()`/`confirm()`/`prompt()`.
-- Próxima ação real: brainstorm da Etapa 7 via `superpowers:brainstorming` antes de qualquer spec/
-  plano/código.
-
-### Depois da Etapa 7
-
-Etapas 6, 7 e 8 (as 3 que o usuário pediu) estarão completas. Etapas 4 (novos alertas) e 5
-(auditoria de envio, hoje parcial) continuam pendentes, sem pedido explícito ainda. Etapas 9/10
-(kits, rating) continuam bloqueadas até 1-8 estarem 100% concluídas, testadas e deployadas — e até
-pedido explícito do usuário.
+Etapas 4 (novos alertas recomendados) e 5 (auditoria/log de envio mais completo, hoje parcial)
+continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas até
+1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito do usuário.
