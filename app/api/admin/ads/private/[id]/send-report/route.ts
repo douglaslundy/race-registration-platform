@@ -36,6 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (parsed.data.channel === "email") {
     await sendMail({
       to: data.contactEmail,
+      messageType: "AD_REPORT",
       subject: "Relatório do seu anúncio",
       html: `<p>Olá,</p><p>Segue em anexo o relatório de desempenho do seu anúncio <strong>${data.adLabel}</strong>.</p>`,
       attachments: [{ filename: "relatorio.pdf", content: pdfBuffer }],
