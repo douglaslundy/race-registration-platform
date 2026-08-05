@@ -1575,17 +1575,23 @@ de acessibilidade (usar `role="radiogroup"`/`radio` em vez de botões com `aria-
 navegação por setas — não é falha de spec, adiado). Suite 211/211 arquivos, 1421/1421 testes,
 `tsc`/`build` limpos.
 
-**Pendências reais**: verificação manual no navegador nunca foi feita (sem acesso a navegador
-durante a implementação, mesma limitação de sempre nesta sessão). Nada além disso — sem deploy
-ainda (nada commitado aqui precisa de passo manual de deploy, é só código, ver nota no próprio
-plano).
+**DEPLOYADA em produção (2026-08-04)**: push `2c6bbbe..87fd737` → VPS (`cd /opt/corridas/src && git
+pull` — **nota**: o repo git na VPS fica em `/opt/corridas/src`, não em `/opt/corridas` direto, usar
+sempre `deploy.sh` ou replicar esse `cd` — → `docker build` → `docker compose up -d --no-deps app`
+de `/opt/corridas`, sem `prisma db push`, sem passo manual). Smoke test via domínio público: `/`,
+`/anuncie`, `/eventos` todos 200; confirmado via `curl` que o HTML de `/anuncie` já tem os botões
+`aria-pressed` da seleção de plano.
+
+**Pendência real**: verificação manual no navegador (clicar de fato num plano e ver o form reagir)
+nunca foi feita — sem acesso a navegador durante a implementação, mesma limitação de sempre nesta
+sessão. Só isso.
 
 ## Próxima tarefa
 
-Etapas 6, 7 e 8 — as 3 que o usuário pediu nesta sequência — estão todas **concluídas**. Etapa 7
-(este commit) ainda não foi deployada em produção; as outras duas (6 e 8) já foram (ver seção de
-deploy acima, 2026-08-04). Perguntar ao usuário se quer deployar a Etapa 7 agora (deploy simples,
-sem schema/passo manual) antes de seguir pra qualquer coisa nova.
+Etapas 6, 7 e 8 — as 3 que o usuário pediu nesta sequência — estão todas **concluídas e
+deployadas**. Perguntar ao usuário o que vem a seguir: Etapa 4 (novos alertas recomendados), Etapa 5
+(auditoria/log de envio mais completo, hoje parcial), ou outra coisa — nenhuma tem pedido explícito
+ainda.
 
 Etapas 4 (novos alertas recomendados) e 5 (auditoria/log de envio mais completo, hoje parcial)
 continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas até
