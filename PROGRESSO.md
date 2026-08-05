@@ -1689,10 +1689,48 @@ faixa mobile (`md:hidden flex items-center justify-center gap-6 ...`) está no H
 via HTML/`curl`. Se o usuário testar no celular e ainda achar que não está bom, meu próximo passo
 seria pedir uma captura de tela em vez de tentar adivinhar de novo.
 
+## Investigação: "teste de WhatsApp não chega" — causa real encontrada e corrigida (2026-08-05)
+
+Usuário reportou que clicar "Enviar teste pra mim" num alerta não entregava nada no WhatsApp.
+Investigação, nesta ordem:
+
+1. Checado `message_logs` em produção — sem nenhuma entrada `FAILED` de WhatsApp, e nenhuma
+   entrada de teste WhatsApp (`subject LIKE '%TESTE%'`) — só um teste de E-MAIL registrado.
+2. Checada a conexão real do WhatsApp (Evolution API `connectionState`) — `"state":"open"`,
+   ativa.
+3. Enviei uma mensagem de teste **direto pela API** (bypassando o site) pro número da própria
+   conta do usuário — **chegou** (confirmado pelo usuário). Isso prova que a integração de
+   WhatsApp funciona de ponta a ponta; o "sem o 9º dígito" que apareceu na resposta da API é só o
+   WhatsApp resolvendo o número no formato como está cadastrado lá (comportamento normal do
+   Baileys, não é bug).
+4. Pedido pro usuário testar de novo, especificamente a linha de WhatsApp (não a de e-mail) do
+   mesmo alerta — ele confirmou: sem erro na tela, mas nada chegou.
+5. Checado `message_logs` de novo — apareceu **mais um teste de E-MAIL**, de novo nenhum de
+   WhatsApp. Ou seja: o clique do usuário, mesmo tentando a linha de WhatsApp, resultou em envio
+   de e-mail.
+6. **Causa raiz encontrada**: `MessageTemplateEditor.tsx` e a página
+   `app/admin/alertas/templates/[id]/page.tsx` mostram o **mesmo título genérico**
+   (`def.description`, ex: "Resumo diário — 100% editável...") pra qualquer canal — não existe
+   NENHUM indicador visível de "você está editando a versão de E-mail" vs "WhatsApp" na tela. É
+   fácil clicar/ficar na linha errada (mesmo `alertKey`, linhas diferentes só por `channel`) sem
+   perceber, já que a única pista era a presença/ausência sutil do campo "Assunto".
+
+**Corrigido**: badge colorido "Canal: E-mail"/"Canal: WhatsApp" bem visível no topo do formulário
+(azul/verde), `<h1>` da página passou a citar o canal, título da aba do navegador idem
+(`generateMetadata` dinâmico). Commit `c3611cd`. Suite 210/210, `tsc`/`build` limpos. **Deployado**.
+
+**Confirmado que NÃO é bug de envio** — infra de WhatsApp 100% funcional, verificada com um envio
+real que chegou. O problema real e provável era confusão de qual linha da lista o usuário estava
+editando, agora impossível de confundir com o badge.
+
+**Pendência real**: usuário ainda vai testar de novo com o badge visível pra confirmar que agora
+funciona — próximo passo real ao retomar é ler a resposta dele.
+
 ## Próxima tarefa
 
-Todas as correções pedidas até agora (as 4 da leva anterior + os 3 ajustes de ícone/mobile) estão
-deployadas e completas, sem passo manual pendente. Perguntar ao usuário o que vem a seguir. Etapa 4
-(novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais completo, hoje parcial)
-continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas
-até 1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito do usuário.
+Aguardar confirmação do usuário de que o teste de WhatsApp agora funciona (badge de canal deployado
+— ver seção acima). Depois disso, todas as correções pedidas até agora estarão completas. Perguntar
+o que vem a seguir. Etapa 4 (novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais
+completo, hoje parcial) continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating)
+continuam bloqueadas até 1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito
+do usuário.
