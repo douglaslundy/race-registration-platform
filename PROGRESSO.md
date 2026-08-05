@@ -1666,9 +1666,32 @@ WhatsApp (`17.472...`) tanto no cabeçalho quanto no rodapé.
 **Pendência real**: verificação visual de fato num navegador (só confirmei via `curl`/grep no HTML
 — cores/tamanhos corretos no markup, mas não vi renderizado) — mesma limitação de sempre.
 
+## Ícones sociais ainda escondidos no mobile — corrigido (2026-08-05)
+
+Usuário testou no celular e perguntou de novo "aonde estão os ícones" — a extensão do Chrome não
+conectou nesta sessão (`tabs_context_mcp` retornou "Browser extension is not connected"), então não
+deu pra abrir o navegador e ver direto. Perguntei via `AskUserQuestion` se era celular ou
+computador — resposta: **celular**. Isso explica o problema: os ícones do commit anterior só
+existiam dentro do `Header.tsx` em dois lugares — cluster desktop (`hidden md:flex`, correto) e
+dentro do menu ☰ expansível no mobile (só aparecia depois de tocar no hambúrguer). "Destaque" não
+pode depender de um toque extra escondido.
+
+Corrigido: nova faixa `md:hidden` sempre visível logo abaixo do cabeçalho no mobile (fundo cinza
+claro, ícones centralizados, sem precisar abrir menu nenhum). A versão duplicada que ficava dentro
+do menu ☰ foi removida (virou redundante). Extraído `SocialIconLinks` (componente local dentro do
+próprio arquivo) pra não duplicar o JSX entre a versão desktop e a faixa mobile — usado nos dois
+lugares agora.
+
+Commit `d8abbd3`. Suite 210/210, `tsc`/`build` limpos. **Deployado e confirmado via `curl`** — a
+faixa mobile (`md:hidden flex items-center justify-center gap-6 ...`) está no HTML de produção.
+
+**Pendência real**: mesma de sempre — nunca vi renderizado num navegador de verdade, só confirmei
+via HTML/`curl`. Se o usuário testar no celular e ainda achar que não está bom, meu próximo passo
+seria pedir uma captura de tela em vez de tentar adivinhar de novo.
+
 ## Próxima tarefa
 
-Todas as correções pedidas até agora (as 4 da leva anterior + estes 2 ajustes de ícone) estão
+Todas as correções pedidas até agora (as 4 da leva anterior + os 3 ajustes de ícone/mobile) estão
 deployadas e completas, sem passo manual pendente. Perguntar ao usuário o que vem a seguir. Etapa 4
 (novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais completo, hoje parcial)
 continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas
