@@ -1,9 +1,11 @@
 import { formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { MESSAGE_TYPE_LABEL } from "@/lib/message-logs";
 
 export interface MessageLogRow {
   id: string;
   channel: "EMAIL" | "WHATSAPP";
+  messageType: string | null;
   subject: string;
   recipientAddress: string;
   status: "SENT" | "DELIVERED" | "READ" | "FAILED";
@@ -36,6 +38,7 @@ export default function MessageLogList({ rows }: { rows: MessageLogRow[] }) {
           <tr className="text-left text-gray-500 border-b dark:border-gray-700 text-xs uppercase">
             <th className="pb-2 pr-4">Status</th>
             <th className="pb-2 pr-4">Canal</th>
+            <th className="pb-2 pr-4">Tipo</th>
             <th className="pb-2 pr-4">Destinatário</th>
             <th className="pb-2 pr-4">Assunto</th>
             <th className="pb-2">Quando</th>
@@ -56,6 +59,9 @@ export default function MessageLogList({ rows }: { rows: MessageLogRow[] }) {
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${channelInfo.color}`}>
                     {channelInfo.icon} {channelInfo.label}
                   </span>
+                </td>
+                <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
+                  {row.messageType ? MESSAGE_TYPE_LABEL[row.messageType] ?? row.messageType : "Desconhecido"}
                 </td>
                 <td className="py-2 pr-4">
                   <div>{row.recipientUser?.name ?? row.recipientAddress}</div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/rbac";
-import { listMessageLogs, resolveMessageOwnerUserId, resolveOrganizerEventIds, type MessageLogStatus } from "@/lib/message-logs";
+import { listMessageLogs, resolveMessageOwnerUserId, resolveOrganizerEventIds, MESSAGE_TYPE_LABEL, type MessageLogStatus } from "@/lib/message-logs";
 import MessageLogList, { type MessageLogRow } from "@/components/messages/MessageLogList";
 
 export const metadata: Metadata = { title: "Mensagens" };
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 interface SearchParams {
   channel?: string;
+  type?: string;
   status?: string;
   q?: string;
   dateFrom?: string;
@@ -24,6 +25,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
   const eventIds = ownerUserId === "__none__" ? [] : await resolveOrganizerEventIds(ownerUserId);
 
   const channel = params.channel === "EMAIL" || params.channel === "WHATSAPP" ? params.channel : undefined;
+  const messageType = params.type?.trim() || undefined;
   const status = params.status?.trim() || undefined;
   const q = params.q?.trim() || undefined;
   const dateFrom = params.dateFrom?.trim() || "";
@@ -32,6 +34,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
 
   const { rows, total, totalPages } = await listMessageLogs({
     channel,
+    messageType,
     recipientUserId: ownerUserId,
     eventIds,
     status: status as MessageLogStatus | undefined,
@@ -43,8 +46,9 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
 
   const buildFilterQuery = (overrides: Partial<SearchParams> = {}) => {
     const query = new URLSearchParams();
-    const merged = { channel, status, q, dateFrom, dateTo, ...overrides };
+    const merged = { channel, type: messageType, status, q, dateFrom, dateTo, ...overrides };
     if (merged.channel) query.set("channel", merged.channel);
+    if (merged.type) query.set("type", merged.type);
     if (merged.status) query.set("status", merged.status);
     if (merged.q) query.set("q", merged.q);
     if (merged.dateFrom) query.set("dateFrom", merged.dateFrom);
@@ -59,7 +63,7 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
         <p className="text-sm text-gray-500">{total} mensagem(ns) encontrada(s)</p>
       </div>
 
-      <form method="GET" className="card grid gap-4 md:grid-cols-6">
+      <form method="GET" className="card grid gap-4 md:grid-cols-7">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Buscar</label>
           <input name="q" defaultValue={q ?? ""} placeholder="Nome, e-mail ou telefone" className="input-field text-sm py-1.5" />
@@ -70,6 +74,15 @@ export default async function OrganizerMensagensPage({ searchParams }: { searchP
             <option value="">Todos</option>
             <option value="EMAIL">E-mail</option>
             <option value="WHATSAPP">WhatsApp</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Tipo</label>
+          <select name="type" defaultValue={messageType ?? ""} className="input-field text-sm py-1.5">
+            <option value="">Todos</option>
+            {Object.entries(MESSAGE_TYPE_LABEL).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
           </select>
         </div>
         <div>
