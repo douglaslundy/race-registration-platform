@@ -132,6 +132,7 @@ export async function sendRegistrationConfirmationEmail(params: {
     to: params.to,
     subject,
     html: layout(appName, body),
+    messageType: params.alertKey,
     ...(params.eventId ? { relatedEntityType: "Event", relatedEntityId: params.eventId } : {}),
   });
 }
@@ -146,6 +147,7 @@ export async function sendAdPurchaseConfirmationEmail(params: {
   const appName = await getAppName();
   await sendMail({
     to: params.to,
+    messageType: "AD_PURCHASE_CONFIRMATION",
     subject: `Plano de anúncio confirmado — ${params.planName}`,
     html: layout(
       appName,
@@ -175,7 +177,7 @@ export async function sendCancellationRequestedEmail(params: {
   const template = await getEffectiveTemplate("CANCELLATION_REQUESTED", "EMAIL", params.recipientRole, params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "CANCELLATION_REQUESTED", subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o organizador que um lote está quase esgotado. */
@@ -201,7 +203,7 @@ export async function sendLowStockEmail(params: {
   const template = await getEffectiveTemplate("LOW_STOCK", "EMAIL", "ORGANIZER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "LOW_STOCK", subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o atleta que o pedido está pendente há tempo demais. */
@@ -222,7 +224,7 @@ export async function sendAbandonedCartEmail(params: {
   const template = await getEffectiveTemplate("ABANDONED_CART", "EMAIL", "BUYER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "ABANDONED_CART", subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o atleta que a inscrição foi cancelada por pagamento não identificado. */
@@ -243,7 +245,7 @@ export async function sendPaymentErrorEmail(params: {
   const template = await getEffectiveTemplate("PAYMENT_ERROR", "EMAIL", "BUYER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "PAYMENT_ERROR", subject, html: layout(appName, body) });
 }
 
 /** E-mail avisando o admin sobre divergências encontradas na conciliação de pagamentos. */
@@ -289,6 +291,7 @@ export async function sendReconciliationMismatchEmail(params: {
   const introTail = firstParagraphEnd === -1 ? "" : intro.slice(firstParagraphEnd + 4);
   await sendMail({
     to: params.to,
+    messageType: "RECONCILIATION_MISMATCH",
     subject,
     html: layout(appName, `${introHead}\n${table}\n${introTail}`),
   });
@@ -303,6 +306,7 @@ export async function sendPasswordResetEmail(params: {
   const appName = await getAppName();
   await sendMail({
     to: params.to,
+    messageType: "PASSWORD_RESET",
     subject: `Redefinição de senha — ${appName}`,
     html: layout(
       appName,
@@ -324,6 +328,7 @@ export async function sendAssistantInviteEmail(params: {
   const appName = await getAppName();
   await sendMail({
     to: params.to,
+    messageType: "ASSISTANT_INVITE",
     subject: `Você foi convidado como assistente — ${appName}`,
     html: layout(
       appName,
@@ -348,6 +353,7 @@ export async function sendProxyRegistrationInviteEmail(params: {
   const appName = await getAppName();
   await sendMail({
     to: params.to,
+    messageType: "PROXY_REGISTRATION_INVITE",
     subject: `Você tem uma inscrição em ${appName}`,
     html: layout(
       appName,
@@ -373,6 +379,7 @@ export async function sendAdvertiserPromotionEmail(params: {
   const url = `${baseUrl}/anunciante`;
   await sendMail({
     to: params.to,
+    messageType: "ADVERTISER_PROMOTION",
     subject: `Sua conta agora é de anunciante — ${appName}`,
     html: layout(
       appName,
@@ -401,7 +408,7 @@ export async function sendAdvertiserRequestPendingEmail(params: {
   const template = await getEffectiveTemplate("ADVERTISER_REQUEST_PENDING", "EMAIL", "ADMIN");
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "ADVERTISER_REQUEST_PENDING", subject, html: layout(appName, body) });
 }
 
 /** E-mail pro anunciante avisando que a solicitação de conta foi aprovada. */
@@ -415,6 +422,7 @@ export async function sendAdvertiserRequestApprovedEmail(params: {
   const url = `${baseUrl}/anunciante`;
   await sendMail({
     to: params.to,
+    messageType: "ADVERTISER_REQUEST_APPROVED",
     subject: `Sua solicitação de anunciante foi aprovada — ${appName}`,
     html: layout(
       appName,
@@ -442,6 +450,7 @@ export async function sendAdvertiserRequestRejectedEmail(params: {
           contato caso haja qualquer dúvida.</p>`;
   await sendMail({
     to: params.to,
+    messageType: "ADVERTISER_REQUEST_REJECTED",
     subject: `Sua solicitação de anunciante não foi aprovada — ${appName}`,
     html: layout(
       appName,
@@ -469,7 +478,7 @@ export async function sendDailySummaryEmail(params: {
   const template = await getEffectiveTemplate("DAILY_SUMMARY", "EMAIL", params.role);
   const subject = renderTemplateSubject(template.subject ?? "", values);
   const body = renderTemplate(template.body, values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "DAILY_SUMMARY", subject, html: layout(appName, body) });
 }
 
 /** E-mail com o resumo diário de UM evento específico, enviado aos contatos cadastrados na tela de
@@ -483,5 +492,5 @@ export async function sendEventDailySummaryEmail(params: {
   const template = await getEffectiveTemplate("DAILY_SUMMARY_EVENT", "EMAIL", "ADMIN", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", params.values);
   const body = renderTemplate(template.body, params.values, "EMAIL");
-  await sendMail({ to: params.to, subject, html: layout(appName, body) });
+  await sendMail({ to: params.to, messageType: "DAILY_SUMMARY_EVENT", subject, html: layout(appName, body) });
 }
