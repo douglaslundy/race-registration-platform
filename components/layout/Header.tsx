@@ -8,6 +8,16 @@ import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNu
 import type { SocialLink } from "@/lib/social-links";
 import { SOCIAL_ICON_BY_KEY } from "./SocialIcons";
 
+/** Cor de marca de cada rede — só usado no Header (destaque), o rodapé continua neutro. */
+const SOCIAL_ICON_COLOR_BY_KEY: Record<string, string> = {
+  social_instagram: "text-pink-600 dark:text-pink-400",
+  social_facebook: "text-blue-600 dark:text-blue-400",
+  social_whatsapp: "text-green-600 dark:text-green-400",
+  social_youtube: "text-red-600 dark:text-red-400",
+  social_tiktok: "text-gray-900 dark:text-white",
+  social_x: "text-gray-900 dark:text-white",
+};
+
 export default function Header({ appName, socialLinks }: { appName: string; socialLinks: SocialLink[] }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,7 +46,7 @@ export default function Header({ appName, socialLinks }: { appName: string; soci
         </nav>
 
         {socialLinks.length > 0 && (
-          <div className="hidden md:flex items-center gap-3 mx-3 pl-3 border-l border-gray-200 dark:border-gray-700">
+          <div className="hidden md:flex items-center gap-4 mx-3 pl-3 border-l border-gray-200 dark:border-gray-700">
             {socialLinks.map((link) => {
               const Icon = SOCIAL_ICON_BY_KEY[link.key];
               return (
@@ -46,9 +56,9 @@ export default function Header({ appName, socialLinks }: { appName: string; soci
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={link.label}
-                  className="text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+                  className={`${SOCIAL_ICON_COLOR_BY_KEY[link.key] ?? "text-gray-500"} hover:scale-110 transition-transform`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5" />
                 </Link>
               );
             })}
@@ -109,9 +119,9 @@ export default function Header({ appName, socialLinks }: { appName: string; soci
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={link.label}
-                    className="text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+                    className={SOCIAL_ICON_COLOR_BY_KEY[link.key] ?? "text-gray-500"}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-6 h-6" />
                   </Link>
                 );
               })}
