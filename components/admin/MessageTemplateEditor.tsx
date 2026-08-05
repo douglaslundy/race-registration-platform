@@ -169,6 +169,15 @@ export default function MessageTemplateEditor({
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <div className="card space-y-4">
+        <div
+          className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${
+            channel === "EMAIL"
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+              : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+          }`}
+        >
+          Canal: {channel === "EMAIL" ? "E-mail" : "WhatsApp"}
+        </div>
         {channel === "EMAIL" && (
           <div>
             <label className="block text-sm font-medium mb-1">Assunto</label>

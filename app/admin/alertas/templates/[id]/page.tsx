@@ -7,7 +7,13 @@ import MessageTemplateEditor from "@/components/admin/MessageTemplateEditor";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Editar template — Admin" };
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const template = await db.messageTemplate.findUnique({ where: { id }, select: { channel: true } });
+  const channelLabel = template?.channel === "EMAIL" ? "E-mail" : template?.channel === "WHATSAPP" ? "WhatsApp" : "";
+  return { title: channelLabel ? `Editar template (${channelLabel}) — Admin` : "Editar template — Admin" };
+}
 
 export default async function EditMessageTemplatePage({
   params,
@@ -34,9 +40,13 @@ export default async function EditMessageTemplatePage({
   const effectiveRowTemplate =
     template.rowTemplate || def?.rowTemplate?.(template.channel as AlertChannel) || null;
 
+  const channelLabel = template.channel === "EMAIL" ? "E-mail" : "WhatsApp";
+
   return (
     <div className="max-w-5xl mx-auto space-y-4">
-      <h1 className="text-xl font-bold">{def?.description ?? template.alertKey}</h1>
+      <h1 className="text-xl font-bold">
+        {def?.description ?? template.alertKey} <span className="text-gray-400 font-normal">— {channelLabel}</span>
+      </h1>
       <MessageTemplateEditor
         templateId={template.id}
         saveUrl={`/api/admin/message-templates/${template.id}`}
