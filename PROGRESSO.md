@@ -1643,10 +1643,33 @@ customizado de fato, confirmado antes). Novo texto uma-métrica-por-linha já at
 ícones, testar o formulário do admin) — sem acesso a navegador nesta sessão, mesma limitação de
 sempre.
 
+## 2 ajustes finos nos ícones de redes sociais (2026-08-04)
+
+Usuário testou de novo e reportou 2 problemas nos ícones do item 1 da leva anterior:
+
+1. **Ícone de WhatsApp errado**: o `WhatsappIcon` em `components/layout/SocialIcons.tsx` usava o
+   path de um balão de mensagem genérico (ícone tipo "message-circle"), não o logo real do
+   WhatsApp — bug pré-existente desde a implementação original da Etapa 8, só notado agora.
+   Trocado pelo path correto do logo (bolha + fone), estilo preenchido, mesmo padrão dos outros
+   ícones de marca (Facebook/YouTube/TikTok/X).
+2. **Ícones do cabeçalho pouco visíveis**: confirmado ao vivo via `curl` que os ícones JÁ estavam
+   no header (conforme a correção anterior), mas pequenos (`w-4 h-4`) e cinza uniforme
+   (`text-gray-500`), meio escondidos entre o menu e os botões de login. Aumentados pra `w-5 h-5`
+   (desktop) / `w-6 h-6` (menu mobile) e cada rede ganhou a cor da própria marca (verde WhatsApp,
+   rosa Instagram, azul Facebook, vermelho YouTube, preto TikTok/X) em vez de cinza — muito mais
+   fácil de notar. O rodapé continua neutro/cinza de propósito (não foi pedido mudar lá).
+
+Commit `652dde8`. Suite 210/210, `tsc`/`build` limpos. **Deployado e confirmado ao vivo**: `curl`
+no HTML de produção mostra as classes `text-green-600`/`text-pink-600` aplicadas e o novo path do
+WhatsApp (`17.472...`) tanto no cabeçalho quanto no rodapé.
+
+**Pendência real**: verificação visual de fato num navegador (só confirmei via `curl`/grep no HTML
+— cores/tamanhos corretos no markup, mas não vi renderizado) — mesma limitação de sempre.
+
 ## Próxima tarefa
 
-As 4 correções estão deployadas e completas, sem passo manual pendente. Perguntar ao usuário o que
-vem a seguir. Etapa 4 (novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais completo,
-hoje parcial) continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam
-bloqueadas até 1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito do
-usuário.
+Todas as correções pedidas até agora (as 4 da leva anterior + estes 2 ajustes de ícone) estão
+deployadas e completas, sem passo manual pendente. Perguntar ao usuário o que vem a seguir. Etapa 4
+(novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais completo, hoje parcial)
+continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas
+até 1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito do usuário.
