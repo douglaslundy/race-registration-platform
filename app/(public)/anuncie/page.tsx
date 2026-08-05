@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatCurrency } from "@/lib/format";
 import { getSetting } from "@/lib/settings";
-import RequestAdvertiserForm from "@/components/advertiser/RequestAdvertiserForm";
+import AdvertiserPlanPicker from "@/components/advertiser/AdvertiserPlanPicker";
 
 export const metadata: Metadata = { title: "Anuncie no site" };
 export const dynamic = "force-dynamic";
@@ -31,34 +30,10 @@ export default async function AnunciePage() {
         <p className="text-gray-500 dark:text-gray-400">
           Não estamos aceitando novas solicitações de anunciante no momento.
         </p>
+      ) : plans.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400">Nenhum plano disponível no momento.</p>
       ) : (
-        <>
-          {plans.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400">Nenhum plano disponível no momento.</p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {plans.map((plan) => (
-                <div key={plan.id} className="card space-y-2">
-                  <h2 className="text-lg font-semibold">{plan.name}</h2>
-                  <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">
-                    {formatCurrency(plan.priceAmount)}
-                  </p>
-                  <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <li>Duração: {plan.durationDays} dias</li>
-                    <li>Posições simultâneas: {plan.maxSimultaneousSlots}</li>
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {plans.length > 0 && (
-            <div className="card max-w-2xl">
-              <h2 className="text-lg font-semibold mb-4">Dados da solicitação</h2>
-              <RequestAdvertiserForm adPlanId={plans[0].id} isLoggedIn={isLoggedIn} />
-            </div>
-          )}
-        </>
+        <AdvertiserPlanPicker plans={plans} isLoggedIn={isLoggedIn} />
       )}
     </div>
   );
