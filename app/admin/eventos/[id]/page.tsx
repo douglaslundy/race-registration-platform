@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import GeneratePayoutButton from "@/components/admin/GeneratePayoutButton";
+import EventDailySummaryRecipientsManager from "@/components/organizer/EventDailySummaryRecipientsManager";
 import { EVENT_STATUS_LABEL, MODALITY_LABEL } from "@/lib/admin/labels";
 import {
   computeRegistrationStatusBreakdown,
@@ -289,6 +290,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           Ver página pública
         </Link>
       </div>
+
+      <EventDailySummaryRecipientsManager eventId={event.id} />
     </div>
   );
 }

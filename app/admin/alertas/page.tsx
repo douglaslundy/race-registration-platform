@@ -1,5 +1,4 @@
 import { requireAdmin } from "@/lib/auth/rbac";
-import { db } from "@/lib/db";
 import AlertConfigCard from "@/components/admin/AlertConfigCard";
 import MessageTemplateList from "@/components/admin/MessageTemplateList";
 import { listTemplatesForAdmin } from "@/lib/templates/list";
@@ -19,14 +18,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminAlertasPage() {
   await requireAdmin();
 
-  const [lowStock, abandonedCart, paymentError, reconciliation, cancellation, advertiserRequest, events] = await Promise.all([
+  const [lowStock, abandonedCart, paymentError, reconciliation, cancellation, advertiserRequest] = await Promise.all([
     getLowStockAlertSettings(),
     getAbandonedCartAlertSettings(),
     getPaymentErrorAlertSettings(),
     getReconciliationAlertSettings(),
     getCancellationAlertSettings(),
     getAdvertiserRequestAlertSettings(),
-    db.event.findMany({ where: { status: { notIn: ["CANCELLED"] } }, select: { id: true, title: true }, orderBy: { title: "asc" } }),
   ]);
 
   return (
@@ -106,7 +104,7 @@ export default async function AdminAlertasPage() {
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Templates de mensagem</h2>
-        <MessageTemplateList templates={await listTemplatesForAdmin()} events={events} />
+        <MessageTemplateList templates={await listTemplatesForAdmin()} />
       </div>
     </div>
   );

@@ -1,7 +1,3 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import Link from "next/link";
 
 interface TemplateRow {
@@ -15,22 +11,7 @@ interface TemplateRow {
   updatedAt: string | null;
 }
 
-interface EventOption {
-  id: string;
-  title: string;
-}
-
-export default function MessageTemplateList({ templates, events }: { templates: TemplateRow[]; events: EventOption[] }) {
-  const router = useRouter();
-  const [selectedEvent, setSelectedEvent] = useState<Record<string, string>>({});
-
-  function goToEventOverride(t: TemplateRow) {
-    const key = `${t.alertKey}:${t.channel}:${t.recipientRole}`;
-    const eventId = selectedEvent[key];
-    if (!t.id || !eventId) return;
-    router.push(`/admin/alertas/templates/${t.id}/eventos/${eventId}`);
-  }
-
+export default function MessageTemplateList({ templates }: { templates: TemplateRow[] }) {
   return (
     <div className="card overflow-x-auto">
       <table className="w-full text-sm">
@@ -41,8 +22,7 @@ export default function MessageTemplateList({ templates, events }: { templates: 
             <th className="py-2 pr-4">Destinatário</th>
             <th className="py-2 pr-4">Personalização</th>
             <th className="py-2 pr-4">Última alteração</th>
-            <th className="py-2 pr-4" />
-            <th className="py-2">Personalizar por evento</th>
+            <th className="py-2">Ação</th>
           </tr>
         </thead>
         <tbody>
@@ -65,35 +45,11 @@ export default function MessageTemplateList({ templates, events }: { templates: 
                 <td className="py-2 pr-4 text-gray-500">
                   {t.updatedAt ? new Date(t.updatedAt).toLocaleString("pt-BR") : "Nunca editado"}
                 </td>
-                <td className="py-2 pr-4">
+                <td className="py-2">
                   {t.id && (
                     <Link href={`/admin/alertas/templates/${t.id}`} className="text-primary-700 dark:text-primary-400 hover:underline">
                       Editar
                     </Link>
-                  )}
-                </td>
-                <td className="py-2">
-                  {t.id && (
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedEvent[key] ?? ""}
-                        onChange={(e) => setSelectedEvent((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="input-field text-xs py-1"
-                      >
-                        <option value="">Selecione um evento…</option>
-                        {events.map((ev) => (
-                          <option key={ev.id} value={ev.id}>{ev.title}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => goToEventOverride(t)}
-                        disabled={!selectedEvent[key]}
-                        className="text-primary-700 dark:text-primary-400 hover:underline text-xs disabled:opacity-40 disabled:hover:no-underline"
-                      >
-                        Personalizar
-                      </button>
-                    </div>
                   )}
                 </td>
               </tr>
