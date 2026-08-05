@@ -1586,13 +1586,60 @@ de `/opt/corridas`, sem `prisma db push`, sem passo manual). Smoke test via dom�
 nunca foi feita — sem acesso a navegador durante a implementação, mesma limitação de sempre nesta
 sessão. Só isso.
 
+## 4 correções pós-deploy das Etapas 6/8/3 (2026-08-04)
+
+Usuário testou o site no ar e reportou 4 problemas reais, todos investigados e corrigidos no
+código local (**ainda não deployados** — ver "Próxima tarefa"):
+
+1. **Ícones de redes sociais pouco visíveis**: ficavam só no rodapé, pequenos. Pesquisei prática de
+   sites de inscrição de corrida (RunSignup e referências de UX) — cabeçalho é o padrão pra
+   visibilidade. Adicionados também no `Header` (desktop: coluna entre o menu e o login; mobile: no
+   menu expansível), mantendo o rodapé como estava. `Header`/`Footer` deixaram de buscar dado
+   próprio — `app/(public)/layout.tsx` agora calcula `socialLinks` uma vez (`getSetting` × 6 +
+   `buildSocialLinks`) e repassa como prop pros dois; `Footer` voltou a ser síncrono.
+2. **Select confusa em `/admin/alertas`**: não era destinatário, era personalização de TEXTO por
+   evento (Etapa 3 Parte 4) — mas o usuário achou confusa/pequena e pediu pra **remover de vez**.
+   Confirmado em produção: **zero** linhas `scope=EVENT` existiam (feature nunca chegou a ser usada
+   por ninguém), então a remoção não perde nenhum dado real. Removidos:
+   `app/admin/alertas/templates/[id]/eventos/[eventId]/page.tsx`,
+   `app/api/admin/message-templates/[id]/eventos/[eventId]/route.ts`, o teste da rota, e a
+   coluna/Select em `MessageTemplateList.tsx` (só ficou a coluna "Ação" → "Editar", que edita o
+   texto padrão global). `getEffectiveTemplate`'s `eventId` e as Tasks 21-26 (threading de eventId
+   nos remetentes reais) **continuam intactos** — servem pros contatos de resumo por evento
+   (feature separada, não removida) e caem no texto global normalmente. Aproveitei pra corrigir o
+   gap real por trás da confusão: o card de cadastro de contatos (telefone/e-mail) pro resumo
+   diário de um evento específico (`EventDailySummaryRecipientsManager`) já existia na edição do
+   organizador mas faltava na página de detalhe do evento do **admin** — adicionado agora
+   (`app/admin/eventos/[id]/page.tsx`), reaproveitando o componente existente (API já aceitava
+   admin via `scope.actingAsAdmin`, não precisou mudar backend).
+3. **Resumo diário do WhatsApp não era uma métrica por linha**: e-mail já era tabela (uma métrica
+   por linha); WhatsApp (admin, organizador, por evento) era uma frase corrida com vírgulas.
+   Reescrito o texto padrão de fábrica em `lib/templates/registry.ts` pro mesmo formato/ordem do
+   e-mail, um `\n` por métrica.
+4. **WhatsApp nas redes sociais exigia URL pronta**: agora o campo aceita só telefone (DDD +
+   número, sem +55, mesmo padrão já usado em `EventDailySummaryRecipientsManager`) e
+   `buildSocialLinks` (que ganhou um 2º parâmetro `appName`) gera o link `wa.me` automaticamente
+   com a mensagem "Olá, gostaria de falar com a equipe {nome da plataforma}" pré-preenchida.
+
+Commits: `f7e02e7` (itens 1+4), `d4fcdea` (item 2), `c7dba03` (item 3). Suite 210/210 arquivos,
+1416/1416 testes (5 testes a menos = os do teste deletado da rota removida), `tsc --noEmit` e
+`npm run build` limpos (build limpo rodado do zero, `rm -rf .next` antes, pra garantir que as
+rotas removidas realmente sumiram do build).
+
+**Pendência real**: verificação manual no navegador de nenhuma das 4 correções — sem acesso a
+navegador nesta sessão, mesma limitação de sempre.
+
 ## Próxima tarefa
 
-Etapas 6, 7 e 8 — as 3 que o usuário pediu nesta sequência — estão todas **concluídas e
-deployadas**. Perguntar ao usuário o que vem a seguir: Etapa 4 (novos alertas recomendados), Etapa 5
-(auditoria/log de envio mais completo, hoje parcial), ou outra coisa — nenhuma tem pedido explícito
-ainda.
+Fazer o deploy das 4 correções acima (perguntar ao usuário antes — mesmo padrão de sempre).
+Nenhuma migração de schema, nenhuma variável de ambiente nova — deploy simples (`cd
+/opt/corridas/src && git pull` → `docker build` → `docker compose up -d --no-deps app` de
+`/opt/corridas`). Depois de deployar, considerar rodar `refresh-templates.ts` de novo (item 3
+mudou `factoryDefault`, mas como só afeta linhas **sem** histórico de versão — e não há nenhuma
+linha `DAILY_SUMMARY`/WhatsApp customizada por admin em produção, confirmado antes — é seguro
+rodar, mesmo procedimento manual já documentado nesta sessão).
 
-Etapas 4 (novos alertas recomendados) e 5 (auditoria/log de envio mais completo, hoje parcial)
-continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas até
-1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito do usuário.
+Depois do deploy: perguntar ao usuário o que vem a seguir. Etapa 4 (novos alertas recomendados) e
+Etapa 5 (auditoria/log de envio mais completo, hoje parcial) continuam pendentes, sem pedido
+explícito ainda. Etapas 9/10 (kits, rating) continuam bloqueadas até 1-8 estarem 100% concluídas,
+testadas e deployadas — e até pedido explícito do usuário.
