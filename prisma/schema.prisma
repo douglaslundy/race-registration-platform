@@ -355,6 +355,7 @@ model Registration {
   order        Order          @relation(fields: [orderId], references: [id])
 
   @@index([eventId, status])
+  @@index([eventId, createdAt])
   @@index([athleteUserId])
   @@index([createdAt])
   @@map("registrations")
@@ -419,6 +420,7 @@ model Payment {
   refunds    Refund[]
 
   @@index([orderId])
+  @@index([status, expiresAt])
   @@map("payments")
 }
 

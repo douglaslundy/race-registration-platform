@@ -34,7 +34,10 @@ interface SearchParams {
   paymentMethod?: string;
   dateFrom?: string;
   dateTo?: string;
+  page?: string;
 }
+
+const PAGE_SIZE = 50;
 
 function buildInscritosUrl(
   id: string,
@@ -50,6 +53,7 @@ function buildInscritosUrl(
     paymentMethod?: string;
     dateFrom?: string;
     dateTo?: string;
+    page?: number;
   },
 ) {
   const query = new URLSearchParams();
@@ -64,6 +68,7 @@ function buildInscritosUrl(
   if (params.paymentMethod) query.set("paymentMethod", params.paymentMethod);
   if (params.dateFrom) query.set("dateFrom", params.dateFrom);
   if (params.dateTo) query.set("dateTo", params.dateTo);
+  if (params.page && params.page > 1) query.set("page", String(params.page));
   const qs = query.toString();
   return `/admin/eventos/${id}/inscritos${qs ? `?${qs}` : ""}`;
 }
@@ -88,6 +93,7 @@ export default async function AdminInscritosPage({
   const dateFrom = sp.dateFrom?.trim() ?? "";
   const dateTo = sp.dateTo?.trim() ?? "";
   const sortConfig = buildRegistrationOrderBy(sp.sort?.trim() ?? "", sp.dir?.trim() ?? "");
+  const requestedPage = Number.parseInt(sp.page ?? "1", 10);
 
   const event = await db.event.findFirst({
     where: { id },
@@ -102,8 +108,21 @@ export default async function AdminInscritosPage({
   });
   if (!event) notFound();
 
+  const where = buildRegistrationWhere(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo });
+
+  const [total, totalAmountRows] = await Promise.all([
+    db.registration.count({ where }),
+    // Select mínimo (só o totalAmount do pedido via join) — evita carregar os includes pesados
+    // (perfil do atleta, pagamentos etc.) só pra somar o total de todas as inscrições filtradas,
+    // já que essa soma precisa considerar o filtro inteiro, não só a página atual.
+    db.registration.findMany({ where, select: { order: { select: { totalAmount: true } } } }),
+  ]);
+  const totalAmount = totalAmountRows.reduce((s, r) => s + r.order.totalAmount, 0);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+
   const registrations = await db.registration.findMany({
-    where: buildRegistrationWhere(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo }),
+    where,
     include: {
       athlete: {
         select: {
@@ -134,18 +153,34 @@ export default async function AdminInscritosPage({
           id: true,
           totalAmount: true,
           confirmationEmailSentAt: true,
-          payments: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            select: { method: true, paidAt: true, status: true, providerPaymentId: true },
-          },
         },
       },
     },
     orderBy: sortConfig.orderBy,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   });
 
-  const totalAmount = registrations.reduce((s, r) => s + r.order.totalAmount, 0);
+  // Busca o último pagamento de cada pedido em UMA query (IN), em vez do include aninhado com
+  // take:1 por pedido — que o Prisma resolve como uma query separada por pedido (N+1 real).
+  const orderIds = registrations.map((r) => r.order.id);
+  const latestPayments = orderIds.length
+    ? await db.payment.findMany({
+        where: { orderId: { in: orderIds } },
+        orderBy: { createdAt: "desc" },
+        select: { orderId: true, method: true, paidAt: true, status: true, providerPaymentId: true },
+      })
+    : [];
+  const latestPaymentByOrder = new Map<string, { method: string; paidAt: Date | null; status: string; providerPaymentId: string | null }>();
+  for (const p of latestPayments) {
+    if (p.orderId && !latestPaymentByOrder.has(p.orderId)) {
+      latestPaymentByOrder.set(p.orderId, { method: p.method, paidAt: p.paidAt, status: p.status, providerPaymentId: p.providerPaymentId });
+    }
+  }
+  const registrationsWithPayment = registrations.map((r) => ({
+    ...r,
+    order: { ...r.order, payments: latestPaymentByOrder.has(r.order.id) ? [latestPaymentByOrder.get(r.order.id)!] : [] },
+  }));
 
   const nameDir = sortConfig.normalizedSort === "name" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
   const dateDir = sortConfig.normalizedSort === "date" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
@@ -159,7 +194,7 @@ export default async function AdminInscritosPage({
           <Link href={`/admin/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar ao evento</Link>
           <h1 className="text-xl font-bold mt-1">Inscritos — {event.title}</h1>
           <p className="text-sm text-gray-500">
-            {registrations.length} inscrições · Total de pagamentos: <strong className="text-gray-700 dark:text-gray-300">{formatCurrency(totalAmount)}</strong>
+            {total} inscrições · Total de pagamentos: <strong className="text-gray-700 dark:text-gray-300">{formatCurrency(totalAmount)}</strong>
           </p>
         </div>
         <div className="flex gap-2">
@@ -270,32 +305,53 @@ export default async function AdminInscritosPage({
         </Link>
       </div>
 
-      {registrations.length === 0 ? (
+      {total === 0 ? (
         <div className="card text-center py-12 text-gray-500">Nenhuma inscrição ainda.</div>
       ) : (
-        <RegistrationsTable
-          registrations={registrations}
-          editEndpoint={(r) => `/api/admin/users/${r.athlete.id}`}
-          renderActions={(r) => {
-            const payment = r.order.payments[0];
-            return (
-              <>
-                {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (
-                  <ResendPaymentNotificationButton
-                    endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}
-                  />
-                )}
-                {r.status === "CONFIRMED" && (
-                  <ResendPaymentNotificationButton
-                    endpoint={`/api/admin/registrations/${r.id}/resend-confirmation-email`}
-                    label="Reenviar confirmação"
-                    loadingLabel="Enviando..."
-                  />
-                )}
-              </>
-            );
-          }}
-        />
+        <>
+          <RegistrationsTable
+            registrations={registrationsWithPayment}
+            editEndpoint={(r) => `/api/admin/users/${r.athlete.id}`}
+            renderActions={(r) => {
+              const payment = r.order.payments[0];
+              return (
+                <>
+                  {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (
+                    <ResendPaymentNotificationButton
+                      endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}
+                    />
+                  )}
+                  {r.status === "CONFIRMED" && (
+                    <ResendPaymentNotificationButton
+                      endpoint={`/api/admin/registrations/${r.id}/resend-confirmation-email`}
+                      label="Reenviar confirmação"
+                      loadingLabel="Enviando..."
+                    />
+                  )}
+                </>
+              );
+            }}
+          />
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Link
+                href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir, page: Math.max(1, page - 1) })}
+                aria-disabled={page === 1}
+                className={`text-sm px-3 py-1.5 rounded-lg border ${page === 1 ? "pointer-events-none border-gray-200 text-gray-300 dark:border-gray-700 dark:text-gray-600" : "border-gray-300 hover:border-primary-400 dark:border-gray-600 dark:text-gray-200 dark:hover:border-primary-500"}`}
+              >
+                Anterior
+              </Link>
+              <span className="text-sm text-gray-500">Página {page} de {totalPages}</span>
+              <Link
+                href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir, page: Math.min(totalPages, page + 1) })}
+                aria-disabled={page === totalPages}
+                className={`text-sm px-3 py-1.5 rounded-lg border ${page === totalPages ? "pointer-events-none border-gray-200 text-gray-300 dark:border-gray-700 dark:text-gray-600" : "border-gray-300 hover:border-primary-400 dark:border-gray-600 dark:text-gray-200 dark:hover:border-primary-500"}`}
+              >
+                Próxima
+              </Link>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );

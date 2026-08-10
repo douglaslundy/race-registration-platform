@@ -1,5 +1,123 @@
 # Progresso do Projeto
 
+## Varredura completa: segurança + performance + bugs relatados (2026-08-10) — CATALOGADO, NADA CORRIGIDO AINDA
+
+Usuário pediu varredura completa (segurança + lentidão) depois de relatos de clientes: formulário
+de inscrição (própria e por procuração) "trava" e os dados somem sem erro nem confirmação;
+lentidão grande em "Ver inscritos"/"Ordem cronológica" na tela de inscritos do evento; inscrição de
+02/08 ainda "aguardando pagamento" sem cancelamento automático; 2 alertas de VPS "Load Alto"
+(6.8 em 09/08 14:26, 6.9 em 09/08 22:02). Relatório completo apresentado ao usuário no chat desta
+sessão (não copiado aqui — ver a conversa se precisar do texto literal). Resumo dos achados:
+
+**Achados novos desta varredura:**
+1. **CRÍTICO/segurança — IDOR confirmado**: `app/api/events/[id]/batches/[batchId]/route.ts`,
+   `.../categories/[categoryId]/route.ts`, `.../routes/[routeId]/route.ts` — o `update`/`delete`
+   final não inclui `eventId: id` no `where`, então um organizador autenticado pode editar/apagar
+   lote/categoria/percurso de evento de OUTRO organizador se souber o ID do sub-recurso (IDs
+   expostos pelos GETs públicos dos mesmos endpoints). Não corrigido ainda — perguntar ao usuário
+   se quer priorizar.
+2. **Causa provável da lentidão em "Ver inscritos"/"Ordem cronológica"**: as duas telas
+   (`app/admin/eventos/[id]/inscritos/page.tsx`, `app/organizador/eventos/[id]/inscritos/page.tsx`)
+   fazem `db.registration.findMany` SEM paginação (`take`/`skip` ausentes) + `include` aninhado de
+   `order.payments` com `take:1` que vira N+1 real (uma query por pedido) porque o Prisma 5.22 não
+   tem `relationJoins` habilitado no schema. Cresce linearmente com o total de inscritos do evento,
+   a cada clique de filtro/ordenação (form é `method="GET"`, recarrega tudo). Falta também
+   `@@index([eventId, createdAt])` em `Registration` e índice em `Payment.status`.
+3. **Causa provável do formulário "travar e sumir"**: quando o pagamento por cartão volta
+   `PENDING` sem PIX/boleto (comum em antifraude do Mercado Pago/Pagar.me — `pending_contingency`,
+   `processing`, etc.), `CheckoutForm.tsx` não redireciona (só redireciona se `status==="PAID"` ou
+   se tem `pixQrCodeText`) — cai no branch genérico `setResult(body)` que troca o formulário INTEIRO
+   por um card pequeno de confirmação, sem `scrollTo(0,0)`. Se o usuário tinha rolado até o botão
+   (fim de formulário longo), a tela "encolhe" pra uma área que não existe mais — parece que os
+   dados sumiram e nada aconteceu, mas na verdade deu certo, só não está visível. Ausência de
+   timeout/`AbortController` nas chamadas a gateway (`lib/payment/mercadopago.ts`,
+   `lib/payment/pagarme.ts`) agrava a sensação de travamento em casos de gateway lento.
+4. **Pagamento de 02/08 não expirado automaticamente**: a lógica de `lib/payment/expire-payments.ts`
+   está correta (Payment.expiresAt sempre é setado com fallback, mesmo em PIX/boleto/cartão, desde
+   commits de 12/07) — a causa mais provável é o cron da VPS (`/api/cron/expire-payments`, protegido
+   por `x-cron-secret`) não estar rodando ou estar falhando silenciosamente; **não dá pra confirmar
+   sem acesso à VPS** (SSH falhou nesta sessão — ver abaixo). **Ação imediata disponível sem deploy
+   nenhum**: `/admin/pedidos-vencidos` já tem um botão "Processar agora" (`ExpirePaymentsPanel.tsx`
+   → `POST /api/admin/expire-payments`) que roda a mesma lógica do cron sob demanda — istruí o
+   usuário a clicar nele pra destravar o pedido de 02/08 agora; se não resolver, confirma que o
+   próprio pedido tem alguma particularidade que escapa do filtro (precisa olhar o registro real no
+   banco).
+5. **Achados de auditorias anteriores (já documentadas, ainda não corrigidas)** — reconfirmados
+   nesta varredura, ver `.superpowers/audits/alerts-module-audit-2026-07-28.md` (conciliação sem
+   dedupe reenviando pra sempre — candidato forte a estar contribuindo pros picos de load da VPS) e
+   `.superpowers/audits/proxy-registration-duplicate-message-investigation-2026-07-28.md` (TOCTOU
+   entre webhook/poller/conciliação causando notificação duplicada).
+6. Achados médios/baixos de segurança: rate limiting ausente em login/registro/reset de senha
+   (`lib/auth/config.ts`, `app/api/auth/register`, `forgot-password`, `reset-password` — já existe
+   `RATE_LIMITS.AUTH` pronto em `lib/rate-limit.ts`, só não é usado nesses); comparação não
+   constant-time no Basic Auth do webhook Pagar.me (`lib/payment/pagarme.ts:167`); upload aceita
+   PDF/GIF sem checagem de magic bytes (`app/api/upload/route.ts`).
+
+**Acesso à VPS FALHOU nesta sessão**: chaves `~/.ssh/corridas_deploy` e `~/.ssh/id_ed25519`
+testadas contra usuários `root`/`deploy`/`corridas`/`ubuntu`/`admin` em `144.91.92.70` — as 2
+primeiras tentativas deram "permission denied (publickey,password)", as seguintes deram "connection
+timed out" (suspeita de bloqueio temporário tipo fail2ban depois das tentativas anteriores). A nota
+antiga deste arquivo (mais abaixo, seção de 2026-07-23) dizia "chave SSH `~/.ssh/id_ed25519` (sem
+senha)" — não funcionou mais nesta sessão, pode ter sido rotacionada ou o IP de origem mudou.
+**Não investigado ainda**: crontab real da VPS, logs de load spike (09/08 14:26 e 22:02), se o
+CRON_SECRET em produção bate com o esperado, se o cron de expire-payments está de fato agendado.
+
+**Atualização (mesmo dia, depois de acesso à VPS liberado)**:
+
+1. **IDOR corrigido e commitado nada ainda** (código pronto, aguardando decisão de commit/deploy):
+   os 3 endpoints (`batches`/`categories`/`routes`) agora fazem `findFirst({ id, eventId })` antes
+   de mutar, mesmo padrão de `coupons/[couponId]/route.ts`. 31 testes (28 existentes + 3 IDOR
+   novos) passando, `tsc --noEmit` limpo. Suíte completa tem 23 falhas PRÉ-EXISTENTES não
+   relacionadas (arquivos `alert-*`/`lib-advertiser-request-pending`, já sujos no working tree
+   antes desta sessão — trabalho de `messageType` em andamento, não mexi nisso).
+
+2. **Acesso à VPS restaurado**: chave antiga não funcionava mais; usuário passou senha root nova
+   direto no chat. Usei via `plink -ssh -pw` (Windows, sem sshpass). Timeouts anteriores nas
+   tentativas com chave eram fail2ban bloqueando temporariamente o IP de saída do ambiente
+   (187.108.125.248) depois de tentativas de auth erradas — não é bloqueio permanente, nem
+   problema da senha em si.
+
+3. **Causa raiz real do "pedido de 02/08 sem cancelar"**: NÃO era cron quebrado — confirmado via
+   `/opt/corridas/cron.log` que `expire-payments` roda a cada 6h sem falhar (expirou pagamentos de
+   verdade em 03/08, 04/08, 07/08, 08/08, 09/08). O caso real era outro: **5 inscrições** (não só
+   uma), todas do lote "1º Lote" do evento "3º Corrida Saúde em Movimento"
+   (`cmqz8nc1p001bq8jhenjtc4ca`), com pedido+pagamento por cartão já `CANCELLED` (recusado ~1min
+   após checkout) mas a `Registration` presa em `PENDING_PAYMENT` pra sempre — e o
+   `ticketBatch.soldCount` nunca decrementado (170 vendidos quando devia ser 165 — 5 vagas
+   fantasma, 2 semanas presas, desde 25/07). Nenhuma das 3 rotas que deveriam sincronizar isso
+   (`applyGatewayStatus` via webhook/poller/checkout) deixou rastro em `audit_logs` pra nenhum dos
+   5 casos — mecanismo exato de qual código aplicou o `CANCELLED` sem sincronizar o resto **não foi
+   100% confirmado** (fora do tempo desta sessão), mas o padrão é sistêmico, não um bug de um único
+   evento.
+   **Corrigido nos dados** (autorizado pelo usuário, aplicado via `psql` na VPS, transação única com
+   CTE, decrementa `soldCount` só pela contagem real de linhas afetadas — idempotente): as 5
+   registrations viraram `CANCELLED`, `soldCount` do lote voltou de 170 para 165. Confirmado que o
+   evento não tinha ficado `SOLD_OUT` por causa disso (estava `REGISTRATIONS_OPEN` o tempo todo).
+   **Ainda não corrigido no código**: `lib/payment/reconciliation.ts::checkPendingMismatches` só
+   aplica correção quando o gateway diz `PAID` — quando diz `CANCELLED`/`rejected`/etc, só reporta
+   `corrected: false` e não faz nada (achado já catalogado na auditoria de 28/07, risco #2). Esse é
+   o candidato mais forte a rede de segurança contra recorrência — proposto ao usuário, ainda
+   aguardando confirmação explícita pra implementar (é código de pagamento, não só limpeza de dado).
+
+4. **VPS Monitor (`monitor-backend`, `/opt/vps-monitor`) provavelmente contribui pros picos de
+   load**: container rodando a ~55% CPU sustentado, ~91h de CPU acumuladas em 7 dias, scheduler
+   interno (APScheduler) constantemente atrasado (jobs de 15s/30s atrasando alguns segundos toda
+   vez) — sinal de sobrecarga crônica do próprio monitor, não do app de corridas. **Isso é bug de
+   outro sistema** compartilhando a mesma VPS (Contabo `144.91.92.70`, 6 vCPUs, ~40 containers de 6+
+   projetos diferentes: corridas, xadrez-essencial, mecanicapro, monitor, 2x Supabase self-hosted,
+   evolution-api). `corridas-app`/`corridas-db` mostraram uso baixo no snapshot capturado (0%
+   CPU, ~515MB RAM) — não são o driver óbvio da carga alta observada nos 2 alertas de 09/08.
+   **Não investigado ainda**: causa raiz do atraso do scheduler do monitor-backend (fora do escopo
+   deste projeto, mas relevante pro usuário decidir se aloca tempo pra isso separadamente).
+
+**PRÓXIMA TAREFA**: perguntar ao usuário a ordem entre os itens ainda pendentes: (a) fix de código
+em `reconciliation.ts` pra aplicar `CANCELLED`/`EXPIRED` de verdade (não só `PAID`); (b) performance
+de "Ver inscritos" (paginação + fim do N+1 + índices `Registration(eventId,createdAt)` e
+`Payment.status`); (c) tratamento do status `PENDING` de cartão em análise no checkout (scroll +
+mensagem); (d) rate limiting em login/registro/senha; (e) decidir se/quando commitar e dar deploy no
+fix de IDOR já pronto. VPS Monitor sobrecarregado é observação registrada, não é deste projeto —
+só mencionar ao usuário, não agir sem pedido explícito.
+
 ## Revisão final do plano "Solicitação de conta de anunciante" — 8 achados corrigidos (2026-07-28)
 
 Plano de 14 tasks (`/anuncie` público → paga PIX → admin aprova/rejeita) estava completo; revisão
