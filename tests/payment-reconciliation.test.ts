@@ -143,10 +143,10 @@ describe("reconcilePayments", () => {
 
     expect(dbMock.$transaction).toHaveBeenCalled();
     expect(notifyOrderConfirmed).not.toHaveBeenCalled();
-    // O mismatch ainda é reportado (a divergência foi detectada), só o disparo de notificação é
-    // que é condicionado ao changed:true.
+    // O mismatch ainda é reportado (a divergência foi detectada), mas `corrected` reflete o
+    // `changed` real retornado por applyGatewayStatus — nada foi de fato alterado aqui.
     expect(result.mismatches).toEqual([
-      { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
+      { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false },
     ]);
   });
 
@@ -166,7 +166,7 @@ describe("reconcilePayments", () => {
     );
   });
 
-  it("detecta divergência PENDING para outro status sem corrigir automaticamente", async () => {
+  it("corrige automaticamente um PENDING que o gateway diz estar CANCELLED (cancela a inscrição e devolve a vaga)", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
       checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "CANCELLED" }),
@@ -174,14 +174,37 @@ describe("reconcilePayments", () => {
 
     const result = await reconcilePayments();
 
+    expect(dbMock.$transaction).toHaveBeenCalled();
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "payment-1" }, data: expect.objectContaining({ status: "CANCELLED" }) }),
+    );
+    expect(dbMock.order.update).toHaveBeenCalledWith({ where: { id: "order-1" }, data: { status: "CANCELLED" } });
+    expect(dbMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-9" }, data: { status: "CANCELLED" } });
+    expect(dbMock.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-9" }, data: { soldCount: { decrement: 1 } } });
     expect(result).toEqual({
       checked: 1,
       mismatches: [
-        { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "CANCELLED", corrected: false },
+        { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "CANCELLED", corrected: true },
       ],
     });
-    expect(dbMock.payment.update).not.toHaveBeenCalled();
+    // notifyOrderConfirmed é só pra confirmação de pagamento (PAID) — cancelamento não dispara essa notificação aqui.
     expect(notifyOrderConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("um PENDING que o gateway diz estar EXPIRED também é corrigido automaticamente", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValueOnce({ status: "EXPIRED" }),
+    } as any);
+
+    const result = await reconcilePayments();
+
+    expect(dbMock.payment.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "payment-1" }, data: expect.objectContaining({ status: "EXPIRED" }) }),
+    );
+    expect(result.mismatches).toEqual([
+      { paymentId: "payment-1", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "EXPIRED", corrected: true },
+    ]);
   });
 
   it("não reporta nada quando o status do gateway bate com o local", async () => {

@@ -74,36 +74,29 @@ async function checkPendingMismatches(
       }
       const order = payment.order;
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
-      if (gatewayStatus === payment.status) continue;
+      if (gatewayStatus === payment.status || gatewayStatus === "PENDING") continue;
 
-      if (gatewayStatus === "PAID") {
-        const result = await db.$transaction(async (tx) => {
-          return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
-            gatewayFeeAmount,
-            paidAt: paidAt ? new Date(paidAt) : new Date(),
-          });
+      // Aplica a transição de verdade pra qualquer status terminal que o gateway reportar — não só
+      // PAID. Antes, um pagamento PENDING localmente cujo gateway já dizia CANCELLED/EXPIRED/etc
+      // ficava reportado como divergência (corrected:false) pra sempre, sem nunca ser corrigido:
+      // a inscrição continuava presa em PENDING_PAYMENT e a vaga nunca voltava pro lote.
+      const result = await db.$transaction(async (tx) => {
+        return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
+          gatewayFeeAmount,
+          ...(gatewayStatus === "PAID" ? { paidAt: paidAt ? new Date(paidAt) : new Date() } : {}),
         });
-        if (result.changed) {
-          void notifyOrderConfirmed(order.id);
-        }
-        mismatches.push({
-          paymentId: payment.id,
-          orderId: order.id,
-          eventTitle: order.event.title,
-          localStatus: payment.status,
-          gatewayStatus,
-          corrected: true,
-        });
-      } else {
-        mismatches.push({
-          paymentId: payment.id,
-          orderId: order.id,
-          eventTitle: order.event.title,
-          localStatus: payment.status,
-          gatewayStatus,
-          corrected: false,
-        });
+      });
+      if (gatewayStatus === "PAID" && result.changed) {
+        void notifyOrderConfirmed(order.id);
       }
+      mismatches.push({
+        paymentId: payment.id,
+        orderId: order.id,
+        eventTitle: order.event.title,
+        localStatus: payment.status,
+        gatewayStatus,
+        corrected: result.changed,
+      });
     } catch (err) {
       console.error("[reconcilePayments] failed to check pending payment", payment.id, err);
     }
