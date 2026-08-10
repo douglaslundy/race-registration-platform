@@ -41,6 +41,7 @@ describe("PATCH /api/events/[id]/batches/[batchId]", () => {
     authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
     dbMock.ticketBatch.update.mockResolvedValueOnce({ id: "batch-1", name: "Novo nome" });
 
     const res = await PATCH(makePatchRequest({ name: "Novo nome" }), makeContext("ev-1", "batch-1"));
@@ -61,11 +62,26 @@ describe("PATCH /api/events/[id]/batches/[batchId]", () => {
     expect(dbMock.ticketBatch.update).not.toHaveBeenCalled();
   });
 
+  it("organizador titular do evento X é barrado com 404 ao tentar editar lote de OUTRO evento (IDOR)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    // batchId existe, mas pertence a outro evento — findFirst com eventId: "ev-1" não acha nada
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce(null);
+
+    const res = await PATCH(makePatchRequest({ name: "Preço zerado" }), makeContext("ev-1", "batch-de-outro-evento"));
+
+    expect(dbMock.ticketBatch.findFirst).toHaveBeenCalledWith({ where: { id: "batch-de-outro-evento", eventId: "ev-1" } });
+    expect(res.status).toBe(404);
+    expect(dbMock.ticketBatch.update).not.toHaveBeenCalled();
+  });
+
   it("assistente de organizador com a permissão edita o lote", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
     dbMock.ticketBatch.update.mockResolvedValueOnce({ id: "batch-1", name: "Novo nome" });
 
     const res = await PATCH(makePatchRequest({ name: "Novo nome" }), makeContext("ev-1", "batch-1"));
@@ -99,6 +115,7 @@ describe("DELETE /api/events/[id]/batches/[batchId]", () => {
     authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
 
     const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "batch-1"));
     const body = await res.json();
@@ -107,11 +124,24 @@ describe("DELETE /api/events/[id]/batches/[batchId]", () => {
     expect(body).toEqual({ success: true });
   });
 
+  it("organizador titular do evento X é barrado com 404 ao tentar excluir lote de OUTRO evento (IDOR)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce(null);
+
+    const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "batch-de-outro-evento"));
+
+    expect(res.status).toBe(404);
+    expect(dbMock.ticketBatch.delete).not.toHaveBeenCalled();
+  });
+
   it("assistente de organizador com a permissão exclui o lote", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
 
     const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "batch-1"));
 

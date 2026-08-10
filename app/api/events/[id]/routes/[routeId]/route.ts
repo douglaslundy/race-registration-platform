@@ -19,6 +19,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
+  const existingRoute = await db.eventRoute.findFirst({ where: { id: routeId, eventId: id } });
+  if (!existingRoute) return NextResponse.json({ error: "Percurso não encontrado" }, { status: 404 });
+
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -39,6 +42,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     where: { id, organizerId: scope.organizerId ?? "__none__" },
   });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  const existingRoute = await db.eventRoute.findFirst({ where: { id: routeId, eventId: id } });
+  if (!existingRoute) return NextResponse.json({ error: "Percurso não encontrado" }, { status: 404 });
 
   await db.eventRoute.delete({ where: { id: routeId } });
   return NextResponse.json({ success: true });

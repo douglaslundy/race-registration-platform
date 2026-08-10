@@ -41,6 +41,7 @@ describe("PATCH /api/events/[id]/categories/[categoryId]", () => {
     authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventCategory.findFirst.mockResolvedValueOnce({ id: "cat-1", eventId: "ev-1" });
     dbMock.eventCategory.update.mockResolvedValueOnce({ id: "cat-1", name: "M35" });
 
     const res = await PATCH(makePatchRequest({ name: "M35" }), makeContext("ev-1", "cat-1"));
@@ -48,11 +49,24 @@ describe("PATCH /api/events/[id]/categories/[categoryId]", () => {
     expect(res.status).toBe(200);
   });
 
+  it("organizador titular do evento X é barrado com 404 ao tentar editar categoria de OUTRO evento (IDOR)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventCategory.findFirst.mockResolvedValueOnce(null);
+
+    const res = await PATCH(makePatchRequest({ name: "M35" }), makeContext("ev-1", "cat-de-outro-evento"));
+
+    expect(res.status).toBe(404);
+    expect(dbMock.eventCategory.update).not.toHaveBeenCalled();
+  });
+
   it("assistente de organizador com a permissão edita a categoria", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventCategory.findFirst.mockResolvedValueOnce({ id: "cat-1", eventId: "ev-1" });
     dbMock.eventCategory.update.mockResolvedValueOnce({ id: "cat-1", name: "M35" });
 
     const res = await PATCH(makePatchRequest({ name: "M35" }), makeContext("ev-1", "cat-1"));
@@ -86,6 +100,7 @@ describe("DELETE /api/events/[id]/categories/[categoryId]", () => {
     authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventCategory.findFirst.mockResolvedValueOnce({ id: "cat-1", eventId: "ev-1" });
 
     const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "cat-1"));
     const body = await res.json();
@@ -94,11 +109,24 @@ describe("DELETE /api/events/[id]/categories/[categoryId]", () => {
     expect(body).toEqual({ success: true });
   });
 
+  it("organizador titular do evento X é barrado com 404 ao tentar excluir categoria de OUTRO evento (IDOR)", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventCategory.findFirst.mockResolvedValueOnce(null);
+
+    const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "cat-de-outro-evento"));
+
+    expect(res.status).toBe(404);
+    expect(dbMock.eventCategory.delete).not.toHaveBeenCalled();
+  });
+
   it("assistente de organizador com a permissão exclui a categoria", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventCategory.findFirst.mockResolvedValueOnce({ id: "cat-1", eventId: "ev-1" });
 
     const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "cat-1"));
 

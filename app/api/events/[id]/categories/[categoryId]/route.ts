@@ -20,6 +20,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
+  const existingCategory = await db.eventCategory.findFirst({ where: { id: categoryId, eventId: id } });
+  if (!existingCategory) return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
+
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -40,6 +43,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     where: { id, organizerId: scope.organizerId ?? "__none__" },
   });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  const existingCategory = await db.eventCategory.findFirst({ where: { id: categoryId, eventId: id } });
+  if (!existingCategory) return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 });
 
   await db.eventCategory.delete({ where: { id: categoryId } });
   return NextResponse.json({ success: true });

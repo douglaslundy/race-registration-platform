@@ -27,6 +27,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
+  const existingBatch = await db.ticketBatch.findFirst({ where: { id: batchId, eventId: id } });
+  if (!existingBatch) return NextResponse.json({ error: "Lote não encontrado" }, { status: 404 });
+
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -58,6 +61,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     where: { id, organizerId: scope.organizerId ?? "__none__" },
   });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  const existingBatch = await db.ticketBatch.findFirst({ where: { id: batchId, eventId: id } });
+  if (!existingBatch) return NextResponse.json({ error: "Lote não encontrado" }, { status: 404 });
 
   await db.ticketBatch.delete({ where: { id: batchId } });
   return NextResponse.json({ success: true });
