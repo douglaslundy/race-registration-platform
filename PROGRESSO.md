@@ -110,13 +110,42 @@ CRON_SECRET em produção bate com o esperado, se o cron de expire-payments est�
    **Não investigado ainda**: causa raiz do atraso do scheduler do monitor-backend (fora do escopo
    deste projeto, mas relevante pro usuário decidir se aloca tempo pra isso separadamente).
 
-**PRÓXIMA TAREFA**: perguntar ao usuário a ordem entre os itens ainda pendentes: (a) fix de código
-em `reconciliation.ts` pra aplicar `CANCELLED`/`EXPIRED` de verdade (não só `PAID`); (b) performance
-de "Ver inscritos" (paginação + fim do N+1 + índices `Registration(eventId,createdAt)` e
-`Payment.status`); (c) tratamento do status `PENDING` de cartão em análise no checkout (scroll +
-mensagem); (d) rate limiting em login/registro/senha; (e) decidir se/quando commitar e dar deploy no
-fix de IDOR já pronto. VPS Monitor sobrecarregado é observação registrada, não é deste projeto —
-só mencionar ao usuário, não agir sem pedido explícito.
+**Atualização final (mesmo dia — implementado, commitado e DEPLOYADO)**:
+
+Usuário escolheu implementar 4 dos itens: IDOR, `reconciliation.ts`, checkout travando, performance
+de "Ver inscritos" (rate limiting em login ficou de fora, não pedido). Todos com TDD/testes
+ajustados, suíte completa rodada a cada etapa (1402/1425 passando — as 23 falhas restantes são
+pré-existentes do trabalho de `messageType` que já estava sujo no working tree antes desta sessão,
+não relacionadas, não mexidas). `tsc --noEmit` limpo em cada etapa.
+
+4 commits separados, direto na `main`:
+- `1aa99b1` fix: IDOR em lotes/categorias/percursos de evento
+- `9b22b4f` fix: reconciliação aplica CANCELLED/EXPIRED/REFUNDED/CHARGEBACK, não só PAID
+- `00a87be` fix: checkout redireciona pra detalhe da inscrição em vez de card in-place
+- `646ee69` perf: paginação + fim do N+1 em "Ver inscritos" + índices novos (`Registration(eventId,createdAt)`, `Payment(status,expiresAt)`)
+
+**Deploy feito e confirmado**: `git push origin main` (`a14a37e..646ee69`, inclui também os 7
+commits do trabalho de `messageType` que já estavam commitados localmente de sessão anterior, não
+pushados ainda — não tinha como separar sem reescrever histórico) → na VPS: `git pull` → `docker
+build` → `docker compose run --rm app sh -c "npx prisma db push --skip-generate --accept-data-loss"`
+("in sync", só criação de índices, sem perda de dado) → `docker compose up -d --no-deps app`. Smoke
+test: `/`, `/eventos` 200; `/admin/eventos`, `/organizador`, `/admin/pedidos-vencidos` 307 (redirect
+de login, esperado sem sessão). `docker logs corridas-app` sem erro nos 2 minutos após restart.
+
+**Acesso à VPS nesta sessão**: usuário passou a senha root nova direto no chat (`root@144.91.92.70`,
+usada via `plink -ssh -pw` no Windows). Chave SSH antiga registrada em sessões anteriores
+(`~/.ssh/id_ed25519`) não funciona mais — se uma próxima sessão precisar de acesso, pedir a senha
+de novo ou pedir pro usuário configurar uma chave nova (não guardar senha em memória/arquivo).
+
+**Não implementado nesta leva (fora do que foi pedido)**: rate limiting em
+login/registro/reset-senha (`lib/auth/config.ts`, `RATE_LIMITS.AUTH` já existe pronto em
+`lib/rate-limit.ts`, só falta usar); comparação constant-time no webhook Pagar.me
+(`lib/payment/pagarme.ts:167`); upload sem checagem de magic bytes (`app/api/upload/route.ts`); VPS
+Monitor sobrecarregado (observação de infraestrutura, fora do escopo deste projeto). Retomar só se o
+usuário pedir.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta varredura. Sistema de rating de atletas continua adiado
+(ver memória `rating_system_pending`) — só retomar se pedido explicitamente.
 
 ## Revisão final do plano "Solicitação de conta de anunciante" — 8 achados corrigidos (2026-07-28)
 
