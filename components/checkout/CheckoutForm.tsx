@@ -1,6 +1,5 @@
 "use client";
 
-import QRCode from "react-qr-code";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -113,15 +112,6 @@ export default function CheckoutForm({
   const [cardConfig, setCardConfig] = useState<CardConfig | null>(null);
   const mpCardRef = useRef<MPCardFormHandle>(null);
   const pagarmeCardRef = useRef<PagarMeCardFormHandle>(null);
-  const [result, setResult] = useState<{
-    pixQrCodeText?: string;
-    boletoUrl?: string;
-    checkoutUrl?: string;
-    status: string;
-    totalAmount?: number;
-    subtotalAmount?: number;
-    discountAmount?: number;
-  } | null>(null);
   const [couponPreview, setCouponPreview] = useState<CouponPreview | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -310,51 +300,21 @@ export default function CheckoutForm({
         return;
       }
 
-      // PIX: redireciona para a página de inscrição que já tem o QR code e o poller de status
-      if (body.pixQrCodeText && body.registrationId) {
+      // Qualquer outro status de sucesso (PIX, boleto, ou cartão em análise/contingência) sempre
+      // redireciona pra página de detalhe da inscrição — ela já mostra QR code/boleto quando
+      // existir e faz polling automático do status. Substituir o formulário por um card in-place
+      // aqui (sem navegação) deixava a confirmação fora da área visível em formulários longos,
+      // dando a impressão de que nada tinha acontecido.
+      if (body.registrationId) {
         router.push(`/dashboard/inscricoes/${body.registrationId}`);
         return;
       }
 
-      setResult(body);
+      setError("Inscrição criada, mas não foi possível abrir os detalhes automaticamente. Verifique em Minhas Inscrições.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao processar inscrição");
       return;
     }
-  }
-
-  if (result) {
-    return (
-      <div className="card space-y-4">
-        <h2 className="text-xl font-bold text-green-700">Inscrição criada!</h2>
-        {result.pixQrCodeText && (
-          <div className="space-y-3">
-            <p className="font-medium">Pague via Pix:</p>
-            <div className="flex justify-center p-4 bg-white rounded-lg border">
-              <QRCode value={result.pixQrCodeText} size={200} />
-            </div>
-            <p className="text-xs text-gray-500 text-center">Ou copie o código abaixo:</p>
-            <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 font-mono text-xs break-all select-all">
-              {result.pixQrCodeText}
-            </div>
-          </div>
-        )}
-        {result.boletoUrl && (
-          <a href={result.boletoUrl} target="_blank" rel="noreferrer" className="btn-primary block text-center">
-            Ver Boleto
-          </a>
-        )}
-        {typeof result.discountAmount === "number" && result.discountAmount > 0 && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-            <p>Desconto aplicado: -{formatCurrency(result.discountAmount)}</p>
-            {typeof result.subtotalAmount === "number" && (
-              <p>Total da inscrição: {formatCurrency(result.subtotalAmount)}</p>
-            )}
-          </div>
-        )}
-        <p className="text-sm text-gray-600 dark:text-gray-400">Aguardando confirmação do pagamento.</p>
-      </div>
-    );
   }
 
   return (
