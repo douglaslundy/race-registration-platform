@@ -12,7 +12,11 @@ export default async function AdminAdvertiserRequestsPage() {
   const purchases = await db.adPurchase.findMany({
     where: { status: "PENDING_APPROVAL" },
     orderBy: { createdAt: "asc" },
-    include: { advertiser: true, adPlan: { select: { name: true } } },
+    include: {
+      advertiser: true,
+      adPlan: { select: { name: true } },
+      payments: { where: { status: "PAID" }, select: { id: true }, take: 1 },
+    },
   });
 
   return (
@@ -38,6 +42,7 @@ export default async function AdminAdvertiserRequestsPage() {
             instagram={purchase.advertiser.instagram}
             facebook={purchase.advertiser.facebook}
             planName={purchase.adPlan.name}
+            hasPaidPayment={purchase.payments.length > 0}
           />
         ))}
       </div>

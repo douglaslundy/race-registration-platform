@@ -17,6 +17,7 @@ interface Props {
   instagram: string | null;
   facebook: string | null;
   planName: string;
+  hasPaidPayment: boolean;
 }
 
 export default function AdvertiserRequestRow({
@@ -29,6 +30,7 @@ export default function AdvertiserRequestRow({
   instagram,
   facebook,
   planName,
+  hasPaidPayment,
 }: Props) {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState<string | undefined>(undefined);
@@ -56,7 +58,29 @@ export default function AdvertiserRequestRow({
   async function handleConfirmReject(noteReason?: string) {
     setReason(noteReason);
     setRejecting(false);
-    await verification.start();
+
+    if (hasPaidPayment) {
+      await verification.start();
+      return;
+    }
+
+    setLoading(true);
+    const res = await fetch(`/api/admin/anunciantes/${purchaseId}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: noteReason }),
+    });
+    setLoading(false);
+    if (res.ok) {
+      router.refresh();
+      const data = await res.json().catch(() => ({}));
+      if (data.refundFailed) {
+        setError("Solicitação rejeitada, mas o estorno automático falhou — verifique manualmente o pagamento.");
+      }
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    setError(data.error ?? "Erro ao rejeitar solicitação.");
   }
 
   async function handleSubmitCode(code: string) {
@@ -103,7 +127,11 @@ export default function AdvertiserRequestRow({
       <ConfirmModal
         open={rejecting}
         title="Rejeitar solicitação de anunciante"
-        message="Informe o motivo da rejeição. O valor pago será estornado automaticamente e o solicitante verá esse motivo por e-mail. Você receberá um código de confirmação por e-mail e WhatsApp."
+        message={
+          hasPaidPayment
+            ? "Informe o motivo da rejeição. O valor pago será estornado automaticamente e o solicitante verá esse motivo por e-mail. Você receberá um código de confirmação por e-mail e WhatsApp."
+            : "Informe o motivo da rejeição. O solicitante verá esse motivo por e-mail."
+        }
         confirmLabel="Continuar"
         tone="danger"
         loading={verification.step === "requesting"}
