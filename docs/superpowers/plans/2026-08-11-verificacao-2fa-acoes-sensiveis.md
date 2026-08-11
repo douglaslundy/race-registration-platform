@@ -2614,7 +2614,109 @@ git commit -m "feat: aprovacao de cancelamento na UI pede codigo quando ha pagam
 
 ---
 
-### Task 14: Revisão final — suíte completa, typecheck, documentação
+### Task 14: Fila de "reembolsos pendentes" (admin + organizador) também exige código
+
+**Contexto (descoberto durante a Task 13, não estava no escopo original):** existe um terceiro
+consumidor de `CancellationDecisionButtons` que nenhuma task anterior contemplou —
+`components/registrations/PendingCancellationsTable.tsx`, usado por
+`app/admin/reembolsos-pendentes/page.tsx` e `app/organizador/reembolsos-pendentes/page.tsx`. Essa
+fila chama a mesma rota que a Task 7 travou no backend (exige código quando `decision === "APPROVE"`
+e há pagamento pago), mas nunca recebeu `requestCodeEndpoint`/`hasPaidPayment`. A Task 13 tornou
+essas duas props opcionais (default `""`/`false`) só para não quebrar o build; sem esta task, o
+botão "Aprovar" nessa fila específica falha com um erro genérico para qualquer cancelamento com
+pagamento pago (o backend ainda bloqueia corretamente — não é falha de segurança, é regressão de
+funcionalidade).
+
+**Files:**
+- Modify: `lib/registrations/pending-queue.ts`
+- Modify: `components/registrations/PendingCancellationsTable.tsx`
+- Modify: `app/admin/reembolsos-pendentes/page.tsx`
+- Modify: `app/organizador/reembolsos-pendentes/page.tsx`
+- Modify: `components/organizer/CancellationDecisionButtons.tsx` (torna `requestCodeEndpoint`/`hasPaidPayment` obrigatórias de novo, já que após esta task os 3 consumidores existentes sempre as passam — confirmado via grep, não há mais nenhum outro consumidor)
+
+**Interfaces:**
+- Consumes: mesmas do Task 13.
+- Produces: `PendingCancellation` (lib/registrations/pending-queue.ts) ganha o campo `hasPaidPayment: boolean`. `PendingCancellationsTable` ganha a prop `requestCodeEndpoint: (registrationId: string) => string`.
+
+- [ ] **Step 1: `lib/registrations/pending-queue.ts` — expor `hasPaidPayment`**
+
+```ts
+export interface PendingCancellation {
+  id: string;
+  createdAt: Date;
+  cancellationReason: string | null;
+  cancellationRequestedAt: Date | null;
+  athlete: { name: string; email: string };
+  event: { id: string; title: string };
+  hasPaidPayment: boolean;
+}
+```
+
+Em `listPendingCancellations`, adicione ao `select` (reaproveitando o mesmo padrão de
+`registrationHasPaidPayment` em `lib/registrations/cancellation-decision-service.ts:87-93`):
+
+```ts
+      order: { select: { payments: { where: { status: "PAID" }, take: 1, select: { id: true } } } },
+```
+
+E troque o `return registrations;` final por:
+
+```ts
+  return registrations.map(({ order, ...r }) => ({ ...r, hasPaidPayment: order.payments.length > 0 }));
+```
+
+- [ ] **Step 2: `components/registrations/PendingCancellationsTable.tsx` — passar as novas props**
+
+Adicione `requestCodeEndpoint: (registrationId: string) => string` à assinatura de props, e no
+`<CancellationDecisionButtons ...>` (dentro do `.map`) adicione:
+
+```tsx
+                  requestCodeEndpoint={requestCodeEndpoint(item.id)}
+                  hasPaidPayment={item.hasPaidPayment}
+```
+
+- [ ] **Step 3: Call sites — as duas páginas de reembolsos pendentes**
+
+Em `app/admin/reembolsos-pendentes/page.tsx`, no `<PendingCancellationsTable ...>`, adicione:
+
+```tsx
+          requestCodeEndpoint={(id) => `/api/admin/registrations/${id}/cancellation-decision/request-code`}
+```
+
+Em `app/organizador/reembolsos-pendentes/page.tsx`, no `<PendingCancellationsTable ...>`, adicione:
+
+```tsx
+          requestCodeEndpoint={(id) => `/api/organizer/registrations/${id}/cancellation-decision/request-code`}
+```
+
+- [ ] **Step 4: `components/organizer/CancellationDecisionButtons.tsx` — remover o fallback opcional**
+
+Confirme via grep (`CancellationDecisionButtons` em `*.tsx`) que os 3 únicos consumidores
+(`app/organizador/eventos/[id]/inscritos/page.tsx`, e os 2 call sites tocados nesta task via
+`PendingCancellationsTable`) agora sempre passam `requestCodeEndpoint` e `hasPaidPayment`. Se
+confirmado, reverta a assinatura de props para exigi-las (remova os defaults `""`/`false`
+introduzidos na Task 13), restaurando a tipagem estrita original do brief da Task 13.
+
+- [ ] **Step 5: Typecheck**
+
+Run: `npx tsc --noEmit`
+Expected: sem erros.
+
+- [ ] **Step 6: Testar manualmente no navegador**
+
+Não é viável nesta sessão (mesmo motivo das Tasks 10-13 — `.env` local aponta para o Supabase de
+produção). Deixe registrado no relatório e adicione este ponto à lista de QA conjunta.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add lib/registrations/pending-queue.ts components/registrations/PendingCancellationsTable.tsx "app/admin/reembolsos-pendentes/page.tsx" "app/organizador/reembolsos-pendentes/page.tsx" components/organizer/CancellationDecisionButtons.tsx
+git commit -m "fix: fila de reembolsos pendentes tambem exige codigo quando ha pagamento pago"
+```
+
+---
+
+### Task 15: Revisão final — suíte completa, typecheck, documentação
 
 **Files:**
 - Modify: `PROGRESSO.md`
