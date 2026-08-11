@@ -83,3 +83,11 @@ export async function decideRegistrationCancellation(params: {
 
   return { ok: true, refund: result.outcome };
 }
+
+export async function registrationHasPaidPayment(where: Prisma.RegistrationWhereInput): Promise<boolean> {
+  const registration = await db.registration.findFirst({
+    where,
+    select: { order: { select: { payments: { where: { status: "PAID" }, take: 1, select: { id: true } } } } },
+  });
+  return Boolean(registration?.order.payments.length);
+}

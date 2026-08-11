@@ -1,23 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { decideRegistrationCancellation } from "@/lib/registrations/cancellation-decision-service";
+import { decideRegistrationCancellation, registrationHasPaidPayment } from "@/lib/registrations/cancellation-decision-service";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/auth/rbac");
 vi.mock("@/lib/registrations/cancellation-decision-service", () => ({
   decideRegistrationCancellation: vi.fn(),
+  registrationHasPaidPayment: vi.fn(),
 }));
+vi.mock("@/lib/security/sensitive-action-verification", () => ({ verifySensitiveActionCode: vi.fn() }));
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
 const decideMock = vi.mocked(decideRegistrationCancellation);
 
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 import { POST } from "@/app/api/organizer/registrations/[id]/cancellation-decision/route";
 
 const checkPermMock = vi.mocked(checkApiPermission);
 const resolveScope = vi.mocked(resolveActingScope);
+const verifyCodeMock = vi.mocked(verifySensitiveActionCode);
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/organizer/registrations/reg-1/cancellation-decision", {
@@ -32,6 +36,8 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
     vi.clearAllMocks();
     checkPermMock.mockResolvedValue({ allowed: true, session: { user: { id: "organizer-1", role: "ORGANIZER" } } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "org-1" });
+    vi.mocked(registrationHasPaidPayment).mockResolvedValue(false);
+    verifyCodeMock.mockResolvedValue({ ok: true });
   });
 
   it("retorna 403 para quem não tem a permissão", async () => {
@@ -102,5 +108,43 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
 
     expect(res.status).toBe(403);
     expect(decideMock).not.toHaveBeenCalled();
+  });
+
+  it("exige verificationId/code quando há pagamento pago e a decisão é APPROVE", async () => {
+    resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
+    vi.mocked(registrationHasPaidPayment).mockResolvedValueOnce(true);
+
+    const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(decideMock).not.toHaveBeenCalled();
+  });
+
+  it("segue com o código correto quando há pagamento pago", async () => {
+    resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
+    vi.mocked(registrationHasPaidPayment).mockResolvedValueOnce(true);
+    decideMock.mockResolvedValueOnce({ ok: true, refund: "processed" });
+
+    const res = await POST(
+      makeRequest({ decision: "APPROVE", verificationId: "code-1", code: "123456" }),
+      { params: Promise.resolve({ id: "reg-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(decideMock).toHaveBeenCalledWith({
+      where: { id: "reg-1", event: { organizerId: "org-1" } },
+      decision: "APPROVE",
+      actingUserId: "organizer-1",
+    });
+  });
+
+  it("não exige código pra REJECT (nunca mexe em pagamento)", async () => {
+    resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
+    decideMock.mockResolvedValueOnce({ ok: true });
+
+    const res = await POST(makeRequest({ decision: "REJECT" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(registrationHasPaidPayment).not.toHaveBeenCalled();
   });
 });
