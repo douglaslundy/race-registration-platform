@@ -184,6 +184,7 @@ export default async function InscritosPage({
     ...r,
     order: { ...r.order, payments: latestPaymentByOrder.has(r.order.id) ? [latestPaymentByOrder.get(r.order.id)!] : [] },
   }));
+  const paidOrderIds = new Set(latestPayments.filter((p) => p.status === "PAID" && p.orderId).map((p) => p.orderId!));
 
   const nameDir = sortConfig.normalizedSort === "name" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
   const dateDir = sortConfig.normalizedSort === "date" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
@@ -325,7 +326,7 @@ export default async function InscritosPage({
                       cancellationReason={r.cancellationReason}
                       endpoint={`/api/organizer/registrations/${r.id}/cancellation-decision`}
                       requestCodeEndpoint={`/api/organizer/registrations/${r.id}/cancellation-decision/request-code`}
-                      hasPaidPayment={payment?.status === "PAID"}
+                      hasPaidPayment={paidOrderIds.has(r.order.id)}
                     />
                   )}
                   {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}

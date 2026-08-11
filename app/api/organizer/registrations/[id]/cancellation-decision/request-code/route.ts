@@ -16,7 +16,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Esta inscrição não tem pagamento pago associado" }, { status: 400 });
   }
 
-  const result = await requestSensitiveActionCode({ userId: session.user.id, actionType: "PAYMENT_REFUND", targetId: id });
+  const result = await requestSensitiveActionCode({ userId: session.user.id, actionType: "REGISTRATION_CANCELLATION_REFUND", targetId: id });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json({ verificationId: result.verificationId });
 }

@@ -38,7 +38,23 @@ describe("requestSensitiveActionCode", () => {
     expect(sendSensitiveActionCodeEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "admin@example.com", name: "Admin" }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String), "SENSITIVE_ACTION_CODE");
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      expect.any(String),
+      "SENSITIVE_ACTION_CODE",
+      expect.objectContaining({ logSubject: expect.any(String) }),
+    );
+  });
+
+  it("passa o actionLabel como logSubject pro WhatsApp, para o código nunca aparecer no subject do log de mensagens", async () => {
+    await requestSensitiveActionCode({ userId: "user-1", actionType: "PAYMENT_REFUND", targetId: "payment-1" });
+
+    const call = vi.mocked(sendWhatsAppMessage).mock.calls[0];
+    const [, text, , options] = call;
+    const code = /Seu código de verificação é: (\d{6})/.exec(text as string)?.[1];
+    expect(code).toBeTruthy();
+    expect(options?.logSubject).toBe("Confirmação de estorno de pagamento");
+    expect(options?.logSubject).not.toContain(code);
   });
 
   it("não envia WhatsApp quando o usuário não tem telefone cadastrado, mas ainda retorna ok", async () => {

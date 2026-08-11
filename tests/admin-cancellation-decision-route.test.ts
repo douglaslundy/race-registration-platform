@@ -102,7 +102,7 @@ describe("POST /api/admin/registrations/[id]/cancellation-decision", () => {
     expect(vi.mocked(verifySensitiveActionCode)).toHaveBeenCalledWith({
       verificationId: "code-1",
       userId: "admin-1",
-      actionType: "PAYMENT_REFUND",
+      actionType: "REGISTRATION_CANCELLATION_REFUND",
       targetId: "reg-1",
       code: "123456",
     });

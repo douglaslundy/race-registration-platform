@@ -134,7 +134,7 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
     expect(verifyCodeMock).toHaveBeenCalledWith({
       verificationId: "code-1",
       userId: "organizer-1",
-      actionType: "PAYMENT_REFUND",
+      actionType: "REGISTRATION_CANCELLATION_REFUND",
       targetId: "reg-1",
       code: "123456",
     });

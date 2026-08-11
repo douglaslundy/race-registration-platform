@@ -53,7 +53,7 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(getWhatsAppConfig).mockResolvedValue({ apiUrl: "", apiKey: "", instanceName: "" });
     vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
 
-    await expect(sendWhatsAppMessage("5511999999999", "Olá!")).rejects.toThrow("WhatsApp não configurado");
+    await expect(sendWhatsAppMessage("5511999999999", "Olá!", "TEST")).rejects.toThrow("WhatsApp não configurado");
     expect(sendTextMessage).not.toHaveBeenCalled();
     expect(recordMessageLog).not.toHaveBeenCalled();
   });
@@ -64,11 +64,12 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
     vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
 
-    await sendWhatsAppMessage("5511999999999", "Olá!");
+    await sendWhatsAppMessage("5511999999999", "Olá!", "TEST");
 
     expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", "Olá!");
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "WHATSAPP",
+      messageType: "TEST",
       subject: "Olá!",
       recipientAddress: "5511999999999",
       status: "SENT",
@@ -82,7 +83,7 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
     vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
 
-    await sendWhatsAppMessage("11999999999", "Olá!");
+    await sendWhatsAppMessage("11999999999", "Olá!", "TEST");
 
     expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", "Olá!");
     expect(recordMessageLog).toHaveBeenCalledWith(
@@ -117,11 +118,28 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: null });
     const longText = "a".repeat(120);
 
-    await sendWhatsAppMessage("5511999999999", longText);
+    await sendWhatsAppMessage("5511999999999", longText, "TEST");
 
     expect(recordMessageLog).toHaveBeenCalledWith(
       expect.objectContaining({ subject: `${"a".repeat(77)}...` }),
     );
+  });
+
+  it("usa options.logSubject como subject do log (em vez do texto truncado) quando informado, sem alterar o texto enviado ao provedor", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
+    const text = "Confirmação de estorno\n\nSeu código de verificação é: 123456\n\nVálido por 10 minutos.";
+
+    await sendWhatsAppMessage("5511999999999", text, "SENSITIVE_ACTION_CODE", { logSubject: "Confirmação de estorno" });
+
+    expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", text);
+    expect(recordMessageLog).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: "Confirmação de estorno" }),
+    );
+    const loggedSubject = vi.mocked(recordMessageLog).mock.calls[0][0].subject;
+    expect(loggedSubject).not.toContain("123456");
   });
 
   it("em caso de falha no envio, registra o log como FAILED e relança o erro original", async () => {
@@ -130,10 +148,11 @@ describe("sendWhatsAppMessage", () => {
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
     vi.mocked(sendTextMessage).mockRejectedValueOnce(new Error("Evolution API 400 ao enviar mensagem"));
 
-    await expect(sendWhatsAppMessage("5511999999999", "Olá!")).rejects.toThrow("Evolution API 400");
+    await expect(sendWhatsAppMessage("5511999999999", "Olá!", "TEST")).rejects.toThrow("Evolution API 400");
 
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "WHATSAPP",
+      messageType: "TEST",
       subject: "Olá!",
       recipientAddress: "5511999999999",
       status: "FAILED",

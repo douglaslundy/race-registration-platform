@@ -26,8 +26,8 @@ export function normalizePhoneForWhatsApp(phone: string): string {
 export async function sendWhatsAppMessage(
   phone: string,
   text: string,
-  messageType?: string,
-  options?: { relatedEntityType?: string; relatedEntityId?: string },
+  messageType: string,
+  options?: { relatedEntityType?: string; relatedEntityId?: string; logSubject?: string },
 ): Promise<void> {
   const config = await getWhatsAppConfig();
   if (!isWhatsAppConfigured(config)) {
@@ -35,7 +35,7 @@ export async function sendWhatsAppMessage(
   }
 
   const normalizedPhone = normalizePhoneForWhatsApp(phone);
-  const subject = truncateForSubject(text);
+  const subject = options?.logSubject ?? truncateForSubject(text);
   const relatedEntity =
     options?.relatedEntityType && options?.relatedEntityId
       ? { relatedEntityType: options.relatedEntityType, relatedEntityId: options.relatedEntityId }

@@ -4,7 +4,7 @@ import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { sendSensitiveActionCodeEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
-export type SensitiveActionType = "PAYMENT_REFUND";
+export type SensitiveActionType = "PAYMENT_REFUND" | "REGISTRATION_CANCELLATION_REFUND";
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -12,6 +12,7 @@ const INVALID_OR_EXPIRED = "Código expirado ou inválido, solicite um novo.";
 
 const ACTION_LABEL: Record<SensitiveActionType, string> = {
   PAYMENT_REFUND: "Confirmação de estorno de pagamento",
+  REGISTRATION_CANCELLATION_REFUND: "Confirmação de aprovação de cancelamento com estorno",
 };
 
 function hashCode(code: string): string {
@@ -58,7 +59,7 @@ export async function requestSensitiveActionCode(params: {
   if (user.phone) {
     try {
       const text = `${actionLabel}\n\nSeu código de verificação é: ${code}\n\nVálido por 10 minutos. Se você não solicitou esta ação, ignore esta mensagem.`;
-      await sendWhatsAppMessage(user.phone, text, "SENSITIVE_ACTION_CODE");
+      await sendWhatsAppMessage(user.phone, text, "SENSITIVE_ACTION_CODE", { logSubject: actionLabel });
     } catch (err) {
       console.error("[requestSensitiveActionCode] falha ao enviar WhatsApp (e-mail já enviado):", err);
     }

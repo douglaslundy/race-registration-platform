@@ -51,7 +51,7 @@ describe("POST /api/admin/registrations/[id]/cancellation-decision/request-code"
     const body = await res.json();
 
     expect(hasPaidMock).toHaveBeenCalledWith({ id: "reg-1" });
-    expect(requestCodeMock).toHaveBeenCalledWith({ userId: "admin-1", actionType: "PAYMENT_REFUND", targetId: "reg-1" });
+    expect(requestCodeMock).toHaveBeenCalledWith({ userId: "admin-1", actionType: "REGISTRATION_CANCELLATION_REFUND", targetId: "reg-1" });
     expect(body).toEqual({ verificationId: "code-1" });
   });
 });

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const verification = await verifySensitiveActionCode({
       verificationId,
       userId: session.user.id,
-      actionType: "PAYMENT_REFUND",
+      actionType: "REGISTRATION_CANCELLATION_REFUND",
       targetId: id,
       code,
     });
