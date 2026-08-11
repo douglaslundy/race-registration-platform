@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { refundPayment } from "@/lib/payment/refund-service";
 import { sendAdvertiserRequestRejectedEmail } from "@/lib/email";
+import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 
 const schema = z.object({ reason: z.string().min(1) });
 
@@ -34,12 +35,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pur
     return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 });
   }
 
+  const payment = purchase.payments[0];
+  if (payment) {
+    const { verificationId, code } = body;
+    if (typeof verificationId !== "string" || typeof code !== "string") {
+      return NextResponse.json({ error: "Código de verificação obrigatório" }, { status: 400 });
+    }
+    const verification = await verifySensitiveActionCode({
+      verificationId,
+      userId: session.user.id,
+      actionType: "PAYMENT_REFUND",
+      targetId: payment.id,
+      code,
+    });
+    if (!verification.ok) {
+      return NextResponse.json({ error: verification.error, attemptsRemaining: verification.attemptsRemaining }, { status: 400 });
+    }
+  }
+
   await db.adPurchase.update({
     where: { id: purchaseId },
     data: { status: "REJECTED", rejectionReason: parsed.data.reason },
   });
 
-  const payment = purchase.payments[0];
   let refundFailed = false;
   let refunded = false;
   if (payment) {

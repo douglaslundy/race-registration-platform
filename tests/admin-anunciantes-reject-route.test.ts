@@ -5,13 +5,16 @@ import { auth } from "@/lib/auth";
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/payment/refund-service", () => ({ refundPayment: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendAdvertiserRequestRejectedEmail: vi.fn() }));
+vi.mock("@/lib/security/sensitive-action-verification", () => ({ verifySensitiveActionCode: vi.fn() }));
 
 import { POST } from "@/app/api/admin/anunciantes/[purchaseId]/reject/route";
 import { refundPayment } from "@/lib/payment/refund-service";
 import { sendAdvertiserRequestRejectedEmail } from "@/lib/email";
+import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
+const verifyCodeMock = vi.mocked(verifySensitiveActionCode);
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/admin/anunciantes/purchase-1/reject", {
@@ -25,6 +28,7 @@ describe("POST /api/admin/anunciantes/[purchaseId]/reject", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    verifyCodeMock.mockResolvedValue({ ok: true });
   });
 
   it("retorna 403 para quem não é admin", async () => {
@@ -52,7 +56,10 @@ describe("POST /api/admin/anunciantes/[purchaseId]/reject", () => {
       payments: [{ id: "payment-1" }],
     });
 
-    const res = await POST(makeRequest({ reason: "Dados inconsistentes" }), { params: Promise.resolve({ purchaseId: "purchase-1" }) });
+    const res = await POST(
+      makeRequest({ reason: "Dados inconsistentes", verificationId: "code-1", code: "123456" }),
+      { params: Promise.resolve({ purchaseId: "purchase-1" }) },
+    );
 
     expect(dbMock.adPurchase.update).toHaveBeenCalledWith({
       where: { id: "purchase-1" },
@@ -79,7 +86,10 @@ describe("POST /api/admin/anunciantes/[purchaseId]/reject", () => {
     });
     vi.mocked(refundPayment).mockRejectedValueOnce(new Error("gateway indisponível"));
 
-    const res = await POST(makeRequest({ reason: "Dados inconsistentes" }), { params: Promise.resolve({ purchaseId: "purchase-1" }) });
+    const res = await POST(
+      makeRequest({ reason: "Dados inconsistentes", verificationId: "code-1", code: "123456" }),
+      { params: Promise.resolve({ purchaseId: "purchase-1" }) },
+    );
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -90,5 +100,37 @@ describe("POST /api/admin/anunciantes/[purchaseId]/reject", () => {
       reason: "Dados inconsistentes",
       refunded: false,
     });
+  });
+
+  it("retorna 400 sem verificationId/code", async () => {
+    dbMock.adPurchase.findUnique.mockResolvedValueOnce({
+      id: "purchase-1",
+      status: "PENDING_APPROVAL",
+      advertiser: { user: { name: "Fulano", email: "fulano@example.com" } },
+      payments: [{ id: "payment-1" }],
+    });
+
+    const res = await POST(makeRequest({ reason: "Dados inconsistentes" }), { params: Promise.resolve({ purchaseId: "purchase-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.adPurchase.update).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando o código é inválido, sem marcar REJECTED", async () => {
+    dbMock.adPurchase.findUnique.mockResolvedValueOnce({
+      id: "purchase-1",
+      status: "PENDING_APPROVAL",
+      advertiser: { user: { name: "Fulano", email: "fulano@example.com" } },
+      payments: [{ id: "payment-1" }],
+    });
+    vi.mocked(verifySensitiveActionCode).mockResolvedValueOnce({ ok: false, error: "Código incorreto.", attemptsRemaining: 2 });
+
+    const res = await POST(
+      makeRequest({ reason: "Dados inconsistentes", verificationId: "code-1", code: "000000" }),
+      { params: Promise.resolve({ purchaseId: "purchase-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.adPurchase.update).not.toHaveBeenCalled();
   });
 });
