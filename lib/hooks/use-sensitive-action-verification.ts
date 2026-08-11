@@ -17,7 +17,13 @@ export function useSensitiveActionVerification(params: {
 
   const requestCode = useCallback(async () => {
     setError(null);
-    const res = await fetch(params.requestCodeEndpoint, { method: "POST" });
+    let res: Response;
+    try {
+      res = await fetch(params.requestCodeEndpoint, { method: "POST" });
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+      return false;
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(data.error ?? "Não foi possível enviar o código.");
@@ -46,11 +52,18 @@ export function useSensitiveActionVerification(params: {
       if (!verificationId) return { ok: false };
       setStep("submitting");
       setError(null);
-      const res = await fetch(params.confirmEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verificationId, code, ...extraBody }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(params.confirmEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ verificationId, code, ...extraBody }),
+        });
+      } catch {
+        setError("Erro de conexão. Tente novamente.");
+        setStep("code");
+        return { ok: false };
+      }
       if (res.ok) {
         setStep("idle");
         return { ok: true, response: res };
