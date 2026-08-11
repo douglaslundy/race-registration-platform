@@ -28,6 +28,7 @@ export default async function OrganizerReembolsosPendentesPage() {
         <PendingCancellationsTable
           items={cancellations}
           decisionEndpoint={(id) => `/api/organizer/registrations/${id}/cancellation-decision`}
+          requestCodeEndpoint={(id) => `/api/organizer/registrations/${id}/cancellation-decision/request-code`}
         />
       </div>
 

@@ -7,6 +7,7 @@ export interface PendingCancellation {
   cancellationRequestedAt: Date | null;
   athlete: { name: string; email: string };
   event: { id: string; title: string };
+  hasPaidPayment: boolean;
 }
 
 export interface PendingRefund {
@@ -32,9 +33,10 @@ export async function listPendingCancellations(organizerUserId?: string): Promis
       cancellationRequestedAt: true,
       athlete: { select: { name: true, email: true } },
       event: { select: { id: true, title: true } },
+      order: { select: { payments: { where: { status: "PAID" }, take: 1, select: { id: true } } } },
     },
   });
-  return registrations;
+  return registrations.map(({ order, ...r }) => ({ ...r, hasPaidPayment: order.payments.length > 0 }));
 }
 
 export async function listPendingRefunds(organizerUserId?: string): Promise<PendingRefund[]> {

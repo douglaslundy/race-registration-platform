@@ -6,9 +6,11 @@ import type { PendingCancellation } from "@/lib/registrations/pending-queue";
 export default function PendingCancellationsTable({
   items,
   decisionEndpoint,
+  requestCodeEndpoint,
 }: {
   items: PendingCancellation[];
   decisionEndpoint: (registrationId: string) => string;
+  requestCodeEndpoint: (registrationId: string) => string;
 }) {
   if (items.length === 0) {
     return <div className="card text-center py-8 text-gray-500">Nenhuma solicitação de cancelamento pendente.</div>;
@@ -48,6 +50,8 @@ export default function PendingCancellationsTable({
                 <CancellationDecisionButtons
                   cancellationReason={item.cancellationReason}
                   endpoint={decisionEndpoint(item.id)}
+                  requestCodeEndpoint={requestCodeEndpoint(item.id)}
+                  hasPaidPayment={item.hasPaidPayment}
                 />
               </td>
             </tr>

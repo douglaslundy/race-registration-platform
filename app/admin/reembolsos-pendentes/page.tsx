@@ -25,6 +25,7 @@ export default async function AdminReembolsosPendentesPage() {
         <PendingCancellationsTable
           items={cancellations}
           decisionEndpoint={(id) => `/api/admin/registrations/${id}/cancellation-decision`}
+          requestCodeEndpoint={(id) => `/api/admin/registrations/${id}/cancellation-decision/request-code`}
         />
       </div>
 

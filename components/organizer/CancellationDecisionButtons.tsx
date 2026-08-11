@@ -15,8 +15,8 @@ export default function CancellationDecisionButtons({
 }: {
   cancellationReason: string | null;
   endpoint: string;
-  requestCodeEndpoint?: string;
-  hasPaidPayment?: boolean;
+  requestCodeEndpoint: string;
+  hasPaidPayment: boolean;
 }) {
   const [pendingDecision, setPendingDecision] = useState<"APPROVE" | "REJECT" | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,11 +24,11 @@ export default function CancellationDecisionButtons({
   const router = useRouter();
 
   const verification = useSensitiveActionVerification({
-    requestCodeEndpoint: requestCodeEndpoint ?? "",
+    requestCodeEndpoint,
     confirmEndpoint: endpoint,
   });
 
-  const needsCode = pendingDecision === "APPROVE" && !!hasPaidPayment;
+  const needsCode = pendingDecision === "APPROVE" && hasPaidPayment;
 
   async function confirmDecision() {
     if (!pendingDecision) return;
