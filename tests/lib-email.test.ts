@@ -410,6 +410,43 @@ describe("sendRegistrationConfirmationEmail", () => {
   });
 });
 
+describe("sendSensitiveActionCodeEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
+    vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("sendSensitiveActionCodeEmail envia o código no corpo do e-mail com messageType correto", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    const { sendSensitiveActionCodeEmail } = await import("@/lib/email");
+    await sendSensitiveActionCodeEmail({
+      to: "admin@example.com",
+      name: "Admin",
+      code: "123456",
+      actionLabel: "Confirmação de estorno de pagamento",
+    });
+
+    // sendMailMock é o mock do transporter do nodemailer (ver vi.mock("nodemailer") no topo
+    // deste arquivo) — só recebe to/subject/html/attachments, não messageType (que é uso
+    // interno de lib/email.ts pro recordMessageLog; ver padrão nos testes de sendMail acima).
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "admin@example.com",
+        subject: expect.stringContaining("Confirmação de estorno de pagamento"),
+        html: expect.stringContaining("123456"),
+      }),
+    );
+    expect(recordMessageLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageType: "SENSITIVE_ACTION_CODE",
+        recipientAddress: "admin@example.com",
+        status: "SENT",
+      }),
+    );
+  });
+});
+
 describe("sendDailySummaryEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();

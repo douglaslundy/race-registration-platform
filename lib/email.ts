@@ -494,3 +494,26 @@ export async function sendEventDailySummaryEmail(params: {
   const body = renderTemplate(template.body, params.values, "EMAIL");
   await sendMail({ to: params.to, messageType: "DAILY_SUMMARY_EVENT", subject, html: layout(appName, body) });
 }
+
+/** E-mail com o código de verificação de 2 etapas pra ações sensíveis (ex: estorno de pagamento).
+ * Mensagem fixa, fora do sistema de templates customizáveis por design de segurança. */
+export async function sendSensitiveActionCodeEmail(params: {
+  to: string;
+  name: string;
+  code: string;
+  actionLabel: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    messageType: "SENSITIVE_ACTION_CODE",
+    subject: `${params.actionLabel} — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá ${params.name},</p>
+       <p>${params.actionLabel}. Use o código abaixo para confirmar:</p>
+       <p style="font-size:28px;font-weight:bold;letter-spacing:4px;text-align:center;background:#f3f4f6;padding:16px;border-radius:8px">${params.code}</p>
+       <p style="font-size:13px;color:#6b7280">Válido por 10 minutos. Se você não solicitou esta ação, ignore este e-mail — nenhuma ação será tomada sem o código.</p>`
+    ),
+  });
+}

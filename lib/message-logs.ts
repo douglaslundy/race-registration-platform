@@ -27,6 +27,7 @@ export const MESSAGE_TYPE_LABEL: Record<string, string> = {
   ADVERTISER_REQUEST_APPROVED: "Solicitação de anunciante aprovada",
   ADVERTISER_REQUEST_REJECTED: "Solicitação de anunciante rejeitada",
   AD_REPORT: "Relatório de anúncio",
+  SENSITIVE_ACTION_CODE: "Código de verificação",
 };
 
 export interface RecordMessageLogParams {
