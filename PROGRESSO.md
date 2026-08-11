@@ -1,5 +1,72 @@
 # Progresso do Projeto
 
+## Verificação em 2 etapas para ações sensíveis de pagamento (2026-08-11) — IMPLEMENTADO, AGUARDANDO AUTORIZAÇÃO DE DEPLOY
+
+Pedido do usuário: qualquer rotina que efetivamente chama a API do gateway de pagamento pra
+estornar dinheiro passa a exigir um código de 6 dígitos (enviado por e-mail obrigatório + WhatsApp
+best-effort pro usuário autenticado que executa a ação) antes do estorno acontecer de fato. Spec em
+`docs/superpowers/specs/2026-08-11-verificacao-2fa-acoes-sensiveis-design.md`, plano em
+`docs/superpowers/plans/2026-08-11-verificacao-2fa-acoes-sensiveis.md` (15 tasks — a 14ª foi
+descoberta e adicionada em andamento, ver abaixo). Executado via subagent-driven-development, direto
+na `main` (autorizado pelo usuário), com revisor dedicado por task e loop de correção sempre que
+achado Important/Critical (todos fechados antes de avançar).
+
+**Os 4 pontos que chamam `refundPayment()` de verdade, agora todos cobertos** (backend + UI):
+1. Estorno manual admin — `POST /api/admin/payments/[id]/refund` (Task 4) + `RefundPaymentButton.tsx` (Task 10).
+2. Estorno manual organizador — `POST /api/organizer/registrations/[id]/refund` (Task 5) + `RefundRegistrationButton.tsx` (Task 11).
+3. Rejeição de anunciante com estorno automático — `POST /api/admin/anunciantes/[purchaseId]/reject` (Task 6) + `AdvertiserRequestRow.tsx` (Task 12).
+4. Aprovação de cancelamento com estorno automático — rotas admin+organizador de `cancellation-decision` (Task 7) + UI na tela de inscritos do organizador (Task 13) **e** na fila de "reembolsos pendentes" admin+organizador (Task 14 — ver nota abaixo).
+
+**Fora do escopo, por decisão do usuário**: `resolveRefundManually` e `updatePayoutStatus` (não
+chamam a API do gateway diretamente — candidatos a uma leva futura se pedido).
+
+**Achado mid-implementação, virou Task 14 (não estava nas 14 originais)**: `PendingCancellationsTable.tsx`
+(usado pelas telas `/admin/reembolsos-pendentes` e `/organizador/reembolsos-pendentes`) é um 3º
+consumidor de `CancellationDecisionButtons` que a Task 13 não tinha mapeado — sem o fix, o botão
+"Aprovar" quebraria (erro genérico, não falha de segurança — o backend da Task 7 já bloqueava
+corretamente) pra qualquer cancelamento com pagamento pago vindo dessa fila específica. Corrigido:
+`lib/registrations/pending-queue.ts` agora expõe `hasPaidPayment`, as 2 páginas passam
+`requestCodeEndpoint`, e as props do componente voltaram a ser obrigatórias (não há mais nenhum 4º
+consumidor — confirmado via grep + `tsc --noEmit` limpo).
+
+**Achado durante a revisão da Task 12, também corrigido antes de fechar**: o código original da
+Task 12 pedia código de verificação incondicionalmente ao rejeitar uma solicitação de anunciante —
+mas isso bloquearia rejeição de solicitações sem pagamento pago (ex: chargeback chegando via webhook
+enquanto a solicitação ainda está `PENDING_APPROVAL`). Corrigido com o mesmo padrão `hasPaidPayment`
+que a Task 13 já usava.
+
+**Commits** (ordem cronológica, `main`):
+`59975e0` schema+rate limit → `dc80524` e-mail do código → `d39c538` serviço central →
+`635c34e` estorno admin → `6e3ccd1` estorno organizador → `1c0daf6` rejeição anunciante →
+`a4fec6d`+`6a47524` aprovação de cancelamento (backend) → `6ebe397` CodeVerificationModal →
+`0f9fe52`+`cd2c994` hook (+ fix de erro de rede) → `1234f00` RefundPaymentButton →
+`dcf30f0` RefundRegistrationButton → `64c49d0`+`26cb901` AdvertiserRequestRow (+ fix hasPaidPayment) →
+`c686eea` CancellationDecisionButtons → `1a56177`+`d6ee1e5` fila reembolsos-pendentes (+ fix teste).
+
+**Migração de schema pendente de deploy**: `SensitiveActionCode` (tabela nova, aditiva, sem dado
+existente a migrar) precisa de `prisma db push` (ou `migrate deploy`) na VPS antes do próximo deploy
+funcionar — sem isso, todo pedido de código vai falhar com erro de tabela inexistente.
+
+**Teste manual no navegador: NÃO FEITO em nenhum dos 4 pontos.** O `.env` local aponta pro que
+parece ser o Supabase de produção (`db.usgslzpuovvrkvvrhljt.supabase.co`) — rodar o fluxo de verdade
+mandaria e-mail/WhatsApp reais e estornaria/rejeitaria/aprovaria algo real. Toda verificação até
+aqui foi estática (typecheck cruzando os contratos de props/retorno entre componentes, leitura das
+rotas de backend confirmando a ordem "verifica código → só depois muda estado", suíte de testes
+automatizados). **Fica pendente um teste manual conjunto com o usuário, nos 4 fluxos, antes do
+deploy** — ver PRÓXIMA TAREFA.
+
+**Suíte de testes**: `npx vitest run` → 213 arquivos passando, 6 falhando (23 casos) — todas as 23
+falhas são pré-existentes, no trabalho não relacionado de `messageType` (outra frente desta sessão,
+ver commits `23318fc`..`ac71fee`), nenhuma nova introduzida por esta feature. `npx tsc --noEmit` →
+limpo.
+
+**PRÓXIMA TAREFA**: 1) revisão final de branch inteira (dispatch do revisor mais capaz, per
+subagent-driven-development) antes de considerar a feature pronta pra deploy; 2) teste manual
+conjunto com o usuário nos 4 fluxos (banco local aponta pra produção, não dá pra testar sozinho);
+3) perguntar explicitamente antes de `git push`/deploy — mudança de schema + mexe em dinheiro real.
+**Contexto necessário**: este bloco inteiro + `docs/superpowers/plans/2026-08-11-verificacao-2fa-acoes-sensiveis.md`
+(15 tasks, todas commitadas em `main`, nenhum push feito ainda).
+
 ## Varredura completa: segurança + performance + bugs relatados (2026-08-10) — CATALOGADO, NADA CORRIGIDO AINDA
 
 Usuário pediu varredura completa (segurança + lentidão) depois de relatos de clientes: formulário
