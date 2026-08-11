@@ -147,6 +147,99 @@ usuário pedir.
 **PRÓXIMA TAREFA**: nenhuma pendente desta varredura. Sistema de rating de atletas continua adiado
 (ver memória `rating_system_pending`) — só retomar se pedido explicitamente.
 
+## Continuação da varredura (mesmo dia): os 4 itens que tinham ficado de fora — TODOS implementados
+
+Usuário pediu explicitamente pra implementar os 4 itens que a varredura anterior tinha catalogado
+mas não corrigido: rate limiting, comparação constant-time no Pagar.me, magic bytes no upload, e
+investigar a sobrecarga do VPS Monitor.
+
+1. **Rate limiting em login/registro/reset de senha** — `lib/rate-limit.ts` ganhou `getClientIp()`
+   (lê `x-forwarded-for`, confiável porque a app só é alcançável via Traefik). Aplicado em
+   `lib/auth/config.ts` (authorize, chave dupla por IP e por e-mail — achado real durante o TDD:
+   `CredentialsProvider(config)` do next-auth guarda a função `authorize` de verdade em
+   `.options.authorize`, não em `.authorize` de nível superior, que é sempre um stub `() => null`;
+   testar contra o stub daria falso positivo), `app/api/auth/register`, `forgot-password`,
+   `reset-password`. Testes novos (`tests/unit/auth-rate-limit.test.ts`,
+   `tests/forgot-password-route.test.ts`, `tests/reset-password-route.test.ts` — nenhum existia
+   antes) + `tests/register-route.test.ts` atualizado.
+2. **Constant-time no webhook Pagar.me** — `lib/payment/pagarme.ts:167`, caminho Basic Auth agora
+   usa `crypto.timingSafeEqual` com guard de tamanho (evita exception por buffers de tamanho
+   diferente), igual ao caminho HMAC ao lado.
+3. **Magic bytes no upload** — `app/api/upload/route.ts` ganhou `matchesMagicBytes()`, checa os
+   bytes reais contra a assinatura de cada formato aceito (jpeg/png/webp/gif/pdf) antes de aceitar
+   — antes confiava só no Content-Type declarado pelo navegador. Achado real: o teste existente
+   "faz fallback pro arquivo original quando a compressão falha" comprovava exatamente esse buraco
+   (bytes falsos passavam disfarçados de imagem) — reescrito pra esperar 400 em vez de aceitar.
+4. **VPS Monitor sobrecarregado — causa raiz encontrada e corrigida** (repo separado,
+   `github.com/douglaslundy/montoring_vps`, projeto próprio do usuário, clonado no scratchpad pra
+   editar com segurança/rodar a suíte local em vez de editar direto via SSH):
+   `collector/docker_client.py::DockerClient._client()` abria um `httpx.AsyncClient` NOVO a cada
+   chamada (`async with self._client() as c:`), e `collect_all()` chama isso uma vez por container
+   a cada ciclo de 30s — ~45 conexões HTTP novas via socket Unix a cada 30s, nunca reaproveitadas.
+   Batia exatamente com o sintoma (scheduler cronicamente atrasado, ~55-100%+ CPU sustentado).
+   Corrigido: `_client()` agora cria uma vez e reaproveita (recria só se fechado); `aclose()` novo
+   pro shutdown do FastAPI. Suíte completa do vps-monitor: 291 passed (288 preexistentes + 3 novos
+   cobrindo o reaproveitamento), 0 falhas, rodada localmente antes do push (venv Python 3.14 +
+   pytest, instalado no scratchpad). Commit `200f517`, push pro GitHub, deploy na VPS (`git pull` +
+   `docker compose build --no-cache` + restart via `deploy.sh` do próprio projeto).
+   **Resultado real (verificado com leitura mais estável, não só o primeiro check pós-deploy)**:
+   PARCIAL, não 100%. `collect_and_store` (o job que o fix mirava) parou de atrasar — confirmado,
+   não aparece mais em nenhuma mensagem "was missed by". Load médio da VPS caiu (4.04/3.18/2.75
+   contra picos de 5.8-6.9 antes). **Mas** `tail_access_log` continua atrasando, agora por
+   ~14-15s (quase o intervalo inteiro de 15s) — causa raiz DIFERENTE da que foi corrigida, ainda
+   não identificada (o event loop está sendo bloqueado por outra coisa nesses momentos).
+   **Achado extra durante essa investigação, não corrigido**: o arquivo que `tail_access_log` lê
+   (`/var/log/traefik/access.log`, dentro do container `monitor-backend`) está **vazio (0 bytes) e
+   parado desde 20/07** — o monitor pode estar cego pra dados de acesso há quase 3 semanas. Não
+   investigado o motivo (path de mount errado? Traefik parou de logar? rotação quebrada?). Registrar
+   como pendência real pro usuário decidir se quer que eu continue nessa frente (é escopo de outro
+   projeto, `montoring_vps`, fora do sistema de corridas).
+
+Suíte completa do sistema_inscricoes_corridas_codex depois desses 3 primeiros itens: 1414/1437
+(as 23 falhas continuam as mesmas pré-existentes do trabalho de `messageType`, não mexidas).
+`tsc --noEmit` limpo em cada etapa.
+
+**Commitados, pushados e deployados** (mesmo dia): 3 commits (`ae41986` rate limiting,
+`fe8c7d9` constant-time Pagar.me, `5e82a0b` magic bytes no upload) → `git push origin main` →
+deploy na VPS (`git pull` → `docker build` → `docker compose up -d --no-deps app`, sem mudança de
+schema nesta leva). Smoke test confirmado: `/`, `/eventos`, `/auth/login` 200; `/admin/eventos`
+307 (login, esperado). `docker logs corridas-app` limpo.
+
+## Achado extra durante a investigação do VPS Monitor: Traefik escrevendo em arquivo deletado
+
+Durante a investigação do item 4 acima, descoberto (não fazia parte do pedido original, achado
+colateral): `/proc/1/fd/8` do container `traefik` apontava pra
+`/var/log/traefik/access.log (deleted)` com **467.171.452 bytes (~445 MB)** escritos num inode
+órfão desde a rotação de log de 20/07 00:00. O `access.log` real (visível no filesystem) está
+vazio desde então — o monitor ficou cego pra dados de acesso por ~3 semanas, e o espaço em disco
+só seria liberado quando o Traefik reiniciasse. `/etc/logrotate.d/traefik-access-log` já usa
+`copytruncate` (opção certa pra esse cenário) e funcionou normalmente de 14 a 19/07 (arquivos
+`access.log.2.gz` a `.6.gz` têm conteúdo) — só a rotação de 20/07 falhou, causa exata não
+confirmada (suspeita: algum script de `/opt/vps-monitor/monitor/scripts/` que reinicia containers
+de infra pode ter interferido, não investigado a fundo).
+
+**Ação tomada e confirmada**: reiniciado o container `traefik` (`docker restart traefik` na VPS,
+23:33). Confirmado com uma requisição real logo depois: `access.log` voltou a crescer de verdade
+(fd sem mais "(deleted)", entrada JSON real da requisição de teste apareceu no arquivo). Os ~445MB
+órfãos foram liberados automaticamente no restart.
+
+**Observação que reforça que o problema de CPU do monitor não está 100% resolvido**: às 23:35
+(quase 3h depois do deploy do fix do `DockerClient`), o processo do `monitor-backend` já tinha
+acumulado 99min de CPU em 180min de wall-clock (~55% médio) e 54.9% de uso no instante da leitura
+— só um pouco melhor que antes do fix, não uma correção completa. Reforça que o item 2 abaixo
+(hipótese do SQLAlchemy síncrono bloqueando o event loop) é o próximo passo real, não só uma
+suspeita teórica.
+
+**Ainda pendente** (repo separado, `montoring_vps`, fora do escopo deste projeto — prompt
+autocontido entregue ao usuário no chat pra usar numa sessão dedicada nesse outro repo):
+1. Investigar por que o `copytruncate` falhou especificamente em 20/07 (não recorrente ainda, mas
+   sem correção da causa raiz pode acontecer de novo).
+2. Alerta novo no motor de alertas do monitor pra detectar `access.log` parado de crescer.
+3. Job `tail_access_log` continua atrasando (~14-15s de um intervalo de 15s) mesmo após o fix do
+   `DockerClient`, e o CPU do processo continua alto (~55% médio) — hipótese mais forte agora:
+   sessões síncronas do SQLAlchemy usadas direto dentro de `async def` sem `run_in_executor`,
+   bloqueando o event loop inteiro a cada commit.
+
 ## Revisão final do plano "Solicitação de conta de anunciante" — 8 achados corrigidos (2026-07-28)
 
 Plano de 14 tasks (`/anuncie` público → paga PIX → admin aprova/rejeita) estava completo; revisão
