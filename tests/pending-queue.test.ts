@@ -8,25 +8,52 @@ describe("listPendingCancellations", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("sem organizerUserId, busca CANCELLATION_REQUESTED em todos os eventos", async () => {
-    dbMock.registration.findMany.mockResolvedValueOnce([]);
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      {
+        id: "reg-1",
+        createdAt: new Date(),
+        cancellationReason: null,
+        cancellationRequestedAt: new Date(),
+        athlete: { name: "Atleta", email: "atleta@example.com" },
+        event: { id: "event-1", title: "Corrida" },
+        order: { payments: [{ id: "payment-1" }] },
+      },
+    ]);
 
-    await listPendingCancellations();
+    const result = await listPendingCancellations();
 
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { status: "CANCELLATION_REQUESTED" } }),
+      expect.objectContaining({
+        where: { status: "CANCELLATION_REQUESTED" },
+        select: expect.objectContaining({
+          order: { select: { payments: { where: { status: "PAID" }, take: 1, select: { id: true } } } },
+        }),
+      }),
     );
+    expect(result[0].hasPaidPayment).toBe(true);
   });
 
   it("com organizerUserId, escopa por eventos daquele organizador", async () => {
-    dbMock.registration.findMany.mockResolvedValueOnce([]);
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      {
+        id: "reg-2",
+        createdAt: new Date(),
+        cancellationReason: null,
+        cancellationRequestedAt: new Date(),
+        athlete: { name: "Atleta", email: "atleta@example.com" },
+        event: { id: "event-1", title: "Corrida" },
+        order: { payments: [] },
+      },
+    ]);
 
-    await listPendingCancellations("org-1");
+    const result = await listPendingCancellations("org-1");
 
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { status: "CANCELLATION_REQUESTED", event: { organizer: { userId: "org-1" } } },
       }),
     );
+    expect(result[0].hasPaidPayment).toBe(false);
   });
 });
 
