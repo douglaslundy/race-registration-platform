@@ -5,11 +5,17 @@ vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn(async () => "hashed-password") },
 }));
 vi.mock("@/lib/validate-email-domain", () => ({ hasValidMxRecord: vi.fn() }));
+vi.mock("@/lib/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit");
+  return { ...actual, checkRateLimit: vi.fn() };
+});
 
 import { POST } from "@/app/api/auth/register/route";
 import { hasValidMxRecord } from "@/lib/validate-email-domain";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const dbMock = db as any;
+const rateLimitMock = vi.mocked(checkRateLimit);
 
 function makeRequest(body: Record<string, unknown>) {
   return new Request("http://localhost/api/auth/register", {
@@ -31,6 +37,7 @@ const validAthleteBody = {
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    rateLimitMock.mockReturnValue({ allowed: true, remaining: 9 });
     vi.mocked(hasValidMxRecord).mockResolvedValue(true);
     dbMock.user.findUnique.mockResolvedValue(null);
     dbMock.athleteProfile.findFirst.mockResolvedValue(null);
@@ -117,6 +124,15 @@ describe("POST /api/auth/register", () => {
 
     expect(res.status).toBe(201);
     expect(dbMock.athleteProfile.create).not.toHaveBeenCalled();
+  });
+
+  it("retorna 429 e não cria o usuário quando o limite de tentativas é excedido", async () => {
+    rateLimitMock.mockReturnValue({ allowed: false, remaining: 0 });
+
+    const res = await POST(makeRequest(validAthleteBody));
+
+    expect(res.status).toBe(429);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
   });
 
   it("rejeita e-mail cujo domínio não tem registro MX", async () => {

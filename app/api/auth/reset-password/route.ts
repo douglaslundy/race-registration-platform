@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().email(),
@@ -10,6 +11,11 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const { allowed } = checkRateLimit(`reset-password:${getClientIp(req)}`, RATE_LIMITS.AUTH);
+  if (!allowed) {
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, { status: 429 });
+  }
+
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });

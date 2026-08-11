@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -24,9 +25,16 @@ export const authConfig: NextAuthConfig = {
         email: { label: "Email", type: "email" },
         password: { label: "Senha", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
+
+        // Duas chaves: por IP (evita força bruta distribuída contra várias contas) e por e-mail
+        // (evita alguém martelando uma conta específica a partir de vários IPs).
+        const ip = getClientIp(request);
+        const ipCheck = checkRateLimit(`login:ip:${ip}`, RATE_LIMITS.AUTH);
+        const emailCheck = checkRateLimit(`login:email:${parsed.data.email}`, RATE_LIMITS.AUTH);
+        if (!ipCheck.allowed || !emailCheck.allowed) return null;
 
         const user = await db.user.findUnique({
           where: { email: parsed.data.email },

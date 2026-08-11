@@ -1,5 +1,14 @@
 const RATE_LIMIT_MAP = new Map<string, { count: number; resetAt: number }>();
 
+// A app só é alcançável via Traefik (nenhuma porta do container é exposta direto — ver
+// docker-compose), então o Traefik é sempre quem escreve x-forwarded-for; não é um header
+// vindo direto do cliente que precise de tratamento anti-spoofing extra aqui.
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
+
 export interface RateLimitConfig {
   requests: number;
   windowMs: number;

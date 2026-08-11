@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 import { hasValidMxRecord } from "@/lib/validate-email-domain";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 const registerSchema = z
   .object({
@@ -58,6 +59,11 @@ const registerSchema = z
 
 export async function POST(req: NextRequest) {
   try {
+    const { allowed } = checkRateLimit(`register:${getClientIp(req)}`, RATE_LIMITS.AUTH);
+    if (!allowed) {
+      return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, { status: 429 });
+    }
+
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
 

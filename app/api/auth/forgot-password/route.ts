@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();
@@ -11,6 +12,15 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+
+  // Duas chaves: por IP (abuso automatizado) e por e-mail (evita "mail-bombing" a caixa de
+  // entrada de uma vítima específica disparando de vários IPs). Resposta sempre { ok: true } pra
+  // não revelar rate limit nem enumerar e-mails.
+  const ipCheck = checkRateLimit(`forgot-password:ip:${getClientIp(req)}`, RATE_LIMITS.AUTH);
+  const emailCheck = checkRateLimit(`forgot-password:email:${normalizedEmail}`, RATE_LIMITS.AUTH);
+  if (!ipCheck.allowed || !emailCheck.allowed) {
+    return NextResponse.json({ ok: true });
+  }
   const user = await db.user.findUnique({ where: { email: normalizedEmail } });
 
   // Sempre retorna sucesso para evitar enumeração de e-mails.
