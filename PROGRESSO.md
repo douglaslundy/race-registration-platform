@@ -60,12 +60,32 @@ falhas são pré-existentes, no trabalho não relacionado de `messageType` (outr
 ver commits `23318fc`..`ac71fee`), nenhuma nova introduzida por esta feature. `npx tsc --noEmit` →
 limpo.
 
-**PRÓXIMA TAREFA**: 1) revisão final de branch inteira (dispatch do revisor mais capaz, per
-subagent-driven-development) antes de considerar a feature pronta pra deploy; 2) teste manual
-conjunto com o usuário nos 4 fluxos (banco local aponta pra produção, não dá pra testar sozinho);
-3) perguntar explicitamente antes de `git push`/deploy — mudança de schema + mexe em dinheiro real.
+**Revisão final de branch inteira (opus)**: achou 1 Crítico + 3 Importantes, todos corrigidos antes
+de fechar:
+- **Crítico**: o código de verificação vazava em texto puro pra `message_logs.subject` no envio por
+  WhatsApp (`truncateForSubject` mantinha os 77 primeiros caracteres, e o código de 6 dígitos ficava
+  dentro desse trecho) — visível em `/admin/mensagens` e `/organizador/mensagens`, inclusive pela
+  mesma sessão comprometida que o código deveria proteger. Corrigido: `sendWhatsAppMessage` ganhou
+  `options.logSubject` (usa o rótulo da ação, sem o código, como assunto gravado no log).
+- **Importante**: `actionType`/`targetId` colidiam entre os fluxos de estorno (`targetId=payment.id`)
+  e os de decisão de cancelamento (`targetId=registration.id`), ambos com `actionType:
+  "PAYMENT_REFUND"` — risco latente pra uma conta com papel admin+organizador ao mesmo tempo.
+  Corrigido: decisão de cancelamento ganhou `actionType: "REGISTRATION_CANCELLATION_REFUND"` próprio.
+- **Importante**: a tela de inscritos do organizador calculava `hasPaidPayment` a partir do pagamento
+  mais recente, não "existe algum pagamento pago" (like o backend real faz) — falhava fechado (sem
+  furo de segurança) mas quebrava o fluxo da UI num caso de borda. Corrigido, sem query nova.
+- **Importante**: faltava a migration do Prisma pra tabela `sensitive_action_codes` (schema tinha o
+  model, `prisma migrate deploy` nunca criaria a tabela). Corrigido: migration escrita à mão
+  (conferida campo a campo contra o schema), nenhum comando de CLI/banco rodado.
+- Tudo corrigido num commit único (`9003605`), re-revisado (achado 1 Minor: o commit também trouxe
+  uma mudança de assinatura não relacionada de outra frente em andamento — `messageType` obrigatório
+  em `lib/whatsapp.ts` — separado num commit próprio (`d1b4f99`), sem afetar o resto do fix).
+
+**PRÓXIMA TAREFA**: 1) teste manual conjunto com o usuário nos 4 fluxos (banco local aponta pra
+produção, não dá pra testar sozinho) — nenhum dos 4 foi testado no navegador ainda; 2) perguntar
+explicitamente antes de `git push`/deploy — mudança de schema + mexe em dinheiro real.
 **Contexto necessário**: este bloco inteiro + `docs/superpowers/plans/2026-08-11-verificacao-2fa-acoes-sensiveis.md`
-(15 tasks, todas commitadas em `main`, nenhum push feito ainda).
+(15 tasks + revisão final, todas commitadas em `main` até `d1b4f99`, nenhum push feito ainda).
 
 ## Varredura completa: segurança + performance + bugs relatados (2026-08-10) — CATALOGADO, NADA CORRIGIDO AINDA
 
