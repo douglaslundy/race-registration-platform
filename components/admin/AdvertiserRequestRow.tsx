@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ErrorModal from "@/components/ui/ErrorModal";
+import CodeVerificationModal from "@/components/ui/CodeVerificationModal";
+import { useSensitiveActionVerification } from "@/lib/hooks/use-sensitive-action-verification";
 
 interface Props {
   purchaseId: string;
@@ -29,9 +31,15 @@ export default function AdvertiserRequestRow({
   planName,
 }: Props) {
   const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const verification = useSensitiveActionVerification({
+    requestCodeEndpoint: `/api/admin/anunciantes/${purchaseId}/reject/request-code`,
+    confirmEndpoint: `/api/admin/anunciantes/${purchaseId}/reject`,
+  });
 
   async function handleApprove() {
     setLoading(true);
@@ -45,25 +53,24 @@ export default function AdvertiserRequestRow({
     setError(data.error ?? "Erro ao aprovar solicitação.");
   }
 
-  async function handleReject(reason?: string) {
-    setLoading(true);
-    const res = await fetch(`/api/admin/anunciantes/${purchaseId}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    setLoading(false);
+  async function handleConfirmReject(noteReason?: string) {
+    setReason(noteReason);
     setRejecting(false);
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
+    await verification.start();
+  }
+
+  async function handleSubmitCode(code: string) {
+    const result = await verification.submitCode(code, { reason });
+    if (result.ok && result.response) {
       router.refresh();
+      const data = await result.response.json().catch(() => ({}));
       if (data.refundFailed) {
         setError("Solicitação rejeitada, mas o estorno automático falhou — verifique manualmente o pagamento.");
       }
-      return;
     }
-    setError(data.error ?? "Erro ao rejeitar solicitação.");
   }
+
+  const busy = loading || verification.step === "requesting" || verification.step === "submitting";
 
   return (
     <div className="py-4 first:pt-0 last:pb-0 space-y-2">
@@ -80,12 +87,12 @@ export default function AdvertiserRequestRow({
           )}
         </div>
         <div className="flex gap-2">
-          <button onClick={handleApprove} disabled={loading} className="btn-primary py-1.5 px-3 text-sm disabled:opacity-50">
+          <button onClick={handleApprove} disabled={busy} className="btn-primary py-1.5 px-3 text-sm disabled:opacity-50">
             {loading ? "Processando..." : "Aprovar"}
           </button>
           <button
             onClick={() => setRejecting(true)}
-            disabled={loading}
+            disabled={busy}
             className="btn-secondary py-1.5 px-3 text-sm text-red-700 border-red-200 hover:bg-red-50 disabled:opacity-50"
           >
             Rejeitar
@@ -96,17 +103,33 @@ export default function AdvertiserRequestRow({
       <ConfirmModal
         open={rejecting}
         title="Rejeitar solicitação de anunciante"
-        message="Informe o motivo da rejeição. O valor pago será estornado automaticamente e o solicitante verá esse motivo por e-mail."
-        confirmLabel="Rejeitar"
+        message="Informe o motivo da rejeição. O valor pago será estornado automaticamente e o solicitante verá esse motivo por e-mail. Você receberá um código de confirmação por e-mail e WhatsApp."
+        confirmLabel="Continuar"
         tone="danger"
-        loading={loading}
+        loading={verification.step === "requesting"}
         showNoteField
         noteRequired
         notePlaceholder="Motivo da rejeição"
-        onConfirm={handleReject}
+        onConfirm={handleConfirmReject}
         onCancel={() => setRejecting(false)}
       />
-      <ErrorModal message={error} onClose={() => setError(null)} />
+
+      <CodeVerificationModal
+        open={verification.step === "code" || verification.step === "submitting"}
+        expiresAt={verification.expiresAt}
+        error={verification.step !== "idle" ? verification.error : null}
+        attemptsRemaining={verification.attemptsRemaining}
+        loading={verification.step === "submitting"}
+        resending={verification.resending}
+        onSubmit={handleSubmitCode}
+        onResend={verification.resend}
+        onCancel={verification.cancel}
+      />
+
+      <ErrorModal
+        message={error ?? (verification.step === "idle" ? verification.error : null)}
+        onClose={() => { setError(null); verification.cancel(); }}
+      />
     </div>
   );
 }
