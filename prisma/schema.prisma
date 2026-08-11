@@ -795,3 +795,18 @@ model DailySummaryRecipient {
   @@index([eventId])
   @@map("daily_summary_recipients")
 }
+
+model SensitiveActionCode {
+  id         String    @id @default(cuid())
+  userId     String
+  actionType String
+  targetId   String
+  codeHash   String
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, actionType, targetId])
+  @@map("sensitive_action_codes")
+}

@@ -39,6 +39,7 @@ vi.mock("@/lib/db", () => ({
     adPurchase: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), count: vi.fn() },
     privateAd: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
     verificationToken: { create: vi.fn(), deleteMany: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
+    sensitiveActionCode: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     messageTemplate: {
       findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(),
       create: vi.fn(), update: vi.fn(), upsert: vi.fn(), delete: vi.fn(),
