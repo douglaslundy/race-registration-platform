@@ -4,13 +4,16 @@ import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/payment/refund-service", () => ({ refundPayment: vi.fn() }));
+vi.mock("@/lib/security/sensitive-action-verification", () => ({ verifySensitiveActionCode: vi.fn() }));
 
 import { POST } from "@/app/api/admin/payments/[id]/refund/route";
 import { refundPayment } from "@/lib/payment/refund-service";
+import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
 const refundPaymentMock = vi.mocked(refundPayment);
+const verifyCodeMock = vi.mocked(verifySensitiveActionCode);
 
 function makeRequest(body: unknown = {}) {
   return new Request("http://localhost/api/admin/payments/pay-1/refund", {
@@ -27,6 +30,7 @@ function makeContext(id: string) {
 describe("POST /api/admin/payments/[id]/refund", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    verifyCodeMock.mockResolvedValue({ ok: true });
   });
 
   it("retorna 403 pra organizador titular (não é admin)", async () => {
@@ -40,7 +44,7 @@ describe("POST /api/admin/payments/[id]/refund", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     refundPaymentMock.mockResolvedValueOnce({ alreadySynced: false } as any);
 
-    const res = await POST(makeRequest({ reason: "fraude" }), makeContext("pay-1"));
+    const res = await POST(makeRequest({ reason: "fraude", verificationId: "code-1", code: "123456" }), makeContext("pay-1"));
 
     expect(refundPaymentMock).toHaveBeenCalledWith({
       paymentId: "pay-1",
@@ -56,7 +60,7 @@ describe("POST /api/admin/payments/[id]/refund", () => {
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     refundPaymentMock.mockResolvedValueOnce({ alreadySynced: false } as any);
 
-    const res = await POST(makeRequest(), makeContext("pay-1"));
+    const res = await POST(makeRequest({ verificationId: "code-1", code: "123456" }), makeContext("pay-1"));
 
     expect(res.status).toBe(200);
   });
@@ -85,10 +89,31 @@ describe("POST /api/admin/payments/[id]/refund", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     refundPaymentMock.mockRejectedValueOnce(new Error("Pagamento já estornado"));
 
-    const res = await POST(makeRequest(), makeContext("pay-1"));
+    const res = await POST(makeRequest({ verificationId: "code-1", code: "123456" }), makeContext("pay-1"));
     const body = await res.json();
 
     expect(res.status).toBe(400);
     expect(body.error).toBe("Pagamento já estornado");
+  });
+
+  it("retorna 400 sem verificationId/code", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await POST(makeRequest({ reason: "fraude" }), makeContext("pay-1"));
+
+    expect(res.status).toBe(400);
+    expect(refundPaymentMock).not.toHaveBeenCalled();
+  });
+
+  it("retorna 400 quando o código é inválido, sem chamar refundPayment", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    verifyCodeMock.mockResolvedValueOnce({ ok: false, error: "Código incorreto.", attemptsRemaining: 3 });
+
+    const res = await POST(makeRequest({ verificationId: "code-1", code: "000000" }), makeContext("pay-1"));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body).toEqual({ error: "Código incorreto.", attemptsRemaining: 3 });
+    expect(refundPaymentMock).not.toHaveBeenCalled();
   });
 });
