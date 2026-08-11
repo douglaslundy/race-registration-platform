@@ -88,18 +88,42 @@ describe("POST /api/upload", () => {
     expect(uploadedBody).toEqual(gif);
   });
 
-  it("faz fallback pro arquivo original quando a compressão falha (buffer corrompido)", async () => {
+  it("rejeita arquivo cujos bytes não batem com o Content-Type declarado (magic bytes)", async () => {
     const corrupted = Buffer.from("isso não é uma imagem de verdade");
+    const fetchSpy = vi.fn();
+    global.fetch = fetchSpy as any;
+
+    const file = new File([corrupted], "banner.jpg", { type: "image/jpeg" });
+    const res = await POST(makeUploadRequest(file));
+
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("aceita PDF de verdade declarado como application/pdf", async () => {
+    const pdf = Buffer.from("%PDF-1.4\n%fake but real header\n");
     let uploadedBody: Buffer | undefined;
     global.fetch = vi.fn(async (_url: any, init: any) => {
       uploadedBody = Buffer.from(init.body as ArrayBuffer);
       return new Response(null, { status: 200 });
     }) as any;
 
-    const file = new File([corrupted], "banner.jpg", { type: "image/jpeg" });
-    const res = await POST(makeUploadRequest(file));
+    const file = new File([pdf], "regulamento.pdf", { type: "application/pdf" });
+    const res = await POST(makeUploadRequest(file, "regulation"));
 
     expect(res.status).toBe(200);
-    expect(uploadedBody).toEqual(corrupted);
+    expect(uploadedBody).toEqual(pdf);
+  });
+
+  it("rejeita arquivo PDF cujos bytes não começam com %PDF-", async () => {
+    const fake = Buffer.from("não é um pdf de verdade");
+    const fetchSpy = vi.fn();
+    global.fetch = fetchSpy as any;
+
+    const file = new File([fake], "regulamento.pdf", { type: "application/pdf" });
+    const res = await POST(makeUploadRequest(file, "regulation"));
+
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

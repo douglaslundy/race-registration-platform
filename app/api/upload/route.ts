@@ -14,6 +14,25 @@ const ALLOWED_MIME: Record<string, string> = {
 const ALLOWED_PURPOSES = new Set(["banner", "list_banner", "regulation", "kit_info"]);
 const MAX_SIZE = 10 * 1024 * 1024;
 
+// Confere os bytes reais do arquivo contra a assinatura do formato — o Content-Type do FormData
+// é só o que o navegador declarou, então sozinho não garante nada sobre o conteúdo de verdade.
+function matchesMagicBytes(bytes: Buffer, mimeType: string): boolean {
+  switch (mimeType) {
+    case "image/jpeg":
+      return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    case "image/png":
+      return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    case "image/webp":
+      return bytes.length >= 12 && bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+    case "image/gif":
+      return bytes.length >= 6 && ["GIF87a", "GIF89a"].includes(bytes.subarray(0, 6).toString("ascii"));
+    case "application/pdf":
+      return bytes.length >= 5 && bytes.subarray(0, 5).toString("ascii") === "%PDF-";
+    default:
+      return false;
+  }
+}
+
 // Teto de dimensão pra artes de evento: cobre até telas retina sem carregar peso desnecessário
 // (o arquivo aqui é o mesmo que o WhatsApp busca direto pra montar o preview do link — arquivos
 // grandes fazem o preview demorar ou nem aparecer).
@@ -93,8 +112,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tipo de arquivo não suportado" }, { status: 400 });
   }
 
-  const key = `${purpose}/${randomUUID()}.${extension}`;
   const rawBytes = Buffer.from(await file.arrayBuffer());
+  if (!matchesMagicBytes(rawBytes, file.type)) {
+    return NextResponse.json({ error: "O conteúdo do arquivo não corresponde ao tipo declarado" }, { status: 400 });
+  }
+
+  const key = `${purpose}/${randomUUID()}.${extension}`;
   const bytes = await compressImageIfPossible(rawBytes, file.type);
 
   const uploadRes = await fetch(
