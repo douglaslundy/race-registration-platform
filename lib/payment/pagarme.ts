@@ -164,7 +164,15 @@ export class PagarMeProvider implements PaymentProvider {
 
     // Authorization: Basic base64(password:)
     const expectedBasic = `Basic ${Buffer.from(`${password}:`).toString("base64")}`;
-    if (signature === expectedBasic) return true;
+    try {
+      const expectedBuf = Buffer.from(expectedBasic);
+      const actualBuf = Buffer.from(signature);
+      if (expectedBuf.length === actualBuf.length && crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+        return true;
+      }
+    } catch {
+      // ignora e cai pro caminho HMAC abaixo
+    }
 
     // X-Hub-Signature: sha256=<hmac>
     if (signature.startsWith("sha256=")) {
