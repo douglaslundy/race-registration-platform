@@ -324,6 +324,8 @@ export default async function InscritosPage({
                     <CancellationDecisionButtons
                       cancellationReason={r.cancellationReason}
                       endpoint={`/api/organizer/registrations/${r.id}/cancellation-decision`}
+                      requestCodeEndpoint={`/api/organizer/registrations/${r.id}/cancellation-decision/request-code`}
+                      hasPaidPayment={payment?.status === "PAID"}
                     />
                   )}
                   {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
