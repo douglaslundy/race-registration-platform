@@ -99,7 +99,29 @@ describe("POST /api/admin/registrations/[id]/cancellation-decision", () => {
     );
 
     expect(res.status).toBe(200);
+    expect(vi.mocked(verifySensitiveActionCode)).toHaveBeenCalledWith({
+      verificationId: "code-1",
+      userId: "admin-1",
+      actionType: "PAYMENT_REFUND",
+      targetId: "reg-1",
+      code: "123456",
+    });
     expect(decideMock).toHaveBeenCalledWith({ where: { id: "reg-1" }, decision: "APPROVE", actingUserId: "admin-1" });
+  });
+
+  it("retorna 400 quando o código é inválido, sem decidir o cancelamento", async () => {
+    vi.mocked(registrationHasPaidPayment).mockResolvedValueOnce(true);
+    vi.mocked(verifySensitiveActionCode).mockResolvedValueOnce({ ok: false, error: "Código incorreto.", attemptsRemaining: 3 });
+
+    const res = await POST(
+      makeRequest({ decision: "APPROVE", verificationId: "code-1", code: "000000" }),
+      { params: Promise.resolve({ id: "reg-1" }) },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body).toEqual({ error: "Código incorreto.", attemptsRemaining: 3 });
+    expect(decideMock).not.toHaveBeenCalled();
   });
 
   it("não exige código pra REJECT (nunca mexe em pagamento)", async () => {
