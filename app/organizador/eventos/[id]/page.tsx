@@ -338,7 +338,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           {shirtSizeBreakdown.map((s) => (
             <div key={s.size} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
               <p className="text-lg font-bold text-primary-600">{s.count}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5 break-words leading-tight">{s.label}</p>
             </div>
           ))}
         </div>

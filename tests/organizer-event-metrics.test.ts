@@ -161,4 +161,14 @@ describe("computeShirtSizeBreakdown", () => {
     expect(bySize.get("GG")).toBe(0);
     expect(bySize.get("XGG")).toBe(0);
   });
+
+  it("silently drops unrecognized shirtSize values (not one of the 6 known sizes or null)", () => {
+    const result = computeShirtSizeBreakdown([{ shirtSize: "XG" }, { shirtSize: "M" }]);
+
+    expect(result).toHaveLength(7);
+    const bySize = new Map(result.map((r) => [r.size, r.count]));
+    expect(bySize.get("M")).toBe(1);
+    expect(bySize.get("SEM_TAMANHO")).toBe(0);
+    expect(result.reduce((sum, r) => sum + r.count, 0)).toBe(1); // the "XG" registration is not represented anywhere
+  });
 });

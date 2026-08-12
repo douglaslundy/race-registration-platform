@@ -1,5 +1,21 @@
 # Progresso do Projeto
 
+## Relatório de camisetas por evento (2026-08-12) — CONCLUÍDO, REVISÃO FINAL LIMPA
+
+Card "Camisetas" (contagem de inscrições confirmadas por tamanho) nas páginas de gerenciamento de
+evento do organizador e do admin. Helper puro `computeShirtSizeBreakdown()` em
+`lib/organizer/event-metrics.ts` (7 linhas fixas: PP/P/M/G/GG/XGG/Sem tamanho informado), consumido
+por `app/organizador/eventos/[id]/page.tsx` e `app/admin/eventos/[id]/page.tsx` (sem query nova,
+reaproveita `dimensionRegistrations`). Plano (3 tasks):
+`docs/superpowers/plans/2026-08-12-relatorio-camisetas-por-evento.md`. Revisão final de branch
+inteira aprovou pra merge (achados só Minor, todos corrigidos nesta leva): teste documentando que
+valor de `shirtSize` desconhecido é silenciosamente descartado (não conta em nenhuma das 7 linhas),
+`break-words leading-tight` no label "Sem tamanho informado" nas duas páginas (evita overflow em
+grade estreita), e este registro de bookkeeping.
+
+**Pendência real**: nenhuma — pronto pra merge/deploy junto com o resto (perguntar ao usuário
+quando quiser fazer o deploy acumulado).
+
 ## Verificação em 2 etapas para ações sensíveis de pagamento (2026-08-11) — IMPLEMENTADO, AGUARDANDO AUTORIZAÇÃO DE DEPLOY
 
 Pedido do usuário: qualquer rotina que efetivamente chama a API do gateway de pagamento pra

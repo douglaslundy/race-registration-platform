@@ -38,7 +38,7 @@ spec.
   - `export function computeShirtSizeBreakdown(registrations: { shirtSize: string | null }[]): ShirtSizeStat[]`
   - Ordem fixa de retorno: `size` em `["PP", "P", "M", "G", "GG", "XGG", "SEM_TAMANHO"]`, `label` igual ao `size` exceto `"SEM_TAMANHO"` → `"Sem tamanho informado"`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Acrescentar ao final de `tests/organizer-event-metrics.test.ts`:
 
@@ -84,12 +84,12 @@ describe("computeShirtSizeBreakdown", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npm test -- organizer-event-metrics`
 Expected: FAIL with `computeShirtSizeBreakdown is not a function` (or import error)
 
-- [ ] **Step 3: Implement the helper**
+- [x] **Step 3: Implement the helper**
 
 Adicionar em `lib/organizer/event-metrics.ts`, após `buildPaymentMethodSummary`:
 
@@ -124,12 +124,12 @@ export function computeShirtSizeBreakdown(
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npm test -- organizer-event-metrics`
 Expected: PASS (todos os testes do arquivo, incluindo os pré-existentes)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/organizer/event-metrics.ts tests/organizer-event-metrics.test.ts
@@ -147,7 +147,7 @@ git commit -m "feat: helper computeShirtSizeBreakdown para relatorio de camiseta
 - Consumes: `computeShirtSizeBreakdown` e `ShirtSizeStat` de `lib/organizer/event-metrics` (Task 1).
 - Produces: nada consumido por outras tasks (Task 3 é independente, mesmo helper).
 
-- [ ] **Step 1: Incluir `shirtSize` na query `dimensionRegistrations`**
+- [x] **Step 1: Incluir `shirtSize` na query `dimensionRegistrations`**
 
 Em `app/organizador/eventos/[id]/page.tsx`, no `Promise.all` (linha ~73-76), o item
 `db.registration.findMany` para `dimensionRegistrations` tem hoje:
@@ -168,7 +168,7 @@ Trocar o `select` para incluir `shirtSize: true`:
     }),
 ```
 
-- [ ] **Step 2: Importar o helper e calcular o breakdown**
+- [x] **Step 2: Importar o helper e calcular o breakdown**
 
 No import existente (linha ~12-17):
 
@@ -202,7 +202,7 @@ acrescentar:
   );
 ```
 
-- [ ] **Step 3: Dividir a grade e inserir o card**
+- [x] **Step 3: Dividir a grade e inserir o card**
 
 A grade atual (linhas ~277-392) é:
 
@@ -287,7 +287,7 @@ divs que os agrupam):
       </div>
 ```
 
-- [ ] **Step 4: Rodar typecheck e a suíte de testes**
+- [x] **Step 4: Rodar typecheck e a suíte de testes**
 
 Run: `npx tsc --noEmit`
 Expected: sem erros novos relacionados a este arquivo.
@@ -295,7 +295,7 @@ Expected: sem erros novos relacionados a este arquivo.
 Run: `npm test`
 Expected: PASS (nenhum teste existente quebrado — não há teste de página dedicado para este arquivo).
 
-- [ ] **Step 5: Conferir visualmente no navegador**
+- [x] **Step 5: Conferir visualmente no navegador**
 
 Run: `npm run dev`, abrir `/organizador/eventos/<id>` de um evento com inscrições
 confirmadas (qualquer evento existente no banco de dev). Confirmar:
@@ -304,7 +304,7 @@ confirmadas (qualquer evento existente no banco de dev). Confirmar:
 - Os 7 blocos aparecem, com contagem 0 nos tamanhos sem inscrição.
 - Layout não estoura em mobile (largura estreita) nem em desktop.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "app/organizador/eventos/[id]/page.tsx"
@@ -322,7 +322,7 @@ git commit -m "feat: card de camisetas por tamanho na pagina de gerenciamento do
 - Consumes: `computeShirtSizeBreakdown` e `ShirtSizeStat` de `lib/organizer/event-metrics` (Task 1).
 - Produces: nada.
 
-- [ ] **Step 1: Incluir `shirtSize` na query `dimensionRegistrations`**
+- [x] **Step 1: Incluir `shirtSize` na query `dimensionRegistrations`**
 
 Em `app/admin/eventos/[id]/page.tsx`, no `Promise.all` (linha ~57-60):
 
@@ -342,7 +342,7 @@ Trocar o `select` para incluir `shirtSize: true`, igual à Task 2:
     }),
 ```
 
-- [ ] **Step 2: Importar o helper e calcular o breakdown**
+- [x] **Step 2: Importar o helper e calcular o breakdown**
 
 No import existente (linha ~10-14):
 
@@ -374,7 +374,7 @@ acrescentar:
   );
 ```
 
-- [ ] **Step 3: Inserir o card após a grade que contém Percursos**
+- [x] **Step 3: Inserir o card após a grade que contém Percursos**
 
 A grade atual (linhas ~233-280) termina assim:
 
@@ -415,7 +415,7 @@ de ações:
         <Link href={`/admin/eventos/${event.id}/inscritos`} className="btn-secondary text-sm">
 ```
 
-- [ ] **Step 4: Rodar typecheck e a suíte de testes**
+- [x] **Step 4: Rodar typecheck e a suíte de testes**
 
 Run: `npx tsc --noEmit`
 Expected: sem erros novos relacionados a este arquivo.
@@ -423,7 +423,7 @@ Expected: sem erros novos relacionados a este arquivo.
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 5: Conferir visualmente no navegador**
+- [x] **Step 5: Conferir visualmente no navegador**
 
 Com `npm run dev` já rodando, abrir `/admin/eventos/<id>` do mesmo evento usado na
 Task 2. Confirmar:
@@ -433,7 +433,7 @@ Task 2. Confirmar:
 - Os 7 blocos e as contagens batem com o que apareceu na página do organizador para o
   mesmo evento.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "app/admin/eventos/[id]/page.tsx"
