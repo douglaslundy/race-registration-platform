@@ -4,6 +4,7 @@ import {
   computeSlotsInfo,
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
+  computeShirtSizeBreakdown,
 } from "@/lib/organizer/event-metrics";
 
 describe("computeRegistrationStatusBreakdown", () => {
@@ -125,5 +126,39 @@ describe("buildPaymentMethodSummary", () => {
       { method: "DEBIT_CARD", count: 0, revenue: 0 },
       { method: "BOLETO", count: 2, revenue: 8000 },
     ]);
+  });
+});
+
+describe("computeShirtSizeBreakdown", () => {
+  it("always returns all 6 sizes plus 'sem tamanho', in fixed order, zero-filled", () => {
+    const result = computeShirtSizeBreakdown([]);
+    expect(result).toEqual([
+      { size: "PP", label: "PP", count: 0 },
+      { size: "P", label: "P", count: 0 },
+      { size: "M", label: "M", count: 0 },
+      { size: "G", label: "G", count: 0 },
+      { size: "GG", label: "GG", count: 0 },
+      { size: "XGG", label: "XGG", count: 0 },
+      { size: "SEM_TAMANHO", label: "Sem tamanho informado", count: 0 },
+    ]);
+  });
+
+  it("counts registrations per size and groups null shirtSize under 'sem tamanho'", () => {
+    const result = computeShirtSizeBreakdown([
+      { shirtSize: "M" },
+      { shirtSize: "M" },
+      { shirtSize: "G" },
+      { shirtSize: null },
+      { shirtSize: null },
+    ]);
+
+    const bySize = new Map(result.map((r) => [r.size, r.count]));
+    expect(bySize.get("M")).toBe(2);
+    expect(bySize.get("G")).toBe(1);
+    expect(bySize.get("SEM_TAMANHO")).toBe(2);
+    expect(bySize.get("PP")).toBe(0);
+    expect(bySize.get("P")).toBe(0);
+    expect(bySize.get("GG")).toBe(0);
+    expect(bySize.get("XGG")).toBe(0);
   });
 });

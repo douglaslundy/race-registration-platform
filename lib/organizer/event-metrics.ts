@@ -95,3 +95,32 @@ export function buildPaymentMethodSummary(
   const byMethod = new Map(groups.map((g) => [g.method, g]));
   return PAYMENT_METHODS.map((method) => byMethod.get(method) ?? { method, count: 0, revenue: 0 });
 }
+
+const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
+
+export interface ShirtSizeStat {
+  size: string;
+  label: string;
+  count: number;
+}
+
+export function computeShirtSizeBreakdown(
+  registrations: { shirtSize: string | null }[]
+): ShirtSizeStat[] {
+  const counts = new Map<string, number>();
+  for (const r of registrations) {
+    const key = r.shirtSize ?? "SEM_TAMANHO";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const sized = SHIRT_SIZES.map((size) => ({
+    size,
+    label: size,
+    count: counts.get(size) ?? 0,
+  }));
+
+  return [
+    ...sized,
+    { size: "SEM_TAMANHO", label: "Sem tamanho informado", count: counts.get("SEM_TAMANHO") ?? 0 },
+  ];
+}
