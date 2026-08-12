@@ -11,6 +11,7 @@ import {
   computeRegistrationStatusBreakdown,
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
+  computeShirtSizeBreakdown,
 } from "@/lib/organizer/event-metrics";
 import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
@@ -56,7 +57,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
     }),
     db.registration.findMany({
       where: { eventId: id, status: "CONFIRMED" },
-      select: { routeId: true, categoryId: true, ticketBatchId: true, order: { select: { subtotalAmount: true } } },
+      select: { routeId: true, categoryId: true, ticketBatchId: true, shirtSize: true, order: { select: { subtotalAmount: true } } },
     }),
     db.payment.groupBy({
       by: ["method"],
@@ -105,6 +106,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   );
   const paymentMethodSummary = buildPaymentMethodSummary(
     paymentGroups.map((g) => ({ method: g.method, count: g._count.id, revenue: g._sum.amount ?? 0 })),
+  );
+  const shirtSizeBreakdown = computeShirtSizeBreakdown(
+    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize })),
   );
 
   return (
@@ -274,6 +278,18 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
             <div key={p.method} className="flex justify-between text-xs border-b pb-1 last:border-0">
               <span>{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
               <span className="text-gray-500">{p.count} pagamento{p.count !== 1 ? "s" : ""} · {formatCurrency(p.revenue)} pago</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card space-y-3">
+        <h2 className="font-semibold text-sm">Camisetas</h2>
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+          {shirtSizeBreakdown.map((s) => (
+            <div key={s.size} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <p className="text-lg font-bold text-primary-600">{s.count}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
