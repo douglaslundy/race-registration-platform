@@ -14,6 +14,7 @@ import {
   computeSlotsInfo,
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
+  computeShirtSizeBreakdown,
 } from "@/lib/organizer/event-metrics";
 import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
@@ -72,7 +73,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
     }),
     db.registration.findMany({
       where: { eventId: id, status: "CONFIRMED" },
-      select: { routeId: true, categoryId: true, ticketBatchId: true, order: { select: { subtotalAmount: true } } },
+      select: { routeId: true, categoryId: true, ticketBatchId: true, shirtSize: true, order: { select: { subtotalAmount: true } } },
     }),
     db.payment.groupBy({
       by: ["method"],
@@ -117,6 +118,9 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       ticketBatchId: r.ticketBatchId,
       orderSubtotalAmount: r.order.subtotalAmount,
     })),
+  );
+  const shirtSizeBreakdown = computeShirtSizeBreakdown(
+    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize })),
   );
   const paymentMethodSummary = buildPaymentMethodSummary(
     paymentGroups.map((g) => ({ method: g.method, count: g._count.id, revenue: g._sum.amount ?? 0 })),
@@ -274,7 +278,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         </div>
       )}
 
-      {/* Grade: Lotes / Percursos / Categorias / Cupons */}
+      {/* Grade: Lotes / Percursos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Lotes */}
         <div className="card space-y-3">
@@ -325,7 +329,23 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
             </div>
           )}
         </div>
+      </div>
 
+      {/* Camisetas — inscrições confirmadas por tamanho */}
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Camisetas</h2>
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+          {shirtSizeBreakdown.map((s) => (
+            <div key={s.size} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
+              <p className="text-lg font-bold text-primary-600">{s.count}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Grade: Categorias / Cupons / Tipo de pagamento */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Categorias */}
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
