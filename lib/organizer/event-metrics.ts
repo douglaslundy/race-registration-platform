@@ -124,3 +124,27 @@ export function computeShirtSizeBreakdown(
     { size: "SEM_TAMANHO", label: "Sem tamanho informado", count: counts.get("SEM_TAMANHO") ?? 0 },
   ];
 }
+
+export interface ShirtSizeByBatch {
+  batchId: string;
+  batchName: string;
+  sizes: ShirtSizeStat[];
+}
+
+export function computeShirtSizeBreakdownByBatch(
+  registrations: { shirtSize: string | null; ticketBatchId: string }[],
+  batches: { id: string; name: string }[],
+): ShirtSizeByBatch[] {
+  const byBatchId = new Map<string, { shirtSize: string | null }[]>();
+  for (const r of registrations) {
+    const list = byBatchId.get(r.ticketBatchId) ?? [];
+    list.push({ shirtSize: r.shirtSize });
+    byBatchId.set(r.ticketBatchId, list);
+  }
+
+  return batches.map((batch) => ({
+    batchId: batch.id,
+    batchName: batch.name,
+    sizes: computeShirtSizeBreakdown(byBatchId.get(batch.id) ?? []),
+  }));
+}

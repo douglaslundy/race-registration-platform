@@ -5,6 +5,7 @@ import {
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
   computeShirtSizeBreakdown,
+  computeShirtSizeBreakdownByBatch,
 } from "@/lib/organizer/event-metrics";
 
 describe("computeRegistrationStatusBreakdown", () => {
@@ -170,5 +171,56 @@ describe("computeShirtSizeBreakdown", () => {
     expect(bySize.get("M")).toBe(1);
     expect(bySize.get("SEM_TAMANHO")).toBe(0);
     expect(result.reduce((sum, r) => sum + r.count, 0)).toBe(1); // the "XG" registration is not represented anywhere
+  });
+});
+
+describe("computeShirtSizeBreakdownByBatch", () => {
+  it("agrupa por lote, cada um com as 7 linhas fixas, na ordem de 'batches'", () => {
+    const result = computeShirtSizeBreakdownByBatch(
+      [
+        { shirtSize: "M", ticketBatchId: "batch-2" },
+        { shirtSize: "M", ticketBatchId: "batch-1" },
+        { shirtSize: "G", ticketBatchId: "batch-1" },
+        { shirtSize: null, ticketBatchId: "batch-1" },
+      ],
+      [
+        { id: "batch-1", name: "Lote 1" },
+        { id: "batch-2", name: "Lote 2" },
+      ],
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0].batchId).toBe("batch-1");
+    expect(result[0].batchName).toBe("Lote 1");
+    expect(result[0].sizes).toHaveLength(7);
+    const batch1BySize = new Map(result[0].sizes.map((s) => [s.size, s.count]));
+    expect(batch1BySize.get("M")).toBe(1);
+    expect(batch1BySize.get("G")).toBe(1);
+    expect(batch1BySize.get("SEM_TAMANHO")).toBe(1);
+    expect(batch1BySize.get("PP")).toBe(0);
+
+    expect(result[1].batchId).toBe("batch-2");
+    const batch2BySize = new Map(result[1].sizes.map((s) => [s.size, s.count]));
+    expect(batch2BySize.get("M")).toBe(1);
+    expect(batch2BySize.get("G")).toBe(0);
+  });
+
+  it("inclui lotes sem nenhuma inscrição, com todos os tamanhos zerados", () => {
+    const result = computeShirtSizeBreakdownByBatch(
+      [{ shirtSize: "G", ticketBatchId: "batch-1" }],
+      [
+        { id: "batch-1", name: "Lote 1" },
+        { id: "batch-2", name: "Lote vazio" },
+      ],
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[1].batchName).toBe("Lote vazio");
+    expect(result[1].sizes.every((s) => s.count === 0)).toBe(true);
+  });
+
+  it("retorna array vazio quando não há lotes", () => {
+    const result = computeShirtSizeBreakdownByBatch([{ shirtSize: "G", ticketBatchId: "batch-1" }], []);
+    expect(result).toEqual([]);
   });
 });
