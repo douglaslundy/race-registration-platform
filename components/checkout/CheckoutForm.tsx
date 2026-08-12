@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
 import { emptyStringToUndefined, extractApiErrorMessage, optionalEnumField, opaqueIdField, optionalOpaqueIdField } from "@/lib/checkout-validation";
 import { PAYMENT_METHOD_LABELS, type CheckoutPaymentMethod } from "@/lib/payment-methods";
+import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
 import type { MPCardFormHandle } from "./MPCardForm";
 import type { PagarMeCardFormHandle } from "./PagarMeCardForm";
 import EventDisclaimer from "@/components/events/EventDisclaimer";
@@ -48,6 +49,8 @@ interface EventData {
   slug: string;
   routes: { id: string; name: string; distanceKm: number }[];
   categories: { id: string; name: string }[];
+  shirtSizeRestrictionDate?: Date | string | null;
+  shirtSizeRestrictionSizes?: string[];
 }
 
 interface AthleteProfile {
@@ -106,6 +109,14 @@ export default function CheckoutForm({
   appName?: string;
   allowProxyRegistration?: boolean;
 }) {
+  const allowedShirtSizes = getAllowedShirtSizes(
+    {
+      shirtSizeRestrictionDate: event.shirtSizeRestrictionDate ? new Date(event.shirtSizeRestrictionDate) : null,
+      shirtSizeRestrictionSizes: event.shirtSizeRestrictionSizes ?? [],
+    },
+    new Date(),
+  );
+  const shirtSizeRestricted = allowedShirtSizes.length < 6;
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [cpf, setCpf] = useState(athleteProfile?.cpf ?? "");
@@ -459,8 +470,14 @@ export default function CheckoutForm({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta</label>
             <select {...register("shirtSize")} className="input-field">
               <option value="">Selecione</option>
-              {["PP","P","M","G","GG","XGG"].map((s) => <option key={s} value={s}>{s}</option>)}
+              {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
+            {shirtSizeRestricted && event.shirtSizeRestrictionDate && (
+              <p className="text-xs text-gray-500 mt-1">
+                Alguns tamanhos deixaram de estar disponíveis a partir de{" "}
+                {new Date(event.shirtSizeRestrictionDate).toLocaleDateString("pt-BR")}.
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipe / Assessoria</label>
