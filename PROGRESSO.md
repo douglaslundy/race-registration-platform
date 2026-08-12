@@ -1,5 +1,19 @@
 # Progresso do Projeto
 
+## Camisetas por lote (2026-08-12) — CONCLUÍDO, REVISÃO FINAL LIMPA (fix wave aplicada)
+
+Toggle "Ver por lote" no card "Camisetas" (`components/ui/ShirtSizeReportCard.tsx`, extraído como
+componente compartilhado), alternando entre a grade agregada de 7 tiles e uma tabela por lote.
+Novo helper `computeShirtSizeBreakdownByBatch()` em `lib/organizer/event-metrics.ts`, componente
+consumido por `app/organizador/eventos/[id]/page.tsx` e `app/admin/eventos/[id]/page.tsx`. Revisão
+final de branch inteira aprovou pra merge (achados só Minor, todos corrigidos nesta leva): colunas
+da tabela por lote agora casadas por `size` (não mais posicional), tipos `ShirtSizeStat`/
+`ShirtSizeByBatch` importados de `lib/organizer/event-metrics.ts` em vez de duplicados localmente,
+contraste dark mode ajustado (texto e bordas da tabela por lote), e este registro de bookkeeping.
+
+**Pendência real**: nenhuma — pronto pra merge/deploy junto com o resto (perguntar ao usuário
+quando quiser fazer o deploy acumulado).
+
 ## Relatório de camisetas por evento (2026-08-12) — CONCLUÍDO, REVISÃO FINAL LIMPA
 
 Card "Camisetas" (contagem de inscrições confirmadas por tamanho) nas páginas de gerenciamento de

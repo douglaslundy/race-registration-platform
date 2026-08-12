@@ -1,18 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-interface ShirtSizeStat {
-  size: string;
-  label: string;
-  count: number;
-}
-
-interface ShirtSizeByBatch {
-  batchId: string;
-  batchName: string;
-  sizes: ShirtSizeStat[];
-}
+import type { ShirtSizeStat, ShirtSizeByBatch } from "@/lib/organizer/event-metrics";
 
 export default function ShirtSizeReportCard({
   overall,
@@ -54,7 +43,7 @@ export default function ShirtSizeReportCard({
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
+              <tr className="text-left text-gray-500 border-b dark:border-gray-700">
                 <th className="pb-2 pr-3">Lote</th>
                 {overall.map((s) => (
                   <th key={s.size} className="pb-2 pr-3 text-center">{s.label}</th>
@@ -65,9 +54,14 @@ export default function ShirtSizeReportCard({
               {byBatch.map((b) => (
                 <tr key={b.batchId} className="border-b dark:border-gray-700 last:border-0">
                   <td className="py-2 pr-3 font-medium">{b.batchName}</td>
-                  {b.sizes.map((s) => (
-                    <td key={s.size} className="py-2 pr-3 text-center text-gray-700">{s.count}</td>
-                  ))}
+                  {overall.map((s) => {
+                    const match = b.sizes.find((x) => x.size === s.size);
+                    return (
+                      <td key={s.size} className="py-2 pr-3 text-center text-gray-700 dark:text-gray-300">
+                        {match?.count ?? 0}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
               <tr className="font-semibold">
