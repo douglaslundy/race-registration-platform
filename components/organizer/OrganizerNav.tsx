@@ -6,7 +6,7 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 
 export default function OrganizerNav({ userName, appName }: { userName: string; appName: string }) {
   return (
-    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 print:hidden">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="font-bold text-primary-700 dark:text-primary-400">{appName}</Link>

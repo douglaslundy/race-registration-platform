@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
       <PageViewLogger />
       <AdminNav />
-      <div className="max-w-7xl mx-auto px-4 py-8">{children}</div>
+      <div className="max-w-7xl mx-auto px-4 py-8 print:max-w-none print:p-0">{children}</div>
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ExportCsvButton from "@/components/organizer/ExportCsvButton";
-import PrintButton from "@/components/ui/PrintButton";
 import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
 import { formatCurrency } from "@/lib/format";
@@ -13,6 +12,7 @@ import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
 import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
+import AutoPrint from "@/components/ui/AutoPrint";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -38,6 +38,7 @@ interface SearchParams {
   dateFrom?: string;
   dateTo?: string;
   page?: string;
+  print?: string;
 }
 
 const PAGE_SIZE = 50;
@@ -97,6 +98,7 @@ export default async function InscritosPage({
   const dateTo = sp.dateTo?.trim() ?? "";
   const sortConfig = buildRegistrationOrderBy(sp.sort?.trim() ?? "", sp.dir?.trim() ?? "");
   const requestedPage = Number.parseInt(sp.page ?? "1", 10);
+  const printMode = sp.print === "1";
 
   const event = await db.event.findFirst({
     where: { id, organizer: { userId: session.user.id } },
@@ -160,8 +162,7 @@ export default async function InscritosPage({
       },
     },
     orderBy: sortConfig.orderBy,
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
+    ...(printMode ? {} : { skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
   });
 
   // Busca o último pagamento de cada pedido em UMA query (IN), em vez do include aninhado com
@@ -190,23 +191,28 @@ export default async function InscritosPage({
   const dateDir = sortConfig.normalizedSort === "date" && sortConfig.normalizedDir === "asc" ? "desc" : "asc";
   const activeButtonClass = "text-sm px-3 py-1.5 rounded-lg border border-primary-500 text-primary-600";
   const inactiveButtonClass = "text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
+  const filteredUrl = buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir });
+  const printUrl = `${filteredUrl}${filteredUrl.includes("?") ? "&" : "?"}print=1`;
 
   return (
     <div className="space-y-6">
+      {printMode && <AutoPrint />}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar ao evento</Link>
+          <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600 print:hidden">← Voltar ao evento</Link>
           <h1 className="text-xl font-bold mt-1">Inscritos — {event.title}</h1>
           <p className="text-sm text-gray-500">
             {total} inscrições · Total de pagamentos: <strong className="text-gray-700 dark:text-gray-300">{formatCurrency(totalAmount)}</strong>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden">
           <ExportCsvButton eventId={id} />
-          <PrintButton label="Imprimir PDF" />
+          <a href={printUrl} target="_blank" rel="noopener" className="btn-secondary text-sm">Imprimir PDF</a>
         </div>
       </div>
 
+      {!printMode && (
+      <>
       <form method="GET" className="card flex flex-wrap items-end gap-3">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Buscar por pedido, nome, e-mail ou CPF</label>
@@ -308,6 +314,8 @@ export default async function InscritosPage({
           Ordem cronológica {sortConfig.normalizedSort === "date" ? (sortConfig.normalizedDir === "asc" ? "↑" : "↓") : ""}
         </Link>
       </div>
+      </>
+      )}
 
       {total === 0 ? (
         <div className="card text-center py-12 text-gray-500">Nenhuma inscrição ainda.</div>
@@ -346,7 +354,7 @@ export default async function InscritosPage({
               );
             }}
           />
-          {totalPages > 1 ? (
+          {!printMode && totalPages > 1 ? (
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <Link
                 href={buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir, page: Math.max(1, page - 1) })}

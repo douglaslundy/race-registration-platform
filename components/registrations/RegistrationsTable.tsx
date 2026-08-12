@@ -62,11 +62,13 @@ export default function RegistrationsTable({
   editEndpoint?: (registration: RegistrationRow) => string;
 }) {
   return (
-    <div className="card overflow-x-auto">
-      <table className="w-full text-xs">
+    <div className="card overflow-x-auto print:overflow-visible print:shadow-none print:border-0 print:p-0">
+      <table className="w-full text-xs print:text-[9px]">
         <thead>
           <tr className="text-left text-gray-500 border-b">
             <th className="pb-2 pr-3">Atleta</th>
+            <th className="pb-2 pr-3">CPF</th>
+            <th className="pb-2 pr-3">Telefone</th>
             <th className="pb-2 pr-3">Percurso / Categoria</th>
             <th className="pb-2 pr-3">Lote</th>
             <th className="pb-2 pr-3">Camiseta</th>
@@ -115,6 +117,8 @@ export default function RegistrationsTable({
                     }}
                   />
                 </td>
+                <td className="py-2 pr-3 text-gray-700">{r.athlete.athleteProfile?.cpf ?? "—"}</td>
+                <td className="py-2 pr-3 text-gray-700">{r.athlete.athleteProfile?.phone ?? "—"}</td>
                 <td className="py-2 pr-3 text-gray-700">
                   <p>{r.route?.name ?? "—"}</p>
                   <p className="text-gray-500">{r.category?.name ?? "—"}</p>
