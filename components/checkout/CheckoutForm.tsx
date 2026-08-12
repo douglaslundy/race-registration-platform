@@ -141,7 +141,9 @@ export default function CheckoutForm({
     defaultValues: {
       ticketBatchId: batches[0]?.id,
       paymentMethod: paymentMethods[0] ?? "PIX",
-      shirtSize: (athleteProfile?.preferredShirtSize as FormData["shirtSize"]) ?? undefined,
+      shirtSize: allowedShirtSizes.includes(athleteProfile?.preferredShirtSize ?? "")
+        ? (athleteProfile?.preferredShirtSize as FormData["shirtSize"])
+        : undefined,
       teamName: athleteProfile?.teamName ?? "",
       emergencyContactName: athleteProfile?.emergencyName ?? "",
       emergencyContactPhone: athleteProfile?.emergencyPhone ?? "",
@@ -378,6 +380,7 @@ export default function CheckoutForm({
         open={proxyModalOpen}
         routes={event.routes}
         categories={event.categories}
+        allowedShirtSizes={allowedShirtSizes}
         onSave={(saved) => {
           // ProxyAthleteData junta 2 tipos de campo num só formulário (UX de uma tela só): os de
           // IDENTIDADE (nome/nascimento/CPF/telefone/e-mail — viram o objeto proxyAthlete enviado
@@ -388,7 +391,12 @@ export default function CheckoutForm({
           // proxyAthlete como identidade (name/birthDate/cpf/phone/email), nada mais.
           setValue("routeId", saved.routeId ?? "", { shouldValidate: true });
           setValue("categoryId", saved.categoryId ?? "", { shouldValidate: true });
-          setValue("shirtSize", (saved.shirtSize as FormData["shirtSize"]) ?? undefined);
+          setValue(
+            "shirtSize",
+            allowedShirtSizes.includes(saved.shirtSize ?? "")
+              ? (saved.shirtSize as FormData["shirtSize"])
+              : undefined,
+          );
           setValue("teamName", saved.teamName ?? "");
           setValue("emergencyContactName", saved.emergencyContactName, { shouldValidate: true });
           setValue("emergencyContactPhone", saved.emergencyContactPhone, { shouldValidate: true });

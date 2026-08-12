@@ -22,12 +22,14 @@ export default function ProxyAthleteModal({
   open,
   routes,
   categories,
+  allowedShirtSizes,
   onSave,
   onCancel,
 }: {
   open: boolean;
   routes: { id: string; name: string; distanceKm: number }[];
   categories: { id: string; name: string }[];
+  allowedShirtSizes: string[];
   onSave: (data: ProxyAthleteData) => void;
   onCancel: () => void;
 }) {
@@ -131,7 +133,7 @@ export default function ProxyAthleteModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta</label>
             <select value={form.shirtSize ?? ""} onChange={(e) => set("shirtSize", e.target.value)} className="input-field">
               <option value="">Selecione</option>
-              {["PP", "P", "M", "G", "GG", "XGG"].map((s) => <option key={s} value={s}>{s}</option>)}
+              {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
