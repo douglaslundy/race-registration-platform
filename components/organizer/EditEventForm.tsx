@@ -27,6 +27,8 @@ const schema = z.object({
   cancellationContactPhone: z.string().optional(),
   cancellationContactEmail: z.string().optional(),
   allowProxyRegistration: z.boolean().optional(),
+  shirtSizeRestrictionDate: z.string().optional(),
+  shirtSizeRestrictionSizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XGG"])).optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -74,6 +76,8 @@ type EventData = {
   cancellationContactPhone?: string | null;
   cancellationContactEmail?: string | null;
   allowProxyRegistration?: boolean;
+  shirtSizeRestrictionDate?: Date | string | null;
+  shirtSizeRestrictionSizes?: string[];
 };
 
 async function generateEventText(eventId: string, field: "metaTitle" | "metaDescription"): Promise<string> {
@@ -122,6 +126,8 @@ export default function EditEventForm({
       cancellationContactPhone: event.cancellationContactPhone ?? "",
       cancellationContactEmail: event.cancellationContactEmail ?? "",
       allowProxyRegistration: event.allowProxyRegistration ?? false,
+      shirtSizeRestrictionDate: event.shirtSizeRestrictionDate ? toDatetimeLocal(event.shirtSizeRestrictionDate) : "",
+      shirtSizeRestrictionSizes: (event.shirtSizeRestrictionSizes ?? []) as FormData["shirtSizeRestrictionSizes"],
     },
   });
 
@@ -143,6 +149,10 @@ export default function EditEventForm({
 
   async function onSubmit(data: FormData) {
     setError(null);
+    if (data.shirtSizeRestrictionDate && (data.shirtSizeRestrictionSizes ?? []).length === 0) {
+      setError("Selecione pelo menos um tamanho de camiseta para a restrição.");
+      return;
+    }
     const maxParticipants = data.maxParticipants === 0 ? null : data.maxParticipants;
     const res = await fetch(`/api/events/${event.id}`, {
       method: "PATCH",
@@ -162,6 +172,8 @@ export default function EditEventForm({
         cancellationRequiresApproval: data.cancellationRequiresApproval ?? false,
         cancellationContactPhone: data.cancellationContactPhone || null,
         cancellationContactEmail: data.cancellationContactEmail || null,
+        shirtSizeRestrictionDate: data.shirtSizeRestrictionDate ? new Date(data.shirtSizeRestrictionDate).toISOString() : null,
+        shirtSizeRestrictionSizes: data.shirtSizeRestrictionDate ? (data.shirtSizeRestrictionSizes ?? []) : [],
       }),
     });
 
@@ -352,6 +364,29 @@ export default function EditEventForm({
           </div>
         </div>
       )}
+
+      <div className="border-t pt-5 dark:border-gray-700 space-y-3">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Restrição de tamanho de camiseta</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Deixe a data em branco para manter todos os tamanhos disponíveis durante toda a
+          inscrição (padrão). Se preenchida, só os tamanhos marcados abaixo continuam
+          disponíveis a partir dessa data.
+        </p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Restringir tamanhos a partir de
+          </label>
+          <input type="datetime-local" {...register("shirtSizeRestrictionDate")} className="input w-full" />
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {["PP", "P", "M", "G", "GG", "XGG"].map((size) => (
+            <label key={size} className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input type="checkbox" value={size} {...register("shirtSizeRestrictionSizes")} className="h-4 w-4" />
+              {size}
+            </label>
+          ))}
+        </div>
+      </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
