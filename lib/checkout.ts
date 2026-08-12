@@ -4,6 +4,7 @@ import { getSetting } from "./settings";
 import { isBatchAvailable } from "./batch-status";
 import { normalizeCpf } from "./cpf";
 import { generatePlaceholderEmail } from "./proxy-athlete";
+import { getAllowedShirtSizes } from "./shirt-size-restriction";
 import type { ShirtSize } from "@prisma/client";
 
 export interface CheckoutInput {
@@ -57,6 +58,13 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
 
     const event = await tx.event.findUnique({ where: { id: input.eventId } });
     if (!event || event.status !== "REGISTRATIONS_OPEN") throw new Error("Inscrições não abertas");
+
+    if (input.shirtSize) {
+      const allowedSizes = getAllowedShirtSizes(event, new Date());
+      if (!allowedSizes.includes(input.shirtSize)) {
+        throw new Error("Tamanho de camiseta indisponível para este evento");
+      }
+    }
 
     if (input.proxyAthlete && !event.allowProxyRegistration) {
       throw new Error("Inscrição por procuração não está habilitada para este evento");
