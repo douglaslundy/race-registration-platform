@@ -15,10 +15,12 @@ import {
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
   computeShirtSizeBreakdown,
+  computeShirtSizeBreakdownByBatch,
 } from "@/lib/organizer/event-metrics";
 import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 import RevenueBreakdownCard from "@/components/ui/RevenueBreakdownCard";
+import ShirtSizeReportCard from "@/components/ui/ShirtSizeReportCard";
 
 export const metadata: Metadata = { title: "Gerenciar Evento" };
 export const dynamic = "force-dynamic";
@@ -121,6 +123,10 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
   );
   const shirtSizeBreakdown = computeShirtSizeBreakdown(
     dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize })),
+  );
+  const shirtSizeByBatch = computeShirtSizeBreakdownByBatch(
+    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize, ticketBatchId: r.ticketBatchId })),
+    event.ticketBatches.map((b) => ({ id: b.id, name: b.name })),
   );
   const paymentMethodSummary = buildPaymentMethodSummary(
     paymentGroups.map((g) => ({ method: g.method, count: g._count.id, revenue: g._sum.amount ?? 0 })),
@@ -332,17 +338,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       </div>
 
       {/* Camisetas — inscrições confirmadas por tamanho */}
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Camisetas</h2>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-          {shirtSizeBreakdown.map((s) => (
-            <div key={s.size} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-primary-600">{s.count}</p>
-              <p className="text-xs text-gray-500 mt-0.5 break-words leading-tight">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ShirtSizeReportCard overall={shirtSizeBreakdown} byBatch={shirtSizeByBatch} />
 
       {/* Grade: Categorias / Cupons / Tipo de pagamento */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
