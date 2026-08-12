@@ -68,8 +68,16 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
 
     await notifyCancellationRequested("reg-1");
 
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988887777", expect.stringContaining("Corrida Teste"));
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expect.stringContaining("Corrida Teste"));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511988887777",
+      expect.stringContaining("Corrida Teste"),
+      "CANCELLATION_REQUESTED",
+    );
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999998888",
+      expect.stringContaining("Corrida Teste"),
+      "CANCELLATION_REQUESTED",
+    );
   });
 
   it("zero-regressão: texto de WhatsApp vem do template de fábrica de CANCELLATION_REQUESTED (sem mock de resolve/render, sem override no banco)", async () => {
@@ -83,8 +91,8 @@ describe("notifyCancellationRequested (alerts/cancellation-requested)", () => {
 
     const expectedText =
       'Atleta Teste solicitou o cancelamento da inscrição em "Corrida Teste". Motivo: Contusão no joelho. Acesse o painel para aprovar ou rejeitar.';
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988887777", expectedText);
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expectedText);
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988887777", expectedText, "CANCELLATION_REQUESTED");
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999998888", expectedText, "CANCELLATION_REQUESTED");
 
     // Prova que o eventId chega no resolver: getEffectiveTemplate não é mockado aqui (ver
     // comentário acima), então a única forma de confirmar o 4º argumento é observar que ele

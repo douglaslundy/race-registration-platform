@@ -51,6 +51,7 @@ describe("notifyAdvertiserRequestPending", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       expect.stringContaining("Empresa X"),
+      "ADVERTISER_REQUEST_PENDING",
     );
   });
 
@@ -71,6 +72,7 @@ describe("notifyAdvertiserRequestPending", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       "Nova solicitação de anunciante: Empresa X (plano Plano Básico). Acesse o painel pra aprovar ou rejeitar.",
+      "ADVERTISER_REQUEST_PENDING",
     );
   });
 

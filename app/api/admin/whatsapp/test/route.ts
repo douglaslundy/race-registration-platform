@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     await sendWhatsAppMessage(
       parsed.data.phone,
       "Mensagem de teste do painel administrativo. Se você recebeu isso, o WhatsApp está configurado corretamente. ✅",
+      "WHATSAPP_CONNECTION_TEST",
     );
     return NextResponse.json({ ok: true, to: parsed.data.phone });
   } catch (err) {

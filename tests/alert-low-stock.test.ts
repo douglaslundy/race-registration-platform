@@ -109,7 +109,7 @@ describe("checkLowStockAlert", () => {
     await checkLowStockAlert("batch-1");
 
     expect(claimAlert).toHaveBeenCalledWith("LOW_STOCK", "TicketBatch", "batch-1", "WHATSAPP");
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String), "LOW_STOCK");
     expect(resolveSpy).toHaveBeenCalledWith("LOW_STOCK", "WHATSAPP", "ORGANIZER", "event-1");
   });
 
@@ -152,6 +152,7 @@ describe("checkLowStockAlert", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       'Alerta: o lote "Lote 1" do evento "Corrida Teste" já vendeu 95 de 100 vagas.',
+      "LOW_STOCK",
     );
   });
 });

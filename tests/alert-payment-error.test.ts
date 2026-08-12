@@ -168,6 +168,7 @@ describe("notifyPaymentError", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
+      "PAYMENT_ERROR",
     );
     expect(resolveSpy).toHaveBeenCalledWith("PAYMENT_ERROR", "WHATSAPP", "BUYER", "event-1");
   });
@@ -185,6 +186,7 @@ describe("notifyPaymentError", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       "Olá Atleta, sua inscrição em Corrida Teste foi cancelada.",
+      "PAYMENT_ERROR",
     );
   });
 });
@@ -242,6 +244,7 @@ describe("notifyOrderCancelledWithoutPayment", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       expect.stringContaining("Corrida Teste"),
+      "PAYMENT_ERROR_ORDER_CANCELLED",
     );
     expect(resolveSpy).toHaveBeenCalledWith("PAYMENT_ERROR_ORDER_CANCELLED", "WHATSAPP", "BUYER", "event-1");
   });
@@ -306,6 +309,7 @@ describe("notifyOrderCancelledWithoutPayment", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
+      "PAYMENT_ERROR_ORDER_CANCELLED",
     );
   });
 });

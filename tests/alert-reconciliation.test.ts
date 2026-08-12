@@ -71,7 +71,7 @@ describe("notifyReconciliationMismatches", () => {
     await notifyReconciliationMismatches(mismatchFixture);
 
     expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String), "RECONCILIATION_MISMATCH");
   });
 
   it("nunca lança exceção, mesmo se o e-mail falhar", async () => {
@@ -149,7 +149,7 @@ describe("notifyReconciliationMismatches", () => {
     const manualCount = mismatchFixture.length - correctedCount;
     const expectedIntro = `Conciliação de pagamentos: ${correctedCount} corrigida(s) automaticamente, ${manualCount} precisam de revisão manual. Acesse /admin/conciliacao para detalhes.`;
     const expectedRow = `Corrida Teste — Pedido order-1: Requer verificação manual`;
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", `${expectedIntro}\n${expectedRow}`);
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", `${expectedIntro}\n${expectedRow}`, "RECONCILIATION_MISMATCH");
   });
 
   it("uma divergência DIFERENTE no MESMO paymentId (ex.: correção pending->paid antiga seguida de um estorno depois) ainda é alertada", async () => {
@@ -201,6 +201,7 @@ describe("notifyReconciliationMismatches", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       "Encontramos 1 divergência(s): 0 corrigida(s), 1 manual(is).\nCorrida Teste — Pedido order-1: Requer verificação manual",
+      "RECONCILIATION_MISMATCH",
     );
   });
 });

@@ -43,9 +43,9 @@ describe("sendMail", () => {
   it("lança erro quando o SMTP não está configurado, sem tentar enviar", async () => {
     vi.mocked(isSmtpReady).mockReturnValue(false);
 
-    await expect(sendMail({ to: "a@b.com", subject: "Oi", html: "<p>Oi</p>" })).rejects.toThrow(
-      "SMTP não configurado",
-    );
+    await expect(
+      sendMail({ to: "a@b.com", subject: "Oi", html: "<p>Oi</p>", messageType: "LOW_STOCK" }),
+    ).rejects.toThrow("SMTP não configurado");
     expect(sendMailMock).not.toHaveBeenCalled();
     expect(recordMessageLog).not.toHaveBeenCalled();
   });
@@ -53,10 +53,11 @@ describe("sendMail", () => {
   it("em caso de sucesso, registra o log como SENT", async () => {
     sendMailMock.mockResolvedValueOnce({});
 
-    await sendMail({ to: "atleta@example.com", subject: "Confirmação", html: "<p>Oi</p>" });
+    await sendMail({ to: "atleta@example.com", subject: "Confirmação", html: "<p>Oi</p>", messageType: "LOW_STOCK" });
 
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "EMAIL",
+      messageType: "LOW_STOCK",
       subject: "Confirmação",
       recipientAddress: "atleta@example.com",
       status: "SENT",
@@ -66,12 +67,13 @@ describe("sendMail", () => {
   it("em caso de falha no envio, registra o log como FAILED e relança o erro original", async () => {
     sendMailMock.mockRejectedValueOnce(new Error("Connection timeout"));
 
-    await expect(sendMail({ to: "atleta@example.com", subject: "Confirmação", html: "<p>Oi</p>" })).rejects.toThrow(
-      "Connection timeout",
-    );
+    await expect(
+      sendMail({ to: "atleta@example.com", subject: "Confirmação", html: "<p>Oi</p>", messageType: "LOW_STOCK" }),
+    ).rejects.toThrow("Connection timeout");
 
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "EMAIL",
+      messageType: "LOW_STOCK",
       subject: "Confirmação",
       recipientAddress: "atleta@example.com",
       status: "FAILED",
@@ -86,12 +88,14 @@ describe("sendMail", () => {
       to: "atleta@example.com",
       subject: "Inscrição confirmada",
       html: "<p>Oi</p>",
+      messageType: "ORDER_CONFIRMED",
       relatedEntityType: "Event",
       relatedEntityId: "event-1",
     });
 
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "EMAIL",
+      messageType: "ORDER_CONFIRMED",
       subject: "Inscrição confirmada",
       recipientAddress: "atleta@example.com",
       status: "SENT",
@@ -108,6 +112,7 @@ describe("sendMail", () => {
       to: "atleta@example.com",
       subject: "Relatório",
       html: "<p>Oi</p>",
+      messageType: "AD_REPORT",
       attachments,
     });
 

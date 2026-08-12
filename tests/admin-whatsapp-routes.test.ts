@@ -248,7 +248,11 @@ describe("admin whatsapp routes", () => {
       const body = await res.json();
       expect(res.status).toBe(200);
       expect(body.to).toBe("5511999999999");
-      expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+      expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+        "5511999999999",
+        expect.any(String),
+        "WHATSAPP_CONNECTION_TEST",
+      );
     });
 
     it("retorna 502 quando o envio falha", async () => {

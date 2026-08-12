@@ -72,7 +72,7 @@ describe("POST .../test-send", () => {
 
     await testSend(new Request("http://localhost", { method: "POST" }) as any, { params: Promise.resolve({ id: "tpl-2" }) });
 
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511900000000", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511900000000", expect.any(String), "LOW_STOCK");
   });
 });
 

@@ -96,7 +96,7 @@ describe("sendAdminDailySummaries", () => {
     expect(sendDailySummaryEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "admin1@example.com", role: "ADMIN" }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String), "DAILY_SUMMARY");
     expect(result).toEqual({ sent: 2, failed: 0 });
   });
 
@@ -189,7 +189,7 @@ describe("sendAdminDailySummaries", () => {
     const result = await sendAdminDailySummaries(dayStart, dayEnd);
 
     expect(sendDailySummaryEmail).toHaveBeenCalledTimes(1);
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String), "DAILY_SUMMARY");
     expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:admin-1", "EMAIL");
     expect(result).toEqual({ sent: 1, failed: 1 });
   });
@@ -211,7 +211,7 @@ describe("sendAdminDailySummaries", () => {
     expect(sendDailySummaryEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "maria@example.com", role: "ADMIN" }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("11999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("11999999999", expect.any(String), "DAILY_SUMMARY");
     expect(result).toEqual({ sent: 2, failed: 0 });
   });
 
@@ -245,7 +245,7 @@ describe("sendAdminDailySummaries", () => {
     const result = await sendAdminDailySummaries(dayStart, dayEnd);
 
     expect(sendDailySummaryEmail).toHaveBeenCalledTimes(2);
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("11999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("11999999999", expect.any(String), "DAILY_SUMMARY");
     expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:recipient:recipient-1", "EMAIL");
     expect(result).toEqual({ sent: 2, failed: 1 });
   });
@@ -276,6 +276,7 @@ describe("sendAdminDailySummaries", () => {
         `Repasses gerados: 1 (${formatCurrency(90000)})\n` +
         `Cancelamentos/estornos: 3\n` +
         `Veja mais em /admin.`,
+      "DAILY_SUMMARY",
     );
   });
 
@@ -299,6 +300,7 @@ describe("sendAdminDailySummaries", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511999999999",
       "Resumo de 12/07/2026 para administrador: 10 inscrições.",
+      "DAILY_SUMMARY",
     );
   });
 });
@@ -340,7 +342,7 @@ describe("sendOrganizerDailySummaries", () => {
     expect(sendDailySummaryEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "organizador@example.com", role: "ORGANIZER" }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988888888", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988888888", expect.any(String), "DAILY_SUMMARY");
     expect(result).toEqual({ sent: 2, failed: 0 });
   });
 
@@ -412,7 +414,7 @@ describe("sendOrganizerDailySummaries", () => {
     const result = await sendOrganizerDailySummaries(dayStart, dayEnd);
 
     expect(sendDailySummaryEmail).toHaveBeenCalledTimes(1);
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988888888", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511988888888", expect.any(String), "DAILY_SUMMARY");
     expect(unclaimAlert).toHaveBeenCalledWith("DAILY_SUMMARY", "2026-07-12:org-user-1", "EMAIL");
     expect(result).toEqual({ sent: 1, failed: 1 });
   });
@@ -436,7 +438,7 @@ describe("sendOrganizerDailySummaries", () => {
     expect(dbMock.dailySummaryRecipient.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "org-user-1", eventId: null } }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("21988887777", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("21988887777", expect.any(String), "DAILY_SUMMARY");
     expect(result).toEqual({ sent: 1, failed: 0 });
   });
 
@@ -462,6 +464,7 @@ describe("sendOrganizerDailySummaries", () => {
         `Cancelamentos solicitados: 1\n` +
         `Lotes esgotados: 0\n` +
         `Veja mais em /organizador.`,
+      "DAILY_SUMMARY",
     );
   });
 
@@ -485,6 +488,7 @@ describe("sendOrganizerDailySummaries", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       "Resumo de 12/07/2026 para organizador: 4 inscrições.",
+      "DAILY_SUMMARY",
     );
   });
 });
@@ -556,7 +560,7 @@ describe("sendEventDailySummaries", () => {
         eventId: "event-1",
       }),
     );
-    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String));
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith("5511999999999", expect.any(String), "DAILY_SUMMARY_EVENT");
     expect(result).toEqual({ sent: 2, failed: 0 });
   });
 

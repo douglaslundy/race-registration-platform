@@ -247,6 +247,7 @@ describe("sendAbandonedCartAlert", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       `Sua inscrição em "Corrida Teste" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
+      "ABANDONED_CART",
     );
   });
 
@@ -267,6 +268,7 @@ describe("sendAbandonedCartAlert", () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511988888888",
       `Link: ${baseUrl}/dashboard/inscricoes`,
+      "ABANDONED_CART",
     );
     // Garante que a variável não vira string vazia: o texto final não pode terminar em "Link: " puro.
     const sentText = vi.mocked(sendWhatsAppMessage).mock.calls[0][1];

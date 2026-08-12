@@ -19,7 +19,7 @@ export async function sendMail(opts: {
   to: string;
   subject: string;
   html: string;
-  messageType?: string;
+  messageType: string;
   attachments?: { filename: string; content: Buffer }[];
   relatedEntityType?: string;
   relatedEntityId?: string;

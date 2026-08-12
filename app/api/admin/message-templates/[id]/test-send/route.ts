@@ -28,10 +28,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (channel === "EMAIL") {
     const subject = template.subject ? renderTemplateSubject(template.subject, SAMPLE_VALUES) : "Teste de template";
-    await sendMail({ to: admin.email, subject: `[TESTE] ${subject}`, html: renderedBody });
+    await sendMail({ to: admin.email, subject: `[TESTE] ${subject}`, html: renderedBody, messageType: template.alertKey });
   } else {
     if (!admin.phone) return NextResponse.json({ error: "Sua conta não tem telefone cadastrado" }, { status: 400 });
-    await sendWhatsAppMessage(admin.phone, `[TESTE] ${renderedBody}`);
+    await sendWhatsAppMessage(admin.phone, `[TESTE] ${renderedBody}`, template.alertKey);
   }
 
   return NextResponse.json({ ok: true });
