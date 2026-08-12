@@ -12,10 +12,12 @@ import {
   computeDimensionBreakdowns,
   buildPaymentMethodSummary,
   computeShirtSizeBreakdown,
+  computeShirtSizeBreakdownByBatch,
 } from "@/lib/organizer/event-metrics";
 import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 import RevenueBreakdownCard from "@/components/ui/RevenueBreakdownCard";
+import ShirtSizeReportCard from "@/components/ui/ShirtSizeReportCard";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe do Evento — Admin" };
@@ -109,6 +111,10 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   );
   const shirtSizeBreakdown = computeShirtSizeBreakdown(
     dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize })),
+  );
+  const shirtSizeByBatch = computeShirtSizeBreakdownByBatch(
+    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize, ticketBatchId: r.ticketBatchId })),
+    event.ticketBatches.map((b) => ({ id: b.id, name: b.name })),
   );
 
   return (
@@ -283,17 +289,11 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
         </div>
       </div>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold text-sm">Camisetas</h2>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-          {shirtSizeBreakdown.map((s) => (
-            <div key={s.size} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-primary-600">{s.count}</p>
-              <p className="text-xs text-gray-500 mt-0.5 break-words leading-tight">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ShirtSizeReportCard
+        overall={shirtSizeBreakdown}
+        byBatch={shirtSizeByBatch}
+        headingClassName="font-semibold text-sm"
+      />
 
       <div className="flex gap-3">
         <Link href={`/admin/eventos/${event.id}/inscritos`} className="btn-secondary text-sm">
