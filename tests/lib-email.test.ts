@@ -249,6 +249,43 @@ describe("sendAbandonedCartEmail", () => {
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
     expect(sentHtml).toContain("Olá Maria");
   });
+
+  it("resolve {{redes_sociais}} com o texto de promoção quando socialPromo é informado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Finalize já — {{nome_evento}}",
+      body: "Olá {{nome_atleta}}, {{redes_sociais}}",
+      source: "global",
+    });
+
+    const { sendAbandonedCartEmail } = await import("@/lib/email");
+    await sendAbandonedCartEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      eventTitle: "Corrida X",
+      orderId: "ord-1",
+      eventId: "event-1",
+      socialPromo: "Segue a gente no Instagram! https://instagram.com/corrida",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Segue a gente no Instagram! https://instagram.com/corrida");
+  });
+
+  it("resolve {{redes_sociais}} pra string vazia quando socialPromo não é informado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Finalize já — {{nome_evento}}",
+      body: "Redes: [{{redes_sociais}}]",
+      source: "global",
+    });
+
+    const { sendAbandonedCartEmail } = await import("@/lib/email");
+    await sendAbandonedCartEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", orderId: "ord-1", eventId: "event-1" });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Redes: []");
+  });
 });
 
 describe("sendPaymentErrorEmail", () => {
@@ -256,6 +293,41 @@ describe("sendPaymentErrorEmail", () => {
     vi.clearAllMocks();
     vi.mocked(getSmtpConfig).mockResolvedValue(smtpConfig);
     vi.mocked(isSmtpReady).mockReturnValue(true);
+  });
+
+  it("resolve {{redes_sociais}} com o texto de promoção quando socialPromo é informado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Cancelada — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}, {{redes_sociais}}</p>",
+      source: "global",
+    });
+
+    await sendPaymentErrorEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      eventTitle: "Corrida X",
+      eventSlug: "corrida-x",
+      eventId: "event-1",
+      socialPromo: "Segue a gente no Instagram! https://instagram.com/corrida",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Segue a gente no Instagram! https://instagram.com/corrida");
+  });
+
+  it("resolve {{redes_sociais}} pra string vazia quando socialPromo não é informado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Cancelada — {{nome_evento}}",
+      body: "<p>Redes: [{{redes_sociais}}]</p>",
+      source: "global",
+    });
+
+    await sendPaymentErrorEmail({ to: "atleta@example.com", name: "Maria", eventTitle: "Corrida X", eventSlug: "corrida-x", eventId: "event-1" });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Redes: []");
   });
 
   it("usa o template resolvido em vez de string fixa", async () => {
@@ -459,6 +531,53 @@ describe("sendRegistrationConfirmationEmail", () => {
 
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
     expect(sentHtml).toContain("Link: []");
+  });
+
+  it("resolve {{redes_sociais}} com o texto de promoção quando socialPromo é informado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}, veja também: {{redes_sociais}}</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      registrationId: "reg-1",
+      orderId: "order-1",
+      eventTitle: "Corrida X",
+      eventId: "event-1",
+      alertKey: "ORDER_CONFIRMED",
+      recipientRole: "BUYER",
+      socialPromo: "Segue a gente no Instagram! https://instagram.com/corrida",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Segue a gente no Instagram! https://instagram.com/corrida");
+  });
+
+  it("resolve {{redes_sociais}} pra string vazia quando socialPromo não é informado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{nome_evento}}",
+      body: "<p>Redes: [{{redes_sociais}}]</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      registrationId: "reg-1",
+      orderId: "order-1",
+      eventTitle: "Corrida X",
+      eventId: "event-1",
+      alertKey: "ORDER_CONFIRMED",
+      recipientRole: "BUYER",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Redes: []");
   });
 });
 

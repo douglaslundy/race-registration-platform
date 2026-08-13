@@ -6,6 +6,7 @@ import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
 import { getPaymentErrorAlertSettings } from "./alert-settings";
 import { claimAlert, unclaimAlert, recordAlert } from "./dedupe";
+import { getSocialPromoText } from "@/lib/event-social-links";
 
 const ALERT_TYPE = "PAYMENT_ERROR";
 
@@ -13,6 +14,7 @@ interface CancellationNotificationTarget {
   entityId: string;
   entityType: "Payment" | "Order";
   alertKey: "PAYMENT_ERROR" | "PAYMENT_ERROR_ORDER_CANCELLED";
+  buyerUserId: string;
   buyer: { name: string; email: string; athleteProfile: { phone: string | null } | null };
   event: { id: string; title: string; slug: string };
   bypassDedupe?: boolean;
@@ -24,6 +26,11 @@ async function sendCancellationInviteNotification(
 ): Promise<void> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const eventUrl = `${baseUrl}/eventos/${params.event.slug}`;
+
+  // Calculado uma única vez e reaproveitado tanto no e-mail quanto no WhatsApp deste mesmo
+  // destinatário — chamar getSocialPromoText de novo pro mesmo usuário incrementaria a
+  // contagem de envios duas vezes pra uma única notificação lógica.
+  const socialPromo = await getSocialPromoText(params.event.id, params.buyerUserId);
 
   if (settings.emailEnabled) {
     const cfg = await getSmtpConfig();
@@ -37,6 +44,7 @@ async function sendCancellationInviteNotification(
             eventTitle: params.event.title,
             eventSlug: params.event.slug,
             eventId: params.event.id,
+            socialPromo,
           });
           if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "EMAIL");
         } catch (err) {
@@ -56,6 +64,7 @@ async function sendCancellationInviteNotification(
           nome_atleta: params.buyer.name,
           nome_evento: params.event.title,
           link_evento: eventUrl,
+          redes_sociais: socialPromo,
         }, "WHATSAPP");
         await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text, params.alertKey);
         if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
@@ -80,6 +89,7 @@ export async function notifyPaymentError(
       select: {
         order: {
           select: {
+            buyerUserId: true,
             event: { select: { id: true, title: true, slug: true } },
             buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
           },
@@ -98,6 +108,7 @@ export async function notifyPaymentError(
       entityId: paymentId,
       entityType: "Payment",
       alertKey: "PAYMENT_ERROR",
+      buyerUserId: payment.order.buyerUserId,
       buyer: payment.order.buyer,
       event: payment.order.event,
       bypassDedupe: options?.bypassDedupe,
@@ -118,6 +129,7 @@ export async function notifyOrderCancelledWithoutPayment(
     const order = await db.order.findUnique({
       where: { id: orderId },
       select: {
+        buyerUserId: true,
         event: { select: { id: true, title: true, slug: true } },
         buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
       },
@@ -129,6 +141,7 @@ export async function notifyOrderCancelledWithoutPayment(
       entityId: orderId,
       entityType: "Order",
       alertKey: "PAYMENT_ERROR_ORDER_CANCELLED",
+      buyerUserId: order.buyerUserId,
       buyer: order.buyer,
       event: order.event,
       bypassDedupe: options?.bypassDedupe,

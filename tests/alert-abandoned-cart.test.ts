@@ -19,6 +19,9 @@ vi.mock("@/lib/alerts/dedupe", () => ({
   unclaimAlert: vi.fn(),
   recordAlert: vi.fn(),
 }));
+vi.mock("@/lib/event-social-links", () => ({
+  getSocialPromoText: vi.fn().mockResolvedValue(""),
+}));
 
 import { checkAbandonedCarts, sendAbandonedCartAlert } from "@/lib/alerts/abandoned-cart";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";

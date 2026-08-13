@@ -8,6 +8,7 @@ import { isPlaceholderEmail } from "./proxy-athlete";
 import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
+import { getSocialPromoText } from "@/lib/event-social-links";
 
 const ALERT_TYPE = "ORDER_CONFIRMED";
 
@@ -96,6 +97,13 @@ export async function notifyOrderConfirmed(
     const detailsUrl = `${baseUrl}/dashboard/inscricoes/${registration.id}`;
     const isProxyRegistration = order.buyerUserId !== registration.athleteUserId;
 
+    // Promoção de redes sociais do evento pro usuário-alvo desta notificação (o atleta sendo
+    // inscrito). Calculada uma única vez e reaproveitada em todos os envios desta execução
+    // (e-mail/WhatsApp do comprador e, se por procuração, e-mail/WhatsApp do atleta) — chamar
+    // getSocialPromoText mais de uma vez pro mesmo usuário incrementaria a contagem de envios
+    // duas vezes para uma única notificação lógica.
+    const buyerSocialPromo = await getSocialPromoText(order.event?.id ?? "", registration.athleteUserId);
+
     // Comprador — sempre recebe. Quando não é procuração, é a única mensagem (idêntico ao
     // comportamento de sempre); quando é, o texto deixa claro que ele inscreveu outra pessoa.
     // Cada canal/destinatário reivindica sua própria chave de dedupe (em vez de uma única
@@ -117,6 +125,7 @@ export async function notifyOrderConfirmed(
             eventTitle: order.event?.title,
             eventId: order.event?.id,
             sponsorLink: order.event?.sponsorLink,
+            socialPromo: buyerSocialPromo,
             notes: registration.notes ?? undefined,
             alertKey: "ORDER_CONFIRMED",
             recipientRole: "BUYER",
@@ -146,6 +155,7 @@ export async function notifyOrderConfirmed(
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
         link_patrocinio: order.event?.sponsorLink ?? "",
+        redes_sociais: buyerSocialPromo,
       },
       order.event?.id,
       `${orderId}:buyer`,
@@ -170,6 +180,7 @@ export async function notifyOrderConfirmed(
               eventTitle: order.event?.title,
               eventId: order.event?.id,
               sponsorLink: order.event?.sponsorLink,
+              socialPromo: buyerSocialPromo,
               notes: registration.notes ?? undefined,
               alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
               recipientRole: "ATHLETE",
@@ -195,6 +206,7 @@ export async function notifyOrderConfirmed(
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
         link_patrocinio: order.event?.sponsorLink ?? "",
+        redes_sociais: buyerSocialPromo,
       },
       order.event?.id,
       `${orderId}:athlete`,

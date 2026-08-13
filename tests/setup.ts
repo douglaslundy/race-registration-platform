@@ -47,7 +47,12 @@ vi.mock("@/lib/db", () => ({
     messageTemplateVersion: {
       findMany: vi.fn(), create: vi.fn(), count: vi.fn(),
     },
-    eventSocialLink: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    // findMany por padrão resolve pra [] (em vez de undefined) porque getSocialPromoText
+    // (lib/event-social-links.ts) agora é chamada de dentro de vários fluxos de notificação
+    // (notifyOrderConfirmed, sendAbandonedCartAlert, sendCancellationInviteNotification) — sem
+    // esse default, testes desses fluxos que não mockam eventSocialLink explicitamente quebrariam
+    // com "Cannot read properties of undefined (reading 'length')" dentro de getSocialPromoText.
+    eventSocialLink: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     socialLinkSend: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },

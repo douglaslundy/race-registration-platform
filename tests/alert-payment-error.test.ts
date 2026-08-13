@@ -19,6 +19,9 @@ vi.mock("@/lib/alerts/dedupe", () => ({
   unclaimAlert: vi.fn(),
   recordAlert: vi.fn(),
 }));
+vi.mock("@/lib/event-social-links", () => ({
+  getSocialPromoText: vi.fn().mockResolvedValue(""),
+}));
 
 import { notifyPaymentError, notifyOrderCancelledWithoutPayment } from "@/lib/alerts/payment-error";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";

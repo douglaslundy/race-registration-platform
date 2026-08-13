@@ -115,6 +115,7 @@ export async function sendRegistrationConfirmationEmail(params: {
   recipientRole: "BUYER" | "ATHLETE";
   buyerName?: string;
   sponsorLink?: string | null;
+  socialPromo?: string | null;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -126,6 +127,7 @@ export async function sendRegistrationConfirmationEmail(params: {
     codigo_confirmacao: params.orderId,
     link_evento: url,
     link_patrocinio: params.sponsorLink ?? "",
+    redes_sociais: params.socialPromo ?? "",
   };
   const template = await getEffectiveTemplate(params.alertKey, "EMAIL", params.recipientRole, params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
@@ -215,6 +217,7 @@ export async function sendAbandonedCartEmail(params: {
   eventTitle: string;
   orderId: string;
   eventId?: string;
+  socialPromo?: string;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -222,6 +225,7 @@ export async function sendAbandonedCartEmail(params: {
     nome_atleta: params.name,
     nome_evento: params.eventTitle,
     link_finalizar_pagamento: `${baseUrl}/dashboard/inscricoes`,
+    redes_sociais: params.socialPromo ?? "",
   };
   const template = await getEffectiveTemplate("ABANDONED_CART", "EMAIL", "BUYER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);
@@ -236,6 +240,7 @@ export async function sendPaymentErrorEmail(params: {
   eventTitle: string;
   eventSlug: string;
   eventId?: string;
+  socialPromo?: string;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -243,6 +248,7 @@ export async function sendPaymentErrorEmail(params: {
     nome_atleta: params.name,
     nome_evento: params.eventTitle,
     link_evento: `${baseUrl}/eventos/${params.eventSlug}`,
+    redes_sociais: params.socialPromo ?? "",
   };
   const template = await getEffectiveTemplate("PAYMENT_ERROR", "EMAIL", "BUYER", params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);

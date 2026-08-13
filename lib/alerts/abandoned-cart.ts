@@ -6,6 +6,7 @@ import { getAbandonedCartAlertSettings } from "./alert-settings";
 import { claimAlert, recordAlert, unclaimAlert } from "./dedupe";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
+import { getSocialPromoText } from "@/lib/event-social-links";
 
 const ALERT_TYPE = "ABANDONED_CART";
 
@@ -25,6 +26,11 @@ export async function sendAbandonedCartAlert(
 
   let sentSomething = false;
 
+  // Calculado uma única vez e reaproveitado tanto no e-mail quanto no WhatsApp deste mesmo
+  // pedido/comprador — chamar getSocialPromoText de novo pro mesmo usuário incrementaria a
+  // contagem de envios duas vezes pra uma única notificação lógica.
+  const socialPromo = await getSocialPromoText(order.event.id, order.buyerUserId);
+
   try {
     if (settings.emailEnabled) {
       const cfg = await getSmtpConfig();
@@ -36,6 +42,7 @@ export async function sendAbandonedCartAlert(
             eventTitle: order.event.title,
             orderId: order.id,
             eventId: order.event.id,
+            socialPromo,
           });
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "EMAIL");
           sentSomething = true;
@@ -57,6 +64,7 @@ export async function sendAbandonedCartAlert(
               nome_atleta: order.buyer.name,
               nome_evento: order.event.title,
               link_finalizar_pagamento: `${baseUrl}/dashboard/inscricoes`,
+              redes_sociais: socialPromo,
             },
             "WHATSAPP",
           );
