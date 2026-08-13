@@ -114,6 +114,7 @@ export async function sendRegistrationConfirmationEmail(params: {
   alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_ATHLETE";
   recipientRole: "BUYER" | "ATHLETE";
   buyerName?: string;
+  sponsorLink?: string | null;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -124,6 +125,7 @@ export async function sendRegistrationConfirmationEmail(params: {
     nome_evento: params.eventTitle ?? "",
     codigo_confirmacao: params.orderId,
     link_evento: url,
+    link_patrocinio: params.sponsorLink ?? "",
   };
   const template = await getEffectiveTemplate(params.alertKey, "EMAIL", params.recipientRole, params.eventId);
   const subject = renderTemplateSubject(template.subject ?? "", values);

@@ -413,6 +413,53 @@ describe("sendRegistrationConfirmationEmail", () => {
     // suporte a blocos condicionais; ver description do ORDER_CONFIRMED no registry).
     expect(sentHtml).not.toContain("Chegarei atrasado");
   });
+
+  it("resolve {{link_patrocinio}} quando o evento tem um link de patrocínio cadastrado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{nome_evento}}",
+      body: "<p>Olá {{nome_atleta}}, veja também: {{link_patrocinio}}</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      registrationId: "reg-1",
+      orderId: "order-1",
+      eventTitle: "Corrida X",
+      eventId: "event-1",
+      alertKey: "ORDER_CONFIRMED",
+      recipientRole: "BUYER",
+      sponsorLink: "https://www.strava.com/routes/123",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("https://www.strava.com/routes/123");
+  });
+
+  it("resolve {{link_patrocinio}} pra string vazia quando o evento não tem link cadastrado", async () => {
+    sendMailMock.mockResolvedValueOnce({});
+    vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
+      subject: "Assunto — {{nome_evento}}",
+      body: "<p>Link: [{{link_patrocinio}}]</p>",
+      source: "global",
+    });
+
+    await sendRegistrationConfirmationEmail({
+      to: "atleta@example.com",
+      name: "Maria",
+      registrationId: "reg-1",
+      orderId: "order-1",
+      eventTitle: "Corrida X",
+      eventId: "event-1",
+      alertKey: "ORDER_CONFIRMED",
+      recipientRole: "BUYER",
+    });
+
+    const sentHtml = sendMailMock.mock.calls[0][0].html as string;
+    expect(sentHtml).toContain("Link: []");
+  });
 });
 
 describe("sendSensitiveActionCodeEmail", () => {

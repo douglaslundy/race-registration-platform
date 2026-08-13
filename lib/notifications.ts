@@ -75,7 +75,7 @@ export async function notifyOrderConfirmed(
       select: {
         buyerUserId: true,
         buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
-        event: { select: { id: true, title: true } },
+        event: { select: { id: true, title: true, sponsorLink: true } },
         registrations: {
           select: {
             id: true,
@@ -116,6 +116,7 @@ export async function notifyOrderConfirmed(
             orderId,
             eventTitle: order.event?.title,
             eventId: order.event?.id,
+            sponsorLink: order.event?.sponsorLink,
             notes: registration.notes ?? undefined,
             alertKey: "ORDER_CONFIRMED",
             recipientRole: "BUYER",
@@ -144,6 +145,7 @@ export async function notifyOrderConfirmed(
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
+        link_patrocinio: order.event?.sponsorLink ?? "",
       },
       order.event?.id,
       `${orderId}:buyer`,
@@ -167,6 +169,7 @@ export async function notifyOrderConfirmed(
               orderId,
               eventTitle: order.event?.title,
               eventId: order.event?.id,
+              sponsorLink: order.event?.sponsorLink,
               notes: registration.notes ?? undefined,
               alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
               recipientRole: "ATHLETE",
@@ -191,6 +194,7 @@ export async function notifyOrderConfirmed(
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
+        link_patrocinio: order.event?.sponsorLink ?? "",
       },
       order.event?.id,
       `${orderId}:athlete`,
