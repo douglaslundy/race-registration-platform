@@ -29,6 +29,7 @@ import { sendPaymentErrorEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getPaymentErrorAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
+import { getSocialPromoText } from "@/lib/event-social-links";
 import * as resolveModule from "@/lib/templates/resolve";
 
 const dbMock = db as any;
@@ -86,6 +87,21 @@ describe("notifyPaymentError", () => {
     await notifyPaymentError("payment-1");
 
     expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
+    // Nada foi enviado (dedupe já bloqueou) — getSocialPromoText não pode ter sido chamada, senão
+    // gastaria a cota do usuário em execuções que webhooks reentregues/o poller de conciliação
+    // disparam de novo pro mesmo pagamento sem que nenhuma mensagem realmente saia.
+    expect(getSocialPromoText).not.toHaveBeenCalled();
+  });
+
+  it("chama getSocialPromoText no máximo 1 vez mesmo com e-mail e WhatsApp habilitados e bem sucedidos", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: true });
+    dbMock.payment.findUnique.mockResolvedValueOnce(paymentFixture);
+
+    await notifyPaymentError("payment-1");
+
+    expect(sendPaymentErrorEmail).toHaveBeenCalled();
+    expect(sendWhatsAppMessage).toHaveBeenCalled();
+    expect(getSocialPromoText).toHaveBeenCalledTimes(1);
   });
 
   it("libera a reivindicação quando o envio de e-mail falha, para permitir nova tentativa depois", async () => {

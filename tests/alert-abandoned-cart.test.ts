@@ -29,6 +29,7 @@ import { sendAbandonedCartEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getAbandonedCartAlertSettings } from "@/lib/alerts/alert-settings";
 import { claimAlert, recordAlert, unclaimAlert } from "@/lib/alerts/dedupe";
+import { getSocialPromoText } from "@/lib/event-social-links";
 import * as resolveModule from "@/lib/templates/resolve";
 
 const dbMock = db as any;
@@ -204,6 +205,29 @@ describe("sendAbandonedCartAlert", () => {
 
     expect(claimAlert).toHaveBeenCalledWith("ABANDONED_CART", "Order", "order-1", "EMAIL");
     expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ sent: false });
+  });
+
+  it("chama getSocialPromoText no máximo 1 vez mesmo com e-mail e WhatsApp habilitados e bem sucedidos (evita gastar cota 2x pro mesmo destinatário)", async () => {
+    await sendAbandonedCartAlert(
+      orderFixture,
+      { emailEnabled: true, whatsappEnabled: true },
+      { bypassDedupe: true },
+    );
+
+    expect(sendAbandonedCartEmail).toHaveBeenCalled();
+    expect(sendWhatsAppMessage).toHaveBeenCalled();
+    expect(getSocialPromoText).toHaveBeenCalledTimes(1);
+  });
+
+  it("não chama getSocialPromoText quando o dedupe já bloqueou os dois canais (nada é enviado, então nenhuma cota deve ser gasta)", async () => {
+    vi.mocked(claimAlert).mockResolvedValue(false);
+
+    const result = await sendAbandonedCartAlert(orderFixture, { emailEnabled: true, whatsappEnabled: true });
+
+    expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(getSocialPromoText).not.toHaveBeenCalled();
     expect(result).toEqual({ sent: false });
   });
 

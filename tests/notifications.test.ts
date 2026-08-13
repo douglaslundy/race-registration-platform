@@ -22,6 +22,9 @@ vi.mock("@/lib/whatsapp/evolution-client", () => ({
 vi.mock("@/lib/proxy-athlete", () => ({
   isPlaceholderEmail: vi.fn(),
 }));
+vi.mock("@/lib/event-social-links", () => ({
+  getSocialPromoText: vi.fn().mockResolvedValue(""),
+}));
 
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
@@ -30,6 +33,7 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import { getConnectionState } from "@/lib/whatsapp/evolution-client";
 import { isPlaceholderEmail } from "@/lib/proxy-athlete";
+import { getSocialPromoText } from "@/lib/event-social-links";
 
 const dbMock = db as any;
 
@@ -246,6 +250,23 @@ describe("notifyOrderConfirmed", () => {
     );
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(2);
     expect(sendWhatsAppMessage).toHaveBeenCalledTimes(2);
+    // 4 pontos de envio nesta execução (e-mail/WhatsApp do comprador + e-mail/WhatsApp do
+    // atleta), todos com sucesso — getSocialPromoText ainda assim só pode ser chamada 1 vez,
+    // porque os 4 envios são pro mesmo usuário-alvo (registration.athleteUserId) e a função tem
+    // efeito colateral (incrementa a contagem de envio de cada link social).
+    expect(getSocialPromoText).toHaveBeenCalledTimes(1);
+  });
+
+  it("não chama getSocialPromoText quando nada é enviado (SMTP indisponível e WhatsApp não configurado)", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+    vi.mocked(isSmtpReady).mockReturnValue(false);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(getSocialPromoText).not.toHaveBeenCalled();
   });
 
   it("procuração: não manda e-mail pro atleta quando o e-mail é sintético, mas manda WhatsApp normalmente", async () => {

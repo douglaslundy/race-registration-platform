@@ -30,6 +30,7 @@ async function sendWhatsAppIfActive(
   eventId: string | undefined,
   claimEntityId: string,
   bypassDedupe: boolean,
+  resolveSocialPromo: () => Promise<string>,
 ): Promise<void> {
   if (!phone) return;
   let claimed = false;
@@ -38,7 +39,10 @@ async function sendWhatsAppIfActive(
     claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
     if (!claimed) return;
     const template = await getEffectiveTemplate(alertKey, "WHATSAPP", recipientRole, eventId);
-    const text = renderTemplate(template.body, values, "WHATSAPP");
+    // resolveSocialPromo só é chamada aqui, depois de todas as guardas acima (telefone presente,
+    // conexão de WhatsApp ativa, claim de dedupe bem sucedido) — é o ponto em que o envio de fato
+    // vai acontecer, então é seguro "gastar" a cota do link social agora.
+    const text = renderTemplate(template.body, { ...values, redes_sociais: await resolveSocialPromo() }, "WHATSAPP");
     await sendWhatsAppMessage(
       phone,
       text,
@@ -98,11 +102,16 @@ export async function notifyOrderConfirmed(
     const isProxyRegistration = order.buyerUserId !== registration.athleteUserId;
 
     // Promoção de redes sociais do evento pro usuário-alvo desta notificação (o atleta sendo
-    // inscrito). Calculada uma única vez e reaproveitada em todos os envios desta execução
-    // (e-mail/WhatsApp do comprador e, se por procuração, e-mail/WhatsApp do atleta) — chamar
-    // getSocialPromoText mais de uma vez pro mesmo usuário incrementaria a contagem de envios
-    // duas vezes para uma única notificação lógica.
-    const buyerSocialPromo = await getSocialPromoText(order.event?.id ?? "", registration.athleteUserId);
+    // inscrito), resolvida sob demanda e memoizada — reaproveitada em todos os envios desta
+    // execução (e-mail/WhatsApp do comprador e, se por procuração, e-mail/WhatsApp do atleta).
+    // getSocialPromoText tem efeito colateral (incrementa a contagem de envio de cada link), então
+    // NÃO pode ser chamada antes das guardas de cada canal (SMTP pronto, claim de dedupe,
+    // telefone cadastrado) — do contrário uma execução que não envia nada (ex.: dedupe já
+    // reivindicado por uma execução anterior) ainda assim "gastaria" uma cota do usuário à toa.
+    // A memoização garante no máximo 1 chamada real por execução mesmo com os 4 pontos de envio.
+    let socialPromoCache: string | undefined;
+    const resolveSocialPromo = async () =>
+      (socialPromoCache ??= await getSocialPromoText(order.event?.id ?? "", registration.athleteUserId));
 
     // Comprador — sempre recebe. Quando não é procuração, é a única mensagem (idêntico ao
     // comportamento de sempre); quando é, o texto deixa claro que ele inscreveu outra pessoa.
@@ -125,7 +134,7 @@ export async function notifyOrderConfirmed(
             eventTitle: order.event?.title,
             eventId: order.event?.id,
             sponsorLink: order.event?.sponsorLink,
-            socialPromo: buyerSocialPromo,
+            socialPromo: await resolveSocialPromo(),
             notes: registration.notes ?? undefined,
             alertKey: "ORDER_CONFIRMED",
             recipientRole: "BUYER",
@@ -155,11 +164,11 @@ export async function notifyOrderConfirmed(
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
         link_patrocinio: order.event?.sponsorLink ?? "",
-        redes_sociais: buyerSocialPromo,
       },
       order.event?.id,
       `${orderId}:buyer`,
       bypassDedupe,
+      resolveSocialPromo,
     );
 
     if (!isProxyRegistration) return;
@@ -180,7 +189,7 @@ export async function notifyOrderConfirmed(
               eventTitle: order.event?.title,
               eventId: order.event?.id,
               sponsorLink: order.event?.sponsorLink,
-              socialPromo: buyerSocialPromo,
+              socialPromo: await resolveSocialPromo(),
               notes: registration.notes ?? undefined,
               alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
               recipientRole: "ATHLETE",
@@ -206,11 +215,11 @@ export async function notifyOrderConfirmed(
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
         link_patrocinio: order.event?.sponsorLink ?? "",
-        redes_sociais: buyerSocialPromo,
       },
       order.event?.id,
       `${orderId}:athlete`,
       bypassDedupe,
+      resolveSocialPromo,
     );
   } catch (err) {
     console.error("[notifyOrderConfirmed] failed:", err);

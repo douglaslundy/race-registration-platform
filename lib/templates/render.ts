@@ -26,7 +26,11 @@ export function renderTemplate(
 }
 
 export function renderTemplateSubject(subject: string, values: Record<string, string | undefined>): string {
-  return renderTemplate(subject, values, "WHATSAPP");
+  // Assuntos são de linha única — algumas variáveis (ex.: redes_sociais, que junta vários links com
+  // "\n") podem legitimamente conter quebras de linha quando usadas no corpo. stripControlChars não
+  // remove \x0A/\x0D de propósito (são válidos no corpo), então colapsamos aqui explicitamente pra
+  // essa quebra não vazar pro assunto renderizado.
+  return renderTemplate(subject, values, "WHATSAPP").replace(/[\r\n]+/g, " ");
 }
 
 export function validateTemplateVariables(

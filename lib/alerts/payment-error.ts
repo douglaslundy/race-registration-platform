@@ -27,10 +27,16 @@ async function sendCancellationInviteNotification(
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   const eventUrl = `${baseUrl}/eventos/${params.event.slug}`;
 
-  // Calculado uma única vez e reaproveitado tanto no e-mail quanto no WhatsApp deste mesmo
-  // destinatário — chamar getSocialPromoText de novo pro mesmo usuário incrementaria a
-  // contagem de envios duas vezes pra uma única notificação lógica.
-  const socialPromo = await getSocialPromoText(params.event.id, params.buyerUserId);
+  // Resolvida sob demanda e memoizada — reaproveitada tanto no e-mail quanto no WhatsApp deste
+  // mesmo destinatário. getSocialPromoText tem efeito colateral (incrementa a contagem de envio de
+  // cada link), então NÃO pode ser chamada antes das guardas de cada canal (SMTP pronto, claim de
+  // dedupe, telefone cadastrado) — webhooks reentregues ou o poller de conciliação podem chamar
+  // notifyPaymentError de novo pro mesmo pagamento, e sem essa guarda uma execução que não envia
+  // nada (bloqueada pelo dedupe) ainda assim gastaria a cota do usuário à toa. A memoização
+  // garante no máximo 1 chamada real por execução mesmo com os 2 canais.
+  let socialPromoCache: string | undefined;
+  const resolveSocialPromo = async () =>
+    (socialPromoCache ??= await getSocialPromoText(params.event.id, params.buyerUserId));
 
   if (settings.emailEnabled) {
     const cfg = await getSmtpConfig();
@@ -44,7 +50,7 @@ async function sendCancellationInviteNotification(
             eventTitle: params.event.title,
             eventSlug: params.event.slug,
             eventId: params.event.id,
-            socialPromo,
+            socialPromo: await resolveSocialPromo(),
           });
           if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "EMAIL");
         } catch (err) {
@@ -64,7 +70,7 @@ async function sendCancellationInviteNotification(
           nome_atleta: params.buyer.name,
           nome_evento: params.event.title,
           link_evento: eventUrl,
-          redes_sociais: socialPromo,
+          redes_sociais: await resolveSocialPromo(),
         }, "WHATSAPP");
         await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text, params.alertKey);
         if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");

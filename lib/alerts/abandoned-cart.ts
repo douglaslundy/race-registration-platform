@@ -26,10 +26,16 @@ export async function sendAbandonedCartAlert(
 
   let sentSomething = false;
 
-  // Calculado uma única vez e reaproveitado tanto no e-mail quanto no WhatsApp deste mesmo
-  // pedido/comprador — chamar getSocialPromoText de novo pro mesmo usuário incrementaria a
-  // contagem de envios duas vezes pra uma única notificação lógica.
-  const socialPromo = await getSocialPromoText(order.event.id, order.buyerUserId);
+  // Resolvida sob demanda e memoizada — reaproveitada tanto no e-mail quanto no WhatsApp deste
+  // mesmo pedido/comprador. getSocialPromoText tem efeito colateral (incrementa a contagem de
+  // envio de cada link), então NÃO pode ser chamada antes das guardas de cada canal (SMTP pronto,
+  // claim de dedupe, telefone cadastrado): checkAbandonedCarts() reprocessa o mesmo pedido PENDING
+  // a cada ciclo de cron (ver comentário no finally abaixo), então chamar isso cedo demais
+  // "gastaria" a cota do usuário em execuções que não enviam nada por já estarem bloqueadas pelo
+  // dedupe. A memoização garante no máximo 1 chamada real por execução mesmo com os 2 canais.
+  let socialPromoCache: string | undefined;
+  const resolveSocialPromo = async () =>
+    (socialPromoCache ??= await getSocialPromoText(order.event.id, order.buyerUserId));
 
   try {
     if (settings.emailEnabled) {
@@ -42,7 +48,7 @@ export async function sendAbandonedCartAlert(
             eventTitle: order.event.title,
             orderId: order.id,
             eventId: order.event.id,
-            socialPromo,
+            socialPromo: await resolveSocialPromo(),
           });
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "EMAIL");
           sentSomething = true;
@@ -64,7 +70,7 @@ export async function sendAbandonedCartAlert(
               nome_atleta: order.buyer.name,
               nome_evento: order.event.title,
               link_finalizar_pagamento: `${baseUrl}/dashboard/inscricoes`,
-              redes_sociais: socialPromo,
+              redes_sociais: await resolveSocialPromo(),
             },
             "WHATSAPP",
           );

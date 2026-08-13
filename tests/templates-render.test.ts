@@ -45,6 +45,14 @@ describe("renderTemplateSubject", () => {
   it("nunca faz HTML-escape (assunto é texto puro, não HTML)", () => {
     expect(renderTemplateSubject("{{x}}", { x: "Corrida & Cia" })).toBe("Corrida & Cia");
   });
+
+  it("colapsa quebras de linha da variável pra espaço (ex.: redes_sociais com vários links separados por \\n)", () => {
+    const result = renderTemplateSubject("Assunto: {{redes_sociais}}", {
+      redes_sociais: "Segue no Instagram! https://instagram.com/corrida\nSegue no Twitter! https://twitter.com/corrida",
+    });
+    expect(result).toBe("Assunto: Segue no Instagram! https://instagram.com/corrida Segue no Twitter! https://twitter.com/corrida");
+    expect(result).not.toContain("\n");
+  });
 });
 
 describe("validateTemplateVariables", () => {
