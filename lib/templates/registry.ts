@@ -57,7 +57,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Carrinho abandonado — avisa o comprador quando um pedido fica pendente além do limite configurado.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "link_finalizar_pagamento"],
+    variables: ["nome_atleta", "nome_evento", "link_finalizar_pagamento", "redes_sociais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? {
@@ -77,7 +77,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Erro de pagamento — avisa o comprador quando um pagamento é recusado ou expira.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "link_evento"],
+    variables: ["nome_atleta", "nome_evento", "link_evento", "redes_sociais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? {
@@ -98,7 +98,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Mesmo texto de erro de pagamento, disparado manualmente para pedidos cancelados sem Payment associado.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "link_evento"],
+    variables: ["nome_atleta", "nome_evento", "link_evento", "redes_sociais"],
     factoryDefault: (channel, role) => ALERT_REGISTRY.PAYMENT_ERROR.factoryDefault(channel, role),
   },
 
@@ -287,7 +287,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — comprador confirmando a própria inscrição. Quando a inscrição tem uma observação registrada, a produção anexa um parágrafo extra com o texto — fora do escopo desta etapa (bloco condicional, o motor de renderização não suporta condicionais).",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio"],
+    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio", "redes_sociais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? {
@@ -307,7 +307,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — comprador que inscreveu outra pessoa (procuração).",
     channels: ["WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio"],
+    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio", "redes_sociais"],
     factoryDefault: () => ({ body: `Você inscreveu {{nome_atleta}} em {{nome_evento}}! Pedido {{codigo_confirmacao}}. Detalhes: {{link_evento}}` }),
   },
 
@@ -316,7 +316,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — atleta convidado por procuração.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ATHLETE"],
-    variables: ["nome_atleta", "nome_comprador", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio"],
+    variables: ["nome_atleta", "nome_comprador", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio", "redes_sociais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? ALERT_REGISTRY.ORDER_CONFIRMED.factoryDefault("EMAIL", "ATHLETE")
