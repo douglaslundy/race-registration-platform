@@ -16,6 +16,7 @@ const updateEventSchema = z.object({
   state: z.string().length(2).optional(),
   maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional().nullable(),
+  sponsorLink: z.string().optional().nullable(),
   bannerUrl: z.string().url().optional().nullable(),
   listBannerUrl: z.string().url().optional().nullable(),
   regulationUrl: z.string().url().optional().nullable(),
