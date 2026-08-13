@@ -47,6 +47,8 @@ vi.mock("@/lib/db", () => ({
     messageTemplateVersion: {
       findMany: vi.fn(), create: vi.fn(), count: vi.fn(),
     },
+    eventSocialLink: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    socialLinkSend: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
       ticketBatch: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
