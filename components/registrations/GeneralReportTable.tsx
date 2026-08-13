@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate } from "@/lib/format";
+import { PAYMENT_METHOD_LABEL } from "./RegistrationsTable";
 
 export interface GeneralReportRow {
   id: string;
@@ -17,13 +18,6 @@ export interface GeneralReportRow {
   order: { totalAmount: number };
   payment: { method: string; paidAt: Date | null } | null;
 }
-
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  PIX: "PIX",
-  CREDIT_CARD: "Cartão de crédito",
-  DEBIT_CARD: "Cartão de débito",
-  BOLETO: "Boleto",
-};
 
 export default function GeneralReportTable({ registrations }: { registrations: GeneralReportRow[] }) {
   return (

@@ -47,7 +47,7 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     const csv = await res.text();
 
     expect(csv.split("\n")[0]).toBe(
-      "Nome,Email,CPF,Telefone,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Valor Pago,Status,Data",
+      "Nome,Email,CPF,Telefone,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Valor do Pedido,Status,Data",
     );
     expect(csv).toContain('"Ana Silva","ana@example.com","11144477735","11988887777",');
     expect(csv).toContain('"Chegarei atrasado","R$ 55,00","CONFIRMED"');
