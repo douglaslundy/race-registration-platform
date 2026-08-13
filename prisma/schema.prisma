@@ -257,6 +257,7 @@ model Event {
   allowProxyRegistration       Boolean   @default(false)
   shirtSizeRestrictionDate     DateTime?
   shirtSizeRestrictionSizes    ShirtSize[]
+  sponsorLink                  String?
 
   organizer     OrganizerProfile @relation(fields: [organizerId], references: [id])
   routes        EventRoute[]
