@@ -1,5 +1,95 @@
 # Progresso do Projeto
 
+## Última atualização
+2026-08-13 — sessão pausada a pedido do usuário (limite semanal atingido, custo de créditos).
+Retomar com "continue": tudo abaixo é o estado exato de onde parou.
+
+## Redes sociais com limite de envio, por evento (2026-08-13) — EM ANDAMENTO, Task 4/6 concluída
+
+Item B do pedido original de 4 tarefas do usuário (item A, link de patrocínio, já foi concluído e
+deployado — ver seção mais abaixo). Organizador cadastra redes sociais por evento (rede + link +
+mensagem + limite de envios por pessoa); a plataforma inclui isso via variável de template
+`{{redes_sociais}}` nas 3 mensagens que já manda pro comprador/atleta (confirmação de inscrição,
+carrinho abandonado, erro de pagamento), respeitando "primeiras N mensagens recebem a promoção".
+
+**Documentos:**
+- Spec: `docs/superpowers/specs/2026-08-13-redes-sociais-evento-design.md`
+- Plano: `docs/superpowers/plans/2026-08-13-redes-sociais-evento.md` (6 tasks)
+- Ledger de execução (subagent-driven-development):
+  `.superpowers/sdd/2026-08-13-redes-sociais-evento/progress.md` — histórico completo de cada
+  task/round de fix, não apagar.
+
+**Modo de execução desta feature:** subagent-driven-development, **direto na branch `main`**
+(sem worktree — pedido explícito do usuário desta vez, diferente das features anteriores).
+HEAD atual em `main`: commit `00c32ea`.
+
+**Concluído (Tasks 1-4 de 6, todas revisadas e com fix aplicado quando necessário):**
+- Task 1 (`2fcfb81`): models `EventSocialLink`/`SocialLinkSend` no schema + migration escrita à
+  mão em `prisma/migrations/20260813010000_add_event_social_links/migration.sql` (commitada com
+  `git add -f`, `/prisma/migrations/` está no `.gitignore` — já verificado que está rastreada).
+  **Migration NÃO aplicada em produção ainda** — precisa da sequência de deploy com schema (ver
+  "Próxima tarefa" abaixo).
+- Task 2 (`ae512f8` + fix `9012902`): helper `getSocialPromoText(eventId, userId)`.
+  **Achado real da revisão, corrigido**: o plano mandou criar `lib/social-links.ts`, mas esse
+  arquivo já existia pra uma feature completamente não relacionada (ícones de redes sociais do
+  site público — `SOCIAL_NETWORKS`/`buildSocialLinks`/`buildWhatsAppLink`). O helper novo foi
+  separado pra `lib/event-social-links.ts` (arquivo próprio); `lib/social-links.ts` foi restaurado
+  ao estado original. **Importar sempre de `@/lib/event-social-links`, nunca de
+  `@/lib/social-links`** — isso já está correto em tudo que foi implementado até aqui (Task 4).
+- Task 3 (`70dacb8`): variável `redes_sociais` em `lib/templates/registry.ts` (6 alertKeys:
+  ORDER_CONFIRMED + 2 variantes, ABANDONED_CART, PAYMENT_ERROR + variante) **e** em
+  `lib/templates/variables.ts` (`ALL_VARIABLES` — os dois arquivos precisam estar sincronizados,
+  `tests/templates-registry.test.ts` garante isso).
+- Task 4 (`de9db91` + fix `00c32ea`): resolve `redes_sociais` nos 3 fluxos de envio
+  (`lib/notifications.ts`, `lib/alerts/abandoned-cart.ts`, `lib/alerts/payment-error.ts`, mais
+  `lib/email.ts` pros 3 e-mails). **Achado real da revisão, corrigido**: a chamada de
+  `getSocialPromoText` (que tem efeito colateral — incrementa contador de cota) estava sendo feita
+  ANTES das guardas de dedupe/SMTP/canal habilitado/telefone, então uma execução que não enviava
+  nada (ex.: cron de carrinho abandonado reprocessando pedido já bloqueado por dedupe) ainda assim
+  queimava a cota do usuário. Corrigido com resolver preguiçoso memoizado, chamado só de dentro de
+  cada branch que efetivamente vai enviar — mantém "no máximo 1 chamada real por destinatário
+  lógico" mas só dispara quando a mensagem sai de verdade. Bônus da mesma correção:
+  `renderTemplateSubject` agora colapsa `\r\n` pra espaço (redes_sociais pode ter múltiplas linhas
+  e agora é válida em assuntos de e-mail também).
+
+**PRÓXIMA TAREFA:** Task 5 (API REST de redes sociais — `app/api/events/[id]/social-links/route.ts`
++ `.../[linkId]/route.ts`, espelhando `app/api/events/[id]/coupons/*`), depois Task 6 (UI de
+cadastro do organizador — `app/organizador/eventos/[id]/redes-sociais/page.tsx`, usando
+`ConfirmModal` e não `ConfirmDialog`, ver o plano), depois revisão final do branch inteiro
+(sem passo de merge — já estamos na main), depois push + deploy (**tem migration de schema
+pendente** — usar a sequência de 4 passos: `git pull` → `docker build` → `docker compose run --rm
+app sh -c "npx prisma db push --skip-generate"` → `docker compose up -d --no-deps app`, NUNCA só
+`deploy.sh` sozinho quando há mudança de schema).
+
+**Contexto necessário pra continuar:** ler o plano inteiro
+(`docs/superpowers/plans/2026-08-13-redes-sociais-evento.md`) + este bloco do PROGRESSO.md. Task 5
+ainda não teve seu brief gerado — rodar
+`bash <caminho-do-skill-subagent-driven-development>/scripts/task-brief
+docs/superpowers/plans/2026-08-13-redes-sociais-evento.md 5` no diretório do projeto (main, sem
+worktree) pra gerar o brief e continuar o fluxo normal (dispatch implementador → review → fix loop
+se necessário → próxima task). O ledger em
+`.superpowers/sdd/2026-08-13-redes-sociais-evento/progress.md` já tem o histórico de Tasks 1-4;
+só adicionar a partir da Task 5.
+
+## Link de patrocínio por evento (2026-08-12/13) — CONCLUÍDO E DEPLOYADO
+
+Item A do pedido de 4 tarefas do usuário. Campo `Event.sponsorLink`, variável de template
+`{{link_patrocinio}}` disponível só nos 3 alertas de confirmação de inscrição, configurável na
+edição do evento. Plano: `docs/superpowers/plans/2026-08-12-link-patrocinio-evento.md` (3 tasks).
+Revisão final achou 1 Crítico real (o plano esqueceu de cadastrar `link_patrocinio` em
+`lib/templates/variables.ts`, só em `registry.ts` — quebrava `tests/templates-registry.test.ts` e
+deixava a variável invisível no editor de templates), corrigido antes do merge. **Deployado em
+produção** (push + `prisma db push` + restart, tudo confirmado funcionando).
+
+## Relatório Geral por evento (2026-08-12/13) — CONCLUÍDO E DEPLOYADO
+
+Tela nova por evento (organizador + admin) só com inscrições CONFIRMADAS, sem paginação, sem
+botões de ação: nome/CPF/e-mail/telefone/percurso/categoria/lote/camiseta/contato de
+emergência/alergias/valor pago/forma de pagamento/data de confirmação. CSV de `/inscritos`
+estendido com Telefone/Valor Pago + filtro `?status=`. Achado real da revisão: coluna "Valor Pago"
+do CSV não-filtrado mentia pra inscrições não confirmadas — renomeada pra "Valor do Pedido" nesse
+modo. **Deployado em produção.**
+
 ## Camisetas por lote (2026-08-12) — CONCLUÍDO, REVISÃO FINAL LIMPA (fix wave aplicada)
 
 Toggle "Ver por lote" no card "Camisetas" (`components/ui/ShirtSizeReportCard.tsx`, extraído como
@@ -11,8 +101,8 @@ da tabela por lote agora casadas por `size` (não mais posicional), tipos `Shirt
 `ShirtSizeByBatch` importados de `lib/organizer/event-metrics.ts` em vez de duplicados localmente,
 contraste dark mode ajustado (texto e bordas da tabela por lote), e este registro de bookkeeping.
 
-**Pendência real**: nenhuma — pronto pra merge/deploy junto com o resto (perguntar ao usuário
-quando quiser fazer o deploy acumulado).
+**Status**: mergeado na main e deployado em produção (junto com a correção do PDF de inscritos,
+mesma leva). Nenhuma pendência.
 
 ## Relatório de camisetas por evento (2026-08-12) — CONCLUÍDO, REVISÃO FINAL LIMPA
 
@@ -27,8 +117,7 @@ valor de `shirtSize` desconhecido é silenciosamente descartado (não conta em n
 `break-words leading-tight` no label "Sem tamanho informado" nas duas páginas (evita overflow em
 grade estreita), e este registro de bookkeeping.
 
-**Pendência real**: nenhuma — pronto pra merge/deploy junto com o resto (perguntar ao usuário
-quando quiser fazer o deploy acumulado).
+**Status**: mergeado na main e deployado em produção. Nenhuma pendência.
 
 ## Verificação em 2 etapas para ações sensíveis de pagamento (2026-08-11) — IMPLEMENTADO, AGUARDANDO AUTORIZAÇÃO DE DEPLOY
 
