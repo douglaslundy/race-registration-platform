@@ -21,13 +21,18 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
   });
 
-  it("inclui a coluna CPF e Observação no cabeçalho e os valores nas linhas", async () => {
+  it("inclui a coluna CPF, Telefone e Valor Pago no cabeçalho e os valores nas linhas", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
-        athlete: { name: "Ana Silva", email: "ana@example.com", athleteProfile: { cpf: "11144477735" } },
+        athlete: {
+          name: "Ana Silva",
+          email: "ana@example.com",
+          athleteProfile: { cpf: "11144477735", phone: "11988887777" },
+        },
         route: { name: "10km" },
         category: null,
-        ticketBatch: { name: "Lote 1", priceAmount: 5000 },
+        ticketBatch: { name: "Lote 1" },
+        order: { totalAmount: 5500 },
         shirtSize: "M",
         teamName: null,
         emergencyContactName: null,
@@ -42,10 +47,10 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     const csv = await res.text();
 
     expect(csv.split("\n")[0]).toBe(
-      "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Status,Data",
+      "Nome,Email,CPF,Telefone,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Valor Pago,Status,Data",
     );
-    expect(csv).toContain('"Ana Silva","ana@example.com","11144477735",');
-    expect(csv).toContain('"Chegarei atrasado","CONFIRMED"');
+    expect(csv).toContain('"Ana Silva","ana@example.com","11144477735","11988887777",');
+    expect(csv).toContain('"Chegarei atrasado","R$ 55,00","CONFIRMED"');
   });
 
   it("usa string vazia quando o atleta ainda não tem CPF cadastrado", async () => {
@@ -54,7 +59,8 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
         athlete: { name: "Bruno Costa", email: "bruno@example.com", athleteProfile: null },
         route: null,
         category: null,
-        ticketBatch: { name: "Lote 1", priceAmount: 5000 },
+        ticketBatch: { name: "Lote 1" },
+        order: { totalAmount: 5000 },
         shirtSize: null,
         teamName: null,
         emergencyContactName: null,
@@ -68,7 +74,7 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
     const csv = await res.text();
 
-    expect(csv).toContain('"Bruno Costa","bruno@example.com","",');
+    expect(csv).toContain('"Bruno Costa","bruno@example.com","","",');
   });
 
   it("retorna 403 sem a permissão", async () => {
@@ -114,5 +120,31 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     expect(res.status).toBe(403);
     expect(dbMock.event.findFirst).not.toHaveBeenCalled();
     expect(dbMock.event.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("filtra por status quando o parâmetro status é passado", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    await GET(
+      new Request("http://localhost/api/events/event-1/registrations?format=csv&status=CONFIRMED") as any,
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { eventId: "event-1", status: "CONFIRMED" } }),
+    );
+  });
+
+  it("ignora um valor de status desconhecido (sem filtrar)", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    await GET(
+      new Request("http://localhost/api/events/event-1/registrations?format=csv&status=NAO_EXISTE") as any,
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { eventId: "event-1" } }),
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
+import { formatCurrency } from "@/lib/format";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const check = await checkApiPermission("registrations.view");
@@ -10,6 +11,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id: eventId } = await params;
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format");
+  const statusParam = searchParams.get("status");
+  const VALID_STATUSES = ["PENDING_PAYMENT", "CONFIRMED", "CANCELLED", "TRANSFERRED", "WAITLISTED", "CANCELLATION_REQUESTED"];
+  const statusFilter = statusParam && VALID_STATUSES.includes(statusParam) ? statusParam : undefined;
 
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
@@ -18,23 +22,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const registrations = await db.registration.findMany({
-    where: { eventId },
+    where: { eventId, ...(statusFilter ? { status: statusFilter as never } : {}) },
     include: {
-      athlete: { select: { name: true, email: true, athleteProfile: { select: { cpf: true } } } },
+      athlete: { select: { name: true, email: true, athleteProfile: { select: { cpf: true, phone: true } } } },
       route: { select: { name: true } },
       category: { select: { name: true } },
-      ticketBatch: { select: { name: true, priceAmount: true } },
+      ticketBatch: { select: { name: true } },
+      order: { select: { totalAmount: true } },
     },
     orderBy: { createdAt: "asc" },
   });
 
   if (format === "csv") {
-    const header = "Nome,Email,CPF,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Status,Data\n";
+    const header = "Nome,Email,CPF,Telefone,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Valor Pago,Status,Data\n";
     const rows = registrations.map((r) =>
       [
         r.athlete.name,
         r.athlete.email,
         r.athlete.athleteProfile?.cpf ?? "",
+        r.athlete.athleteProfile?.phone ?? "",
         r.route?.name ?? "",
         r.category?.name ?? "",
         r.ticketBatch.name,
@@ -43,6 +49,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         r.emergencyContactName ?? "",
         r.emergencyContactPhone ?? "",
         r.notes ?? "",
+        formatCurrency(r.order.totalAmount),
         r.status,
         r.createdAt.toISOString(),
       ]
