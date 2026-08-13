@@ -266,6 +266,7 @@ model Event {
   registrations Registration[]
   orders        Order[]
   coupons       Coupon[]
+  socialLinks   EventSocialLink[]
   resultImports ResultImport[]
   fileAssets    FileAsset[]
   payouts       TransferPayout[]
@@ -474,6 +475,39 @@ model Coupon {
   @@unique([eventId, code])
   @@index([code])
   @@map("coupons")
+}
+
+// ─── Event Social Links ───────────────────────────────────────────────────────
+
+model EventSocialLink {
+  id        String   @id @default(cuid())
+  eventId   String
+  platform  String                          // texto livre digitado pelo organizador (ex.: "Instagram", "Strava")
+  url       String
+  message   String   @db.Text
+  active    Boolean  @default(true)
+  maxSends  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sends SocialLinkSend[]
+
+  @@index([eventId])
+  @@map("event_social_links")
+}
+
+model SocialLinkSend {
+  id                String   @id @default(cuid())
+  eventSocialLinkId String
+  userId            String
+  count             Int      @default(0)
+  updatedAt         DateTime @updatedAt
+
+  eventSocialLink EventSocialLink @relation(fields: [eventSocialLinkId], references: [id], onDelete: Cascade)
+
+  @@unique([eventSocialLinkId, userId])
+  @@map("social_link_sends")
 }
 
 // ─── Payouts ──────────────────────────────────────────────────────────────────
