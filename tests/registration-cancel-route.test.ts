@@ -146,12 +146,77 @@ describe("POST /api/registrations/[id]/cancel", () => {
     );
   });
 
-  it("retorna 404 quando a inscrição não pertence ao atleta autenticado", async () => {
+  it("retorna 404 quando a inscrição não pertence ao atleta nem foi comprada pelo usuário autenticado", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
 
     expect(res.status).toBe(404);
     expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("busca a inscrição também pelo comprador, não só pelo atleta (inscrição por procuração)", async () => {
+    policyMock.mockResolvedValue(false);
+    dbMock.registration.findFirst.mockResolvedValueOnce(baseRegistration);
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        registration: { update: vi.fn() },
+        order: { update: vi.fn() },
+        ticketBatch: { update: vi.fn() },
+        auditLog: { create: vi.fn() },
+      }),
+    );
+
+    await POST(makeRequest({ reason: "Não poderei mais participar" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(dbMock.registration.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "reg-1",
+          OR: expect.arrayContaining([
+            { athleteUserId: "athlete-1" },
+            { order: { buyerUserId: "athlete-1" } },
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("permite o comprador cancelar uma inscrição feita por procuração para um terceiro", async () => {
+    // O usuário autenticado é o COMPRADOR (buyer-1), não o atleta (athlete-999) —
+    // caso real de inscrição por procuração, onde athleteUserId != buyerUserId.
+    authMock.mockResolvedValue({ user: { id: "buyer-1", role: "ATHLETE" } } as any);
+    policyMock.mockResolvedValue(false);
+    dbMock.registration.findFirst.mockResolvedValueOnce({
+      ...baseRegistration,
+      order: { id: "ord-1", status: "PAID" },
+    });
+    const txRegistrationUpdate = vi.fn();
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        registration: { update: txRegistrationUpdate },
+        order: { update: vi.fn() },
+        ticketBatch: { update: vi.fn() },
+        auditLog: { create: vi.fn() },
+      }),
+    );
+
+    const res = await POST(makeRequest({ reason: "Atleta se machucou" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.registration.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { athleteUserId: "buyer-1" },
+            { order: { buyerUserId: "buyer-1" } },
+          ]),
+        }),
+      }),
+    );
+    expect(txRegistrationUpdate).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { status: "CANCELLED", cancellationReason: "Atleta se machucou" },
+    });
   });
 });

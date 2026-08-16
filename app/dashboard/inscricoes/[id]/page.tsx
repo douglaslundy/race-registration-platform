@@ -27,7 +27,10 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
   const { id } = await params;
 
   const registration = await db.registration.findFirst({
-    where: { id, athleteUserId: session.user.id },
+    where: {
+      id,
+      OR: [{ athleteUserId: session.user.id }, { order: { buyerUserId: session.user.id } }],
+    },
     include: {
       event: {
         select: {
@@ -39,6 +42,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
       route: { select: { name: true, distanceKm: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true, priceAmount: true } },
+      athlete: { select: { name: true } },
       order: {
         select: {
           id: true,
@@ -47,12 +51,15 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           discountAmount: true,
           platformFeeAmount: true,
           paymentFeeAmount: true,
+          buyerUserId: true,
         },
       },
     },
   });
 
   if (!registration) notFound();
+
+  const createdByMeForOther = registration.order.buyerUserId === session.user.id && registration.athleteUserId !== session.user.id;
 
   const payment = await db.payment.findFirst({
     where: { orderId: registration.order.id },
@@ -85,6 +92,12 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           )}
         </div>
       </div>
+
+      {createdByMeForOther && (
+        <div className="text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-100 dark:border-primary-800 rounded-lg px-4 py-2">
+          Inscrição feita por você para {registration.proxyAthleteDisplayName ?? registration.athlete.name}.
+        </div>
+      )}
 
       {isPending && payment && (
         <PaymentStatusPoller orderId={registration.order.id} />

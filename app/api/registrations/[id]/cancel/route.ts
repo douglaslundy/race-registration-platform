@@ -14,7 +14,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const reason = typeof body.reason === "string" ? body.reason.trim() : "";
 
   const registration = await db.registration.findFirst({
-    where: { id, athleteUserId: session.user.id },
+    where: {
+      id,
+      OR: [{ athleteUserId: session.user.id }, { order: { buyerUserId: session.user.id } }],
+    },
     include: {
       event: {
         select: {
