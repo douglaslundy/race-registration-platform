@@ -1,10 +1,12 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-08-16 — bug urgente de 404 em inscrição por procuração investigado e corrigido (commit
-`9a223f4`). Deploy NÃO feito ainda, aguardando autorização. Ver seção logo abaixo.
+2026-08-16 — push + deploy feito e confirmado em produção: feature "redes sociais por evento"
+(6 tasks + revisão final) e a correção do bug de 404 em inscrição por procuração, ambos juntos
+(16 commits, `f7aec86..352fc96`). Sequência de 4 passos usada por causa da migration de schema
+da feature de redes sociais. Ver detalhes nas duas seções abaixo.
 
-## Bug urgente (2026-08-16): 404 na página de pagamento/inscrição para inscrição por procuração — CORRIGIDO, DEPLOY PENDENTE
+## Bug urgente (2026-08-16): 404 na página de pagamento/inscrição para inscrição por procuração — CORRIGIDO E DEPLOYADO
 
 Usuário reportou 404 em `https://circuitodascorridas.com.br/dashboard/inscricoes/<id>` quando a
 inscrição é por procuração (pra um terceiro). Investigação com `superpowers:systematic-debugging`:
@@ -38,11 +40,27 @@ navegador (mesmo problema de DNS já documentado nesta sessão pro host do Supab
 Não achei nenhum outro ponto de entrada com o mesmo bug (rotas de organizador/admin já são
 escopadas por `organizerId`, não por `athleteUserId`, então não são afetadas).
 
-**PRÓXIMA TAREFA**: perguntar ao usuário antes de `git push`/deploy (sem migration de schema desta
-vez — pode ir com `deploy.sh` normal). Idealmente pedir pro usuário confirmar no navegador que o
-link relatado (`cmsvvjf7a01i5tz32l9panqxg`) abre corretamente depois do deploy.
+**Deploy confirmado em 2026-08-16**: `git push origin main` (`f7aec86..352fc96`) → na VPS
+(`/opt/corridas/src`): `git pull` → `docker build -t corridas-app:latest .` → `docker compose run
+--rm app sh -c "npx prisma db push --skip-generate"` (sync limpo, só criação das 2 tabelas novas,
+sem prompt de perda de dado) → `docker compose up -d --no-deps app`. Smoke test: `/`, `/eventos`
+200; `/dashboard/inscricoes/cmsvvjf7a01i5tz32l9panqxg` e `/admin/eventos` 307 (redirect de login,
+esperado sem sessão — não prova o fix específico, só confirma que a rota resolve). `docker logs
+corridas-app` sem erro relacionado às mudanças desta sessão.
 
-## Redes sociais com limite de envio, por evento (2026-08-13/16) — IMPLEMENTAÇÃO CONCLUÍDA, AGUARDANDO DEPLOY
+**Achado colateral durante o smoke test, NÃO relacionado a esta sessão, não corrigido**: o
+container roda como usuário `nextjs` (uid 1001), mas `/app/.next` pertence a `root` — toda
+tentativa de cache de otimização de imagem (`next/image`) falha com `EACCES: permission denied,
+mkdir '/app/.next/cache'`. Degrada de forma não-fatal (imagens continuam servidas, só sem cache
+em disco), causa provável no `Dockerfile` (falta `chown` pro usuário `nextjs` na etapa de
+`COPY --from=builder`). Não mexi nisso — fora do escopo do que foi pedido. Registrar como
+pendência real se o usuário quiser investigar performance de imagens depois.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta frente. Pedir pro usuário confirmar no navegador,
+logado, que `/dashboard/inscricoes/cmsvvjf7a01i5tz32l9panqxg` abre normalmente agora e que o
+cadastro de redes sociais funciona (não foi possível testar no navegador nesta sessão).
+
+## Redes sociais com limite de envio, por evento (2026-08-13/16) — CONCLUÍDO E DEPLOYADO
 
 Item B do pedido original de 4 tarefas do usuário (item A, link de patrocínio, já foi concluído e
 deployado — ver seção mais abaixo). Organizador cadastra redes sociais por evento (rede + link +
