@@ -1,10 +1,53 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-08-16 — push + deploy feito e confirmado em produção: feature "redes sociais por evento"
-(6 tasks + revisão final) e a correção do bug de 404 em inscrição por procuração, ambos juntos
-(16 commits, `f7aec86..352fc96`). Sequência de 4 passos usada por causa da migration de schema
-da feature de redes sociais. Ver detalhes nas duas seções abaixo.
+2026-08-16 — 3 frentes concluídas e deployadas na mesma sessão: (1) feature "redes sociais por
+evento", (2) fix do 404 em inscrição por procuração, (3) fix de permissão no Dockerfile +
+inserção de `{{redes_sociais}}` nos 11 templates de mensagem em produção. Ver as 3 seções abaixo.
+
+## Dockerfile: chown pro usuário nextjs + {{redes_sociais}} inserido nos templates (2026-08-16) — CONCLUÍDO E DEPLOYADO
+
+**Parte 1 — Dockerfile**: achado num smoke test anterior (`EACCES: permission denied, mkdir
+'/app/.next/cache'`) — os `COPY --from=builder` no estágio `runner` não tinham `--chown`, então
+tudo ficava com dono `root` mesmo com `USER nextjs` (uid 1001) ativado depois. Corrigido
+acrescentando `--chown=nextjs:nodejs` nas 6 linhas de `COPY --from=builder` do `Dockerfile`
+(commit `105db48`). Deployado (`git pull` → `docker build` → `docker compose up -d --no-deps
+app`, sem mudança de schema). Confirmado: `docker exec corridas-app stat /app/.next` agora mostra
+`Uid: (1001/nextjs) Gid: (1001/nodejs)`, e o erro `EACCES` não reapareceu nos logs depois do
+restart nem depois de tráfego real (smoke test).
+
+**Parte 2 — inserção de `{{redes_sociais}}` nos templates reais**: usuário reportou que cadastrou
+uma rede social no evento mas o atleta não recebeu nada nas confirmações. Causa: a variável
+`{{redes_sociais}}` (e também `{{link_patrocinio}}`, achado colateral, ainda não resolvido — ver
+nota abaixo) foi disponibilizada pro editor de templates mas **nunca inserida no texto de
+nenhuma mensagem real** — decisão explícita do plano original ("não mexer em nenhum
+factoryDefault"). `lib/templates/resolve.ts` busca o corpo da mensagem em EVENT → GLOBAL →
+factory; como nenhum desses 3 níveis tinha `{{redes_sociais}}` escrito, a promoção calculada
+nunca aparecia em lugar nenhum.
+
+Corrigido por pedido explícito do usuário: **11 linhas de `message_templates` (escopo GLOBAL,
+direto no banco de produção via `psql`, mesmo padrão já usado nesta sessão pro conteúdo de SEO)**
+— os 6 alertKeys que essa feature suporta (únicos com a variável realmente calculada no código,
+`lib/notifications.ts`/`abandoned-cart.ts`/`payment-error.ts`): `ORDER_CONFIRMED` (EMAIL+WHATSAPP),
+`ORDER_CONFIRMED_PROXY_BUYER` (WHATSAPP), `ORDER_CONFIRMED_PROXY_ATHLETE` (EMAIL+WHATSAPP),
+`ABANDONED_CART` (EMAIL+WHATSAPP), `PAYMENT_ERROR` (EMAIL+WHATSAPP),
+`PAYMENT_ERROR_ORDER_CANCELLED` (EMAIL+WHATSAPP). Confirmado que nenhum desses alertKeys tem
+override por evento (`scope='EVENT'`) que pudesse ficar escondendo a mudança GLOBAL. Padrão de
+inserção, com pelo menos uma linha em branco antes (pedido explícito do usuário): e-mail (HTML)
+ganhou um `<p>{{redes_sociais}}</p>` novo no final do corpo (parágrafos HTML já têm espaçamento
+visual entre si); WhatsApp (texto puro) ganhou `\n\n{{redes_sociais}}` no final. Quando não há
+link ativo/dentro do limite, a variável resolve pra `""` (já coberto pela Task 2 da feature) —
+sobra um parágrafo/linha vazia no fim da mensagem, cosmético, não quebra nada.
+
+**Achado colateral, NÃO corrigido, registrar pendência real**: `{{link_patrocinio}}` (feature
+anterior, 2026-08-12/13, marcada como "concluída e deployada") sofre do EXATO MESMO problema —
+também nunca foi inserida no texto de nenhum template real. Só descobri isso enquanto lia o corpo
+atual dos templates pra inserir `{{redes_sociais}}`. Não mexi nela porque não foi pedida agora —
+avisar o usuário e perguntar se quer que eu insira ela também, mesmo padrão.
+
+**Não testado no navegador** (mesmo problema de DNS já documentado nesta sessão) — a verificação
+foi ler o corpo de cada uma das 11 linhas direto no banco depois do UPDATE, confirmando o texto
+exato gravado.
 
 ## Bug urgente (2026-08-16): 404 na página de pagamento/inscrição para inscrição por procuração — CORRIGIDO E DEPLOYADO
 
