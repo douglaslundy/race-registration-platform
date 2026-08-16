@@ -1,8 +1,46 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-08-16 — feature "redes sociais por evento" concluída (6/6 tasks + revisão final + fix wave).
-Deploy NÃO feito nesta sessão (pedido explícito do usuário). Ver seção abaixo pro estado exato.
+2026-08-16 — bug urgente de 404 em inscrição por procuração investigado e corrigido (commit
+`9a223f4`). Deploy NÃO feito ainda, aguardando autorização. Ver seção logo abaixo.
+
+## Bug urgente (2026-08-16): 404 na página de pagamento/inscrição para inscrição por procuração — CORRIGIDO, DEPLOY PENDENTE
+
+Usuário reportou 404 em `https://circuitodascorridas.com.br/dashboard/inscricoes/<id>` quando a
+inscrição é por procuração (pra um terceiro). Investigação com `superpowers:systematic-debugging`:
+
+**Causa raiz**: `app/dashboard/inscricoes/[id]/page.tsx` (mesma tela mostra status de
+pagamento — PIX/boleto/polling — e o detalhe da inscrição) buscava a inscrição com
+`where: { id, athleteUserId: session.user.id }`. Numa inscrição por procuração
+(`lib/checkout.ts` → `createCheckout`, ativado quando `input.proxyAthlete` está presente), o
+`athleteUserId` gravado é o da conta do atleta terceiro (nova conta criada na hora, ou uma já
+existente casada por CPF) — sempre diferente de `order.buyerUserId` (quem de fato pagou e está
+logado). Resultado: o comprador cai em 404 tanto no redirect automático pós-checkout
+(`CheckoutForm.tsx:312,322` → é literalmente "a página de pagamento", mostra o QR code do PIX)
+quanto ao clicar no link em "Minhas inscrições" ou "Pagamentos" — as duas telas já listam essas
+inscrições corretamente (`app/dashboard/inscricoes/page.tsx` já usa
+`OR: [{athleteUserId}, {order:{buyerUserId}}]` com badge "Inscrito por você"), só a tela de
+detalhe/pagamento que ficou pra trás com o filtro antigo, estreito demais.
+
+**Corrigido**: mesmo padrão `OR` replicado em dois lugares (única e mesma classe de bug nos dois):
+- `app/dashboard/inscricoes/[id]/page.tsx` — leitura da inscrição.
+- `app/api/registrations/[id]/cancel/route.ts` — mesma falha bloquearia o comprador de cancelar
+  uma inscrição feita pra terceiro (mesmo filtro estreito).
+
+Bônus: a tela de detalhe agora mostra "Inscrição feita por você para X" quando vista pelo
+comprador (antes não indicava de quem era a inscrição, campo `athlete`/`buyerUserId` nem eram
+selecionados na query).
+
+**Verificação**: TDD — 2 testes novos em `tests/registration-cancel-route.test.ts` reproduziram o
+bug (RED, assertivo sobre o `where` exato passado ao Prisma) antes da correção, GREEN depois.
+Suíte completa 1530/1530 (era 1528, +2 novos), `tsc --noEmit` limpo. Não foi possível testar no
+navegador (mesmo problema de DNS já documentado nesta sessão pro host do Supabase de produção).
+Não achei nenhum outro ponto de entrada com o mesmo bug (rotas de organizador/admin já são
+escopadas por `organizerId`, não por `athleteUserId`, então não são afetadas).
+
+**PRÓXIMA TAREFA**: perguntar ao usuário antes de `git push`/deploy (sem migration de schema desta
+vez — pode ir com `deploy.sh` normal). Idealmente pedir pro usuário confirmar no navegador que o
+link relatado (`cmsvvjf7a01i5tz32l9panqxg`) abre corretamente depois do deploy.
 
 ## Redes sociais com limite de envio, por evento (2026-08-13/16) — IMPLEMENTAÇÃO CONCLUÍDA, AGUARDANDO DEPLOY
 
