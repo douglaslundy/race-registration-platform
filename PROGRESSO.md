@@ -1,10 +1,10 @@
 # Progresso do Projeto
 
 ## Última atualização
-2026-08-13 — sessão pausada a pedido do usuário (limite semanal atingido, custo de créditos).
-Retomar com "continue": tudo abaixo é o estado exato de onde parou.
+2026-08-16 — feature "redes sociais por evento" concluída (6/6 tasks + revisão final + fix wave).
+Deploy NÃO feito nesta sessão (pedido explícito do usuário). Ver seção abaixo pro estado exato.
 
-## Redes sociais com limite de envio, por evento (2026-08-13) — EM ANDAMENTO, Task 4/6 concluída
+## Redes sociais com limite de envio, por evento (2026-08-13/16) — IMPLEMENTAÇÃO CONCLUÍDA, AGUARDANDO DEPLOY
 
 Item B do pedido original de 4 tarefas do usuário (item A, link de patrocínio, já foi concluído e
 deployado — ver seção mais abaixo). Organizador cadastra redes sociais por evento (rede + link +
@@ -52,24 +52,61 @@ HEAD atual em `main`: commit `00c32ea`.
   `renderTemplateSubject` agora colapsa `\r\n` pra espaço (redes_sociais pode ter múltiplas linhas
   e agora é válida em assuntos de e-mail também).
 
-**PRÓXIMA TAREFA:** Task 5 (API REST de redes sociais — `app/api/events/[id]/social-links/route.ts`
-+ `.../[linkId]/route.ts`, espelhando `app/api/events/[id]/coupons/*`), depois Task 6 (UI de
-cadastro do organizador — `app/organizador/eventos/[id]/redes-sociais/page.tsx`, usando
-`ConfirmModal` e não `ConfirmDialog`, ver o plano), depois revisão final do branch inteiro
-(sem passo de merge — já estamos na main), depois push + deploy (**tem migration de schema
-pendente** — usar a sequência de 4 passos: `git pull` → `docker build` → `docker compose run --rm
-app sh -c "npx prisma db push --skip-generate"` → `docker compose up -d --no-deps app`, NUNCA só
-`deploy.sh` sozinho quando há mudança de schema).
+**Task 5 (API REST — commit `cb4a0d0`):** `GET/POST /api/events/[id]/social-links` +
+`PATCH/DELETE /api/events/[id]/social-links/[linkId]`, espelhando `coupons/*`, IDOR-safe (ownership
+checado antes de toda mutação). Revisão: aprovada, só achados Minor (deferidos, ver git log da
+sessão se precisar do detalhe — o ledger do plano já foi apagado, ver "Limpeza" abaixo).
 
-**Contexto necessário pra continuar:** ler o plano inteiro
-(`docs/superpowers/plans/2026-08-13-redes-sociais-evento.md`) + este bloco do PROGRESSO.md. Task 5
-ainda não teve seu brief gerado — rodar
-`bash <caminho-do-skill-subagent-driven-development>/scripts/task-brief
-docs/superpowers/plans/2026-08-13-redes-sociais-evento.md 5` no diretório do projeto (main, sem
-worktree) pra gerar o brief e continuar o fluxo normal (dispatch implementador → review → fix loop
-se necessário → próxima task). O ledger em
-`.superpowers/sdd/2026-08-13-redes-sociais-evento/progress.md` já tem o histórico de Tasks 1-4;
-só adicionar a partir da Task 5.
+**Task 6 (UI do organizador — commits `f70fca8` + fix `6e44e09`):**
+`app/organizador/eventos/[id]/redes-sociais/page.tsx` + link na página do evento, usando
+`ConfirmModal` (não `ConfirmDialog`). Revisão achou 1 Important real (handleCreate renderizava o
+objeto cru de `zod.flatten()` como filho React em erro de validação — crash reproduzível com campo
+só-espaço ou `maxSends` negativo), corrigido e re-revisado limpo. **Verificação manual no navegador
+NÃO foi possível nesta sessão** — o host de DB de produção (`db.usgslzpuovvrkvvrhljt.supabase.co`)
+não resolve via DNS neste ambiente, então `npm run dev` não sobe. Verificação foi só estática
+(typecheck, suíte completa, conferência manual do contrato API↔UI linha a linha contra as rotas
+reais da Task 5). Recomendação: fazer ao menos um teste manual rápido (criar/editar/remover uma
+rede social, clicar "Remover" e confirmar que `ConfirmModal` aparece, nunca `confirm()` nativo)
+assim que houver acesso a um ambiente que resolva o DB — antes ou logo depois do deploy.
+
+**Revisão final de branch inteira (opus, base `5dbf69d`..`6e44e09`):** achou 2 Important + 8 Minor,
+sem nenhum Critical. Fix wave único aplicado (commit `08ac923`), corrigindo:
+1. **Important**: `social-links.view/create/edit/delete` não existiam nos catálogos de permissão de
+   assistente (`app/organizador/assistentes/page.tsx`, `app/admin/assistentes/page.tsx`) — nenhum
+   ASSISTANT conseguiria ser autorizado (403 permanente e silencioso). Corrigido: 4 entradas
+   adicionadas nos dois catálogos + `load()`/`reload()` da tela de redes sociais agora checam
+   `res.ok` e mostram erro em vez de renderizar lista vazia enganosamente.
+2. **Important**: `getSocialPromoText` (`lib/event-social-links.ts`) não tinha try/catch — um erro
+   de banco (ex.: tabela ainda não migrada em produção) quebraria o envio de confirmação/carrinho/
+   erro de pagamento em vez de resolver pra `""` como o contrato promete. Corrigido: função inteira
+   embrulhada em try/catch, loga e retorna `""` em qualquer erro.
+3. Minors selecionados por custo/benefício (o resto foi só registrado, não corrigido — ver
+   histórico de commits da sessão de 2026-08-16 se precisar do texto completo de cada achado):
+   botão preso em "Criando…" se a resposta de erro não for JSON (guard `res.json().catch()`),
+   contraste dark mode no formulário de criação, fileira de 4 botões de ação sem `flex-wrap`
+   (virou `grid grid-cols-2 sm:grid-cols-4`), e o texto de `redes_sociais` colapsava em uma linha
+   só (não-clicável) no corpo HTML dos e-mails quando havia mais de um link ativo — corrigido em
+   `lib/templates/render.ts` (`\n` → `<br>` só no canal EMAIL, confirmado que não afeta WhatsApp
+   nem nenhuma outra variável de template).
+
+Re-revisão do fix wave: todos os 6 achados endereçados, nenhuma quebra nova. Suíte completa
+(223 arquivos / 1528 testes) e `tsc --noEmit` limpos depois do fix wave.
+
+**Limpeza:** o workspace do subagent-driven-development pra este plano
+(`.superpowers/sdd/2026-08-13-redes-sociais-evento/`) foi apagado — o histórico de git (mensagens
+de commit + `git log`) é a fonte da verdade agora, não `.superpowers/` (que está no `.gitignore`).
+
+**PRÓXIMA TAREFA:** nenhuma pendente de implementação. Falta só, quando o usuário autorizar:
+1. Push (`git push origin main` — local está à frente do `origin/main`, ~14 commits incluindo esta
+   feature).
+2. Deploy com a sequência de 4 passos por causa da migration de schema pendente (`EventSocialLink`/
+   `SocialLinkSend` ainda não existem em produção): `git pull` → `docker build` → `docker compose
+   run --rm app sh -c "npx prisma db push --skip-generate"` → `docker compose up -d --no-deps app`
+   (NUNCA só `deploy.sh` sozinho quando há mudança de schema).
+3. Idealmente, um teste manual rápido no navegador (ver nota da Task 6 acima) — não foi possível
+   nesta sessão por falta de acesso ao DB de produção.
+**Contexto necessário pra continuar:** este bloco do PROGRESSO.md só — nenhum outro arquivo
+precisa ser lido antes de fazer push/deploy quando autorizado.
 
 ## Link de patrocínio por evento (2026-08-12/13) — CONCLUÍDO E DEPLOYADO
 
