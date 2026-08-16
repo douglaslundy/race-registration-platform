@@ -21,6 +21,7 @@ export default function RedesSociaisPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -31,7 +32,13 @@ export default function RedesSociaisPage() {
   useEffect(() => {
     const load = async () => {
       const res = await fetch(`/api/events/${id}/social-links`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPageError(data.error ?? "Erro ao carregar redes sociais");
+        setLoading(false);
+        return;
+      }
+      setPageError(null);
       setSocialLinks(data.socialLinks ?? []);
       setLoading(false);
     };
@@ -40,7 +47,12 @@ export default function RedesSociaisPage() {
 
   async function reload() {
     const res = await fetch(`/api/events/${id}/social-links`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setPageError(data.error ?? "Erro ao carregar redes sociais");
+      return;
+    }
+    setPageError(null);
     setSocialLinks(data.socialLinks ?? []);
   }
 
@@ -59,7 +71,7 @@ export default function RedesSociaisPage() {
       }),
     });
     if (!res.ok) {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       const fieldErrors = data.error?.fieldErrors as Record<string, string[]> | undefined;
       setFormError(
         data.error?.formErrors?.[0] ??
@@ -176,19 +188,19 @@ export default function RedesSociaisPage() {
             <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-300 rounded px-3 py-2">{formError}</p>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rede *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rede *</label>
             <input required value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} className="input w-full" placeholder="Instagram, Strava..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Link *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link *</label>
             <input required value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} className="input w-full" placeholder="https://instagram.com/corrida" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem *</label>
             <textarea required value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="input w-full" rows={3} placeholder="Segue a gente no Instagram!" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Quantas vezes incluir por pessoa</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantas vezes incluir por pessoa</label>
             <input type="number" min="1" value={form.maxSends} onChange={(e) => setForm({ ...form, maxSends: e.target.value })} className="input w-full" />
           </div>
           <div className="flex gap-3">
@@ -198,7 +210,9 @@ export default function RedesSociaisPage() {
         </form>
       )}
 
-      {socialLinks.length === 0 ? (
+      {pageError ? (
+        <div className="card text-center py-8 text-red-600 dark:text-red-400">{pageError}</div>
+      ) : socialLinks.length === 0 ? (
         <div className="card text-center py-8 text-gray-500">Nenhuma rede social cadastrada.</div>
       ) : (
         <div className="space-y-2">

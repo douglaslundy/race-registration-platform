@@ -7,17 +7,22 @@ import { db } from "./db";
  * função tem efeito colateral: não é idempotente, cada chamada bem-sucedida "gasta" uma cota.
  */
 export async function getSocialPromoText(eventId: string, userId: string): Promise<string> {
-  const links = await db.eventSocialLink.findMany({
-    where: { eventId, active: true },
-  });
-  if (links.length === 0) return "";
+  try {
+    const links = await db.eventSocialLink.findMany({
+      where: { eventId, active: true },
+    });
+    if (links.length === 0) return "";
 
-  const parts: string[] = [];
-  for (const link of links) {
-    const included = await claimSocialLinkSend(link.id, userId, link.maxSends);
-    if (included) parts.push(`${link.message} ${link.url}`);
+    const parts: string[] = [];
+    for (const link of links) {
+      const included = await claimSocialLinkSend(link.id, userId, link.maxSends);
+      if (included) parts.push(`${link.message} ${link.url}`);
+    }
+    return parts.join("\n");
+  } catch (err) {
+    console.error("getSocialPromoText failed:", err);
+    return "";
   }
-  return parts.join("\n");
 }
 
 async function claimSocialLinkSend(eventSocialLinkId: string, userId: string, maxSends: number): Promise<boolean> {

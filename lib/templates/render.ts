@@ -21,7 +21,11 @@ export function renderTemplate(
 ): string {
   return body.replace(VARIABLE_PATTERN, (_match, name: string) => {
     const raw = values[name] ?? "";
-    return channel === "EMAIL" ? escapeHtml(raw) : stripControlChars(raw);
+    // No canal EMAIL o valor vira HTML: quebras de linha literais (ex.: redes_sociais, que junta
+    // vários links com "\n") não viram quebra visual em HTML e o navegador/cliente de e-mail
+    // colapsa tudo numa única linha corrida — por isso convertemos "\n" pra <br> aqui, depois do
+    // escape (senão o próprio "<br>" seria escapado).
+    return channel === "EMAIL" ? escapeHtml(raw).replace(/\n/g, "<br>") : stripControlChars(raw);
   });
 }
 
