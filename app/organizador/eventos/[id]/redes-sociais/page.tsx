@@ -60,7 +60,12 @@ export default function RedesSociaisPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      setFormError(data.error?.formErrors?.[0] ?? data.error ?? "Erro ao criar rede social");
+      const fieldErrors = data.error?.fieldErrors as Record<string, string[]> | undefined;
+      setFormError(
+        data.error?.formErrors?.[0] ??
+        (fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined) ??
+        "Erro ao criar rede social",
+      );
     } else {
       setShowForm(false);
       setForm({ platform: "", url: "", message: "", maxSends: "1" });
