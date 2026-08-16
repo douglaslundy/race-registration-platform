@@ -39,11 +39,14 @@ visual entre si); WhatsApp (texto puro) ganhou `\n\n{{redes_sociais}}` no final.
 link ativo/dentro do limite, a variável resolve pra `""` (já coberto pela Task 2 da feature) —
 sobra um parágrafo/linha vazia no fim da mensagem, cosmético, não quebra nada.
 
-**Achado colateral, NÃO corrigido, registrar pendência real**: `{{link_patrocinio}}` (feature
-anterior, 2026-08-12/13, marcada como "concluída e deployada") sofre do EXATO MESMO problema —
-também nunca foi inserida no texto de nenhum template real. Só descobri isso enquanto lia o corpo
-atual dos templates pra inserir `{{redes_sociais}}`. Não mexi nela porque não foi pedida agora —
-avisar o usuário e perguntar se quer que eu insira ela também, mesmo padrão.
+**Achado colateral, TAMBÉM CORRIGIDO** (usuário confirmou explicitamente, mesma sessão):
+`{{link_patrocinio}}` (feature anterior, 2026-08-12/13, marcada como "concluída e deployada")
+sofria do EXATO MESMO problema — nunca tinha sido inserida no texto de nenhum template real.
+Só é uma variável disponível nos 3 alertKeys de confirmação (`ORDER_CONFIRMED`,
+`ORDER_CONFIRMED_PROXY_BUYER`, `ORDER_CONFIRMED_PROXY_ATHLETE` — não em `ABANDONED_CART`/
+`PAYMENT_ERROR*`, que nunca tiveram essa variável no registro). Inserida nas mesmas 5 linhas de
+`message_templates` já editadas acima, posicionada ANTES de `{{redes_sociais}}` (mesmo padrão de
+pelo menos uma linha em branco entre blocos). Confirmado lendo o corpo gravado depois do UPDATE.
 
 **Não testado no navegador** (mesmo problema de DNS já documentado nesta sessão) — a verificação
 foi ler o corpo de cada uma das 11 linhas direto no banco depois do UPDATE, confirmando o texto
