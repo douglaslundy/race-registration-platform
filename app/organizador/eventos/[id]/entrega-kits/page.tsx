@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import ErrorModal from "@/components/ui/ErrorModal";
+import QrCameraScanner from "@/components/organizer/QrCameraScanner";
 
 interface SearchResult {
   id: string;
@@ -39,6 +40,8 @@ export default function EntregaKitsPage() {
 
   const [report, setReport] = useState<ReportData | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+
+  const [showCamera, setShowCamera] = useState(false);
 
   async function loadReport() {
     const res = await fetch(`/api/events/${id}/kit-deliveries/report`);
@@ -136,7 +139,20 @@ export default function EntregaKitsPage() {
         <button type="submit" disabled={searching} className="btn-primary">
           {searching ? "Buscando..." : "Buscar"}
         </button>
+        <button type="button" onClick={() => setShowCamera(true)} className="btn-secondary" aria-label="Usar câmera">
+          📷
+        </button>
       </form>
+
+      {showCamera && (
+        <QrCameraScanner
+          onScan={(value) => {
+            setQuery(value);
+            void runSearch(value);
+          }}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
 
       <div className="space-y-3">
         {results.map((r) => (
