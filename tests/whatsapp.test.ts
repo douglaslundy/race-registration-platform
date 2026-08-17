@@ -190,6 +190,7 @@ describe("sendWhatsAppDocument", () => {
       "base64PdfContent",
       "relatorio.pdf",
       "Seu relatório",
+      "document",
     );
     expect(recordMessageLog).toHaveBeenCalledWith({
       channel: "WHATSAPP",
@@ -221,6 +222,26 @@ describe("sendWhatsAppDocument", () => {
       relatedEntityType: "Event",
       relatedEntityId: "event-1",
     });
+  });
+
+  it("repassa mediatype 'image' pro cliente quando informado via options, sem afetar o log", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendMediaMessage).mockResolvedValueOnce(undefined);
+
+    await sendWhatsAppDocument("5511999999999", "base64PngContent", "qrcode-retirada-kit.png", "Apresente este QR code na retirada do kit", {
+      mediatype: "image",
+    });
+
+    expect(sendMediaMessage).toHaveBeenCalledWith(
+      config,
+      "5511999999999",
+      "base64PngContent",
+      "qrcode-retirada-kit.png",
+      "Apresente este QR code na retirada do kit",
+      "image",
+    );
   });
 
   it("em caso de falha no envio, registra o log como FAILED e relança o erro original", async () => {

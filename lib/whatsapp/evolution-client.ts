@@ -117,10 +117,11 @@ export async function sendMediaMessage(
   base64Media: string,
   fileName: string,
   caption: string,
+  mediatype: "document" | "image" = "document",
 ): Promise<void> {
   const { status, body } = await evolutionFetch(config, `/message/sendMedia/${config.instanceName}`, {
     method: "POST",
-    body: { number: phone, mediatype: "document", media: base64Media, fileName, caption },
+    body: { number: phone, mediatype, media: base64Media, fileName, caption },
   });
 
   if (status >= 400) {

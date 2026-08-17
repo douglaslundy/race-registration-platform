@@ -60,8 +60,8 @@ async function sendWhatsAppIfActive(
         "qrcode-retirada-kit.png",
         "Apresente este QR code na retirada do kit",
         eventId
-          ? { messageType: alertKey, relatedEntityType: "Event", relatedEntityId: eventId }
-          : { messageType: alertKey },
+          ? { messageType: alertKey, relatedEntityType: "Event", relatedEntityId: eventId, mediatype: "image" }
+          : { messageType: alertKey, mediatype: "image" },
       );
     } catch (err) {
       console.error("[notifyOrderConfirmed] whatsapp kit QR attachment failed:", err);

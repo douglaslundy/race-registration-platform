@@ -75,7 +75,15 @@ export async function sendWhatsAppDocument(
   base64Pdf: string,
   filename: string,
   caption: string,
-  options?: { messageType?: string; relatedEntityType?: string; relatedEntityId?: string },
+  options?: {
+    messageType?: string;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+    /** "image" faz o WhatsApp renderizar inline na conversa (com miniatura, sem precisar abrir
+     * como arquivo) — use pra imagens como o QR code de retirada de kit. O padrão "document"
+     * preserva o comportamento existente (ex.: PDF de relatório de anúncio). */
+    mediatype?: "document" | "image";
+  },
 ): Promise<void> {
   const config = await getWhatsAppConfig();
   if (!isWhatsAppConfigured(config)) {
@@ -88,7 +96,7 @@ export async function sendWhatsAppDocument(
       : {};
 
   try {
-    await sendMediaMessage(config, normalizedPhone, base64Pdf, filename, caption);
+    await sendMediaMessage(config, normalizedPhone, base64Pdf, filename, caption, options?.mediatype ?? "document");
     await recordMessageLog({
       channel: "WHATSAPP",
       messageType: options?.messageType,

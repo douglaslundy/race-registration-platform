@@ -163,6 +163,24 @@ describe("evolution-client", () => {
         sendMediaMessage(config, "invalid", "base64PdfContent", "relatorio.pdf", "Seu relatório"),
       ).rejects.toThrow("Evolution API 400");
     });
+
+    it("envia mediatype 'image' quando informado explicitamente, pra renderizar inline na conversa", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 200, json: async () => ({ key: { id: "wamid.img" } }) });
+      await sendMediaMessage(config, "5511999999999", "base64PngContent", "qrcode.png", "Seu QR code", "image");
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://evo.example.com/message/sendMedia/corridas-app",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            number: "5511999999999",
+            mediatype: "image",
+            media: "base64PngContent",
+            fileName: "qrcode.png",
+            caption: "Seu QR code",
+          }),
+        }),
+      );
+    });
   });
 
   describe("setWebhook", () => {
