@@ -4,12 +4,16 @@ import { auth } from "@/lib/auth";
 import { findRegistrationForKitDelivery } from "@/lib/kit-delivery";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/auth/rbac", () => ({ checkApiPermission: vi.fn(), resolveActingScope: vi.fn() }));
 vi.mock("@/lib/kit-delivery", () => ({ findRegistrationForKitDelivery: vi.fn() }));
 
 import { GET } from "@/app/api/events/[id]/kit-deliveries/search/route";
 import { POST } from "@/app/api/events/[id]/kit-deliveries/route";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 
 const authMock = vi.mocked(auth);
+const checkPermissionMock = vi.mocked(checkApiPermission);
+const resolveScopeMock = vi.mocked(resolveActingScope);
 const dbMock = db as any;
 const findMock = vi.mocked(findRegistrationForKitDelivery);
 
@@ -35,6 +39,8 @@ describe("GET /api/events/[id]/kit-deliveries/search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    checkPermissionMock.mockResolvedValue({ allowed: true, session: { user: { id: "organizer-1", role: "ORGANIZER" } } } as any);
+    resolveScopeMock.mockResolvedValue({ organizerId: "organizer-1", actingAsAdmin: false } as any);
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
   });
 
@@ -47,6 +53,9 @@ describe("GET /api/events/[id]/kit-deliveries/search", () => {
     expect(res.status).toBe(200);
     expect(data.results).toHaveLength(1);
     expect(findMock).toHaveBeenCalledWith("event-1", "João");
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-1" },
+    });
   });
 
   it("retorna vazio sem consultar o helper quando não há query", async () => {
@@ -61,6 +70,9 @@ describe("GET /api/events/[id]/kit-deliveries/search", () => {
     dbMock.event.findFirst.mockResolvedValueOnce(null);
     const res = await GET(makeGetRequest("João"), { params: Promise.resolve({ id: "event-1" }) });
     expect(res.status).toBe(404);
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-1" },
+    });
   });
 });
 
@@ -68,6 +80,8 @@ describe("POST /api/events/[id]/kit-deliveries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    checkPermissionMock.mockResolvedValue({ allowed: true, session: { user: { id: "organizer-1", role: "ORGANIZER" } } } as any);
+    resolveScopeMock.mockResolvedValue({ organizerId: "organizer-1", actingAsAdmin: false } as any);
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
     dbMock.registration = { findFirst: vi.fn() };
     dbMock.kitDelivery = { create: vi.fn() };
@@ -83,6 +97,12 @@ describe("POST /api/events/[id]/kit-deliveries", () => {
     );
 
     expect(res.status).toBe(201);
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-1" },
+    });
+    expect(dbMock.registration.findFirst).toHaveBeenCalledWith({
+      where: { id: "reg-1", eventId: "event-1", status: "CONFIRMED" },
+    });
     expect(dbMock.kitDelivery.create).toHaveBeenCalledWith({
       data: {
         registrationId: "reg-1",
