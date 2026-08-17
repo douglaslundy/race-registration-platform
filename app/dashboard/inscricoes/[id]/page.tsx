@@ -7,6 +7,7 @@ import PaymentStatusPoller from "@/components/dashboard/PaymentStatusPoller";
 import CancelRegistrationButton from "@/components/dashboard/CancelRegistrationButton";
 import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
+import QRCode from "react-qr-code";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Detalhe da Inscrição" };
@@ -208,6 +209,16 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           </div>
         </div>
       </div>
+
+      {isConfirmed && (
+        <div className="card text-center space-y-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">QR code de retirada do kit</h3>
+          <p className="text-sm text-gray-500">Apresente este código no ponto de retirada do kit no dia do evento.</p>
+          <div className="flex justify-center bg-white p-4 rounded-lg w-fit mx-auto">
+            <QRCode value={registration.id} size={180} />
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Link href={`/eventos/${registration.event.slug}`} className="btn-secondary flex-1 text-center text-sm">
