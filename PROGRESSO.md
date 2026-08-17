@@ -1,15 +1,96 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-16, mais recente)
+## Última atualização (2026-08-17, mais recente)
+**Etapa 9 do mega-prompt antigo (entrega de kits) — IMPLEMENTAÇÃO CONCLUÍDA, aguardando deploy.**
+Brainstorm → spec (`docs/superpowers/specs/2026-08-16-entrega-kits-design.md`) → plano de 10 tasks
+(`docs/superpowers/plans/2026-08-16-entrega-kits.md`) → executado via
+`superpowers:subagent-driven-development`, direto na `main`. 12 commits de tasks + revisão final
+com fix wave (2 achados Important corrigidos numa rodada só). HEAD atual: `97fd777`. Ver seção
+"Entrega de kits" mais abaixo pro detalhe completo.
+
 Paginação de `/admin/mensagens` corrigida (commit `b6dd9f3`) — dados já eram paginados certo no
 servidor (`skip`/`take` de 20, `lib/message-logs.ts`), o bug real era só a UI: um `<Link>` por
 página sem limite virando parede de botões. Trocado por janela compacta (Anterior/±1/Próxima,
 reticências, canto inferior direito). `/organizador/mensagens` tem o mesmo bug, NÃO corrigido
-(fora do pedido). **NÃO deployado ainda** — usuário pediu pra juntar com o próximo deploy.
+(fora do pedido). **NÃO deployado ainda** — usuário pediu pra juntar com o próximo deploy (a
+migration da entrega de kits acima também está pendente, então o próximo deploy já cobre os dois).
 
-Começando agora a Etapa 9 do mega-prompt antigo (tela de entrega de kits) — usuário autorizou
-explicitamente. Sem spec ainda, brainstorm em andamento. Ver seção "Etapa 9" mais abaixo quando
-existir.
+## Entrega de kits (2026-08-16/17) — CONCLUÍDO, AGUARDANDO DEPLOY
+
+Etapa 9 do mega-prompt de 10 etapas de 2026-08-02/03 — ficou deliberadamente bloqueada até pedido
+explícito do usuário, que veio nesta sessão. Feature nova do zero: organizador (e assistentes
+autorizados) roda um balcão de retirada física de kit no dia do evento, em múltiplos pontos
+simultâneos, com um campo único de busca/leitura (nome/CPF/peito digitado, leitor físico
+USB/Bluetooth que só "digita" no campo, ou botão de câmera opcional), trava contra dupla entrega
+garantida no banco (`KitDelivery.registrationId` único), registro de quem retirou (inclusive
+terceiro), relatório de progresso com CSV, e QR code (só o `registration.id`, sem dado sensível)
+disponível em "Minha inscrição" e anexado na confirmação de inscrição por e-mail/WhatsApp.
+
+**10 tasks**, todas revisadas individualmente (algumas com 1 rodada de fix, todas fechadas):
+1. Schema `KitDelivery` + migration (`prisma/migrations/20260817000000_add_kit_deliveries/`).
+2. `lib/kit-delivery.ts` — busca (`findRegistrationForKitDelivery`) + relatório
+   (`getKitDeliveryProgress`).
+3. Permissões de assistente novas (`kits.view`/`kits.deliver`) nos dois catálogos.
+4. API de busca + confirmação de entrega — achado real: os testes só checavam o retorno mockado,
+   não o `where` exato mandado ao Prisma pra escopo de dono do evento (a mesma classe de bug de
+   IDOR que este projeto já teve antes) — corrigido com asserções diretas de `where`.
+5. API de relatório (JSON + CSV) — já nasceu aplicando a lição da Task 4.
+6. Tela de retirada do organizador (`/organizador/eventos/[id]/entrega-kits`) — busca, confirmação,
+   relatório embutido.
+7. Leitura por câmera (`qr-scanner`, npm novo) — a API real da lib não pôde ser verificada ao
+   escrever o plano (sem acesso à internet na hora); o implementador leu o `.d.ts` do pacote
+   instalado antes de codar, confirmado independentemente pelo revisor lendo o mesmo arquivo.
+8. Componente compartilhado `KitDeliveryReportCard` + página do admin só-leitura
+   (`/admin/eventos/[id]/entrega-kits`).
+9. QR code (`react-qr-code`, já usada pro QR do Pix) na página "Minha inscrição", só quando
+   `CONFIRMED`.
+10. QR code gerado como PNG no servidor (`qrcode`, npm novo) e anexado na confirmação de inscrição
+    — mexe em `lib/notifications.ts::notifyOrderConfirmed`, função viva em produção. Achado real:
+    o teste que devia provar "falha ao anexar o QR no WhatsApp nunca desfaz o claim de dedupe do
+    texto que já foi enviado" na verdade não conseguia distinguir implementação certa de errada
+    (mesma contagem de chamadas nos dois casos) — corrigido com asserção direta em
+    `alertLog.deleteMany`, verificada empiricamente pelo implementador (quebrou o try/catch de
+    propósito, viu o teste falhar, reverteu).
+
+**Revisão final de branch inteira (opus, base `30dd99f`..`8933f6c`):** achou 2 Important + vários
+Minor, sem nenhum Critical. Fix wave único aplicado (commit `97fd777`):
+1. **Important**: a página de relatório do admin (Task 8) não tinha nenhum link na UI — só
+   alcançável digitando a URL. Corrigido: link "Entrega de kits" na fileira de Ações de
+   `/admin/eventos/[id]`.
+2. **Important**: `getKitDeliveryProgress` carregava TODAS as inscrições confirmadas do evento
+   inteiras (com e-mail/telefone) só pra contar e montar a lista de pendentes — recarregado a cada
+   scan e a cada entrega confirmada no balcão. Corrigido: `total`/`delivered`/`pendingTotal` agora
+   via `count()` agregado; a lista de pendentes aceita um limite opcional (relatório JSON da UI
+   usa 50, export CSV continua sem limite pra manter a lista completa). Card de relatório mostra
+   "Mostrando X de Y pendentes" quando truncado.
+3. Minors selecionados: ternário sem efeito em `lib/email.ts` removido; `sendWhatsAppDocument`
+   (usada pro anexo do QR) ganhou registro em `MessageLog` (antes invisível na auditoria de
+   mensagens), mesmo padrão já usado por `sendWhatsAppMessage`.
+
+Re-revisão do fix wave: todos os 4 achados endereçados, nenhuma quebra nova. Suíte completa
+(227 arquivos / 1558 testes) e `tsc --noEmit` limpos depois do fix wave — confirmado de novo pelo
+controller antes de fechar.
+
+**Duas novas dependências de produção**: `qrcode` (+ `@types/qrcode`) e `qr-scanner` — ambas
+pequenas, sem achados de segurança conhecidos, `qrcode` traz a árvore do `yargs` (CLI, não usada)
+como transitiva.
+
+**Não testado no navegador** (mesmo problema de DNS de sempre nesta sessão) — verificação foi
+typecheck + suíte completa + conferência manual detalhada do contrato API↔UI em cada task de UI,
+incluindo verificação independente da API real do `qr-scanner` direto no pacote instalado.
+
+**PRÓXIMA TAREFA:** nenhuma pendente de implementação. Falta só, quando o usuário autorizar:
+1. Push (`git push origin main`).
+2. Deploy com a sequência de 4 passos por causa da migration de schema pendente (`KitDelivery`
+   ainda não existe em produção) — mesma sequência de sempre: `git pull` → `docker build` →
+   `docker compose run --rm app sh -c "npx prisma db push --skip-generate"` → `docker compose up -d
+   --no-deps app`. Esse mesmo deploy já cobre a correção de paginação de `/admin/mensagens`
+   também (commit `b6dd9f3`, sem mudança de schema, já estava pendente de deploy antes desta
+   feature).
+3. Depois do deploy: aplicar a migration em produção primeiro, senão a tela de retirada e a
+   página "Minha inscrição" (que já consulta `kitDelivery`) quebram.
+4. Idealmente, um teste manual no navegador do fluxo completo (cadastrar QR, escanear, confirmar
+   entrega, ver relatório) — não foi possível nesta sessão.
 
 ## Última atualização (histórico anterior)
 2026-08-16 — 3 frentes concluídas e deployadas na mesma sessão: (1) feature "redes sociais por
