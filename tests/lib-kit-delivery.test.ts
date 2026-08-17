@@ -117,23 +117,18 @@ describe("getKitDeliveryProgress", () => {
     vi.clearAllMocks();
   });
 
-  it("conta entregues/pendentes e lista só os pendentes", async () => {
+  it("conta entregues/pendentes via count agregado e lista só os pendentes (sem limite)", async () => {
+    dbMock.registration.count
+      .mockResolvedValueOnce(2) // total
+      .mockResolvedValueOnce(1) // delivered
+      .mockResolvedValueOnce(1); // pendingTotal
     dbMock.registration.findMany.mockResolvedValueOnce([
-      {
-        id: "reg-1",
-        proxyAthleteDisplayName: null,
-        bibNumber: "1",
-        athlete: { name: "Atleta A", email: "a@example.com", athleteProfile: { phone: "11999990000" } },
-        category: { name: "Geral" },
-        kitDelivery: { id: "kd-1" },
-      },
       {
         id: "reg-2",
         proxyAthleteDisplayName: null,
         bibNumber: "2",
         athlete: { name: "Atleta B", email: "b@example.com", athleteProfile: null },
         category: null,
-        kitDelivery: null,
       },
     ]);
 
@@ -152,9 +147,39 @@ describe("getKitDeliveryProgress", () => {
           phone: null,
         },
       ],
+      pendingTotal: 1,
     });
+
+    expect(dbMock.registration.count).toHaveBeenCalledTimes(3);
+    expect(dbMock.registration.count).toHaveBeenNthCalledWith(1, {
+      where: { eventId: "event-1", status: "CONFIRMED" },
+    });
+    expect(dbMock.registration.count).toHaveBeenNthCalledWith(2, {
+      where: { eventId: "event-1", status: "CONFIRMED", kitDelivery: { isNot: null } },
+    });
+    expect(dbMock.registration.count).toHaveBeenNthCalledWith(3, {
+      where: { eventId: "event-1", status: "CONFIRMED", kitDelivery: null },
+    });
+
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { eventId: "event-1", status: "CONFIRMED" } }),
+      expect.objectContaining({ where: { eventId: "event-1", status: "CONFIRMED", kitDelivery: null } }),
+    );
+    const findManyCall = dbMock.registration.findMany.mock.calls[0][0];
+    expect(findManyCall.take).toBeUndefined();
+  });
+
+  it("limita a lista de pendentes quando pendingLimit é informado, mantendo pendingTotal real", async () => {
+    dbMock.registration.count
+      .mockResolvedValueOnce(100) // total
+      .mockResolvedValueOnce(30) // delivered
+      .mockResolvedValueOnce(70); // pendingTotal
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    const result = await getKitDeliveryProgress("event-1", 50);
+
+    expect(result.pendingTotal).toBe(70);
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 50 }),
     );
   });
 });

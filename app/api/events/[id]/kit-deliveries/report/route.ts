@@ -15,6 +15,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
-  const progress = await getKitDeliveryProgress(id);
+  const progress = await getKitDeliveryProgress(id, 50);
   return NextResponse.json(progress);
 }

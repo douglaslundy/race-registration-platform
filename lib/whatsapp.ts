@@ -66,17 +66,47 @@ export async function sendWhatsAppMessage(
   }
 }
 
-/** Envia um documento (PDF) por WhatsApp usando a configuração salva (Evolution API). */
+/** Envia um documento (PDF/imagem) por WhatsApp usando a configuração salva (Evolution API),
+ * registrando o envio no MessageLog (sucesso ou falha) — mesmo comportamento de auditoria de
+ * `sendWhatsAppMessage`, necessário porque este envio deixou de ser só pra relatórios de
+ * anúncio ocasionais e passou a rodar em todo envio de confirmação de inscrição (QR do kit). */
 export async function sendWhatsAppDocument(
   phone: string,
   base64Pdf: string,
   filename: string,
   caption: string,
+  options?: { messageType?: string; relatedEntityType?: string; relatedEntityId?: string },
 ): Promise<void> {
   const config = await getWhatsAppConfig();
   if (!isWhatsAppConfigured(config)) {
     throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
   }
   const normalizedPhone = normalizePhoneForWhatsApp(phone);
-  await sendMediaMessage(config, normalizedPhone, base64Pdf, filename, caption);
+  const relatedEntity =
+    options?.relatedEntityType && options?.relatedEntityId
+      ? { relatedEntityType: options.relatedEntityType, relatedEntityId: options.relatedEntityId }
+      : {};
+
+  try {
+    await sendMediaMessage(config, normalizedPhone, base64Pdf, filename, caption);
+    await recordMessageLog({
+      channel: "WHATSAPP",
+      messageType: options?.messageType,
+      subject: caption,
+      recipientAddress: normalizedPhone,
+      status: "SENT",
+      ...relatedEntity,
+    });
+  } catch (err) {
+    await recordMessageLog({
+      channel: "WHATSAPP",
+      messageType: options?.messageType,
+      subject: caption,
+      recipientAddress: normalizedPhone,
+      status: "FAILED",
+      errorMessage: err instanceof Error ? err.message : String(err),
+      ...relatedEntity,
+    });
+    throw err;
+  }
 }

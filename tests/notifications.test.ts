@@ -146,6 +146,7 @@ describe("notifyOrderConfirmed", () => {
       Buffer.from("fake-png").toString("base64"),
       "qrcode-retirada-kit.png",
       "Apresente este QR code na retirada do kit",
+      { messageType: "ORDER_CONFIRMED", relatedEntityType: "Event", relatedEntityId: "event-1" },
     );
   });
 

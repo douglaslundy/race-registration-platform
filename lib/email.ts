@@ -136,7 +136,7 @@ export async function sendRegistrationConfirmationEmail(params: {
   await sendMail({
     to: params.to,
     subject,
-    html: body ? layout(appName, body) : layout(appName, ""),
+    html: layout(appName, body),
     messageType: params.alertKey,
     ...(params.kitQrCodePng
       ? { attachments: [{ filename: "qrcode-retirada-kit.png", content: params.kitQrCodePng }] }

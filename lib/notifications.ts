@@ -54,7 +54,15 @@ async function sendWhatsAppIfActive(
     if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
 
     try {
-      await sendWhatsAppDocument(phone, kitQrCodeBase64, "qrcode-retirada-kit.png", "Apresente este QR code na retirada do kit");
+      await sendWhatsAppDocument(
+        phone,
+        kitQrCodeBase64,
+        "qrcode-retirada-kit.png",
+        "Apresente este QR code na retirada do kit",
+        eventId
+          ? { messageType: alertKey, relatedEntityType: "Event", relatedEntityId: eventId }
+          : { messageType: alertKey },
+      );
     } catch (err) {
       console.error("[notifyOrderConfirmed] whatsapp kit QR attachment failed:", err);
     }

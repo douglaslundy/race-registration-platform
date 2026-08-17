@@ -25,6 +25,7 @@ export interface KitDeliveryProgress {
     email: string;
     phone: string | null;
   }>;
+  pendingTotal: number;
 }
 
 /** Busca inscrições CONFIRMED de um evento pra retirada de kit — por id exato (vindo de QR lido
@@ -76,30 +77,35 @@ export async function findRegistrationForKitDelivery(
 }
 
 /** Progresso de entrega de kits de um evento: total de inscrições CONFIRMED, quantas já têm
- * KitDelivery, e a lista completa das que ainda não têm — usado pelo card de progresso, pela
- * lista de pendentes na tela do organizador/admin, e pelo export CSV. */
-export async function getKitDeliveryProgress(eventId: string): Promise<KitDeliveryProgress> {
-  const registrations = await db.registration.findMany({
-    where: { eventId, status: "CONFIRMED" },
-    orderBy: { athlete: { name: "asc" } },
-    include: {
-      athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
-      category: { select: { name: true } },
-      kitDelivery: { select: { id: true } },
-    },
-  });
+ * KitDelivery (via count agregado, sem carregar as linhas inteiras), e a lista de pendentes —
+ * limitada a `pendingLimit` linhas quando informado (usado pelo relatório JSON da UI, que só
+ * precisa mostrar uma prévia), ou completa quando omitido (usado pelo export CSV, que precisa
+ * de todo mundo). `pendingTotal` é sempre a contagem real de pendentes, mesmo quando `pending`
+ * foi truncado — a UI usa isso pra saber se deve avisar "mostrando X de Y". */
+export async function getKitDeliveryProgress(eventId: string, pendingLimit?: number): Promise<KitDeliveryProgress> {
+  const [total, delivered, pendingTotal, pendingRows] = await Promise.all([
+    db.registration.count({ where: { eventId, status: "CONFIRMED" } }),
+    db.registration.count({ where: { eventId, status: "CONFIRMED", kitDelivery: { isNot: null } } }),
+    db.registration.count({ where: { eventId, status: "CONFIRMED", kitDelivery: null } }),
+    db.registration.findMany({
+      where: { eventId, status: "CONFIRMED", kitDelivery: null },
+      orderBy: { athlete: { name: "asc" } },
+      ...(pendingLimit !== undefined ? { take: pendingLimit } : {}),
+      include: {
+        athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+        category: { select: { name: true } },
+      },
+    }),
+  ]);
 
-  const delivered = registrations.filter((r) => r.kitDelivery !== null).length;
-  const pending = registrations
-    .filter((r) => r.kitDelivery === null)
-    .map((r) => ({
-      id: r.id,
-      athleteName: r.proxyAthleteDisplayName ?? r.athlete.name,
-      bibNumber: r.bibNumber,
-      categoryName: r.category?.name ?? null,
-      email: r.athlete.email,
-      phone: r.athlete.athleteProfile?.phone ?? null,
-    }));
+  const pending = pendingRows.map((r) => ({
+    id: r.id,
+    athleteName: r.proxyAthleteDisplayName ?? r.athlete.name,
+    bibNumber: r.bibNumber,
+    categoryName: r.category?.name ?? null,
+    email: r.athlete.email,
+    phone: r.athlete.athleteProfile?.phone ?? null,
+  }));
 
-  return { total: registrations.length, delivered, pending };
+  return { total, delivered, pending, pendingTotal };
 }

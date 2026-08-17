@@ -38,6 +38,7 @@ export default async function AdminEntregaKitsPage({ params }: { params: Promise
         total={progress.total}
         delivered={progress.delivered}
         pending={progress.pending}
+        pendingTotal={progress.pendingTotal}
       />
     </div>
   );

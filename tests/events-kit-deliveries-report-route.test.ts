@@ -33,13 +33,13 @@ describe("GET /api/events/[id]/kit-deliveries/report", () => {
   });
 
   it("retorna o progresso do evento", async () => {
-    progressMock.mockResolvedValueOnce({ total: 5, delivered: 2, pending: [] });
+    progressMock.mockResolvedValueOnce({ total: 5, delivered: 2, pending: [], pendingTotal: 3 });
 
     const res = await GET_REPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data).toEqual({ total: 5, delivered: 2, pending: [] });
+    expect(data).toEqual({ total: 5, delivered: 2, pending: [], pendingTotal: 3 });
   });
 
   it("retorna 404 quando o evento não é do organizador", async () => {
@@ -49,7 +49,7 @@ describe("GET /api/events/[id]/kit-deliveries/report", () => {
   });
 
   it("chama findFirst com eventId e organizerId quando não é admin", async () => {
-    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [] });
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
 
     await GET_REPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -61,11 +61,19 @@ describe("GET /api/events/[id]/kit-deliveries/report", () => {
   it("chama findUnique quando o usuário é admin", async () => {
     resolveActingScopeMock.mockResolvedValueOnce({ actingAsAdmin: true } as any);
     dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
-    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [] });
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
 
     await GET_REPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
     expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
+  });
+
+  it("chama getKitDeliveryProgress com limite de 50 pendentes", async () => {
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
+
+    await GET_REPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(progressMock).toHaveBeenCalledWith("event-1", 50);
   });
 });
 
@@ -82,6 +90,7 @@ describe("GET /api/events/[id]/kit-deliveries/report-export", () => {
       total: 2,
       delivered: 1,
       pending: [{ id: "reg-2", athleteName: "Atleta B", bibNumber: "2", categoryName: "Geral", email: "b@example.com", phone: "11999990000" }],
+      pendingTotal: 1,
     });
 
     const res = await GET_EXPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
@@ -100,7 +109,7 @@ describe("GET /api/events/[id]/kit-deliveries/report-export", () => {
   });
 
   it("chama findFirst com eventId e organizerId quando não é admin", async () => {
-    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [] });
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
 
     await GET_EXPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -113,7 +122,7 @@ describe("GET /api/events/[id]/kit-deliveries/report-export", () => {
   it("chama findUnique quando o usuário é admin", async () => {
     resolveActingScopeMock.mockResolvedValueOnce({ actingAsAdmin: true } as any);
     dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1", title: "Corrida Teste" });
-    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [] });
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
 
     await GET_EXPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -124,7 +133,7 @@ describe("GET /api/events/[id]/kit-deliveries/report-export", () => {
   });
 
   it("gera nome do arquivo CSV com slug do evento", async () => {
-    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [] });
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
 
     const res = await GET_EXPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -132,5 +141,13 @@ describe("GET /api/events/[id]/kit-deliveries/report-export", () => {
     expect(disposition).toBeDefined();
     expect(disposition).toContain("attachment");
     expect(disposition).toContain("kits-pendentes-corrida-teste.csv");
+  });
+
+  it("chama getKitDeliveryProgress sem limite (lista completa pro CSV)", async () => {
+    progressMock.mockResolvedValueOnce({ total: 0, delivered: 0, pending: [], pendingTotal: 0 });
+
+    await GET_EXPORT(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(progressMock).toHaveBeenCalledWith("event-1");
   });
 });

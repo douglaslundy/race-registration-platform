@@ -302,6 +302,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
         <Link href={`/admin/eventos/${event.id}/relatorio-geral`} className="btn-secondary text-sm">
           Relatório Geral
         </Link>
+        <Link href={`/admin/eventos/${event.id}/entrega-kits`} className="btn-secondary text-sm">
+          Entrega de kits
+        </Link>
         <Link href={`/api/events/${event.id}/registrations?format=csv`} className="btn-secondary text-sm">
           Exportar inscritos CSV
         </Link>

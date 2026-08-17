@@ -176,7 +176,7 @@ describe("sendWhatsAppDocument", () => {
     expect(sendMediaMessage).not.toHaveBeenCalled();
   });
 
-  it("em caso de sucesso, delega pro cliente com os parâmetros certos, sem registrar no MessageLog", async () => {
+  it("em caso de sucesso, delega pro cliente com os parâmetros certos e registra o log como SENT", async () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
@@ -191,10 +191,39 @@ describe("sendWhatsAppDocument", () => {
       "relatorio.pdf",
       "Seu relatório",
     );
-    expect(recordMessageLog).not.toHaveBeenCalled();
+    expect(recordMessageLog).toHaveBeenCalledWith({
+      channel: "WHATSAPP",
+      messageType: undefined,
+      subject: "Seu relatório",
+      recipientAddress: "5511999999999",
+      status: "SENT",
+    });
   });
 
-  it("em caso de falha no envio, relança o erro original sem registrar no MessageLog", async () => {
+  it("grava messageType/relatedEntityType/relatedEntityId no log quando informados via options", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendMediaMessage).mockResolvedValueOnce(undefined);
+
+    await sendWhatsAppDocument("5511999999999", "base64PdfContent", "qrcode-retirada-kit.png", "Apresente este QR code na retirada do kit", {
+      messageType: "ORDER_CONFIRMED",
+      relatedEntityType: "Event",
+      relatedEntityId: "event-1",
+    });
+
+    expect(recordMessageLog).toHaveBeenCalledWith({
+      channel: "WHATSAPP",
+      messageType: "ORDER_CONFIRMED",
+      subject: "Apresente este QR code na retirada do kit",
+      recipientAddress: "5511999999999",
+      status: "SENT",
+      relatedEntityType: "Event",
+      relatedEntityId: "event-1",
+    });
+  });
+
+  it("em caso de falha no envio, registra o log como FAILED e relança o erro original", async () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
@@ -203,6 +232,13 @@ describe("sendWhatsAppDocument", () => {
     await expect(
       sendWhatsAppDocument("invalid", "base64PdfContent", "relatorio.pdf", "Seu relatório"),
     ).rejects.toThrow("Evolution API 400 ao enviar mídia");
-    expect(recordMessageLog).not.toHaveBeenCalled();
+    expect(recordMessageLog).toHaveBeenCalledWith({
+      channel: "WHATSAPP",
+      messageType: undefined,
+      subject: "Seu relatório",
+      recipientAddress: "",
+      status: "FAILED",
+      errorMessage: "Evolution API 400 ao enviar mídia",
+    });
   });
 });

@@ -24,6 +24,7 @@ interface ReportData {
   total: number;
   delivered: number;
   pending: Array<{ id: string; athleteName: string; bibNumber: string | null; categoryName: string | null }>;
+  pendingTotal: number;
 }
 
 export default function EntregaKitsPage() {
@@ -221,6 +222,7 @@ export default function EntregaKitsPage() {
             total={report.total}
             delivered={report.delivered}
             pending={report.pending}
+            pendingTotal={report.pendingTotal}
           />
         )}
       </div>

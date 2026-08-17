@@ -3,6 +3,7 @@ interface KitDeliveryReportCardProps {
   total: number;
   delivered: number;
   pending: Array<{ id: string; athleteName: string; bibNumber: string | null; categoryName: string | null }>;
+  pendingTotal: number;
   headingClassName?: string;
 }
 
@@ -11,6 +12,7 @@ export default function KitDeliveryReportCard({
   total,
   delivered,
   pending,
+  pendingTotal,
   headingClassName = "font-semibold",
 }: KitDeliveryReportCardProps) {
   return (
@@ -26,13 +28,18 @@ export default function KitDeliveryReportCard({
         Exportar pendentes (CSV)
       </a>
       {pending.length > 0 && (
-        <ul className="text-sm divide-y dark:divide-gray-700">
-          {pending.map((p) => (
-            <li key={p.id} className="py-1.5">
-              {p.athleteName} — {p.categoryName ?? "Sem categoria"}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="text-sm divide-y dark:divide-gray-700">
+            {pending.map((p) => (
+              <li key={p.id} className="py-1.5">
+                {p.athleteName} — {p.categoryName ?? "Sem categoria"}
+              </li>
+            ))}
+          </ul>
+          {pendingTotal > pending.length && (
+            <p className="text-xs text-gray-400">Mostrando {pending.length} de {pendingTotal} pendentes — use o CSV para a lista completa.</p>
+          )}
+        </>
       )}
     </div>
   );
