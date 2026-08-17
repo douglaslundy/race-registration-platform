@@ -471,6 +471,13 @@ describe("notifyOrderConfirmed", () => {
     await expect(notifyOrderConfirmed("order-1")).resolves.toBeUndefined();
 
     expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+    // Assertiva direta: o catch aninhado ao redor do envio do documento nunca deve deixar a falha
+    // escapar pro catch externo, que é quem chama unclaimAlert (→ db.alertLog.deleteMany). Sem
+    // esta assertiva, tanto a implementação correta quanto uma versão quebrada (catch aninhado
+    // removido/mal posicionado) produzem o mesmo número de chamadas a sendWhatsAppMessage na 2ª
+    // execução abaixo, porque o mock de dedupe (mockPerKeyAlertLog) não está conectado a
+    // deleteMany — então aquela asserção sozinha não pega a regressão.
+    expect(dbMock.alertLog.deleteMany).not.toHaveBeenCalled();
     // A falha no anexo do QR não deve desfazer a reivindicação de dedupe que a mensagem de texto,
     // já enviada com sucesso, legitimamente detém — uma segunda chamada não deve reenviar.
     await notifyOrderConfirmed("order-1");
