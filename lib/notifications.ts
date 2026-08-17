@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { getSmtpConfig, isSmtpReady } from "./smtp-settings";
 import { sendRegistrationConfirmationEmail } from "./email";
-import { sendWhatsAppMessage } from "./whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppDocument } from "./whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
 import { getConnectionState } from "./whatsapp/evolution-client";
 import { isPlaceholderEmail } from "./proxy-athlete";
@@ -9,6 +9,7 @@ import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
 import { getSocialPromoText } from "@/lib/event-social-links";
+import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 
 const ALERT_TYPE = "ORDER_CONFIRMED";
 
@@ -31,6 +32,7 @@ async function sendWhatsAppIfActive(
   claimEntityId: string,
   bypassDedupe: boolean,
   resolveSocialPromo: () => Promise<string>,
+  kitQrCodeBase64: string,
 ): Promise<void> {
   if (!phone) return;
   let claimed = false;
@@ -50,6 +52,12 @@ async function sendWhatsAppIfActive(
       eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
     );
     if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
+
+    try {
+      await sendWhatsAppDocument(phone, kitQrCodeBase64, "qrcode-retirada-kit.png", "Apresente este QR code na retirada do kit");
+    } catch (err) {
+      console.error("[notifyOrderConfirmed] whatsapp kit QR attachment failed:", err);
+    }
   } catch (err) {
     // Só desfaz a reivindicação se ESTA chamada realmente a tomou — caso contrário, uma falha
     // antes do claim (ex.: getWhatsAppConfig lançando) apagaria a reivindicação de um envio
@@ -97,6 +105,9 @@ export async function notifyOrderConfirmed(
     if (!order?.buyer || order.registrations.length === 0) return;
     const registration = order.registrations[0];
 
+    const kitQrCodePng = await generateKitQrCodePng(registration.id);
+    const kitQrCodeBase64 = kitQrCodePng.toString("base64");
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
     const detailsUrl = `${baseUrl}/dashboard/inscricoes/${registration.id}`;
     const isProxyRegistration = order.buyerUserId !== registration.athleteUserId;
@@ -138,6 +149,7 @@ export async function notifyOrderConfirmed(
             notes: registration.notes ?? undefined,
             alertKey: "ORDER_CONFIRMED",
             recipientRole: "BUYER",
+            kitQrCodePng,
           });
           await db.order.update({ where: { id: orderId }, data: { confirmationEmailSentAt: new Date() } });
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", orderId, "EMAIL");
@@ -169,6 +181,7 @@ export async function notifyOrderConfirmed(
       `${orderId}:buyer`,
       bypassDedupe,
       resolveSocialPromo,
+      kitQrCodeBase64,
     );
 
     if (!isProxyRegistration) return;
@@ -194,6 +207,7 @@ export async function notifyOrderConfirmed(
               alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
               recipientRole: "ATHLETE",
               buyerName: order.buyer.name,
+              kitQrCodePng,
             });
             if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
           }
@@ -220,6 +234,7 @@ export async function notifyOrderConfirmed(
       `${orderId}:athlete`,
       bypassDedupe,
       resolveSocialPromo,
+      kitQrCodeBase64,
     );
   } catch (err) {
     console.error("[notifyOrderConfirmed] failed:", err);

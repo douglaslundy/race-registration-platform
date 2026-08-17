@@ -116,6 +116,7 @@ export async function sendRegistrationConfirmationEmail(params: {
   buyerName?: string;
   sponsorLink?: string | null;
   socialPromo?: string | null;
+  kitQrCodePng?: Buffer;
 }): Promise<void> {
   const appName = await getAppName();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
@@ -135,8 +136,11 @@ export async function sendRegistrationConfirmationEmail(params: {
   await sendMail({
     to: params.to,
     subject,
-    html: layout(appName, body),
+    html: body ? layout(appName, body) : layout(appName, ""),
     messageType: params.alertKey,
+    ...(params.kitQrCodePng
+      ? { attachments: [{ filename: "qrcode-retirada-kit.png", content: params.kitQrCodePng }] }
+      : {}),
     ...(params.eventId ? { relatedEntityType: "Event", relatedEntityId: params.eventId } : {}),
   });
 }

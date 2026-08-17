@@ -11,6 +11,7 @@ vi.mock("@/lib/email", () => ({
 }));
 vi.mock("@/lib/whatsapp", () => ({
   sendWhatsAppMessage: vi.fn(),
+  sendWhatsAppDocument: vi.fn(),
 }));
 vi.mock("@/lib/whatsapp-settings", () => ({
   getWhatsAppConfig: vi.fn(),
@@ -25,15 +26,19 @@ vi.mock("@/lib/proxy-athlete", () => ({
 vi.mock("@/lib/event-social-links", () => ({
   getSocialPromoText: vi.fn().mockResolvedValue(""),
 }));
+vi.mock("@/lib/kit-qr-code", () => ({
+  generateKitQrCodePng: vi.fn().mockResolvedValue(Buffer.from("fake-png")),
+}));
 
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendRegistrationConfirmationEmail } from "@/lib/email";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppDocument } from "@/lib/whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import { getConnectionState } from "@/lib/whatsapp/evolution-client";
 import { isPlaceholderEmail } from "@/lib/proxy-athlete";
 import { getSocialPromoText } from "@/lib/event-social-links";
+import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 
 const dbMock = db as any;
 
@@ -73,8 +78,10 @@ describe("notifyOrderConfirmed", () => {
         orderId: "order-1",
         eventId: "event-1",
         notes: "Chegarei atrasado",
+        kitQrCodePng: Buffer.from("fake-png"),
       }),
     );
+    expect(generateKitQrCodePng).toHaveBeenCalledWith("reg-1");
     expect(dbMock.order.update).toHaveBeenCalledWith({
       where: { id: "order-1" },
       data: { confirmationEmailSentAt: expect.any(Date) },
@@ -133,6 +140,12 @@ describe("notifyOrderConfirmed", () => {
       expect.stringContaining("Corrida Teste"),
       "ORDER_CONFIRMED",
       { relatedEntityType: "Event", relatedEntityId: "event-1" },
+    );
+    expect(sendWhatsAppDocument).toHaveBeenCalledWith(
+      "5511999999999",
+      Buffer.from("fake-png").toString("base64"),
+      "qrcode-retirada-kit.png",
+      "Apresente este QR code na retirada do kit",
     );
   });
 
@@ -441,5 +454,26 @@ describe("notifyOrderConfirmed", () => {
       create: { alertType: "ORDER_CONFIRMED", entityType: "Order", entityId: "order-1", channel: "EMAIL" },
       update: { sentAt: expect.any(Date) },
     });
+  });
+
+  // Colocado no fim do arquivo (junto dos outros testes que usam mockPerKeyAlertLog): o
+  // mockImplementation que ele deixa em dbMock.alertLog.create sobrevive ao vi.clearAllMocks() do
+  // beforeEach externo (ver comentário equivalente na describe "zero-regressão" acima), então
+  // qualquer teste definido DEPOIS deste também herdaria a reivindicação de dedupe já "gasta" pra
+  // order-1:buyer/WHATSAPP — por isso ele fica por último, não misturado com os testes anteriores.
+  it("uma falha no envio do documento do QR por WhatsApp não impede nem desfaz o envio da mensagem de texto", async () => {
+    dbMock.order.findUnique.mockResolvedValue(orderFixture);
+    mockPerKeyAlertLog();
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValue("open");
+    vi.mocked(sendWhatsAppDocument).mockRejectedValueOnce(new Error("document send failed"));
+
+    await expect(notifyOrderConfirmed("order-1")).resolves.toBeUndefined();
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+    // A falha no anexo do QR não deve desfazer a reivindicação de dedupe que a mensagem de texto,
+    // já enviada com sucesso, legitimamente detém — uma segunda chamada não deve reenviar.
+    await notifyOrderConfirmed("order-1");
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
   });
 });
