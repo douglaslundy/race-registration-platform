@@ -27,6 +27,8 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "social-links.create", label: "Criar rede social" },
   { key: "social-links.edit", label: "Editar rede social" },
   { key: "social-links.delete", label: "Excluir rede social" },
+  { key: "kits.view", label: "Ver retirada de kits de um evento" },
+  { key: "kits.deliver", label: "Confirmar entrega de kit" },
   { key: "payments.refund-any", label: "Estornar pagamento (qualquer)" },
   { key: "payments.manual-resolve-any", label: "Resolver estorno manualmente (qualquer)" },
   { key: "payments.reconciliation-any", label: "Conciliar pagamentos com o gateway (plataforma inteira)" },

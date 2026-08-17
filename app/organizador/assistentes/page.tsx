@@ -35,6 +35,8 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "social-links.create", label: "Criar rede social" },
   { key: "social-links.edit", label: "Editar rede social" },
   { key: "social-links.delete", label: "Excluir rede social" },
+  { key: "kits.view", label: "Ver retirada de kits de um evento" },
+  { key: "kits.deliver", label: "Confirmar entrega de kit" },
   { key: "payments.refund", label: "Estornar pagamento" },
   { key: "payments.manual-resolve", label: "Resolver estorno manualmente" },
   { key: "payments.reconciliation", label: "Conciliar pagamentos com o gateway (meus eventos)" },
