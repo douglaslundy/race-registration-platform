@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import ErrorModal from "@/components/ui/ErrorModal";
 import QrCameraScanner from "@/components/organizer/QrCameraScanner";
+import KitDeliveryReportCard from "@/components/organizer/KitDeliveryReportCard";
 
 interface SearchResult {
   id: string;
@@ -212,30 +213,15 @@ export default function EntregaKitsPage() {
         ))}
       </div>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Progresso de entrega</h2>
+      <div className="space-y-1">
         {reportError && <p className="text-sm text-red-600">{reportError}</p>}
         {report && (
-          <>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {report.delivered} de {report.total} kits entregues
-            </p>
-            <a
-              href={`/api/events/${id}/kit-deliveries/report-export`}
-              className="btn-secondary text-sm inline-block"
-            >
-              Exportar pendentes (CSV)
-            </a>
-            {report.pending.length > 0 && (
-              <ul className="text-sm divide-y dark:divide-gray-700">
-                {report.pending.map((p) => (
-                  <li key={p.id} className="py-1.5">
-                    {p.athleteName} — {p.categoryName ?? "Sem categoria"}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <KitDeliveryReportCard
+            eventId={id}
+            total={report.total}
+            delivered={report.delivered}
+            pending={report.pending}
+          />
         )}
       </div>
     </div>
