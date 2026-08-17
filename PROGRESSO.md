@@ -1,6 +1,17 @@
 # Progresso do Projeto
 
-## Última atualização
+## Última atualização (2026-08-16, mais recente)
+Paginação de `/admin/mensagens` corrigida (commit `b6dd9f3`) — dados já eram paginados certo no
+servidor (`skip`/`take` de 20, `lib/message-logs.ts`), o bug real era só a UI: um `<Link>` por
+página sem limite virando parede de botões. Trocado por janela compacta (Anterior/±1/Próxima,
+reticências, canto inferior direito). `/organizador/mensagens` tem o mesmo bug, NÃO corrigido
+(fora do pedido). **NÃO deployado ainda** — usuário pediu pra juntar com o próximo deploy.
+
+Começando agora a Etapa 9 do mega-prompt antigo (tela de entrega de kits) — usuário autorizou
+explicitamente. Sem spec ainda, brainstorm em andamento. Ver seção "Etapa 9" mais abaixo quando
+existir.
+
+## Última atualização (histórico anterior)
 2026-08-16 — 3 frentes concluídas e deployadas na mesma sessão: (1) feature "redes sociais por
 evento", (2) fix do 404 em inscrição por procuração, (3) fix de permissão no Dockerfile +
 inserção de `{{redes_sociais}}` nos 11 templates de mensagem em produção. Ver as 3 seções abaixo.
