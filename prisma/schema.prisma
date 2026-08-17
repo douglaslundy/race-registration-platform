@@ -134,6 +134,7 @@ model User {
   assistantPermissions AssistantPermission[]
   messageLogs MessageLog[]
   updatedMessageTemplates MessageTemplate[]
+  kitDeliveriesPerformed KitDelivery[]
 
   @@index([createdAt])
   @@map("users")
@@ -357,6 +358,7 @@ model Registration {
   category     EventCategory? @relation(fields: [categoryId], references: [id])
   ticketBatch  TicketBatch    @relation(fields: [ticketBatchId], references: [id])
   order        Order          @relation(fields: [orderId], references: [id])
+  kitDelivery  KitDelivery?
 
   @@index([eventId, status])
   @@index([eventId, createdAt])
@@ -508,6 +510,23 @@ model SocialLinkSend {
 
   @@unique([eventSocialLinkId, userId])
   @@map("social_link_sends")
+}
+
+// ─── Kit Delivery ─────────────────────────────────────────────────────────────
+
+model KitDelivery {
+  id                 String   @id @default(cuid())
+  registrationId     String   @unique
+  deliveredAt        DateTime @default(now())
+  deliveredByUserId  String
+  receivedByName     String
+  receivedByDocument String?
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  deliveredBy  User         @relation(fields: [deliveredByUserId], references: [id])
+
+  @@index([deliveredByUserId])
+  @@map("kit_deliveries")
 }
 
 // ─── Payouts ──────────────────────────────────────────────────────────────────
