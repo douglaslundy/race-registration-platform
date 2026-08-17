@@ -421,6 +421,9 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <Link href={`/organizador/eventos/${id}/resultados`} className="btn-secondary text-center">
           Importar resultados
         </Link>
+        <Link href={`/organizador/eventos/${id}/entrega-kits`} className="btn-secondary text-center">
+          Entrega de kits
+        </Link>
       </div>
     </div>
   );
