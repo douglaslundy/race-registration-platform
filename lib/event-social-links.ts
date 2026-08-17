@@ -18,7 +18,7 @@ export async function getSocialPromoText(eventId: string, userId: string): Promi
       const included = await claimSocialLinkSend(link.id, userId, link.maxSends);
       if (included) parts.push(`${link.message} ${link.url}`);
     }
-    return parts.join("\n");
+    return parts.join("\n\n");
   } catch (err) {
     console.error("getSocialPromoText failed:", err);
     return "";

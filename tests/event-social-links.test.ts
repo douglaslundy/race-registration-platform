@@ -59,7 +59,7 @@ describe("getSocialPromoText", () => {
     expect(tx.socialLinkSend.upsert).not.toHaveBeenCalled();
   });
 
-  it("concatena vários links que ainda estão dentro do limite, um por linha", async () => {
+  it("concatena vários links que ainda estão dentro do limite, com uma linha em branco entre eles", async () => {
     dbMock.eventSocialLink.findMany.mockResolvedValueOnce([
       { id: "link-1", message: "Segue no Insta!", url: "https://instagram.com/corrida", maxSends: 5 },
       { id: "link-2", message: "Bora no Strava!", url: "https://strava.com/routes/1", maxSends: 5 },
@@ -74,7 +74,7 @@ describe("getSocialPromoText", () => {
 
     const result = await getSocialPromoText("event-1", "user-1");
 
-    expect(result).toBe("Segue no Insta! https://instagram.com/corrida\nBora no Strava! https://strava.com/routes/1");
+    expect(result).toBe("Segue no Insta! https://instagram.com/corrida\n\nBora no Strava! https://strava.com/routes/1");
   });
 
   it("busca só links ativos do evento", async () => {
