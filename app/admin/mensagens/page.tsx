@@ -7,6 +7,31 @@ import MessageLogList, { type MessageLogRow } from "@/components/messages/Messag
 export const metadata: Metadata = { title: "Mensagens — Admin" };
 export const dynamic = "force-dynamic";
 
+/** Janela de páginas ao redor da atual (+ primeira/última), com "..." nos vãos — evita renderizar
+ * um botão por página quando totalPages é grande (ex.: 29 páginas viravam 29 links sem limite). */
+function getPaginationRange(current: number, total: number): (number | "...")[] {
+  const siblingCount = 1;
+  const totalVisible = siblingCount * 2 + 5; // primeira + última + atual + 2 vizinhos + 2 reticências
+  if (total <= totalVisible) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const leftSibling = Math.max(current - siblingCount, 1);
+  const rightSibling = Math.min(current + siblingCount, total);
+  const showLeftDots = leftSibling > 2;
+  const showRightDots = rightSibling < total - 1;
+
+  if (!showLeftDots && showRightDots) {
+    const leftRange = Array.from({ length: 3 + siblingCount * 2 }, (_, i) => i + 1);
+    return [...leftRange, "...", total];
+  }
+  if (showLeftDots && !showRightDots) {
+    const rightCount = 3 + siblingCount * 2;
+    const rightRange = Array.from({ length: rightCount }, (_, i) => total - rightCount + i + 1);
+    return [1, "...", ...rightRange];
+  }
+  const middleRange = Array.from({ length: rightSibling - leftSibling + 1 }, (_, i) => leftSibling + i);
+  return [1, "...", ...middleRange, "...", total];
+}
+
 interface SearchParams {
   channel?: string;
   type?: string;
@@ -50,6 +75,20 @@ export default async function AdminMensagensPage({ searchParams }: { searchParam
     if (merged.dateTo) query.set("dateTo", merged.dateTo);
     return query;
   };
+
+  const pageHref = (p: number) => {
+    const query = buildFilterQuery();
+    query.set("page", String(p));
+    return `/admin/mensagens?${query.toString()}`;
+  };
+  const pagerButtonClass = (disabledOrInactive: boolean, active = false) =>
+    `text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+      active
+        ? "bg-primary-600 text-white border-primary-600"
+        : disabledOrInactive
+          ? "pointer-events-none border-gray-200 text-gray-300 dark:border-gray-700 dark:text-gray-600"
+          : "border-gray-300 hover:border-primary-400 hover:text-primary-600 dark:border-gray-600 dark:text-gray-200 dark:hover:border-primary-500"
+    }`;
 
   return (
     <div className="space-y-6">
@@ -109,22 +148,30 @@ export default async function AdminMensagensPage({ searchParams }: { searchParam
       <MessageLogList rows={rows as MessageLogRow[]} />
 
       {totalPages > 1 && (
-        <div className="flex gap-2 justify-center flex-wrap">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-            const query = buildFilterQuery();
-            query.set("page", String(p));
-            return (
-              <Link
-                key={p}
-                href={`/admin/mensagens?${query.toString()}`}
-                className={`text-sm px-3 py-1.5 rounded-lg border ${
-                  p === page ? "bg-primary-600 text-white border-primary-600" : "border-gray-300 dark:border-gray-600"
-                }`}
-              >
-                {p}
-              </Link>
-            );
-          })}
+        <div className="flex justify-end">
+          <nav className="flex items-center justify-end gap-1.5 flex-wrap" aria-label="Paginação">
+            <Link href={pageHref(Math.max(1, page - 1))} aria-disabled={page === 1} className={pagerButtonClass(page === 1)}>
+              ‹ Anterior
+            </Link>
+            {getPaginationRange(page, totalPages).map((p, i) =>
+              p === "..." ? (
+                <span key={`ellipsis-${i}`} className="px-1 text-sm text-gray-400 select-none">
+                  …
+                </span>
+              ) : (
+                <Link key={p} href={pageHref(p)} className={pagerButtonClass(false, p === page)}>
+                  {p}
+                </Link>
+              ),
+            )}
+            <Link
+              href={pageHref(Math.min(totalPages, page + 1))}
+              aria-disabled={page === totalPages}
+              className={pagerButtonClass(page === totalPages)}
+            >
+              Próxima ›
+            </Link>
+          </nav>
         </div>
       )}
     </div>
