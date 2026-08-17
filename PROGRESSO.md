@@ -1,7 +1,12 @@
 # Progresso do Projeto
 
 ## Última atualização (2026-08-17, mais recente)
-**Etapa 9 do mega-prompt antigo (entrega de kits) — IMPLEMENTAÇÃO CONCLUÍDA, aguardando deploy.**
+**Push + deploy feito e confirmado em produção**: Etapa 9 (entrega de kits, 10 tasks + revisão
+final) e a correção de paginação de `/admin/mensagens`, juntos (`git push` até `a5a9ba3`).
+Sequência de 4 passos usada por causa da migration de `KitDelivery`. Ver detalhes nas duas seções
+abaixo.
+
+**Etapa 9 do mega-prompt antigo (entrega de kits) — CONCLUÍDO E DEPLOYADO.**
 Brainstorm → spec (`docs/superpowers/specs/2026-08-16-entrega-kits-design.md`) → plano de 10 tasks
 (`docs/superpowers/plans/2026-08-16-entrega-kits.md`) → executado via
 `superpowers:subagent-driven-development`, direto na `main`. 12 commits de tasks + revisão final
@@ -12,10 +17,9 @@ Paginação de `/admin/mensagens` corrigida (commit `b6dd9f3`) — dados já era
 servidor (`skip`/`take` de 20, `lib/message-logs.ts`), o bug real era só a UI: um `<Link>` por
 página sem limite virando parede de botões. Trocado por janela compacta (Anterior/±1/Próxima,
 reticências, canto inferior direito). `/organizador/mensagens` tem o mesmo bug, NÃO corrigido
-(fora do pedido). **NÃO deployado ainda** — usuário pediu pra juntar com o próximo deploy (a
-migration da entrega de kits acima também está pendente, então o próximo deploy já cobre os dois).
+(fora do pedido). **Deployado** junto com a entrega de kits, num único push (2026-08-17).
 
-## Entrega de kits (2026-08-16/17) — CONCLUÍDO, AGUARDANDO DEPLOY
+## Entrega de kits (2026-08-16/17) — CONCLUÍDO E DEPLOYADO
 
 Etapa 9 do mega-prompt de 10 etapas de 2026-08-02/03 — ficou deliberadamente bloqueada até pedido
 explícito do usuário, que veio nesta sessão. Feature nova do zero: organizador (e assistentes
@@ -79,18 +83,18 @@ como transitiva.
 typecheck + suíte completa + conferência manual detalhada do contrato API↔UI em cada task de UI,
 incluindo verificação independente da API real do `qr-scanner` direto no pacote instalado.
 
-**PRÓXIMA TAREFA:** nenhuma pendente de implementação. Falta só, quando o usuário autorizar:
-1. Push (`git push origin main`).
-2. Deploy com a sequência de 4 passos por causa da migration de schema pendente (`KitDelivery`
-   ainda não existe em produção) — mesma sequência de sempre: `git pull` → `docker build` →
-   `docker compose run --rm app sh -c "npx prisma db push --skip-generate"` → `docker compose up -d
-   --no-deps app`. Esse mesmo deploy já cobre a correção de paginação de `/admin/mensagens`
-   também (commit `b6dd9f3`, sem mudança de schema, já estava pendente de deploy antes desta
-   feature).
-3. Depois do deploy: aplicar a migration em produção primeiro, senão a tela de retirada e a
-   página "Minha inscrição" (que já consulta `kitDelivery`) quebram.
-4. Idealmente, um teste manual no navegador do fluxo completo (cadastrar QR, escanear, confirmar
-   entrega, ver relatório) — não foi possível nesta sessão.
+**Deploy confirmado em 2026-08-17**: `git push origin main` (até `a5a9ba3`) → na VPS
+(`/opt/corridas/src`): `git pull` → `docker build -t corridas-app:latest .` → `docker compose run
+--rm app sh -c "npx prisma db push --skip-generate"` (sync limpo, só criação da tabela nova
+`kit_deliveries`, sem prompt de perda de dado) → `docker compose up -d --no-deps app`. Confirmado
+com `\d kit_deliveries` direto no banco: unique em `registrationId`, índice em
+`deliveredByUserId`, os 2 FKs corretos. Smoke test: `/`, `/eventos` 200; `/admin/eventos`,
+`/admin/mensagens` 307 (redirect de login, esperado sem sessão). `docker logs corridas-app` sem
+erro (nem o `EACCES` antigo do cache de imagem, que já tinha sido corrigido antes).
+
+**PRÓXIMA TAREFA:** nenhuma pendente desta frente. Idealmente, um teste manual no navegador do
+fluxo completo de entrega de kits (cadastrar QR, escanear, confirmar entrega, ver relatório) —
+não foi possível fazer nesta sessão (mesmo problema de DNS de sempre).
 
 ## Última atualização (histórico anterior)
 2026-08-16 — 3 frentes concluídas e deployadas na mesma sessão: (1) feature "redes sociais por
