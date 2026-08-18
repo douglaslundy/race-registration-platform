@@ -1,6 +1,61 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-17, mais recente)
+## Última atualização (2026-08-17, mais recente — 4 pedidos novos do usuário)
+
+Usuário pediu 4 coisas na mesma mensagem. Classificado via brainstorming: itens 2/3/4 bounded
+(implementados direto, sem spec); item 1 (patrocínio) é do tamanho de "redes sociais" — vai
+levar spec+plano próprios, ainda não escritos.
+
+**Item 2 — CONCLUÍDO.** Card de camisetas movido pra logo abaixo de "Composição da receita" (antes
+do relatório de cupons) em `app/organizador/eventos/[id]/page.tsx` e `app/admin/eventos/[id]/page.tsx`
+(usuário confirmou aplicar nas duas páginas). Puro reorder de JSX, sem mudança de dado/lógica.
+
+**Item 3 — CONCLUÍDO.** Legenda do QR de retirada de kit no WhatsApp (`lib/notifications.ts`,
+enviada por `sendWhatsAppDocument` junto com a imagem na confirmação de inscrição) agora tem 3
+linhas: a frase original + `Nome: ...` + `CPF: ...` (ou "CPF: não informado" se o atleta não tiver
+CPF cadastrado). CPF vem de `athleteProfile.cpf` (não estava no `select` antes, agora está). Escopo
+final: só a legenda do WhatsApp (não mexi na página "Minha inscrição" nem no anexo do e-mail — só
+tem o PNG, sem legenda/texto pra editar). `sendWhatsAppIfActive` ganhou um parâmetro `kitQrCaption`
+novo. Teste novo em `tests/notifications.test.ts` cobrindo o caso sem CPF; teste existente
+atualizado pro texto novo.
+
+**Item 4 — CONCLUÍDO.** 4 campos novos e opcionais no `Event` (aditivos, sem dado a migrar):
+`organizerNameOverride`, `organizerDescriptionOverride`, `organizerEmailOverride`,
+`organizerPhoneOverride` — migration escrita à mão em
+`prisma/migrations/20260817010000_add_event_organizer_override/migration.sql` (ainda NÃO aplicada
+em produção). Bloco novo "Organizador deste evento" em `EditEventForm.tsx` (opcional, texto
+explica que em branco usa os dados padrão). Único ponto de leitura afetado (por pedido explícito do
+usuário): o bloco público "Organizador" na página do evento
+(`app/(public)/eventos/[slug]/page.tsx` + `components/events/OrganizerInfo.tsx`, que ganhou também
+uma linha de "descrição" nova — antes o `bio` do organizador não era exibido em lugar nenhum
+público). Quando há `organizerNameOverride`, a linha secundária de "nome da pessoa por trás da
+empresa" (`companyName` + `user.name` abaixo) some — o override substitui a identidade inteira,
+não empilha em cima da real. Fallback é sempre `override || dado padrão do organizador`.
+
+Verificação: `npx tsc --noEmit` limpo, suíte completa 227 arquivos / 1561 testes passando (era
+1558, +3 novos). **Não testado no navegador** (mesmo problema de DNS de sempre nesta sessão pro
+host do Supabase de produção).
+
+**PRÓXIMA TAREFA:** Item 1 (bloco de patrocínio nos mesmos moldes de redes sociais — múltiplos
+patrocinadores por evento, nome+link+mensagem cada, só na confirmação de inscrição). Ainda não tem
+spec escrita. Decisões já validadas com o usuário (via AskUserQuestion nesta sessão, não repetir a
+pergunta): (a) vários patrocinadores por evento, não só 1; (b) só nas 3 mensagens de
+`ORDER_CONFIRMED`/variantes (não em carrinho abandonado/erro de pagamento — mantém o escopo atual
+de `link_patrocinio`). Vai substituir por completo o campo simples `Event.sponsorLink` + variável
+`link_patrocinio` (o projeto evita manter os dois em paralelo — ver CLAUDE.md sobre não deixar
+shims de compatibilidade). Modelo a seguir de perto: `EventSocialLink`/`SocialLinkSend`
+(schema, API `app/api/events/[id]/social-links/*`, tela
+`app/organizador/eventos/[id]/redes-sociais/page.tsx`, `lib/event-social-links.ts`, permissões
+`social-links.*` nos 2 catálogos de assistente) — só que sem `maxSends`/limite de envio (patrocínio
+é conteúdo pago do organizador, não teve essa exigência colocada pelo usuário). Falta: escrever o
+spec (brainstorming architectural), decidir junto com o usuário o que fazer com dado existente em
+`sponsorLink` (migrar pra um EventSponsor automático, ou descartar), depois plano de tasks, depois
+`subagent-driven-development`.
+**Contexto necessário pra continuar:** este bloco + `lib/event-social-links.ts` +
+`app/api/events/[id]/social-links/*` + `app/organizador/eventos/[id]/redes-sociais/page.tsx` como
+referência de padrão a seguir.
+
+## Última atualização (histórico anterior, 2026-08-17)
 **Push + deploy feito e confirmado em produção**: Etapa 9 (entrega de kits, 10 tasks + revisão
 final) e a correção de paginação de `/admin/mensagens`, juntos (`git push` até `a5a9ba3`).
 Sequência de 4 passos usada por causa da migration de `KitDelivery`. Ver detalhes nas duas seções
