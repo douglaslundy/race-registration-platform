@@ -287,7 +287,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — comprador confirmando a própria inscrição. Quando a inscrição tem uma observação registrada, a produção anexa um parágrafo extra com o texto — fora do escopo desta etapa (bloco condicional, o motor de renderização não suporta condicionais).",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio", "redes_sociais"],
+    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "patrocinio", "redes_sociais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? {
@@ -307,7 +307,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — comprador que inscreveu outra pessoa (procuração).",
     channels: ["WHATSAPP"],
     recipientRoles: ["BUYER"],
-    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio", "redes_sociais"],
+    variables: ["nome_atleta", "nome_evento", "codigo_confirmacao", "link_evento", "patrocinio", "redes_sociais"],
     factoryDefault: () => ({ body: `Você inscreveu {{nome_atleta}} em {{nome_evento}}! Pedido {{codigo_confirmacao}}. Detalhes: {{link_evento}}` }),
   },
 
@@ -316,7 +316,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
     description: "Confirmação de inscrição — atleta convidado por procuração.",
     channels: ["EMAIL", "WHATSAPP"],
     recipientRoles: ["ATHLETE"],
-    variables: ["nome_atleta", "nome_comprador", "nome_evento", "codigo_confirmacao", "link_evento", "link_patrocinio", "redes_sociais"],
+    variables: ["nome_atleta", "nome_comprador", "nome_evento", "codigo_confirmacao", "link_evento", "patrocinio", "redes_sociais"],
     factoryDefault: (channel) =>
       channel === "EMAIL"
         ? ALERT_REGISTRY.ORDER_CONFIRMED.factoryDefault("EMAIL", "ATHLETE")

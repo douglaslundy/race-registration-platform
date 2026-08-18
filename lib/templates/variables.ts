@@ -33,7 +33,7 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "estado_evento", label: "Estado do evento", category: "Evento", description: "Event.state.", sample: "SP" },
   { name: "endereco_evento", label: "Endereço do evento", category: "Evento", description: "Event.addressLine. Pode ser vazio.", sample: "Av. Exemplo, 1000" },
   { name: "link_evento", label: "Link do evento", category: "Evento", description: "Derivado de Event.slug + URL base da plataforma.", sample: "https://exemplo.com/eventos/corrida-exemplo" },
-  { name: "link_patrocinio", label: "Link de patrocínio", category: "Evento", description: "Event.sponsorLink. Pode ser vazio. Só disponível nos alertas de confirmação de inscrição.", sample: "https://www.strava.com/routes/123" },
+  { name: "patrocinio", label: "Patrocínio", category: "Evento", description: "Patrocinadores ativos cadastrados no evento. Pode ser vazio. Só disponível nos alertas de confirmação de inscrição.", sample: "Confira nosso patrocinador! https://patrocinador.com" },
   { name: "redes_sociais", label: "Redes sociais", category: "Evento", description: "Promoções de redes sociais cadastradas no evento, respeitando o limite de envios por pessoa. Pode ser vazio. Disponível nos alertas de confirmação, carrinho abandonado e erro de pagamento.", sample: "Segue a gente no Instagram! https://instagram.com/corrida" },
   { name: "nome_modalidade", label: "Modalidade/percurso", category: "Evento", description: "EventRoute.name, quando a inscrição tem rota associada.", sample: "5km" },
 
