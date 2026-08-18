@@ -260,6 +260,11 @@ model Event {
   shirtSizeRestrictionSizes    ShirtSize[]
   sponsorLink                  String?
 
+  organizerNameOverride        String?
+  organizerDescriptionOverride String?   @db.Text
+  organizerEmailOverride       String?
+  organizerPhoneOverride       String?
+
   organizer     OrganizerProfile @relation(fields: [organizerId], references: [id])
   routes        EventRoute[]
   categories    EventCategory[]

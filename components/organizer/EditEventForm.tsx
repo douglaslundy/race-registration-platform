@@ -20,6 +20,10 @@ const schema = z.object({
   maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional(),
   sponsorLink: z.string().optional(),
+  organizerNameOverride: z.string().optional(),
+  organizerDescriptionOverride: z.string().optional(),
+  organizerEmailOverride: z.string().optional(),
+  organizerPhoneOverride: z.string().optional(),
   regulationText: z.string().optional().nullable(),
   metaTitle: z.string().max(70).optional().nullable(),
   metaDescription: z.string().max(160).optional().nullable(),
@@ -67,6 +71,10 @@ type EventData = {
   maxParticipants?: number | null;
   organizerContact?: string | null;
   sponsorLink?: string | null;
+  organizerNameOverride?: string | null;
+  organizerDescriptionOverride?: string | null;
+  organizerEmailOverride?: string | null;
+  organizerPhoneOverride?: string | null;
   bannerUrl?: string | null;
   listBannerUrl?: string | null;
   regulationUrl?: string | null;
@@ -121,6 +129,10 @@ export default function EditEventForm({
       maxParticipants: event.maxParticipants ?? 0,
       organizerContact: event.organizerContact ?? "",
       sponsorLink: event.sponsorLink ?? "",
+      organizerNameOverride: event.organizerNameOverride ?? "",
+      organizerDescriptionOverride: event.organizerDescriptionOverride ?? "",
+      organizerEmailOverride: event.organizerEmailOverride ?? "",
+      organizerPhoneOverride: event.organizerPhoneOverride ?? "",
       regulationText: event.regulationText ?? "",
       metaTitle: event.metaTitle ?? "",
       metaDescription: event.metaDescription ?? "",
@@ -171,6 +183,10 @@ export default function EditEventForm({
         regulationText: data.regulationText || null,
         metaTitle: data.metaTitle || null,
         metaDescription: data.metaDescription || null,
+        organizerNameOverride: data.organizerNameOverride || null,
+        organizerDescriptionOverride: data.organizerDescriptionOverride || null,
+        organizerEmailOverride: data.organizerEmailOverride || null,
+        organizerPhoneOverride: data.organizerPhoneOverride || null,
         cancellationDeadline: data.cancellationDeadline ? new Date(data.cancellationDeadline).toISOString() : null,
         cancellationRequiresApproval: data.cancellationRequiresApproval ?? false,
         cancellationContactPhone: data.cancellationContactPhone || null,
@@ -231,6 +247,34 @@ export default function EditEventForm({
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link de patrocínio</label>
         <input {...register("sponsorLink")} className="input w-full" placeholder="Strava, página do patrocinador etc." />
+      </div>
+
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Organizador deste evento</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Opcional. Preencha só se este evento tiver um organizador diferente do seu cadastro
+            padrão. Campos em branco usam os dados do seu perfil de organizador.
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+          <input {...register("organizerNameOverride")} className="input w-full" placeholder="Nome exibido como organizador" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
+          <textarea {...register("organizerDescriptionOverride")} className="input w-full" rows={3} placeholder="Apresentação exibida na página do evento" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail</label>
+            <input {...register("organizerEmailOverride")} className="input w-full" placeholder="contato@evento.com" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
+            <input {...register("organizerPhoneOverride")} className="input w-full" placeholder="(00) 00000-0000" />
+          </div>
+        </div>
       </div>
 
       <div>

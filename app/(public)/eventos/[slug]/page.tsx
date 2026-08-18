@@ -164,10 +164,11 @@ export default async function EventoPage({ params }: Props) {
             )}
 
             <OrganizerInfo
-              name={event.organizer.user.name}
-              email={event.organizer.user.email}
-              phone={event.organizer.phone}
-              companyName={event.organizer.companyName}
+              name={event.organizerNameOverride || event.organizer.companyName || event.organizer.user.name}
+              email={event.organizerEmailOverride || event.organizer.user.email}
+              phone={event.organizerPhoneOverride || event.organizer.phone}
+              companyName={event.organizerNameOverride ? null : event.organizer.companyName}
+              description={event.organizerDescriptionOverride || event.organizer.bio}
             />
 
             {event.routes.length > 0 && (
