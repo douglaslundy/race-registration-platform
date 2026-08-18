@@ -67,8 +67,10 @@ anteriores de `redes_sociais`/`link_patrocinio`), com atenção extra: checar se
 linhas usa a variável dentro de um atributo HTML (`href="..."`) antes de trocar, porque o valor
 novo é multi-linha/escapado, não mais uma URL solta.
 
-**PRÓXIMA TAREFA**: pedir autorização pro deploy (push + as 2 migrations manuais + template
-update). Nenhuma pendência de implementação.
+**Push feito**: `git push origin main` confirmado (`e71446a..0efb9d0`).
+
+**PRÓXIMA TAREFA**: pedir autorização pro deploy na VPS (as 2 migrations manuais via `psql` +
+`db push` + restart + o passo manual de template). Nenhuma pendência de implementação.
 
 ## Última atualização (2026-08-17, itens 2/3/4 do mesmo pedido — já concluídos antes do item 1 acima)
 
