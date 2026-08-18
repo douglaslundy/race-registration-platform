@@ -250,6 +250,37 @@ describe("notifyOrderConfirmed", () => {
     });
   });
 
+  it("passa sponsorPromo pro e-mail de confirmação com o texto de getSponsorPromoText", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+    vi.mocked(getSponsorPromoText).mockResolvedValueOnce("Confira nosso patrocinador ACME! https://acme.com");
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(getSponsorPromoText).toHaveBeenCalledWith("event-1");
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ sponsorPromo: "Confira nosso patrocinador ACME! https://acme.com" }),
+    );
+  });
+
+  it("inclui o texto de patrocínio na mensagem de WhatsApp quando o template usa {{patrocinio}}", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    vi.mocked(getSponsorPromoText).mockResolvedValueOnce("Confira nosso patrocinador ACME! https://acme.com");
+    dbMock.messageTemplate.findFirst
+      .mockResolvedValueOnce(null) // EVENT-scoped lookup: none
+      .mockResolvedValueOnce({ subject: null, body: "Confirmado! {{patrocinio}}", rowTemplate: null }); // GLOBAL-scoped lookup: custom body
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511999999999",
+      expect.stringContaining("Confira nosso patrocinador ACME! https://acme.com"),
+      "ORDER_CONFIRMED",
+      expect.anything(),
+    );
+  });
+
   const proxyOrderFixture = {
     buyerUserId: "buyer-1",
     buyer: { name: "Comprador Teste", email: "comprador@example.com", athleteProfile: { phone: "5511777777777" } },

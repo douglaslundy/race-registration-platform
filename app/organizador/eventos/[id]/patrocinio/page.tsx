@@ -195,6 +195,7 @@ export default function PatrocinioPage() {
               <div>
                 <p className="font-medium">{sponsor.name} {!sponsor.active && <span className="text-xs text-gray-400">(inativo)</span>}</p>
                 <p className="text-sm text-gray-500">{sponsor.url}</p>
+                <p className="text-sm text-gray-400 truncate max-w-md">{sponsor.message}</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => openEdit(sponsor)} className="text-blue-600 hover:text-blue-800 text-sm">Editar</button>

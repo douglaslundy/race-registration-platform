@@ -17,7 +17,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id, sponsorId } = await params;
   const scope = await resolveActingScope(session);
-  const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id } })
+    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const existing = await db.eventSponsor.findFirst({ where: { id: sponsorId, eventId: id } });
@@ -38,7 +40,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id, sponsorId } = await params;
   const scope = await resolveActingScope(session);
-  const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id } })
+    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const existing = await db.eventSponsor.findFirst({ where: { id: sponsorId, eventId: id } });

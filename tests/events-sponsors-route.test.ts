@@ -61,6 +61,23 @@ describe("GET/POST /api/events/[id]/sponsors", () => {
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
     expect(res.status).toBe(404);
   });
+
+  it("cria um patrocinador como ADMIN, mesmo sem ser o organizador do evento", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+    dbMock.eventSponsor.create.mockResolvedValueOnce({ id: "sponsor-1" });
+
+    const res = await POST(
+      makeRequest({ name: "ACME", url: "https://acme.com", message: "Confira a ACME!" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(201);
+    expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
+    expect(dbMock.eventSponsor.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ eventId: "event-1", name: "ACME" }) }),
+    );
+  });
 });
 
 describe("PATCH/DELETE /api/events/[id]/sponsors/[sponsorId]", () => {
@@ -102,5 +119,35 @@ describe("PATCH/DELETE /api/events/[id]/sponsors/[sponsorId]", () => {
       { params: Promise.resolve({ id: "event-1", sponsorId: "sponsor-999" }) },
     );
     expect(res.status).toBe(404);
+  });
+
+  it("edita um patrocinador como ADMIN, mesmo sem ser o organizador do evento", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+    dbMock.eventSponsor.findFirst.mockResolvedValueOnce({ id: "sponsor-1", eventId: "event-1" });
+    dbMock.eventSponsor.update.mockResolvedValueOnce({ id: "sponsor-1" });
+
+    const res = await PATCH(
+      new Request("http://localhost", { method: "PATCH", body: JSON.stringify({ active: false }) }) as any,
+      { params: Promise.resolve({ id: "event-1", sponsorId: "sponsor-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
+  });
+
+  it("remove um patrocinador como ADMIN, mesmo sem ser o organizador do evento", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+    dbMock.eventSponsor.findFirst.mockResolvedValueOnce({ id: "sponsor-1", eventId: "event-1" });
+
+    const res = await DELETE(
+      new Request("http://localhost", { method: "DELETE" }) as any,
+      { params: Promise.resolve({ id: "event-1", sponsorId: "sponsor-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
+    expect(dbMock.eventSponsor.delete).toHaveBeenCalledWith({ where: { id: "sponsor-1" } });
   });
 });

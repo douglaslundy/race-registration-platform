@@ -1203,20 +1203,45 @@ git ls-files prisma/migrations/20260818010000_drop_event_sponsor_link/
 Quando o usuário autorizar o deploy desta feature:
 
 1. `git push origin main`.
-2. Na VPS: `git pull` → `docker build -t corridas-app:latest .` → `docker compose run --rm
-   app sh -c "npx prisma db push --skip-generate"` (aplica as duas migrations desta
-   feature: criação de `event_sponsors` + backfill, e depois o DROP de
-   `events.sponsorLink`) → `docker compose up -d --no-deps app`.
-3. Conferir no banco que todo evento que tinha `sponsorLink` preenchido ganhou exatamente
-   1 `EventSponsor` (o backfill já rodou dentro do `db push`, mas vale conferir
-   manualmente com uma query direta antes de considerar concluído).
-4. **Passo manual nos templates de produção**: via `psql`, nas mesmas linhas de
+2. Na VPS: `git pull` → `docker build -t corridas-app:latest .`.
+3. **Aplicar as duas migrations manualmente via `psql`, NESTA ORDEM, ANTES do `db push`
+   tocar o schema.** `prisma db push` diz respeito só ao *schema* (`schema.prisma` vs. o
+   banco vivo) — ele nunca lê nem executa o conteúdo de nenhum `migration.sql`. Este
+   projeto já foi mordido por essa confusão antes (ver `PROGRESSO.md`, ex. "`db push` não
+   executa `migration.sql`, precisa INSERT manual"); a migration de backfill desta feature
+   (`INSERT ... SELECT` a partir de `events.sponsorLink`) só roda se for aplicada à mão:
+   - Primeiro `prisma/migrations/20260818000000_add_event_sponsors/migration.sql` (cria
+     `event_sponsors` + faz o backfill a partir de `sponsorLink`):
+     ```bash
+     docker exec -e DBURL="$URL" -i corridas-db sh -c 'psql "$DBURL" -f -' < prisma/migrations/20260818000000_add_event_sponsors/migration.sql
+     ```
+   - Conferir que o backfill funcionou comparando as duas contagens — devem bater:
+     ```sql
+     SELECT count(*) FROM event_sponsors;
+     SELECT count(*) FROM events WHERE "sponsorLink" IS NOT NULL AND "sponsorLink" != '';
+     ```
+   - Depois `prisma/migrations/20260818010000_drop_event_sponsor_link/migration.sql`
+     (remove a coluna antiga `events.sponsorLink`), mesmo padrão:
+     ```bash
+     docker exec -e DBURL="$URL" -i corridas-db sh -c 'psql "$DBURL" -f -' < prisma/migrations/20260818010000_drop_event_sponsor_link/migration.sql
+     ```
+4. `docker compose run --rm app sh -c "npx prisma db push --skip-generate"` — a esta
+   altura é só um sync de schema (no-op esperado): `schema.prisma` e o banco já concordam
+   por causa do `psql` manual acima.
+5. `docker compose up -d --no-deps app`.
+6. **Passo manual nos templates de produção**: via `psql`, nas mesmas linhas de
    `message_templates` (escopo GLOBAL) já editadas nas features de `link_patrocinio` e
    `redes_sociais` (`ORDER_CONFIRMED` EMAIL+WHATSAPP, `ORDER_CONFIRMED_PROXY_BUYER`
    WHATSAPP, `ORDER_CONFIRMED_PROXY_ATHLETE` EMAIL+WHATSAPP), trocar o texto
    `{{link_patrocinio}}` por `{{patrocinio}}`, mantendo a mesma posição/linha em branco já
    usada. Conferir lendo o corpo gravado depois do UPDATE, mesmo padrão das duas features
    anteriores.
+   **Antes de rodar esse UPDATE**, checar se alguma dessas 5 linhas usa
+   `{{link_patrocinio}}` dentro de um atributo HTML (ex.: `<a href="{{link_patrocinio}}">`).
+   `{{link_patrocinio}}` era uma URL nua; `{{patrocinio}}` é um bloco multi-linha,
+   HTML-escaped, com `<br>` entre patrocinadores — se estiver dentro de um `href`, não dá
+   pra só trocar o nome da variável: a linha afetada precisa ser reestruturada pra texto
+   simples (fora do atributo) antes do UPDATE.
 
 ---
 

@@ -33,7 +33,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const scope = await resolveActingScope(session);
-  const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id } })
+    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
 
   const body = await req.json();
