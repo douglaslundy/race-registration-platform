@@ -258,7 +258,6 @@ model Event {
   allowProxyRegistration       Boolean   @default(false)
   shirtSizeRestrictionDate     DateTime?
   shirtSizeRestrictionSizes    ShirtSize[]
-  sponsorLink                  String?
 
   organizerNameOverride        String?
   organizerDescriptionOverride String?   @db.Text

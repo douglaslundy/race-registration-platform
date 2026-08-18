@@ -418,6 +418,9 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <Link href={`/organizador/eventos/${id}/redes-sociais`} className="btn-secondary text-center">
           Redes sociais
         </Link>
+        <Link href={`/organizador/eventos/${id}/patrocinio`} className="btn-secondary text-center">
+          Patrocínio
+        </Link>
         <Link href={`/organizador/eventos/${id}/resultados`} className="btn-secondary text-center">
           Importar resultados
         </Link>

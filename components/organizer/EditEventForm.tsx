@@ -19,7 +19,6 @@ const schema = z.object({
   state: z.string().length(2, "UF com 2 letras"),
   maxParticipants: z.number().int().nonnegative().optional().nullable(),
   organizerContact: z.string().optional(),
-  sponsorLink: z.string().optional(),
   organizerNameOverride: z.string().optional(),
   organizerDescriptionOverride: z.string().optional(),
   organizerEmailOverride: z.string().optional(),
@@ -70,7 +69,6 @@ type EventData = {
   state: string;
   maxParticipants?: number | null;
   organizerContact?: string | null;
-  sponsorLink?: string | null;
   organizerNameOverride?: string | null;
   organizerDescriptionOverride?: string | null;
   organizerEmailOverride?: string | null;
@@ -128,7 +126,6 @@ export default function EditEventForm({
       state: event.state,
       maxParticipants: event.maxParticipants ?? 0,
       organizerContact: event.organizerContact ?? "",
-      sponsorLink: event.sponsorLink ?? "",
       organizerNameOverride: event.organizerNameOverride ?? "",
       organizerDescriptionOverride: event.organizerDescriptionOverride ?? "",
       organizerEmailOverride: event.organizerEmailOverride ?? "",
@@ -242,11 +239,6 @@ export default function EditEventForm({
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contato do organizador</label>
           <input {...register("organizerContact")} className="input w-full" placeholder="email ou WhatsApp" />
         </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link de patrocínio</label>
-        <input {...register("sponsorLink")} className="input w-full" placeholder="Strava, página do patrocinador etc." />
       </div>
 
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
