@@ -155,6 +155,12 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
 
       <RevenueBreakdownCard breakdown={revenueBreakdown} variant="admin" />
 
+      <ShirtSizeReportCard
+        overall={shirtSizeBreakdown}
+        byBatch={shirtSizeByBatch}
+        headingClassName="font-semibold text-sm"
+      />
+
       {event.coupons.length > 0 && (
         <div className="card space-y-5">
           <h2 className="font-semibold">Uso de cupons</h2>
@@ -288,12 +294,6 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           ))}
         </div>
       </div>
-
-      <ShirtSizeReportCard
-        overall={shirtSizeBreakdown}
-        byBatch={shirtSizeByBatch}
-        headingClassName="font-semibold text-sm"
-      />
 
       <div className="flex gap-3">
         <Link href={`/admin/eventos/${event.id}/inscritos`} className="btn-secondary text-sm">

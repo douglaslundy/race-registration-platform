@@ -197,6 +197,9 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
 
       <RevenueBreakdownCard breakdown={revenueBreakdown} variant="organizer" />
 
+      {/* Camisetas — inscrições confirmadas por tamanho */}
+      <ShirtSizeReportCard overall={shirtSizeBreakdown} byBatch={shirtSizeByBatch} />
+
       {/* Relatório de cupons — visão geral + agrupado por cupom */}
       {event.coupons.length > 0 && (
         <div className="card space-y-5">
@@ -336,9 +339,6 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           )}
         </div>
       </div>
-
-      {/* Camisetas — inscrições confirmadas por tamanho */}
-      <ShirtSizeReportCard overall={shirtSizeBreakdown} byBatch={shirtSizeByBatch} />
 
       {/* Grade: Categorias / Cupons / Tipo de pagamento */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
