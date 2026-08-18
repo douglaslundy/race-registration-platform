@@ -273,6 +273,7 @@ model Event {
   orders        Order[]
   coupons       Coupon[]
   socialLinks   EventSocialLink[]
+  sponsors      EventSponsor[]
   resultImports ResultImport[]
   fileAssets    FileAsset[]
   payouts       TransferPayout[]
@@ -515,6 +516,22 @@ model SocialLinkSend {
 
   @@unique([eventSocialLinkId, userId])
   @@map("social_link_sends")
+}
+
+model EventSponsor {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String                          // nome do patrocinador
+  url       String
+  message   String   @db.Text
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_sponsors")
 }
 
 // ─── Kit Delivery ─────────────────────────────────────────────────────────────
