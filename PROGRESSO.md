@@ -67,10 +67,33 @@ anteriores de `redes_sociais`/`link_patrocinio`), com atenção extra: checar se
 linhas usa a variável dentro de um atributo HTML (`href="..."`) antes de trocar, porque o valor
 novo é multi-linha/escapado, não mais uma URL solta.
 
-**Push feito**: `git push origin main` confirmado (`e71446a..0efb9d0`).
+**Push feito**: `git push origin main` confirmado (`e71446a..bb49270`).
 
-**PRÓXIMA TAREFA**: pedir autorização pro deploy na VPS (as 2 migrations manuais via `psql` +
-`db push` + restart + o passo manual de template). Nenhuma pendência de implementação.
+**Deploy confirmado em produção (2026-08-18)**: autorizado pelo usuário. Sequência seguida (a
+corrigida pela revisão final, não a original do plano):
+1. `git pull origin main` na VPS (`/opt/corridas/src`) — trouxe as 3 migrations desta sessão
+   (`organizer_override`, `add_event_sponsors`, `drop_event_sponsor_link`).
+2. As 3 migrations aplicadas manualmente via `psql` direto no container `corridas-db`, NA ORDEM,
+   ANTES de qualquer `db push` (mesmo padrão já documentado neste arquivo pra `AdPlan`/`AdSlot`/
+   constraint XOR de pagamento — `db push` não executa `migration.sql`). Backfill verificado por
+   contagem antes do DROP: 1 evento tinha `sponsorLink` preenchido de verdade (um segundo evento
+   tinha string vazia, corretamente ignorado pelo filtro), virou exatamente 1 `EventSponsor`
+   (nome "Patrocinador", mensagem genérica, link do Instagram do evento).
+3. `docker build -t corridas-app:latest .` — build limpo.
+4. `docker compose run --rm app sh -c "npx prisma db push --skip-generate"` — confirmou "already
+   in sync" (prova de que os 3 `psql` manuais bateram exatamente com o schema.prisma).
+5. `docker compose up -d --no-deps app` — só o container da app recriado.
+6. Smoke test: `/` e `/eventos` 200, `/admin/eventos` e `/organizador` 307 (login, esperado sem
+   sessão), `/api/events/nonexistent/sponsors` 401 (confirma que a API nova está no ar, não 404).
+   `docker logs corridas-app` sem erro.
+7. Templates de produção: as mesmas 5 linhas de `message_templates` (GLOBAL) já editadas nas
+   features de `redes_sociais`/`link_patrocinio` — confirmado antes de trocar que
+   `{{link_patrocinio}}` nunca aparece dentro de atributo HTML (sempre em `<p>...</p>` solto ou
+   linha própria no WhatsApp, nunca em `href`), então troca direta de nome de variável foi segura.
+   `UPDATE ... SET body = replace(body, '{{link_patrocinio}}', '{{patrocinio}}')` — 5 linhas
+   afetadas, conferido lendo o corpo de cada uma depois do UPDATE.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta frente. Feature completa e em produção.
 
 ## Última atualização (2026-08-17, itens 2/3/4 do mesmo pedido — já concluídos antes do item 1 acima)
 
