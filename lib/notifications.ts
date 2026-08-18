@@ -33,6 +33,7 @@ async function sendWhatsAppIfActive(
   bypassDedupe: boolean,
   resolveSocialPromo: () => Promise<string>,
   kitQrCodeBase64: string,
+  kitQrCaption: string,
 ): Promise<void> {
   if (!phone) return;
   let claimed = false;
@@ -58,7 +59,7 @@ async function sendWhatsAppIfActive(
         phone,
         kitQrCodeBase64,
         "qrcode-retirada-kit.png",
-        "Apresente este QR code na retirada do kit",
+        kitQrCaption,
         eventId
           ? { messageType: alertKey, relatedEntityType: "Event", relatedEntityId: eventId, mediatype: "image" }
           : { messageType: alertKey, mediatype: "image" },
@@ -103,7 +104,7 @@ export async function notifyOrderConfirmed(
             notes: true,
             athleteUserId: true,
             proxyAthleteDisplayName: true,
-            athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+            athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true, cpf: true } } } },
           },
           take: 1,
         },
@@ -115,6 +116,9 @@ export async function notifyOrderConfirmed(
 
     const kitQrCodePng = await generateKitQrCodePng(registration.id);
     const kitQrCodeBase64 = kitQrCodePng.toString("base64");
+    // Nome + CPF do atleta abaixo da legenda: permite localizar a inscrição no balcão de retirada
+    // (busca por nome/CPF em lib/kit-delivery.ts) quando não há leitor de QR code disponível.
+    const kitQrCaption = `Apresente este QR code na retirada do kit\nNome: ${registration.proxyAthleteDisplayName ?? registration.athlete.name}\nCPF: ${registration.athlete.athleteProfile?.cpf ?? "não informado"}`;
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
     const detailsUrl = `${baseUrl}/dashboard/inscricoes/${registration.id}`;
@@ -190,6 +194,7 @@ export async function notifyOrderConfirmed(
       bypassDedupe,
       resolveSocialPromo,
       kitQrCodeBase64,
+      kitQrCaption,
     );
 
     if (!isProxyRegistration) return;
@@ -243,6 +248,7 @@ export async function notifyOrderConfirmed(
       bypassDedupe,
       resolveSocialPromo,
       kitQrCodeBase64,
+      kitQrCaption,
     );
   } catch (err) {
     console.error("[notifyOrderConfirmed] failed:", err);

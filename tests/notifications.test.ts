@@ -51,7 +51,11 @@ const orderFixture = {
       id: "reg-1",
       notes: "Chegarei atrasado",
       athleteUserId: "user-1",
-      athlete: { name: "Atleta Teste", email: "atleta@example.com", athleteProfile: { phone: "5511999999999" } },
+      athlete: {
+        name: "Atleta Teste",
+        email: "atleta@example.com",
+        athleteProfile: { phone: "5511999999999", cpf: "11122233344" },
+      },
     },
   ],
 };
@@ -145,13 +149,37 @@ describe("notifyOrderConfirmed", () => {
       "5511999999999",
       Buffer.from("fake-png").toString("base64"),
       "qrcode-retirada-kit.png",
-      "Apresente este QR code na retirada do kit",
+      "Apresente este QR code na retirada do kit\nNome: Atleta Teste\nCPF: 11122233344",
       {
         messageType: "ORDER_CONFIRMED",
         relatedEntityType: "Event",
         relatedEntityId: "event-1",
         mediatype: "image",
       },
+    );
+  });
+
+  it("legenda do QR mostra 'CPF: não informado' quando o atleta não tem CPF cadastrado", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce({
+      ...orderFixture,
+      registrations: [
+        {
+          ...orderFixture.registrations[0],
+          athlete: { ...orderFixture.registrations[0].athlete, athleteProfile: { phone: "5511999999999", cpf: null } },
+        },
+      ],
+    });
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendWhatsAppDocument).toHaveBeenCalledWith(
+      "5511999999999",
+      Buffer.from("fake-png").toString("base64"),
+      "qrcode-retirada-kit.png",
+      "Apresente este QR code na retirada do kit\nNome: Atleta Teste\nCPF: não informado",
+      expect.anything(),
     );
   });
 
