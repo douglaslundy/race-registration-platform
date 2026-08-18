@@ -1,6 +1,76 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-17, mais recente — 4 pedidos novos do usuário)
+## Última atualização (2026-08-18, mais recente — item 1 do pedido de 2026-08-17 CONCLUÍDO)
+
+**Patrocinadores por evento (múltiplos, nos moldes de redes sociais) — CONCLUÍDO, revisão final
+limpa (fix wave aplicada), NÃO DEPLOYADO.**
+
+Item 1 do pedido de 4 tarefas de 2026-08-17 (ver seção logo abaixo pros itens 2/3/4, já
+concluídos e commitados antes deste). Spec: `docs/superpowers/specs/2026-08-18-patrocinadores-evento-design.md`.
+Plano (6 tasks): `docs/superpowers/plans/2026-08-18-patrocinadores-evento.md`. Executado via
+`superpowers:subagent-driven-development`, direto na `main` (mesmo padrão de sempre, por pedido
+explícito do usuário), sem worktree.
+
+**O que mudou pro organizador:** o campo único "Link de patrocínio" (uma URL) na edição do evento
+foi **substituído** por uma tela nova `/organizador/eventos/[id]/patrocinio` (mesmo molde de
+`/redes-sociais`) onde o organizador cadastra **vários** patrocinadores (nome + link + mensagem +
+ativo/inativo), sem limite de envio por pessoa (diferente de redes sociais — patrocínio é
+conteúdo pago, sempre aparece quando ativo). Todos os patrocinadores ativos entram na mensagem de
+confirmação de inscrição (variável nova `{{patrocinio}}`, substitui `{{link_patrocinio}}`),
+juntos com `\n\n` entre blocos — mesmo padrão de `{{redes_sociais}}`. Escopo igual ao antigo
+`link_patrocinio`: só nos 3 alertKeys de `ORDER_CONFIRMED` (não em carrinho abandonado/erro de
+pagamento).
+
+**Model novo**: `EventSponsor` (schema em 2 migrations — Task 1 só cria+faz backfill automático
+de quem já tinha `sponsorLink`, Task 6 remove a coluna antiga — pra nenhuma task no meio quebrar a
+compilação). Helper `lib/event-sponsors.ts::getSponsorPromoText(eventId)`, sem efeito colateral
+(ao contrário do `getSocialPromoText` de redes sociais). API `app/api/events/[id]/sponsors/*`
+espelhando `social-links`, com as 4 permissões de assistente (`sponsors.view/create/edit/delete`)
+já nos dois catálogos desde a mesma task da API — lição da feature anterior (redes sociais) que
+tinha esquecido isso e virou fix wave.
+
+**6 tasks, todas revisadas individualmente, todas limpas na primeira revisão** (nenhum fix round
+de task precisou rodar): schema+migration → helper → variável de template → wiring em
+`notifyOrderConfirmed`/`lib/email.ts` → API+permissões → UI+remoção final do `sponsorLink`
+antigo.
+
+**Revisão final de branch inteira (opus)**: achou 1 Crítico + 2 Importantes + 2 Minor, fix wave
+único aplicado (commit `da808c3`), re-revisão confirmou os 4 endereçados sem quebra nova (1 minor,
+o edit/delete da UI não checar `res.ok`, foi parqueado — padrão pré-existente também presente em
+`/redes-sociais`, não é regressão desta feature):
+1. **Crítico real, achado de verdade**: a seção de Deploy do plano dizia que `prisma db push`
+   aplicava as duas migrations da feature — **falso**, `db push` não executa `migration.sql`
+   nenhum (só faz diff de `schema.prisma` contra o banco vivo — mesmo problema já documentado
+   várias vezes neste arquivo, ex. `AdSlot`/`AdPlan` seeds, constraint XOR de pagamento). Sem
+   correção, o backfill de `sponsorLink` pra `EventSponsor` nunca rodaria de verdade e o dado se
+   perderia no drop da coluna. Corrigido: seção de Deploy reescrita com aplicação manual via
+   `psql` das 2 migrations, NA ORDEM, ANTES do `db push` (que vira só um sync vazio depois),
+   com query de verificação de contagem.
+2. **Importante real**: API de patrocinadores (`POST`/`PATCH`/`DELETE`) não tinha o branch de
+   `actingAsAdmin` que o `GET` já tinha — admin levava 404 enganoso tentando gerenciar
+   patrocinadores (regressão de verdade vs. o `PATCH /api/events/[id]` antigo, que suportava
+   admin). Corrigido nos 2 arquivos de rota + 3 testes de regressão novos.
+3. **Importante real**: nada testava a ligação entre `getSponsorPromoText` e as mensagens de fato
+   enviadas (`tests/notifications.test.ts` importava a função e nunca usava — erro de lint
+   inclusive). Corrigido: 2 testes novos (lado e-mail via `sponsorPromo`, lado WhatsApp mockando
+   um template com `{{patrocinio}}` de verdade, já que o texto de fábrica não tem essa variável).
+4. Minor corrigido: lista de patrocinadores na UI não mostrava preview da mensagem (spec pedia).
+
+Suíte completa 229→230 arquivos / 1578 testes passando, `tsc --noEmit` limpo, `eslint` limpo nos
+arquivos tocados. **Não testado no navegador** (mesmo problema de DNS de sempre nesta sessão).
+
+**NÃO deployado ainda** — aguardando autorização explícita do usuário, mesmo padrão de sempre.
+Quando autorizado, seguir a seção "Deploy" (já corrigida) do plano: as 2 migrations via `psql`
+manual ANTES do `db push`, depois o passo manual de trocar `{{link_patrocinio}}` por
+`{{patrocinio}}` nas 5 linhas de `message_templates` em produção (mesmo padrão das features
+anteriores de `redes_sociais`/`link_patrocinio`), com atenção extra: checar se alguma dessas
+linhas usa a variável dentro de um atributo HTML (`href="..."`) antes de trocar, porque o valor
+novo é multi-linha/escapado, não mais uma URL solta.
+
+**PRÓXIMA TAREFA**: pedir autorização pro deploy (push + as 2 migrations manuais + template
+update). Nenhuma pendência de implementação.
+
+## Última atualização (2026-08-17, itens 2/3/4 do mesmo pedido — já concluídos antes do item 1 acima)
 
 Usuário pediu 4 coisas na mesma mensagem. Classificado via brainstorming: itens 2/3/4 bounded
 (implementados direto, sem spec); item 1 (patrocínio) é do tamanho de "redes sociais" — vai
