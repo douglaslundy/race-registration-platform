@@ -9,6 +9,7 @@ import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
 import { getSocialPromoText } from "@/lib/event-social-links";
+import { getSponsorPromoText } from "@/lib/event-sponsors";
 import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 
 const ALERT_TYPE = "ORDER_CONFIRMED";
@@ -97,7 +98,7 @@ export async function notifyOrderConfirmed(
       select: {
         buyerUserId: true,
         buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
-        event: { select: { id: true, title: true, sponsorLink: true } },
+        event: { select: { id: true, title: true } },
         registrations: {
           select: {
             id: true,
@@ -119,6 +120,8 @@ export async function notifyOrderConfirmed(
     // Nome + CPF do atleta abaixo da legenda: permite localizar a inscrição no balcão de retirada
     // (busca por nome/CPF em lib/kit-delivery.ts) quando não há leitor de QR code disponível.
     const kitQrCaption = `Apresente este QR code na retirada do kit\nNome: ${registration.proxyAthleteDisplayName ?? registration.athlete.name}\nCPF: ${registration.athlete.athleteProfile?.cpf ?? "não informado"}`;
+
+    const sponsorPromo = await getSponsorPromoText(order.event?.id ?? "");
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
     const detailsUrl = `${baseUrl}/dashboard/inscricoes/${registration.id}`;
@@ -156,7 +159,7 @@ export async function notifyOrderConfirmed(
             orderId,
             eventTitle: order.event?.title,
             eventId: order.event?.id,
-            sponsorLink: order.event?.sponsorLink,
+            sponsorPromo,
             socialPromo: await resolveSocialPromo(),
             notes: registration.notes ?? undefined,
             alertKey: "ORDER_CONFIRMED",
@@ -187,7 +190,7 @@ export async function notifyOrderConfirmed(
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
-        link_patrocinio: order.event?.sponsorLink ?? "",
+        patrocinio: sponsorPromo,
       },
       order.event?.id,
       `${orderId}:buyer`,
@@ -214,7 +217,7 @@ export async function notifyOrderConfirmed(
               orderId,
               eventTitle: order.event?.title,
               eventId: order.event?.id,
-              sponsorLink: order.event?.sponsorLink,
+              sponsorPromo,
               socialPromo: await resolveSocialPromo(),
               notes: registration.notes ?? undefined,
               alertKey: "ORDER_CONFIRMED_PROXY_ATHLETE",
@@ -241,7 +244,7 @@ export async function notifyOrderConfirmed(
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
-        link_patrocinio: order.event?.sponsorLink ?? "",
+        patrocinio: sponsorPromo,
       },
       order.event?.id,
       `${orderId}:athlete`,

@@ -26,6 +26,9 @@ vi.mock("@/lib/proxy-athlete", () => ({
 vi.mock("@/lib/event-social-links", () => ({
   getSocialPromoText: vi.fn().mockResolvedValue(""),
 }));
+vi.mock("@/lib/event-sponsors", () => ({
+  getSponsorPromoText: vi.fn().mockResolvedValue(""),
+}));
 vi.mock("@/lib/kit-qr-code", () => ({
   generateKitQrCodePng: vi.fn().mockResolvedValue(Buffer.from("fake-png")),
 }));
@@ -38,6 +41,7 @@ import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings
 import { getConnectionState } from "@/lib/whatsapp/evolution-client";
 import { isPlaceholderEmail } from "@/lib/proxy-athlete";
 import { getSocialPromoText } from "@/lib/event-social-links";
+import { getSponsorPromoText } from "@/lib/event-sponsors";
 import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 
 const dbMock = db as any;

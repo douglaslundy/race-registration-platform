@@ -114,7 +114,7 @@ export async function sendRegistrationConfirmationEmail(params: {
   alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_ATHLETE";
   recipientRole: "BUYER" | "ATHLETE";
   buyerName?: string;
-  sponsorLink?: string | null;
+  sponsorPromo?: string | null;
   socialPromo?: string | null;
   kitQrCodePng?: Buffer;
 }): Promise<void> {
@@ -127,7 +127,7 @@ export async function sendRegistrationConfirmationEmail(params: {
     nome_evento: params.eventTitle ?? "",
     codigo_confirmacao: params.orderId,
     link_evento: url,
-    link_patrocinio: params.sponsorLink ?? "",
+    patrocinio: params.sponsorPromo ?? "",
     redes_sociais: params.socialPromo ?? "",
   };
   const template = await getEffectiveTemplate(params.alertKey, "EMAIL", params.recipientRole, params.eventId);

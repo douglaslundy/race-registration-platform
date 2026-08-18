@@ -486,11 +486,11 @@ describe("sendRegistrationConfirmationEmail", () => {
     expect(sentHtml).not.toContain("Chegarei atrasado");
   });
 
-  it("resolve {{link_patrocinio}} quando o evento tem um link de patrocínio cadastrado", async () => {
+  it("resolve {{patrocinio}} quando o evento tem patrocinador ativo", async () => {
     sendMailMock.mockResolvedValueOnce({});
     vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
       subject: "Assunto — {{nome_evento}}",
-      body: "<p>Olá {{nome_atleta}}, veja também: {{link_patrocinio}}</p>",
+      body: "<p>Olá {{nome_atleta}}, veja também: {{patrocinio}}</p>",
       source: "global",
     });
 
@@ -503,18 +503,18 @@ describe("sendRegistrationConfirmationEmail", () => {
       eventId: "event-1",
       alertKey: "ORDER_CONFIRMED",
       recipientRole: "BUYER",
-      sponsorLink: "https://www.strava.com/routes/123",
+      sponsorPromo: "Confira nosso patrocinador! https://www.strava.com/routes/123",
     });
 
     const sentHtml = sendMailMock.mock.calls[0][0].html as string;
-    expect(sentHtml).toContain("https://www.strava.com/routes/123");
+    expect(sentHtml).toContain("Confira nosso patrocinador! https://www.strava.com/routes/123");
   });
 
-  it("resolve {{link_patrocinio}} pra string vazia quando o evento não tem link cadastrado", async () => {
+  it("resolve {{patrocinio}} pra string vazia quando o evento não tem patrocinador ativo", async () => {
     sendMailMock.mockResolvedValueOnce({});
     vi.mocked(getEffectiveTemplate).mockResolvedValueOnce({
       subject: "Assunto — {{nome_evento}}",
-      body: "<p>Link: [{{link_patrocinio}}]</p>",
+      body: "<p>Link: [{{patrocinio}}]</p>",
       source: "global",
     });
 
