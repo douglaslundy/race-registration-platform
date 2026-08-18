@@ -1,6 +1,35 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-18, mais recente — item 1 do pedido de 2026-08-17 CONCLUÍDO)
+## Última atualização (2026-08-18, mais recente — fix de feedback do cupom no checkout)
+
+**Bug relatado pelo usuário: cupom sem feedback na inscrição — CORRIGIDO.** Usuário reportou que ao
+digitar um cupom na página de inscrição (`/inscricao/[slug]`, componente `CheckoutForm.tsx`) a
+plataforma não mostrava se o cupom era inválido ou se tinha sido aplicado (e com qual valor).
+
+**Causa raiz (`superpowers:systematic-debugging`)**: o estado (`couponLoading`/`couponError`/
+`couponPreview`) já era calculado certinho (debounce de 350ms → `GET
+/api/events/[id]/coupons/preview`, que já existia e funcionava). O bug era só de posição na UI: o
+JSX que mostrava "Validando cupom..."/erro/desconto ficava dentro do card de resumo de valores, bem
+mais abaixo na página — depois de método de pagamento, dados de cartão e aceite de termos. O campo
+do cupom em si não tinha nenhum feedback logo abaixo, então o atleta digitava e não via nada mudar
+perto do campo (o feedback existia, só estava fora da área visível).
+
+**Corrigido**: movido o feedback de carregando/erro pra logo abaixo do próprio campo "Cupom de
+desconto" (mesmo padrão dos outros campos do formulário, ex. `errors.acceptTerms`), mais uma
+mensagem nova de sucesso explícita ali (`Cupom aplicado: -R$ X,XX`) que não existia antes — antes
+só havia a linha "Desconto (CÓDIGO)" no resumo de valores mais abaixo, sem confirmação perto do
+campo. A linha de desconto no resumo de valores foi mantida (útil pra ver o efeito no total).
+Arquivo: `components/checkout/CheckoutForm.tsx`.
+
+**Verificação**: `tsc --noEmit` limpo, suíte completa 229 arquivos / 1578 testes passando (sem
+mudança de contagem — mudança é só de posição de JSX, projeto não tem infraestrutura de teste de
+componente React, só testes de API/lib). Não testado no navegador (mesmo problema de DNS de sempre
+nesta sessão pro host do Supabase de produção).
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta frente. Aguardando usuário confirmar visualmente (ou
+autorizar push/deploy — mudança pequena, sem migration, sem dado sensível).
+
+## Última atualização (2026-08-18, item anterior — item 1 do pedido de 2026-08-17 CONCLUÍDO)
 
 **Patrocinadores por evento (múltiplos, nos moldes de redes sociais) — CONCLUÍDO, revisão final
 limpa (fix wave aplicada), NÃO DEPLOYADO.**

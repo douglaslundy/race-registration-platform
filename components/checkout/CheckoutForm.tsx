@@ -527,6 +527,17 @@ export default function CheckoutForm({
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cupom de desconto</label>
           <input {...register("couponCode")} className="input-field" placeholder="Código do cupom" />
+          {couponLoading && (
+            <p className="text-xs text-gray-500 mt-1">Validando cupom...</p>
+          )}
+          {!couponLoading && couponError && (
+            <p className="text-xs text-red-600 mt-1">{couponError}</p>
+          )}
+          {!couponLoading && !couponError && couponPreview && (
+            <p className="text-xs text-green-600 mt-1">
+              Cupom aplicado: -{formatCurrency(couponPreview.discountAmount)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -648,13 +659,6 @@ export default function CheckoutForm({
             </div>
           );
         })()}
-
-        {couponLoading && (
-          <p className="text-xs text-gray-500 mb-3">Validando cupom...</p>
-        )}
-        {couponError && (
-          <p className="mb-3 text-xs text-red-600">{couponError}</p>
-        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
