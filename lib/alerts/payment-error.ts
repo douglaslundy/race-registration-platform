@@ -15,7 +15,12 @@ interface CancellationNotificationTarget {
   entityType: "Payment" | "Order";
   alertKey: "PAYMENT_ERROR" | "PAYMENT_ERROR_ORDER_CANCELLED";
   buyerUserId: string;
-  buyer: { name: string; email: string; athleteProfile: { phone: string | null } | null };
+  buyer: {
+    name: string;
+    email: string;
+    receiveEventMessages?: boolean;
+    athleteProfile: { phone: string | null } | null;
+  };
   event: { id: string; title: string; slug: string };
   bypassDedupe?: boolean;
 }
@@ -38,7 +43,7 @@ async function sendCancellationInviteNotification(
   const resolveSocialPromo = async () =>
     (socialPromoCache ??= await getSocialPromoText(params.event.id, params.buyerUserId));
 
-  if (settings.emailEnabled) {
+  if (settings.emailEnabled && params.buyer.receiveEventMessages !== false) {
     const cfg = await getSmtpConfig();
     if (isSmtpReady(cfg)) {
       const claimed = params.bypassDedupe ? true : await claimAlert(ALERT_TYPE, params.entityType, params.entityId, "EMAIL");
@@ -61,7 +66,7 @@ async function sendCancellationInviteNotification(
     }
   }
 
-  if (settings.whatsappEnabled && params.buyer.athleteProfile?.phone) {
+  if (settings.whatsappEnabled && params.buyer.receiveEventMessages !== false && params.buyer.athleteProfile?.phone) {
     const claimed = params.bypassDedupe ? true : await claimAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
     if (claimed) {
       try {
@@ -72,7 +77,9 @@ async function sendCancellationInviteNotification(
           link_evento: eventUrl,
           redes_sociais: await resolveSocialPromo(),
         }, "WHATSAPP");
-        await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text, params.alertKey);
+        await sendWhatsAppMessage(params.buyer.athleteProfile.phone, text, params.alertKey, {
+          appendPreferencesFooter: true,
+        });
         if (params.bypassDedupe) await recordAlert(ALERT_TYPE, params.entityType, params.entityId, "WHATSAPP");
       } catch (err) {
         if (!params.bypassDedupe) await unclaimAlert(ALERT_TYPE, params.entityId, "WHATSAPP");
@@ -97,7 +104,7 @@ export async function notifyPaymentError(
           select: {
             buyerUserId: true,
             event: { select: { id: true, title: true, slug: true } },
-            buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+            buyer: { select: { name: true, email: true, receiveEventMessages: true, athleteProfile: { select: { phone: true } } } },
           },
         },
       },
@@ -137,7 +144,7 @@ export async function notifyOrderCancelledWithoutPayment(
       select: {
         buyerUserId: true,
         event: { select: { id: true, title: true, slug: true } },
-        buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+        buyer: { select: { name: true, email: true, receiveEventMessages: true, athleteProfile: { select: { phone: true } } } },
       },
     });
 

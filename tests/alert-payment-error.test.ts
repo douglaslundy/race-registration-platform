@@ -188,6 +188,7 @@ describe("notifyPaymentError", () => {
       "5511988888888",
       `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
       "PAYMENT_ERROR",
+      { appendPreferencesFooter: true },
     );
     expect(resolveSpy).toHaveBeenCalledWith("PAYMENT_ERROR", "WHATSAPP", "BUYER", "event-1");
   });
@@ -206,7 +207,23 @@ describe("notifyPaymentError", () => {
       "5511988888888",
       "Olá Atleta, sua inscrição em Corrida Teste foi cancelada.",
       "PAYMENT_ERROR",
+      { appendPreferencesFooter: true },
     );
+  });
+
+  it("não envia e-mail nem WhatsApp quando o comprador desativou receiveEventMessages", async () => {
+    vi.mocked(getPaymentErrorAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: true });
+    dbMock.payment.findUnique.mockResolvedValueOnce({
+      order: {
+        ...paymentFixture.order,
+        buyer: { ...paymentFixture.order.buyer, receiveEventMessages: false },
+      },
+    });
+
+    await notifyPaymentError("payment-1");
+
+    expect(sendPaymentErrorEmail).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
   });
 });
 
@@ -264,6 +281,7 @@ describe("notifyOrderCancelledWithoutPayment", () => {
       "5511988888888",
       expect.stringContaining("Corrida Teste"),
       "PAYMENT_ERROR_ORDER_CANCELLED",
+      { appendPreferencesFooter: true },
     );
     expect(resolveSpy).toHaveBeenCalledWith("PAYMENT_ERROR_ORDER_CANCELLED", "WHATSAPP", "BUYER", "event-1");
   });
@@ -329,6 +347,7 @@ describe("notifyOrderCancelledWithoutPayment", () => {
       "5511988888888",
       `Sua inscrição em "Corrida Teste" foi cancelada porque não identificamos o pagamento. Não fique de fora — faça agora mesmo uma nova inscrição e venha participar conosco: ${baseUrl}/eventos/corrida-teste`,
       "PAYMENT_ERROR_ORDER_CANCELLED",
+      { appendPreferencesFooter: true },
     );
   });
 });
