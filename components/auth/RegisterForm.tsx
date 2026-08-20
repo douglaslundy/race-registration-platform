@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { isValidCpf } from "@/lib/cpf";
+import { isValidCep, fetchAddressByCep } from "@/lib/cep";
 
 const schema = z
   .object({
@@ -17,6 +18,14 @@ const schema = z
     birthDate: z.string().optional(),
     cpf: z.string().optional(),
     phone: z.string().optional(),
+    postalCode: z.string().optional(),
+    street: z.string().optional(),
+    number: z.string().optional(),
+    noNumber: z.boolean().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role !== "ATHLETE") return;
@@ -56,6 +65,54 @@ const schema = z
         path: ["phone"],
       });
     }
+
+    if (!data.postalCode || !isValidCep(data.postalCode)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe um CEP válido",
+        path: ["postalCode"],
+      });
+    }
+
+    if (!data.street) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a rua/logradouro",
+        path: ["street"],
+      });
+    }
+
+    if (!data.noNumber && !data.number) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe o número ou marque 'Sem número'",
+        path: ["number"],
+      });
+    }
+
+    if (!data.neighborhood) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe o bairro",
+        path: ["neighborhood"],
+      });
+    }
+
+    if (!data.city) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe a cidade",
+        path: ["city"],
+      });
+    }
+
+    if (!data.state) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Informe o estado",
+        path: ["state"],
+      });
+    }
   });
 
 type FormData = z.infer<typeof schema>;
@@ -67,19 +124,23 @@ export default function RegisterForm() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { role: "ATHLETE" },
   });
   const role = watch("role");
+  const noNumber = watch("noNumber");
+  const cepField = register("postalCode");
 
   async function onSubmit(data: FormData) {
     setError(null);
+    const payload = { ...data, number: data.noNumber ? "S/N" : data.number };
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -148,6 +209,72 @@ export default function RegisterForm() {
               placeholder="(11) 99999-9999"
             />
             {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CEP *</label>
+            <input
+              type="text"
+              {...cepField}
+              onBlur={async (e) => {
+                cepField.onBlur(e);
+                const address = await fetchAddressByCep(e.target.value);
+                if (address) {
+                  setValue("street", address.street);
+                  setValue("neighborhood", address.neighborhood);
+                  setValue("city", address.city);
+                  setValue("state", address.state);
+                }
+              }}
+              className="input-field"
+              placeholder="00000-000"
+              maxLength={9}
+            />
+            {errors.postalCode && <p className="text-red-500 text-xs mt-1">{errors.postalCode.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rua/Logradouro *</label>
+            <input type="text" {...register("street")} className="input-field" />
+            {errors.street && <p className="text-red-500 text-xs mt-1">{errors.street.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Número *</label>
+            <input
+              type="text"
+              {...register("number")}
+              disabled={noNumber}
+              className="input-field disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            {errors.number && <p className="text-red-500 text-xs mt-1">{errors.number.message}</p>}
+            <label className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+              <input type="checkbox" {...register("noNumber")} />
+              Sem número
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+            <input type="text" {...register("complement")} className="input-field" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bairro *</label>
+            <input type="text" {...register("neighborhood")} className="input-field" />
+            {errors.neighborhood && <p className="text-red-500 text-xs mt-1">{errors.neighborhood.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cidade *</label>
+            <input type="text" {...register("city")} className="input-field" />
+            {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Estado (UF) *</label>
+            <input type="text" maxLength={2} {...register("state")} className="input-field" />
+            {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state.message}</p>}
           </div>
         </>
       )}

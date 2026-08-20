@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { normalizeCep, isValidCep } from "@/lib/cep";
 import { hasValidMxRecord } from "@/lib/validate-email-domain";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -16,6 +17,13 @@ const registerSchema = z
     birthDate: z.string().optional(),
     cpf: z.string().optional(),
     phone: z.string().optional(),
+    postalCode: z.string().optional(),
+    street: z.string().optional(),
+    number: z.string().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.role !== "ATHLETE") return;
@@ -55,6 +63,54 @@ const registerSchema = z
         path: ["phone"],
       });
     }
+
+    if (!data.postalCode || !isValidCep(data.postalCode)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CEP é obrigatório e deve ser válido",
+        path: ["postalCode"],
+      });
+    }
+
+    if (!data.street) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Rua/logradouro é obrigatório",
+        path: ["street"],
+      });
+    }
+
+    if (!data.number) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Número é obrigatório",
+        path: ["number"],
+      });
+    }
+
+    if (!data.neighborhood) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Bairro é obrigatório",
+        path: ["neighborhood"],
+      });
+    }
+
+    if (!data.city) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Cidade é obrigatória",
+        path: ["city"],
+      });
+    }
+
+    if (!data.state) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Estado é obrigatório",
+        path: ["state"],
+      });
+    }
   });
 
 export async function POST(req: NextRequest) {
@@ -71,7 +127,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { name, email, password, role, birthDate, cpf, phone } = parsed.data;
+    const {
+      name, email, password, role, birthDate, cpf, phone,
+      postalCode, street, number, complement, neighborhood, city, state,
+    } = parsed.data;
 
     if (!(await hasValidMxRecord(email))) {
       return NextResponse.json({ error: "Domínio de e-mail inválido ou inexistente" }, { status: 400 });
@@ -101,7 +160,19 @@ export async function POST(req: NextRequest) {
     if (role === "ATHLETE" && birthDate) {
       try {
         await db.athleteProfile.create({
-          data: { userId: user.id, birthDate: new Date(birthDate), cpf: normalizedCpf, phone },
+          data: {
+            userId: user.id,
+            birthDate: new Date(birthDate),
+            cpf: normalizedCpf,
+            phone,
+            postalCode: postalCode ? normalizeCep(postalCode) : undefined,
+            street,
+            number,
+            complement,
+            neighborhood,
+            city,
+            state,
+          },
         });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

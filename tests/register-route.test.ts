@@ -32,6 +32,12 @@ const validAthleteBody = {
   birthDate: "1990-01-01",
   cpf: "111.444.777-35",
   phone: "11999999999",
+  postalCode: "01310-100",
+  street: "Avenida Paulista",
+  number: "1000",
+  neighborhood: "Bela Vista",
+  city: "São Paulo",
+  state: "SP",
 };
 
 describe("POST /api/auth/register", () => {
@@ -142,5 +148,93 @@ describe("POST /api/auth/register", () => {
 
     expect(res.status).toBe(400);
     expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem CEP", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.postalCode;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita CEP com formato inválido", async () => {
+    const res = await POST(makeRequest({ ...validAthleteBody, postalCode: "123" }));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem rua/logradouro", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.street;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem número", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.number;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem bairro", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.neighborhood;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem cidade", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.city;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita cadastro de atleta sem estado", async () => {
+    const body: Record<string, unknown> = { ...validAthleteBody };
+    delete body.state;
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("aceita 'S/N' como número (endereço sem numeração)", async () => {
+    const res = await POST(makeRequest({ ...validAthleteBody, number: "S/N" }));
+
+    expect(res.status).toBe(201);
+    expect(dbMock.athleteProfile.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ number: "S/N" }) }),
+    );
+  });
+
+  it("cria o perfil com o endereço completo e o CEP normalizado", async () => {
+    const res = await POST(makeRequest(validAthleteBody));
+
+    expect(res.status).toBe(201);
+    expect(dbMock.athleteProfile.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          postalCode: "01310-100",
+          street: "Avenida Paulista",
+          number: "1000",
+          neighborhood: "Bela Vista",
+          city: "São Paulo",
+          state: "SP",
+        }),
+      }),
+    );
   });
 });
