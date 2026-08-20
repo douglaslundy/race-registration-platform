@@ -147,7 +147,7 @@ describe("notifyOrderConfirmed", () => {
       "5511999999999",
       expect.stringContaining("Corrida Teste"),
       "ORDER_CONFIRMED",
-      { relatedEntityType: "Event", relatedEntityId: "event-1" },
+      { appendPreferencesFooter: true, relatedEntityType: "Event", relatedEntityId: "event-1" },
     );
     expect(sendWhatsAppDocument).toHaveBeenCalledWith(
       "5511999999999",
@@ -457,7 +457,7 @@ describe("notifyOrderConfirmed", () => {
         "5511999999999",
         `Sua inscrição em Corrida Teste foi confirmada! Pedido order-1. Detalhes: ${detailsUrl}`,
         "ORDER_CONFIRMED",
-        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+        { appendPreferencesFooter: true, relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
 
@@ -472,7 +472,7 @@ describe("notifyOrderConfirmed", () => {
         "5511777777777",
         `Você inscreveu Nome Digitado Pelo Comprador em Corrida Teste! Pedido order-1. Detalhes: ${detailsUrl}`,
         "ORDER_CONFIRMED_PROXY_BUYER",
-        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+        { appendPreferencesFooter: true, relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
 
@@ -487,7 +487,7 @@ describe("notifyOrderConfirmed", () => {
         "5511888888888",
         `Comprador Teste criou uma inscrição pra você em Corrida Teste! Pedido order-1. Detalhes: ${detailsUrl}`,
         "ORDER_CONFIRMED_PROXY_ATHLETE",
-        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+        { appendPreferencesFooter: true, relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
 
@@ -507,7 +507,7 @@ describe("notifyOrderConfirmed", () => {
         "5511888888888",
         "Oi Nome Digitado Pelo Comprador, Comprador Teste te inscreveu!",
         "ORDER_CONFIRMED_PROXY_ATHLETE",
-        { relatedEntityType: "Event", relatedEntityId: "event-1" },
+        { appendPreferencesFooter: true, relatedEntityType: "Event", relatedEntityId: "event-1" },
       );
     });
   });
@@ -551,5 +551,53 @@ describe("notifyOrderConfirmed", () => {
     // já enviada com sucesso, legitimamente detém — uma segunda chamada não deve reenviar.
     await notifyOrderConfirmed("order-1");
     expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("não envia e-mail nem WhatsApp pro comprador quando ele desativou receiveEventMessages", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce({
+      ...orderFixture,
+      buyer: { ...orderFixture.buyer, receiveEventMessages: false },
+    });
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(dbMock.order.update).not.toHaveBeenCalled();
+  });
+
+  it("procuração: não envia e-mail nem WhatsApp pro atleta convidado quando ele desativou receiveEventMessages, mas o comprador continua recebendo normalmente", async () => {
+    // Mesmo isolamento de mock explicado no beforeEach da describe "zero-regressão" acima: o
+    // mockImplementation deixado por mockPerKeyAlertLog() no último teste do arquivo (que usa o
+    // mesmo orderId "order-1") sobrevive ao vi.clearAllMocks() do beforeEach externo e bloquearia
+    // falsamente a reivindicação de dedupe do e-mail do comprador aqui. Não altera a lógica real.
+    dbMock.alertLog.create.mockReset();
+    dbMock.order.findUnique.mockResolvedValueOnce({
+      ...proxyOrderFixture,
+      registrations: [
+        {
+          ...proxyOrderFixture.registrations[0],
+          athlete: { ...proxyOrderFixture.registrations[0].athlete, receiveEventMessages: false },
+        },
+      ],
+    });
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(getConnectionState).mockResolvedValue("open");
+
+    await notifyOrderConfirmed("order-1");
+
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledTimes(1);
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "comprador@example.com" }),
+    );
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+    expect(sendWhatsAppMessage).toHaveBeenCalledWith(
+      "5511777777777",
+      expect.any(String),
+      "ORDER_CONFIRMED_PROXY_BUYER",
+      expect.anything(),
+    );
   });
 });

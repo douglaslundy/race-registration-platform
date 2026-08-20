@@ -28,6 +28,7 @@ async function sendWhatsAppIfActive(
   phone: string | null | undefined,
   alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_BUYER" | "ORDER_CONFIRMED_PROXY_ATHLETE",
   recipientRole: "BUYER" | "ATHLETE",
+  recipientReceivesEventMessages: boolean,
   values: Record<string, string | undefined>,
   eventId: string | undefined,
   claimEntityId: string,
@@ -37,6 +38,9 @@ async function sendWhatsAppIfActive(
   kitQrCaption: string,
 ): Promise<void> {
   if (!phone) return;
+  // Revalidado a cada chamada (não é um valor cacheado do momento em que o pedido foi criado): o
+  // destinatário pode ter desativado "mensagens de eventos" entre a criação do pedido e este envio.
+  if (recipientReceivesEventMessages === false) return;
   let claimed = false;
   try {
     if (!(await isWhatsAppConnectionActive())) return;
@@ -47,12 +51,10 @@ async function sendWhatsAppIfActive(
     // conexão de WhatsApp ativa, claim de dedupe bem sucedido) — é o ponto em que o envio de fato
     // vai acontecer, então é seguro "gastar" a cota do link social agora.
     const text = renderTemplate(template.body, { ...values, redes_sociais: await resolveSocialPromo() }, "WHATSAPP");
-    await sendWhatsAppMessage(
-      phone,
-      text,
-      alertKey,
-      eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : undefined,
-    );
+    await sendWhatsAppMessage(phone, text, alertKey, {
+      appendPreferencesFooter: true,
+      ...(eventId ? { relatedEntityType: "Event", relatedEntityId: eventId } : {}),
+    });
     if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
 
     try {
@@ -97,7 +99,14 @@ export async function notifyOrderConfirmed(
       where: { id: orderId },
       select: {
         buyerUserId: true,
-        buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+        buyer: {
+          select: {
+            name: true,
+            email: true,
+            receiveEventMessages: true,
+            athleteProfile: { select: { phone: true } },
+          },
+        },
         event: { select: { id: true, title: true } },
         registrations: {
           select: {
@@ -105,7 +114,14 @@ export async function notifyOrderConfirmed(
             notes: true,
             athleteUserId: true,
             proxyAthleteDisplayName: true,
-            athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true, cpf: true } } } },
+            athlete: {
+              select: {
+                name: true,
+                email: true,
+                receiveEventMessages: true,
+                athleteProfile: { select: { phone: true, cpf: true } },
+              },
+            },
           },
           take: 1,
         },
@@ -149,7 +165,7 @@ export async function notifyOrderConfirmed(
     let buyerEmailClaimed = false;
     try {
       const cfg = await getSmtpConfig();
-      if (isSmtpReady(cfg)) {
+      if (isSmtpReady(cfg) && order.buyer.receiveEventMessages !== false) {
         buyerEmailClaimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", orderId, "EMAIL");
         if (buyerEmailClaimed) {
           await sendRegistrationConfirmationEmail({
@@ -185,6 +201,7 @@ export async function notifyOrderConfirmed(
       buyerWhatsappPhone,
       buyerWhatsappAlertKey,
       "BUYER",
+      order.buyer.receiveEventMessages,
       {
         nome_atleta: registration.proxyAthleteDisplayName ?? registration.athlete.name,
         nome_evento: order.event?.title ?? "",
@@ -207,7 +224,7 @@ export async function notifyOrderConfirmed(
       let athleteEmailClaimed = false;
       try {
         const cfg = await getSmtpConfig();
-        if (isSmtpReady(cfg)) {
+        if (isSmtpReady(cfg) && registration.athlete.receiveEventMessages !== false) {
           athleteEmailClaimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", `${orderId}:athlete`, "EMAIL");
           if (athleteEmailClaimed) {
             await sendRegistrationConfirmationEmail({
@@ -238,6 +255,7 @@ export async function notifyOrderConfirmed(
       registration.athlete.athleteProfile?.phone,
       "ORDER_CONFIRMED_PROXY_ATHLETE",
       "ATHLETE",
+      registration.athlete.receiveEventMessages,
       {
         nome_atleta: registration.proxyAthleteDisplayName ?? registration.athlete.name,
         nome_comprador: order.buyer.name,
