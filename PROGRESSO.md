@@ -1,5 +1,84 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-20 — Preferências de comunicação do atleta — CONCLUÍDO, revisão final limpa)
+
+**Sub-projeto 1 de 3 do `taskwhatsapp.md`** (o pedido grande original foi decomposto via
+`superpowers:brainstorming` em 3 sub-projetos independentes: preferências → endereço obrigatório →
+campanhas de WhatsApp em massa; este é o primeiro, escolhido por ser fundação das campanhas — que
+vão precisar filtrar por `receivePromotionalMessages`). Spec:
+`docs/superpowers/specs/2026-08-20-preferencias-comunicacao-atleta-design.md`. Plano (8 tasks):
+`docs/superpowers/plans/2026-08-20-preferencias-comunicacao-atleta.md`. Executado via
+`superpowers:subagent-driven-development`, direto na `main`, sem worktree (confirmado
+explicitamente pelo usuário no início desta sessão).
+
+**O que foi implementado:** dois campos novos em `User` (`receivePromotionalMessages`/
+`receiveEventMessages`, ambos `Boolean @default(true)`) que agora gateiam e-mail **e** WhatsApp nos
+3 arquivos que hoje mandam mensagem pra atleta/comprador (`lib/notifications.ts` —
+`ORDER_CONFIRMED` + 2 variantes de procuração; `lib/alerts/abandoned-cart.ts`;
+`lib/alerts/payment-error.ts` — `PAYMENT_ERROR` + variante), sempre com leitura fresca a cada envio
+(revalidação automática, sem cache) e sempre checado ANTES do `claimAlert` (pra não queimar a
+chave de dedupe de quem desativou a preferência). WhatsApp ganhou rodapé de opt-out centralizado
+(`buildPreferencesFooterText()` em `lib/whatsapp.ts`, link estático `/preferencias`, sem
+token/PII), nunca em e-mail. Tela nova `app/preferencias/page.tsx` (rota de topo, fora do
+dashboard, mesmo padrão de `/completar-cadastro`) com 2 toggles independentes, salvando via
+`PATCH /api/me/preferences` (rota existente, estendida). `LoginForm.tsx` passou a honrar
+`callbackUrl` com proteção contra open redirect (`lib/auth/safe-redirect.ts::isSafeRedirectPath`).
+
+**8 tasks, todas revisadas individualmente** (3 tiveram 1 rodada de fix cada — Task 3: bypass via
+caracteres de controle no check de `//` + risco de build não verificado; Task 4: teste não
+distinguia "chave ausente" de "chave presente como `undefined`"; Task 5: fetch sem try/catch
+deixava o checkbox travado em erro de rede — todas corrigidas e re-revisadas limpas):
+1. Schema + migration (`prisma/migrations/20260820000000_add_user_communication_preferences/`).
+2. `sendWhatsAppMessage` ganha opção `appendPreferencesFooter`.
+3. `isSafeRedirectPath` + `LoginForm.tsx` honra `callbackUrl` com proteção contra open redirect.
+4. `PATCH /api/me/preferences` aceita os 2 campos novos (além de `uiDensity`, preservado).
+5. Página `/preferencias` + formulário.
+6. Guard + rodapé em `lib/notifications.ts` (`ORDER_CONFIRMED` + variantes).
+7. Guard + rodapé em `lib/alerts/abandoned-cart.ts` (+ 2 rotas de reenvio manual, mesmo widening).
+8. Guard + rodapé em `lib/alerts/payment-error.ts` (`PAYMENT_ERROR` + variante).
+
+**Revisão final de branch inteira (opus, base `f247c9b`..`229799b`):** achou 1 Importante real +
+7 Minor. Fix wave único aplicado (commit `45bc917`), corrigindo:
+1. **Importante real, achado de verdade**: `/completar-cadastro` (`page.tsx` +
+   `CompletarCadastroForm.tsx`) tinha o MESMO bug de open redirect via `callbackUrl` que a Task 3
+   corrigiu no login — nunca validava o parâmetro (`redirect(callbackUrl || "/dashboard")` cru).
+   Um atleta com cadastro completo acessando `/completar-cadastro?callbackUrl=https://evil.com`
+   era redirecionado direto pro domínio do atacante. Corrigido reaproveitando
+   `isSafeRedirectPath` nos 2 arquivos.
+2. Minor corrigido (bundled): `recipientReceivesEventMessages` em `lib/notifications.ts` era
+   tipado `boolean` obrigatório, inconsistente com os outros 2 arquivos (`receiveEventMessages?:
+   boolean`, opcional) — alinhado pra `boolean | undefined`, sem mudar a lógica do guard.
+3. Minors parqueados (não bloqueiam, ver ledger do SDD se precisar do detalhe completo): teste
+   simétrico de procuração faltando (comprador bloqueado + atleta habilitado); `truncateForSubject`
+   degrada o preview do `MessageLog` pra envios com rodapé; rodapé quebra silenciosamente sem
+   `NEXT_PUBLIC_APP_URL`/`NEXTAUTH_URL` setada (**checar isso antes do deploy**); reenvio manual de
+   carrinho abandonado vira no-op silencioso (200 OK) pra comprador opt-out, sem feedback ao
+   organizador; `receivePromotionalMessages` é write-only até o sub-projeto de campanhas ler o
+   campo (esperado); `/preferencias` é uma página sem link de volta/nav (só alcançável pelo rodapé
+   do WhatsApp — sugestão pro usuário, não implementada por estar fora do escopo pedido).
+
+Re-revisão do fix wave: os 2 achados endereçados, nenhuma quebra nova. Suíte completa
+(231 arquivos / 1599 testes) e `tsc --noEmit` limpos.
+
+**Achado de produto pra decidir no sub-projeto de campanhas** (não é bug desta entrega): as
+mensagens `ORDER_CONFIRMED`/`ABANDONED_CART`/`PAYMENT_ERROR` (gateadas só por
+`receiveEventMessages`) já carregam `{{patrocinio}}`/`{{redes_sociais}}` — conteúdo promocional
+"pegando carona" numa mensagem transacional. Quem desativar só "mensagens promocionais" continua
+recebendo patrocínio/redes sociais. Decisão consciente de produto/LGPD a tomar antes do campo
+`receivePromotionalMessages` ganhar significado real nas campanhas.
+
+**Não testado no navegador** (mesmo problema de DNS de sempre nesta sessão) — verificação foi
+typecheck + suíte completa (1599 testes) + 2 revisões (por task + branch inteira) + fix waves
+re-revisadas.
+
+**Migration pendente de deploy** (aditiva, `NOT NULL DEFAULT true`, sem backfill necessário) —
+seguir o mesmo padrão já documentado neste arquivo (psql manual ANTES do `db push`, `db push` não
+executa `migration.sql`). Checar se a VPS usa `migrate deploy` ou `db push` antes de aplicar.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta frente. Push/deploy aguardando autorização explícita do
+usuário. Depois: sub-projeto 2 (endereço obrigatório do atleta) ou 3 (campanhas de WhatsApp em
+massa) do `taskwhatsapp.md`, por pedido explícito.
+
 ## Última atualização (2026-08-18, mais recente — fix de feedback do cupom no checkout)
 
 **Bug relatado pelo usuário: cupom sem feedback na inscrição — CORRIGIDO.** Usuário reportou que ao
@@ -26,8 +105,12 @@ mudança de contagem — mudança é só de posição de JSX, projeto não tem i
 componente React, só testes de API/lib). Não testado no navegador (mesmo problema de DNS de sempre
 nesta sessão pro host do Supabase de produção).
 
-**PRÓXIMA TAREFA**: nenhuma pendente desta frente. Aguardando usuário confirmar visualmente (ou
-autorizar push/deploy — mudança pequena, sem migration, sem dado sensível).
+**Push + deploy confirmados em produção (2026-08-18)**: `git push origin main` (`3766841..4236260`)
+→ `ssh root@144.91.92.70 "cd /opt/corridas && bash deploy.sh"` (git pull → docker build → docker
+compose up -d --no-deps app, sem mudança de schema). Container `corridas-app` recriado, smoke test
+`/` e `/eventos` 200, sem erro nos logs desde o restart.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta frente. Feature completa e em produção.
 
 ## Última atualização (2026-08-18, item anterior — item 1 do pedido de 2026-08-17 CONCLUÍDO)
 
