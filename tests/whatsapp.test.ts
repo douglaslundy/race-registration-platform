@@ -159,6 +159,38 @@ describe("sendWhatsAppMessage", () => {
       errorMessage: "Evolution API 400 ao enviar mensagem",
     });
   });
+
+  it("quando appendPreferencesFooter é true, acrescenta o rodapé de preferências ao texto enviado e ao log", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+    const expectedText =
+      `Sua inscrição foi confirmada!\n\nPara alterar ou cancelar o recebimento de mensagens, acesse suas preferências de comunicação: ${baseUrl}/preferencias`;
+
+    await sendWhatsAppMessage("5511999999999", "Sua inscrição foi confirmada!", "ORDER_CONFIRMED", {
+      appendPreferencesFooter: true,
+    });
+
+    expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", expectedText);
+    expect(recordMessageLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: expectedText.length > 80 ? `${expectedText.slice(0, 77)}...` : expectedText,
+      }),
+    );
+  });
+
+  it("sem appendPreferencesFooter (ausente ou false), não altera o texto enviado", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.abc" });
+
+    await sendWhatsAppMessage("5511999999999", "Olá!", "TEST", { appendPreferencesFooter: false });
+
+    expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", "Olá!");
+  });
 });
 
 describe("sendWhatsAppDocument", () => {

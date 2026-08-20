@@ -6,6 +6,11 @@ function truncateForSubject(text: string): string {
   return text.length > 80 ? `${text.slice(0, 77)}...` : text;
 }
 
+function buildPreferencesFooterText(): string {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
+  return `\n\nPara alterar ou cancelar o recebimento de mensagens, acesse suas preferências de comunicação: ${baseUrl}/preferencias`;
+}
+
 /**
  * Normaliza um telefone brasileiro pro formato que a Evolution API espera (só dígitos, sempre
  * com o DDI 55), aceitando o número com ou sem "+55"/formatação. Não duplica o DDI se ele já
@@ -27,22 +32,31 @@ export async function sendWhatsAppMessage(
   phone: string,
   text: string,
   messageType?: string,
-  options?: { relatedEntityType?: string; relatedEntityId?: string; logSubject?: string },
+  options?: {
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+    logSubject?: string;
+    /** Acrescenta o rodapé de opt-out (link estático pra /preferencias) ao final do texto — usar
+     * só nas mensagens de evento/promocionais que respeitam receiveEventMessages/
+     * receivePromotionalMessages, nunca em código de verificação ou mensagem de sistema. */
+    appendPreferencesFooter?: boolean;
+  },
 ): Promise<void> {
   const config = await getWhatsAppConfig();
   if (!isWhatsAppConfigured(config)) {
     throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
   }
 
+  const finalText = options?.appendPreferencesFooter ? `${text}${buildPreferencesFooterText()}` : text;
   const normalizedPhone = normalizePhoneForWhatsApp(phone);
-  const subject = options?.logSubject ?? truncateForSubject(text);
+  const subject = options?.logSubject ?? truncateForSubject(finalText);
   const relatedEntity =
     options?.relatedEntityType && options?.relatedEntityId
       ? { relatedEntityType: options.relatedEntityType, relatedEntityId: options.relatedEntityId }
       : {};
 
   try {
-    const { providerMessageId } = await sendTextMessage(config, normalizedPhone, text);
+    const { providerMessageId } = await sendTextMessage(config, normalizedPhone, finalText);
     await recordMessageLog({
       channel: "WHATSAPP",
       messageType,
