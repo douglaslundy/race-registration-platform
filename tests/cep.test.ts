@@ -92,4 +92,17 @@ describe("fetchAddressByCep", () => {
     expect(result).toBeNull();
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it("retorna null quando a resposta HTTP é ok mas o corpo não é JSON válido", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError("Unexpected token in JSON");
+      },
+    } as unknown as Response);
+
+    const result = await fetchAddressByCep("01001-000");
+
+    expect(result).toBeNull();
+  });
 });
