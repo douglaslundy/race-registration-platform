@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { fetchAddressByCep } from "@/lib/cep";
 
 const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
 const GENDERS = [
@@ -16,6 +17,11 @@ type ProfileData = {
   cpf?: string | null;
   phone?: string | null;
   gender?: string | null;
+  postalCode?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
   city?: string | null;
   state?: string | null;
   emergencyName?: string | null;
@@ -31,6 +37,7 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [noNumber, setNoNumber] = useState(false);
 
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
@@ -46,6 +53,7 @@ export default function PerfilPage() {
             ...profile,
             birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split("T")[0] : "",
           });
+          setNoNumber(profile.number === "S/N");
         }
       })
       .finally(() => setLoading(false));
@@ -94,6 +102,25 @@ export default function PerfilPage() {
 
   function set(field: keyof ProfileData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value || null }));
+  }
+
+  async function handlePostalCodeBlur() {
+    if (!form.postalCode) return;
+    const address = await fetchAddressByCep(form.postalCode);
+    if (address) {
+      setForm((prev) => ({
+        ...prev,
+        street: address.street,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+      }));
+    }
+  }
+
+  function toggleNoNumber(checked: boolean) {
+    setNoNumber(checked);
+    set("number", checked ? "S/N" : "");
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
@@ -148,16 +175,6 @@ export default function PerfilPage() {
                 placeholder="(11) 99999-9999" className="input w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade</label>
-              <input type="text" value={form.city ?? ""} onChange={(e) => set("city", e.target.value)}
-                className="input w-full" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado (UF)</label>
-              <input type="text" maxLength={2} value={form.state ?? ""} onChange={(e) => set("state", e.target.value.toUpperCase())}
-                placeholder="SP" className="input w-full" />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipe / Clube</label>
               <input type="text" value={form.teamName ?? ""} onChange={(e) => set("teamName", e.target.value)}
                 className="input w-full" />
@@ -178,6 +195,63 @@ export default function PerfilPage() {
                   {s}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card space-y-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Endereço</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CEP *</label>
+              <input
+                type="text"
+                value={form.postalCode ?? ""}
+                onChange={(e) => set("postalCode", e.target.value)}
+                onBlur={handlePostalCodeBlur}
+                placeholder="00000-000"
+                maxLength={9}
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rua/Logradouro *</label>
+              <input type="text" value={form.street ?? ""} onChange={(e) => set("street", e.target.value)}
+                className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número *</label>
+              <input
+                type="text"
+                value={form.number ?? ""}
+                onChange={(e) => set("number", e.target.value)}
+                disabled={noNumber}
+                className="input w-full disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+              />
+              <label className="flex items-center gap-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <input type="checkbox" checked={noNumber} onChange={(e) => toggleNoNumber(e.target.checked)} />
+                Sem número
+              </label>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Complemento</label>
+              <input type="text" value={form.complement ?? ""} onChange={(e) => set("complement", e.target.value)}
+                className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bairro *</label>
+              <input type="text" value={form.neighborhood ?? ""} onChange={(e) => set("neighborhood", e.target.value)}
+                className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade *</label>
+              <input type="text" value={form.city ?? ""} onChange={(e) => set("city", e.target.value)}
+                className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado (UF) *</label>
+              <input type="text" maxLength={2} value={form.state ?? ""} onChange={(e) => set("state", e.target.value.toUpperCase())}
+                placeholder="SP" className="input w-full" />
             </div>
           </div>
         </div>
