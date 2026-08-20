@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { isValidCpf } from "@/lib/cpf";
 import { isValidCep, fetchAddressByCep } from "@/lib/cep";
+import { isSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import type { MissingAthleteField } from "@/lib/auth/profile-completion";
 
 export default function CompletarCadastroForm({
@@ -100,7 +101,7 @@ export default function CompletarCadastroForm({
       return;
     }
 
-    router.push(callbackUrl || "/dashboard");
+    router.push(isSafeRedirectPath(callbackUrl) ? callbackUrl : "/dashboard");
     router.refresh();
   }
 
