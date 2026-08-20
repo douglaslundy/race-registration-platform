@@ -4,65 +4,119 @@ import { getMissingAthleteProfileFields, getSuggestedAthleteProfileFields } from
 
 const dbMock = db as any;
 
+const completeProfile = {
+  birthDate: new Date("1990-01-01"),
+  cpf: "11144477735",
+  phone: "5511999999999",
+  postalCode: "01310-100",
+  street: "Avenida Paulista",
+  number: "1000",
+  neighborhood: "Bela Vista",
+  city: "São Paulo",
+  state: "SP",
+};
+
 describe("getMissingAthleteProfileFields", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("retorna lista vazia quando birthDate, cpf e phone estão preenchidos", async () => {
-    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
-      birthDate: new Date("1990-01-01"),
-      cpf: "11144477735",
-      phone: "5511999999999",
-    });
+  it("retorna lista vazia quando todos os campos obrigatórios estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce(completeProfile);
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
     expect(missing).toEqual([]);
   });
 
-  it("retorna birthDate, cpf e phone quando não há perfil nenhum", async () => {
+  it("retorna todos os 9 campos quando não há perfil nenhum", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce(null);
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
-    expect(missing).toEqual(["birthDate", "cpf", "phone"]);
+    expect(missing).toEqual([
+      "birthDate", "cpf", "phone", "postalCode", "street", "number", "neighborhood", "city", "state",
+    ]);
   });
 
-  it("retorna só cpf quando birthDate e phone já estão preenchidos", async () => {
-    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
-      birthDate: new Date("1990-01-01"),
-      cpf: null,
-      phone: "5511999999999",
-    });
+  it("retorna só cpf quando os demais campos já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, cpf: null });
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
     expect(missing).toEqual(["cpf"]);
   });
 
-  it("retorna só birthDate quando cpf e phone já estão preenchidos", async () => {
-    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
-      birthDate: null,
-      cpf: "11144477735",
-      phone: "5511999999999",
-    });
+  it("retorna só birthDate quando os demais campos já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, birthDate: null });
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
     expect(missing).toEqual(["birthDate"]);
   });
 
-  it("retorna só phone quando birthDate e cpf já estão preenchidos", async () => {
-    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
-      birthDate: new Date("1990-01-01"),
-      cpf: "11144477735",
-      phone: null,
-    });
+  it("retorna só phone quando os demais campos já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, phone: null });
 
     const missing = await getMissingAthleteProfileFields("user-1");
 
     expect(missing).toEqual(["phone"]);
+  });
+
+  it("retorna só postalCode quando os demais campos de endereço já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, postalCode: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["postalCode"]);
+  });
+
+  it("retorna só street quando os demais campos de endereço já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, street: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["street"]);
+  });
+
+  it("retorna só number quando os demais campos de endereço já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, number: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["number"]);
+  });
+
+  it("retorna só neighborhood quando os demais campos de endereço já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, neighborhood: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["neighborhood"]);
+  });
+
+  it("retorna só city quando os demais campos de endereço já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, city: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["city"]);
+  });
+
+  it("retorna só state quando os demais campos de endereço já estão preenchidos", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, state: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual(["state"]);
+  });
+
+  it("nunca inclui complement na lista (campo opcional, fora do tipo MissingAthleteField)", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ ...completeProfile, complement: null });
+
+    const missing = await getMissingAthleteProfileFields("user-1");
+
+    expect(missing).toEqual([]);
   });
 });
 
@@ -71,12 +125,10 @@ describe("getSuggestedAthleteProfileFields", () => {
     vi.clearAllMocks();
   });
 
-  it("retorna lista vazia quando gender, preferredShirtSize, city e state estão preenchidos", async () => {
+  it("retorna lista vazia quando gender e preferredShirtSize estão preenchidos", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
       gender: "M",
       preferredShirtSize: "M",
-      city: "São Paulo",
-      state: "SP",
     });
 
     const suggested = await getSuggestedAthleteProfileFields("user-1");
@@ -84,24 +136,22 @@ describe("getSuggestedAthleteProfileFields", () => {
     expect(suggested).toEqual([]);
   });
 
-  it("retorna os 4 campos quando não há perfil nenhum", async () => {
+  it("retorna os 2 campos quando não há perfil nenhum", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce(null);
 
     const suggested = await getSuggestedAthleteProfileFields("user-1");
 
-    expect(suggested).toEqual(["gender", "preferredShirtSize", "city", "state"]);
+    expect(suggested).toEqual(["gender", "preferredShirtSize"]);
   });
 
-  it("retorna só os campos vazios quando o perfil está parcialmente preenchido", async () => {
+  it("retorna só o campo vazio quando o perfil está parcialmente preenchido", async () => {
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({
       gender: "F",
       preferredShirtSize: null,
-      city: null,
-      state: "RJ",
     });
 
     const suggested = await getSuggestedAthleteProfileFields("user-1");
 
-    expect(suggested).toEqual(["preferredShirtSize", "city"]);
+    expect(suggested).toEqual(["preferredShirtSize"]);
   });
 });

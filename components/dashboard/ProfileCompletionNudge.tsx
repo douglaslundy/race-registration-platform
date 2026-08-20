@@ -17,15 +17,12 @@ export function signOutAndClearNudge() {
 const FIELD_LABELS: Record<SuggestedAthleteField, string> = {
   gender: "Gênero",
   preferredShirtSize: "Tamanho de camiseta",
-  city: "Cidade/Estado",
-  state: "Cidade/Estado",
 };
 
 function buildSuggestionLabel(fields: SuggestedAthleteField[]): string {
   const labels: string[] = [];
   if (fields.includes("gender")) labels.push(FIELD_LABELS.gender);
   if (fields.includes("preferredShirtSize")) labels.push(FIELD_LABELS.preferredShirtSize);
-  if (fields.includes("city") || fields.includes("state")) labels.push("Cidade/Estado");
   return labels.join(", ");
 }
 
