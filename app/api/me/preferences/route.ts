@@ -3,9 +3,13 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-const schema = z.object({
-  uiDensity: z.enum(["comfortable", "compact"]),
-});
+const schema = z
+  .object({
+    uiDensity: z.enum(["comfortable", "compact"]).optional(),
+    receivePromotionalMessages: z.boolean().optional(),
+    receiveEventMessages: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "Nenhum campo informado" });
 
 export async function PATCH(req: NextRequest) {
   const session = await auth();
@@ -22,7 +26,15 @@ export async function PATCH(req: NextRequest) {
 
     await db.user.update({
       where: { id: session.user.id },
-      data: { uiDensity: parsed.data.uiDensity },
+      data: {
+        ...(parsed.data.uiDensity !== undefined ? { uiDensity: parsed.data.uiDensity } : {}),
+        ...(parsed.data.receivePromotionalMessages !== undefined
+          ? { receivePromotionalMessages: parsed.data.receivePromotionalMessages }
+          : {}),
+        ...(parsed.data.receiveEventMessages !== undefined
+          ? { receiveEventMessages: parsed.data.receiveEventMessages }
+          : {}),
+      },
     });
 
     return NextResponse.json({ ok: true });
