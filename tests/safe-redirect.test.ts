@@ -34,4 +34,16 @@ describe("isSafeRedirectPath", () => {
   it("rejeita tentativa de host via barra invertida (/\\\\host)", () => {
     expect(isSafeRedirectPath("/\\evil.com")).toBe(false);
   });
+
+  it("rejeita bypass de control character (tab/newline/carriage-return antes de //)", () => {
+    // WHATWG URL spec: browsers strip ASCII tab/newline/CR before parsing, so "/\t//evil.com"
+    // becomes "//evil.com" (protocol-relative) after cleanup
+    expect(isSafeRedirectPath("/\t//evil.com")).toBe(false);
+    expect(isSafeRedirectPath("/\n//evil.com")).toBe(false);
+    expect(isSafeRedirectPath("/\r//evil.com")).toBe(false);
+    // Also test the stripped form directly (should still be rejected)
+    expect(isSafeRedirectPath("/\t/dashboard")).toBe(false);
+    expect(isSafeRedirectPath("/\n/dashboard")).toBe(false);
+    expect(isSafeRedirectPath("/\r/dashboard")).toBe(false);
+  });
 });
