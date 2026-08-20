@@ -1,9 +1,45 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-20, mais recente — Endereço obrigatório do atleta: revisão final de branch inteira, fix wave aplicado)
+## Última atualização (2026-08-20, mais recente — Endereço obrigatório do atleta — CONCLUÍDO, revisão final limpa)
 
-**Sub-projeto 2 de 3 do `taskwhatsapp.md`** ("Endereço obrigatório do atleta"). Revisão final achou
-2 Importantes + 1 Minor (bundled), todos corrigidos numa leva só. Relatório completo:
+**Sub-projeto 2 de 3 do `taskwhatsapp.md`** ("Endereço obrigatório do atleta"). Spec:
+`docs/superpowers/specs/2026-08-20-endereco-obrigatorio-atleta-design.md`. Plano (7 tasks):
+`docs/superpowers/plans/2026-08-20-endereco-obrigatorio-atleta.md`. Executado via
+`superpowers:subagent-driven-development`, direto na `main`, sem worktree (mesmo padrão do
+sub-projeto anterior).
+
+**O que foi implementado:** 5 campos novos em `AthleteProfile` (`postalCode`, `street`, `number`,
+`complement` opcional, `neighborhood` — `city`/`state` já existiam e foram promovidos de
+"sugerido" pra obrigatório), com autocomplete de CEP via ViaCEP (API pública, sem chave) e
+checkbox "Sem número" (grava `"S/N"`, sem coluna nova) nos 3 pontos de UI: cadastro inicial
+(`RegisterForm.tsx`, obrigatório pra `role=ATHLETE`, mesmo padrão de CPF/nascimento/telefone),
+gate de cadastro incompleto (`CompletarCadastroForm.tsx`, mostra só os campos faltantes,
+reaproveitando o mecanismo já existente da feature de CPF de 2026-07-06 — não criou mecanismo
+paralelo), e "Meus Dados" (`app/dashboard/perfil/page.tsx`, novo card "Endereço"). Novo
+`lib/cep.ts` (normalização/validação + `fetchAddressByCep`, nunca lança). Gate
+(`lib/auth/profile-completion.ts::getMissingAthleteProfileFields`) estendido de 3 pra 9 campos
+obrigatórios.
+
+**7 tasks, todas revisadas individualmente** (2 tiveram 1 rodada de fix cada — Task 2: teste
+faltando pro caso de resposta JSON malformada do ViaCEP; Task 5: teste de normalização de CEP não
+provava a transformação de verdade, só idempotência — ambos corrigidos e re-revisados limpos).
+**Achado real na Task 3**: um 4º consumidor não documentado no plano
+(`components/dashboard/ProfileCompletionNudge.tsx`) enumerava o tipo `SuggestedAthleteField` com
+`city`/`state` — quebrou o typecheck quando esses campos saíram da lista de "sugeridos" (agora
+obrigatórios). Corrigido removendo os 2 casos agora inexistentes (mudança mecânica, não de
+design).
+
+**Achado sério na Task 6 (regressão de segurança, não do implementador — do meu próprio plano)**:
+o brief da Task 6 foi escrito a partir de uma versão desatualizada de
+`CompletarCadastroForm.tsx`, anterior à correção de open-redirect (`isSafeRedirectPath`) aplicada
+pelo sub-projeto anterior (preferências) no mesmo arquivo. Implementar o brief à risca reverteu
+essa correção. Achado pela revisão da task, corrigido numa rodada, re-revisado limpo. Conferido
+que nenhum outro arquivo deste plano tinha o mesmo risco (só `CompletarCadastroForm.tsx` foi
+tocado por ambos os sub-projetos).
+
+**Revisão final de branch inteira (opus, base do plano..HEAD)**: reconfirmou de forma
+independente que a correção de open-redirect da Task 6 seguia intacta, e achou 2 Importantes +
+1 Minor (bundled) reais, todos corrigidos numa leva só. Relatório completo:
 `.superpowers/sdd/2026-08-20-endereco-obrigatorio-atleta/final-review-fix-report.md` (gitignored,
 não commitado — fonte de verdade é este bloco + o `git log`).
 
