@@ -21,18 +21,25 @@ export default function PreferenciasForm({
   async function save(field: Field, value: boolean) {
     setError(null);
     setSavingField(field);
-    const res = await fetch("/api/me/preferences", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
+    try {
+      const res = await fetch("/api/me/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        setError("Não foi possível salvar. Tente novamente.");
+        if (field === "receiveEventMessages") setReceiveEventMessages(!value);
+        else setReceivePromotionalMessages(!value);
+      }
+    } catch {
       setError("Não foi possível salvar. Tente novamente.");
       if (field === "receiveEventMessages") setReceiveEventMessages(!value);
       else setReceivePromotionalMessages(!value);
+    } finally {
+      setSavingField(null);
     }
-    setSavingField(null);
   }
 
   return (
