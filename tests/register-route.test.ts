@@ -221,7 +221,10 @@ describe("POST /api/auth/register", () => {
   });
 
   it("cria o perfil com o endereço completo e o CEP normalizado", async () => {
-    const res = await POST(makeRequest(validAthleteBody));
+    const res = await POST(makeRequest({
+      ...validAthleteBody,
+      postalCode: "01310100",
+    }));
 
     expect(res.status).toBe(201);
     expect(dbMock.athleteProfile.create).toHaveBeenCalledWith(
