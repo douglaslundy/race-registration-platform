@@ -186,6 +186,11 @@ model AthleteProfile {
   cpf                String?   @unique
   birthDate          DateTime?
   phone              String?
+  postalCode         String?
+  street             String?
+  number             String?
+  complement         String?
+  neighborhood       String?
   gender             String?
   city               String?
   state              String?
