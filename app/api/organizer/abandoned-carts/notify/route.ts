@@ -9,7 +9,7 @@ const ORDER_SELECT = {
   id: true,
   buyerUserId: true,
   event: { select: { id: true, title: true } },
-  buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+  buyer: { select: { name: true, email: true, receiveEventMessages: true, athleteProfile: { select: { phone: true } } } },
 } as const;
 
 export async function POST(req: NextRequest) {

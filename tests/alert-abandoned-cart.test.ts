@@ -138,6 +138,20 @@ describe("checkAbandonedCarts", () => {
     expect(sendAbandonedCartEmail).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ checked: 2, notified: 1 });
   });
+
+  it("não envia e-mail nem WhatsApp quando o comprador desativou receiveEventMessages", async () => {
+    vi.mocked(getAbandonedCartAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: true, minutesThreshold: 30 });
+    dbMock.order.findMany.mockResolvedValueOnce([
+      { ...orderFixture, buyer: { ...orderFixture.buyer, receiveEventMessages: false } },
+    ]);
+
+    const result = await checkAbandonedCarts();
+
+    expect(sendAbandonedCartEmail).not.toHaveBeenCalled();
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
+    expect(result).toEqual({ checked: 1, notified: 0 });
+  });
 });
 
 describe("sendAbandonedCartAlert", () => {
@@ -275,6 +289,7 @@ describe("sendAbandonedCartAlert", () => {
       "5511988888888",
       `Sua inscrição em "Corrida Teste" ainda não foi paga. Finalize o pagamento para garantir sua vaga.`,
       "ABANDONED_CART",
+      { appendPreferencesFooter: true },
     );
   });
 
@@ -296,6 +311,7 @@ describe("sendAbandonedCartAlert", () => {
       "5511988888888",
       `Link: ${baseUrl}/dashboard/inscricoes`,
       "ABANDONED_CART",
+      { appendPreferencesFooter: true },
     );
     // Garante que a variável não vira string vazia: o texto final não pode terminar em "Link: " puro.
     const sentText = vi.mocked(sendWhatsAppMessage).mock.calls[0][1];

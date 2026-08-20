@@ -14,7 +14,12 @@ export interface AbandonedOrder {
   id: string;
   buyerUserId: string;
   event: { id: string; title: string };
-  buyer: { name: string; email: string; athleteProfile: { phone: string | null } | null };
+  buyer: {
+    name: string;
+    email: string;
+    receiveEventMessages?: boolean;
+    athleteProfile: { phone: string | null } | null;
+  };
 }
 
 export async function sendAbandonedCartAlert(
@@ -38,7 +43,7 @@ export async function sendAbandonedCartAlert(
     (socialPromoCache ??= await getSocialPromoText(order.event.id, order.buyerUserId));
 
   try {
-    if (settings.emailEnabled) {
+    if (settings.emailEnabled && order.buyer.receiveEventMessages !== false) {
       const cfg = await getSmtpConfig();
       if (isSmtpReady(cfg) && (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "EMAIL")))) {
         try {
@@ -59,7 +64,7 @@ export async function sendAbandonedCartAlert(
       }
     }
 
-    if (settings.whatsappEnabled && order.buyer.athleteProfile?.phone) {
+    if (settings.whatsappEnabled && order.buyer.receiveEventMessages !== false && order.buyer.athleteProfile?.phone) {
       if (bypassDedupe || (await claimAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP"))) {
         try {
           const template = await getEffectiveTemplate("ABANDONED_CART", "WHATSAPP", "BUYER", order.event.id);
@@ -74,7 +79,9 @@ export async function sendAbandonedCartAlert(
             },
             "WHATSAPP",
           );
-          await sendWhatsAppMessage(order.buyer.athleteProfile.phone, text, "ABANDONED_CART");
+          await sendWhatsAppMessage(order.buyer.athleteProfile.phone, text, "ABANDONED_CART", {
+            appendPreferencesFooter: true,
+          });
           if (bypassDedupe) await recordAlert(ALERT_TYPE, "Order", order.id, "WHATSAPP");
           sentSomething = true;
         } catch (err) {
@@ -117,7 +124,7 @@ export async function checkAbandonedCarts(): Promise<{ checked: number; notified
       id: true,
       buyerUserId: true,
       event: { select: { id: true, title: true } },
-      buyer: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
+      buyer: { select: { name: true, email: true, receiveEventMessages: true, athleteProfile: { select: { phone: true } } } },
     },
   });
 
