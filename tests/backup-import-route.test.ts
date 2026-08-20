@@ -142,6 +142,48 @@ describe("admin backup import api", () => {
     );
   });
 
+  it("preserves the athlete's address fields on restore", async () => {
+    const res = await POST(
+      makeRequest({
+        users: [
+          { id: "u1", email: "a@a.com", name: "A", role: "ATHLETE", active: true, createdAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        athleteProfiles: [
+          {
+            id: "ap1",
+            userId: "u1",
+            postalCode: "01310-100",
+            street: "Av. Paulista",
+            number: "1000",
+            complement: "Apto 12",
+            neighborhood: "Bela Vista",
+            city: "São Paulo",
+            state: "SP",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.tables.find((t: any) => t.table === "athleteProfiles").restored).toBe(1);
+
+    expect(tx.athleteProfile.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            postalCode: "01310-100",
+            street: "Av. Paulista",
+            number: "1000",
+            complement: "Apto 12",
+            neighborhood: "Bela Vista",
+          }),
+        ]),
+      }),
+    );
+  });
+
   it("rolls back and reports a single error when a table insert fails", async () => {
     tx.event.createMany.mockRejectedValueOnce(new Error("dado malformado"));
 

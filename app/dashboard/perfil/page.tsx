@@ -62,14 +62,16 @@ export default function PerfilPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/athlete/profile", {
+    const res = await fetch("/api/athlete/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   }
 
   async function handlePasswordChange(e: React.FormEvent) {
@@ -110,10 +112,10 @@ export default function PerfilPage() {
     if (address) {
       setForm((prev) => ({
         ...prev,
-        street: address.street,
-        neighborhood: address.neighborhood,
-        city: address.city,
-        state: address.state,
+        ...(address.street ? { street: address.street } : {}),
+        ...(address.neighborhood ? { neighborhood: address.neighborhood } : {}),
+        ...(address.city ? { city: address.city } : {}),
+        ...(address.state ? { state: address.state } : {}),
       }));
     }
   }
@@ -211,13 +213,14 @@ export default function PerfilPage() {
                 onBlur={handlePostalCodeBlur}
                 placeholder="00000-000"
                 maxLength={9}
+                required
                 className="input w-full"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rua/Logradouro *</label>
               <input type="text" value={form.street ?? ""} onChange={(e) => set("street", e.target.value)}
-                className="input w-full" />
+                required className="input w-full" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número *</label>
@@ -226,6 +229,7 @@ export default function PerfilPage() {
                 value={form.number ?? ""}
                 onChange={(e) => set("number", e.target.value)}
                 disabled={noNumber}
+                required={!noNumber}
                 className="input w-full disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
               />
               <label className="flex items-center gap-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -241,17 +245,17 @@ export default function PerfilPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bairro *</label>
               <input type="text" value={form.neighborhood ?? ""} onChange={(e) => set("neighborhood", e.target.value)}
-                className="input w-full" />
+                required className="input w-full" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cidade *</label>
               <input type="text" value={form.city ?? ""} onChange={(e) => set("city", e.target.value)}
-                className="input w-full" />
+                required className="input w-full" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado (UF) *</label>
               <input type="text" maxLength={2} value={form.state ?? ""} onChange={(e) => set("state", e.target.value.toUpperCase())}
-                placeholder="SP" className="input w-full" />
+                placeholder="SP" required className="input w-full" />
             </div>
           </div>
         </div>

@@ -44,10 +44,10 @@ export default function CompletarCadastroForm({
   async function handlePostalCodeBlur() {
     const address = await fetchAddressByCep(postalCode);
     if (address) {
-      setStreet(address.street);
-      setNeighborhood(address.neighborhood);
-      setCity(address.city);
-      setState(address.state);
+      if (address.street) setStreet(address.street);
+      if (address.neighborhood) setNeighborhood(address.neighborhood);
+      if (address.city) setCity(address.city);
+      if (address.state) setState(address.state);
     }
   }
 

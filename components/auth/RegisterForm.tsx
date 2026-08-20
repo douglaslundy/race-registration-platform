@@ -220,10 +220,10 @@ export default function RegisterForm() {
                 cepField.onBlur(e);
                 const address = await fetchAddressByCep(e.target.value);
                 if (address) {
-                  setValue("street", address.street);
-                  setValue("neighborhood", address.neighborhood);
-                  setValue("city", address.city);
-                  setValue("state", address.state);
+                  if (address.street) setValue("street", address.street);
+                  if (address.neighborhood) setValue("neighborhood", address.neighborhood);
+                  if (address.city) setValue("city", address.city);
+                  if (address.state) setValue("state", address.state);
                 }
               }}
               className="input-field"

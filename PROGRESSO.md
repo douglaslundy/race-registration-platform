@@ -1,6 +1,37 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-20 — Preferências de comunicação do atleta — CONCLUÍDO, revisão final limpa)
+## Última atualização (2026-08-20, mais recente — Endereço obrigatório do atleta: revisão final de branch inteira, fix wave aplicado)
+
+**Sub-projeto 2 de 3 do `taskwhatsapp.md`** ("Endereço obrigatório do atleta"). Revisão final achou
+2 Importantes + 1 Minor (bundled), todos corrigidos numa leva só. Relatório completo:
+`.superpowers/sdd/2026-08-20-endereco-obrigatorio-atleta/final-review-fix-report.md` (gitignored,
+não commitado — fonte de verdade é este bloco + o `git log`).
+
+1. **Importante real**: `toAthleteProfileRow` em `app/api/admin/backup/import/route.ts` não mapeava
+   os 5 campos de endereço (`postalCode`/`street`/`number`/`complement`/`neighborhood`) — como são
+   nullable, um restore de backup zerava silenciosamente o endereço de todo mundo, mass-redirecionando
+   a base inteira pra `/completar-cadastro`. Corrigido com o helper `sn()` já existente no arquivo.
+   Teste novo em `tests/backup-import-route.test.ts` provando round-trip do endereço.
+2. **Importante real**: os 3 handlers de blur de CEP (`components/auth/RegisterForm.tsx`,
+   `app/completar-cadastro/CompletarCadastroForm.tsx`, `app/dashboard/perfil/page.tsx`)
+   sobrescreviam o estado incondicionalmente com o retorno de `fetchAddressByCep` — que retorna
+   string vazia (não erro) pra endereços CEP único. Em "Meus Dados" (sem validação de campo
+   obrigatório protegendo), um atleta que só tabulasse por um CEP já preenchido teria seu endereço
+   real apagado silenciosamente e viraria "Salvo!" mesmo assim. Corrigido nos 3 arquivos: só
+   sobrescreve campo a campo quando o valor vindo do ViaCEP é não-vazio.
+3. **Minor bundled**: `app/dashboard/perfil/page.tsx` ganhou `required` nos 6 inputs de endereço
+   (CEP/Rua/Número/Bairro/Cidade/Estado, Número condicional a `!noNumber`) e `handleSubmit` passou a
+   checar `res.ok` antes de mostrar "Salvo com sucesso!" (antes, uma falha de save parecia sucesso).
+
+Verificação: `npx vitest run tests/backup-import-route.test.ts` (7 testes, era 6) → `npx tsc
+--noEmit` limpo → `npx vitest run` completo: 232 arquivos / 1630 testes passando (era 1629, +1
+novo). Sem teste de componente React pros 3 arquivos de formulário (convenção do projeto — sem
+infra de teste de componente), typecheck foi a barra de verificação pra eles.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta frente de revisão. Push/deploy aguardando autorização
+explícita do usuário, mesmo padrão de sempre.
+
+## Última atualização (2026-08-20, item anterior — Preferências de comunicação do atleta — CONCLUÍDO, revisão final limpa)
 
 **Sub-projeto 1 de 3 do `taskwhatsapp.md`** (o pedido grande original foi decomposto via
 `superpowers:brainstorming` em 3 sub-projetos independentes: preferências → endereço obrigatório →
