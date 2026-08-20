@@ -28,7 +28,7 @@ async function sendWhatsAppIfActive(
   phone: string | null | undefined,
   alertKey: "ORDER_CONFIRMED" | "ORDER_CONFIRMED_PROXY_BUYER" | "ORDER_CONFIRMED_PROXY_ATHLETE",
   recipientRole: "BUYER" | "ATHLETE",
-  recipientReceivesEventMessages: boolean,
+  recipientReceivesEventMessages: boolean | undefined,
   values: Record<string, string | undefined>,
   eventId: string | undefined,
   claimEntityId: string,

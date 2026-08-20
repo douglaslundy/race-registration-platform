@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { requireAuth, resolveActingScope } from "@/lib/auth/rbac";
 import { getMissingAthleteProfileFields } from "@/lib/auth/profile-completion";
+import { isSafeRedirectPath } from "@/lib/auth/safe-redirect";
 import CompletarCadastroForm from "./CompletarCadastroForm";
 
 const ROLE_HOME: Record<Exclude<UserRole, "ASSISTANT">, string> = {
@@ -32,7 +33,7 @@ export default async function CompletarCadastroPage({
 
   const missing = await getMissingAthleteProfileFields(session.user.id);
   if (missing.length === 0) {
-    redirect(callbackUrl || "/dashboard");
+    redirect(isSafeRedirectPath(callbackUrl) ? callbackUrl : "/dashboard");
   }
 
   return (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { isValidCpf } from "@/lib/cpf";
 import type { MissingAthleteField } from "@/lib/auth/profile-completion";
+import { isSafeRedirectPath } from "@/lib/auth/safe-redirect";
 
 export default function CompletarCadastroForm({
   missingFields,
@@ -56,7 +57,7 @@ export default function CompletarCadastroForm({
       return;
     }
 
-    router.push(callbackUrl || "/dashboard");
+    router.push(isSafeRedirectPath(callbackUrl) ? callbackUrl : "/dashboard");
     router.refresh();
   }
 
