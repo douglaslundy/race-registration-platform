@@ -92,4 +92,49 @@ describe("PUT /api/athlete/profile", () => {
     const call = dbMock.athleteProfile.upsert.mock.calls[0][0];
     expect(Object.prototype.hasOwnProperty.call(call.update, "birthDate")).toBe(false);
   });
+
+  it("aceita e normaliza postalCode ao salvar", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: "11144477735" });
+    dbMock.athleteProfile.upsert.mockResolvedValueOnce({});
+
+    const res = await PUT(makeRequest({ cpf: "111.444.777-35", postalCode: "01310100" }));
+
+    expect(res.status).toBe(200);
+    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ postalCode: "01310-100" }),
+      }),
+    );
+  });
+
+  it("aceita os campos de endereço (street, number, complement, neighborhood, city, state)", async () => {
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: "11144477735" });
+    dbMock.athleteProfile.upsert.mockResolvedValueOnce({});
+
+    const res = await PUT(
+      makeRequest({
+        cpf: "111.444.777-35",
+        street: "Avenida Paulista",
+        number: "1000",
+        complement: "Apto 10",
+        neighborhood: "Bela Vista",
+        city: "São Paulo",
+        state: "SP",
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.athleteProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          street: "Avenida Paulista",
+          number: "1000",
+          complement: "Apto 10",
+          neighborhood: "Bela Vista",
+          city: "São Paulo",
+          state: "SP",
+        }),
+      }),
+    );
+  });
 });

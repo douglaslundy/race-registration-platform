@@ -4,12 +4,18 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { normalizeCep } from "@/lib/cep";
 
 const profileSchema = z.object({
   birthDate: z.string().optional().nullable(),
   cpf: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   gender: z.string().optional().nullable(),
+  postalCode: z.string().optional().nullable(),
+  street: z.string().optional().nullable(),
+  number: z.string().optional().nullable(),
+  complement: z.string().optional().nullable(),
+  neighborhood: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   emergencyName: z.string().optional().nullable(),
@@ -48,6 +54,10 @@ export async function PUT(req: NextRequest) {
   const data: Record<string, unknown> = { ...rest };
   if (rest.birthDate !== undefined) {
     data.birthDate = rest.birthDate ? new Date(rest.birthDate) : null;
+  }
+
+  if (rest.postalCode) {
+    data.postalCode = normalizeCep(rest.postalCode);
   }
 
   if (!existing?.cpf && incomingCpf) {
