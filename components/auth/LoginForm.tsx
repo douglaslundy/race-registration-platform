@@ -4,9 +4,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { isSafeRedirectPath } from "@/lib/auth/safe-redirect";
 
 const schema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -17,6 +18,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -31,7 +33,8 @@ export default function LoginForm() {
       setError("E-mail ou senha incorretos");
       return;
     }
-    router.push("/dashboard");
+    const callbackUrl = searchParams.get("callbackUrl");
+    router.push(isSafeRedirectPath(callbackUrl) ? callbackUrl : "/dashboard");
     router.refresh();
   }
 
