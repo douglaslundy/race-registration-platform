@@ -35,30 +35,30 @@ describe("PATCH /api/me/preferences", () => {
     const res = await PATCH(makeRequest({ uiDensity: "compact" }));
 
     expect(res.status).toBe(200);
-    expect(dbMock.user.update).toHaveBeenCalledWith({
-      where: { id: "user-1" },
-      data: { uiDensity: "compact" },
-    });
+    const callArgs = dbMock.user.update.mock.calls[0][0];
+    expect(callArgs.where).toEqual({ id: "user-1" });
+    expect(callArgs.data).toStrictEqual({ uiDensity: "compact" });
+    expect(Object.keys(callArgs.data)).toEqual(["uiDensity"]);
   });
 
   it("atualiza receiveEventMessages isoladamente", async () => {
     const res = await PATCH(makeRequest({ receiveEventMessages: false }));
 
     expect(res.status).toBe(200);
-    expect(dbMock.user.update).toHaveBeenCalledWith({
-      where: { id: "user-1" },
-      data: { receiveEventMessages: false },
-    });
+    const callArgs = dbMock.user.update.mock.calls[0][0];
+    expect(callArgs.where).toEqual({ id: "user-1" });
+    expect(callArgs.data).toStrictEqual({ receiveEventMessages: false });
+    expect(Object.keys(callArgs.data)).toEqual(["receiveEventMessages"]);
   });
 
   it("atualiza receivePromotionalMessages isoladamente", async () => {
     const res = await PATCH(makeRequest({ receivePromotionalMessages: false }));
 
     expect(res.status).toBe(200);
-    expect(dbMock.user.update).toHaveBeenCalledWith({
-      where: { id: "user-1" },
-      data: { receivePromotionalMessages: false },
-    });
+    const callArgs = dbMock.user.update.mock.calls[0][0];
+    expect(callArgs.where).toEqual({ id: "user-1" });
+    expect(callArgs.data).toStrictEqual({ receivePromotionalMessages: false });
+    expect(Object.keys(callArgs.data)).toEqual(["receivePromotionalMessages"]);
   });
 
   it("aceita os três campos juntos", async () => {
@@ -67,10 +67,16 @@ describe("PATCH /api/me/preferences", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(dbMock.user.update).toHaveBeenCalledWith({
-      where: { id: "user-1" },
-      data: { uiDensity: "compact", receiveEventMessages: true, receivePromotionalMessages: false },
+    const callArgs = dbMock.user.update.mock.calls[0][0];
+    expect(callArgs.where).toEqual({ id: "user-1" });
+    expect(callArgs.data).toStrictEqual({
+      uiDensity: "compact",
+      receiveEventMessages: true,
+      receivePromotionalMessages: false,
     });
+    expect(Object.keys(callArgs.data).sort()).toEqual(
+      ["uiDensity", "receiveEventMessages", "receivePromotionalMessages"].sort(),
+    );
   });
 
   it("retorna 400 quando nenhum campo é enviado", async () => {
