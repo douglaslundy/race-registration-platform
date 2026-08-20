@@ -112,6 +112,8 @@ model User {
   active        Boolean   @default(true)
   dailySummaryEmailEnabled    Boolean   @default(true)
   dailySummaryWhatsappEnabled Boolean   @default(true)
+  receivePromotionalMessages  Boolean   @default(true)
+  receiveEventMessages        Boolean   @default(true)
   uiDensity     String    @default("comfortable")
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
