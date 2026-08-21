@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ErrorModal from "@/components/ui/ErrorModal";
@@ -14,6 +14,9 @@ type Campaign = {
 };
 
 type PrepareSummary = { total: number; pending: number; optedOut: number; invalidPhone: number; duplicate: number };
+
+type VariableDef = { name: string; label: string; category: string; description: string; sample: string };
+type AlertOption = { alertKey: string; description: string; body: string };
 
 // GET recipients/summary retorna uma contagem agrupada por status (groupBy do Prisma), ex.:
 // { PENDING: 8, OPTED_OUT: 1 } — formato diferente do PrepareSummary acima (que vem do POST
@@ -65,6 +68,15 @@ export default function CampaignsManager({
   const [preparingId, setPreparingId] = useState<string | null>(null);
   const [preparingConfirmId, setPreparingConfirmId] = useState<string | null>(null);
   const [recipientSummaries, setRecipientSummaries] = useState<Record<string, PrepareSummary>>({});
+  const [variables, setVariables] = useState<VariableDef[]>([]);
+  const [alertOptions, setAlertOptions] = useState<AlertOption[]>([]);
+  const [selectedAlertKey, setSelectedAlertKey] = useState("");
+  const [previewResult, setPreviewResult] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [testSendLoading, setTestSendLoading] = useState(false);
+  const [testSendMessage, setTestSendMessage] = useState<string | null>(null);
+  const createBodyRef = useRef<HTMLTextAreaElement>(null);
+  const editBodyRef = useRef<HTMLTextAreaElement>(null);
 
   async function reload() {
     const res = await fetch(apiBase);
@@ -108,6 +120,24 @@ export default function CampaignsManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
+  useEffect(() => {
+    void (async () => {
+      const [variablesRes, alertOptionsRes] = await Promise.all([
+        fetch(`${apiBase}/variables`),
+        fetch(`${apiBase}/alert-options`),
+      ]);
+      if (variablesRes.ok) {
+        const data = await variablesRes.json();
+        setVariables(data.variables ?? []);
+      }
+      if (alertOptionsRes.ok) {
+        const data = await alertOptionsRes.json();
+        setAlertOptions(data.options ?? []);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase]);
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -127,6 +157,9 @@ export default function CampaignsManager({
       setFormError(
         data.error?.formErrors?.[0] ??
           (fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined) ??
+          (data.unknownVariables?.length
+            ? `Variáveis desconhecidas: ${data.unknownVariables.map((v: string) => `{{${v}}}`).join(", ")}`
+            : undefined) ??
           (typeof data.error === "string" ? data.error : undefined) ??
           "Erro ao criar campanha",
       );
@@ -144,6 +177,30 @@ export default function CampaignsManager({
       name: campaign.name,
       description: campaign.description ?? "",
       messageBody: campaign.messageBody,
+    });
+    setPreviewResult(null);
+    setTestSendMessage(null);
+  }
+
+  function insertVariable(
+    variableName: string,
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    value: string,
+    setValue: (next: string) => void,
+  ) {
+    const el = ref.current;
+    const token = `{{${variableName}}}`;
+    if (!el) {
+      setValue(`${value}${token}`);
+      return;
+    }
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const next = `${value.slice(0, start)}${token}${value.slice(end)}`;
+    setValue(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.selectionStart = el.selectionEnd = start + token.length;
     });
   }
 
@@ -167,6 +224,9 @@ export default function CampaignsManager({
       setActionError(
         data.error?.formErrors?.[0] ??
           (fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined) ??
+          (data.unknownVariables?.length
+            ? `Variáveis desconhecidas: ${data.unknownVariables.map((v: string) => `{{${v}}}`).join(", ")}`
+            : undefined) ??
           (typeof data.error === "string" ? data.error : undefined) ??
           "Erro ao salvar campanha",
       );
@@ -213,6 +273,35 @@ export default function CampaignsManager({
     setRecipientSummaries((prev) => ({ ...prev, [campaignId]: data.summary }));
   }
 
+  async function doPreview() {
+    if (!editId) return;
+    setPreviewLoading(true);
+    setActionError(null);
+    const res = await fetch(`${apiBase}/${editId}/preview`, { method: "POST" });
+    setPreviewLoading(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao gerar pré-visualização");
+      return;
+    }
+    setPreviewResult(data.body);
+  }
+
+  async function doTestSend() {
+    if (!editId) return;
+    setTestSendLoading(true);
+    setActionError(null);
+    setTestSendMessage(null);
+    const res = await fetch(`${apiBase}/${editId}/test-send`, { method: "POST" });
+    setTestSendLoading(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao enviar teste");
+      return;
+    }
+    setTestSendMessage("Teste enviado para o seu telefone cadastrado.");
+  }
+
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
@@ -244,10 +333,34 @@ export default function CampaignsManager({
 
       <ErrorModal message={actionError} onClose={() => setActionError(null)} />
 
+      {previewResult !== null && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setPreviewResult(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Pré-visualização</h2>
+            <p className="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-800 rounded-lg p-3">{previewResult}</p>
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setPreviewResult(null)} className="btn-secondary text-sm px-4">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editId && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          onClick={() => setEditId(null)}
+          onClick={() => {
+            setEditId(null);
+            setPreviewResult(null);
+            setTestSendMessage(null);
+          }}
         >
           <form
             onSubmit={saveEdit}
@@ -276,16 +389,64 @@ export default function CampaignsManager({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem</label>
               <textarea
                 required
+                ref={editBodyRef}
                 value={editForm.messageBody}
                 onChange={(e) => setEditForm({ ...editForm, messageBody: e.target.value })}
                 className="input w-full"
                 rows={4}
               />
             </div>
+            <div className="flex items-center justify-between gap-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    insertVariable(e.target.value, editBodyRef, editForm.messageBody, (v) => setEditForm({ ...editForm, messageBody: v }));
+                  }
+                  e.target.value = "";
+                }}
+                className="input text-sm"
+              >
+                <option value="">+ Inserir variável...</option>
+                {[...new Set(variables.map((v) => v.category))].map((cat) => (
+                  <optgroup key={cat} label={cat}>
+                    {variables
+                      .filter((v) => v.category === cat)
+                      .map((v) => (
+                        <option key={v.name} value={v.name}>{`{{${v.name}}} — ${v.label}`}</option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+              <span className="text-xs text-gray-400">{editForm.messageBody.length} caracteres</span>
+            </div>
+            {testSendMessage && <p className="text-sm text-green-700 dark:text-green-400">{testSendMessage}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void doPreview()}
+                disabled={previewLoading}
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              >
+                {previewLoading ? "Gerando..." : "Visualizar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void doTestSend()}
+                disabled={testSendLoading}
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              >
+                {testSendLoading ? "Enviando..." : "Enviar teste"}
+              </button>
+            </div>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setEditId(null)}
+                onClick={() => {
+                  setEditId(null);
+                  setPreviewResult(null);
+                  setTestSendMessage(null);
+                }}
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancelar
@@ -341,16 +502,71 @@ export default function CampaignsManager({
               className="input w-full"
             />
           </div>
+          {alertOptions.length > 0 && (
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Começar a partir de um alerta existente (opcional)
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedAlertKey}
+                  onChange={(e) => setSelectedAlertKey(e.target.value)}
+                  className="input flex-1 text-sm"
+                >
+                  <option value="">Selecione um alerta...</option>
+                  {alertOptions.map((opt) => (
+                    <option key={opt.alertKey} value={opt.alertKey}>{opt.description}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const opt = alertOptions.find((o) => o.alertKey === selectedAlertKey);
+                    if (opt) setForm({ ...form, messageBody: opt.body });
+                  }}
+                  disabled={!selectedAlertKey}
+                  className="btn-secondary text-sm px-3 disabled:opacity-50"
+                >
+                  Usar este texto
+                </button>
+              </div>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem *</label>
             <textarea
               required
+              ref={createBodyRef}
               value={form.messageBody}
               onChange={(e) => setForm({ ...form, messageBody: e.target.value })}
               className="input w-full"
               rows={4}
               placeholder="Escreva a mensagem que será enviada..."
             />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  insertVariable(e.target.value, createBodyRef, form.messageBody, (v) => setForm({ ...form, messageBody: v }));
+                }
+                e.target.value = "";
+              }}
+              className="input text-sm"
+            >
+              <option value="">+ Inserir variável...</option>
+              {[...new Set(variables.map((v) => v.category))].map((cat) => (
+                <optgroup key={cat} label={cat}>
+                  {variables
+                    .filter((v) => v.category === cat)
+                    .map((v) => (
+                      <option key={v.name} value={v.name}>{`{{${v.name}}} — ${v.label}`}</option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+            <span className="text-xs text-gray-400">{form.messageBody.length} caracteres</span>
           </div>
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="btn-primary">
