@@ -1,6 +1,48 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-21, mais recente — DEPLOY CONFIRMADO EM PRODUÇÃO)
+## Última atualização (2026-08-21, mais recente — SESSÃO PAUSADA: plano da Fase D escrito, aguardando execução)
+
+**Motivo da pausa**: limite semanal do usuário sendo atingido. Sessão parada logo depois de
+escrever (não executar) o plano de implementação da Fase D.
+
+**Onde retomar**: spec já escrita e aprovada
+(`docs/superpowers/specs/2026-08-21-campanhas-whatsapp-fase-d-design.md`), plano completo já
+escrito e commitado (`docs/superpowers/plans/2026-08-21-campanhas-whatsapp-fase-d.md`, 7 tasks) —
+**nenhuma task foi executada ainda**. Próximo passo é retomar com
+`superpowers:subagent-driven-development` nesse plano, do zero (não há ledger de SDD ainda pra essa
+fase — `.superpowers/sdd/2026-08-21-campanhas-whatsapp-fase-d/` não existe).
+
+**Resumo da Fase D** (agendamento + envio real): worker via cron novo
+(`/api/cron/send-campaign-messages`), processa NO MÁXIMO 1 destinatário por execução — o próprio
+intervalo do cron (recomendado: 1 minuto) é o limitador de taxa, sem sleep em processo nem estado em
+memória. Motivo: Evolution API automatiza uma sessão de WhatsApp Web normal (não é a Cloud API
+oficial da Meta) — o risco real não é um rate-limit numérico, é **banimento da conta** (mesmo número
+usado pros alertas transacionais). Decisão do usuário: bem conservador, priorizando segurança sobre
+velocidade. 3 tentativas antes de `FAILED`; circuit breaker automático (contador global em
+`PlatformSetting`, 5 falhas seguidas pausa TODAS as campanhas `RUNNING`). Resolve valores REAIS de
+variável por destinatário agora (Fase C só usava amostra) — função nova
+`resolveCampaignRecipientVariables`. Re-checa `receivePromotionalMessages` no momento do envio, não
+só confia no snapshot da preparação da Fase B. As 7 tasks do plano: (1) schema
+(`CampaignRecipient.attempts/providerMessageId/sentAt`) + exclui `patrocinio`/`redes_sociais` do
+catálogo de campanha (efeito colateral de cota, nunca deveriam ter sido permitidas em broadcast);
+(2) `sendWhatsAppMessage` passa a devolver `providerMessageId`; (3) resolver de variáveis reais; (4)
+contador de circuit breaker; (5) o worker (cron) em si; (6) rotas de agendar/disparar (evento +
+admin); (7) UI (botões "Agendar envio"/"Disparar agora" no modal de editar campanha).
+
+**Achado de arquitetura importante desta sessão de brainstorming**: `patrocinio`/`redes_sociais`
+(categoria Evento) têm efeito colateral (incrementam cota de envio por link/patrocinador) e foram
+desenhadas pra um envio por inscrição — nunca deveriam estar disponíveis numa campanha que renderiza
+o mesmo texto pra centenas/milhares de destinatários. Excluídas explicitamente na Fase D (Task 1),
+mesmo já fazendo parte da categoria "Evento" permitida desde a Fase C.
+
+**IMPORTANTE — não fazer sozinho, perguntar antes**: adicionar a entrada nova no crontab da VPS
+(`/api/cron/send-campaign-messages`) só depois de as 7 tasks estarem implementadas, revisadas e o
+usuário autorizar — um cron ativo dispara mensagens de WhatsApp de verdade.
+
+**Fases restantes depois da D**: E (status de entrega via webhook + métricas), F (pausar/retomar
+manual + concorrência real entre múltiplos processos — a guarda desta fase só cobre 1 container).
+
+## Última atualização (2026-08-21, item anterior — DEPLOY CONFIRMADO EM PRODUÇÃO)
 
 **Deploy de tudo que estava pendente nesta sessão** (sub-projetos 1/2/3 do `taskwhatsapp.md` até
 Fase C + os 2 fixes independentes de cancelamento/badge): `git push origin main` (`4236260..ff8730b`,
