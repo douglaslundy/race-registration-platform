@@ -98,6 +98,17 @@ enum DailySummaryRecipientType {
   WHATSAPP
 }
 
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PREPARING
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -128,6 +139,7 @@ model User {
   sessions         Session[]
   accounts         Account[]
   createdCoupons   Coupon[]          @relation("CouponCreator")
+  campaigns        Campaign[]
   refundsInitiated Refund[]
   dailySummaryRecipients DailySummaryRecipient[]
   createdByUserId String?
@@ -216,6 +228,7 @@ model OrganizerProfile {
   website     String?
   bio         String?
   verified    Boolean  @default(false)
+  campaignsEnabled Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -280,6 +293,7 @@ model Event {
   coupons       Coupon[]
   socialLinks   EventSocialLink[]
   sponsors      EventSponsor[]
+  campaigns     Campaign[]
   resultImports ResultImport[]
   fileAssets    FileAsset[]
   payouts       TransferPayout[]
@@ -893,4 +907,25 @@ model SensitiveActionCode {
 
   @@index([userId, actionType, targetId])
   @@map("sensitive_action_codes")
+}
+
+// ─── Campaigns ────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id              String         @id @default(cuid())
+  eventId         String
+  name            String
+  description     String?
+  status          CampaignStatus @default(DRAFT)
+  messageBody     String         @db.Text
+  scheduledAt     DateTime?
+  createdByUserId String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  event         Event @relation(fields: [eventId], references: [id])
+  createdByUser User  @relation(fields: [createdByUserId], references: [id])
+
+  @@index([eventId, status])
+  @@map("campaigns")
 }
