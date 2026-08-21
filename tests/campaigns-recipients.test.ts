@@ -36,6 +36,7 @@ describe("prepareCampaignRecipients", () => {
           registrationId: "reg-1",
           normalizedPhone: "5511999999999",
           status: "PENDING",
+          failureReason: null,
         },
       ],
     });
@@ -164,7 +165,7 @@ describe("prepareCampaignRecipients", () => {
     expect(batch1Rows[499].status).toBe("PENDING");
 
     expect(batch2Rows[0].registrationId).toBe("reg-500");
-    expect(batch2Rows[0].normalizedPhone).toBe(DUP_NORMALIZED);
+    expect(batch2Rows[0].normalizedPhone).toBe("");
     expect(batch2Rows[0].status).toBe("SKIPPED");
     expect(batch2Rows[0].failureReason).toBe("Telefone duplicado nesta campanha");
   });
@@ -189,6 +190,7 @@ describe("prepareCampaignRecipients", () => {
           registrationId: null,
           normalizedPhone: "5511999999999",
           status: "PENDING",
+          failureReason: null,
         },
       ],
     });

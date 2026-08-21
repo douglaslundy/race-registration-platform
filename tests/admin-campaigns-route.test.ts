@@ -84,6 +84,34 @@ describe("GET/POST /api/admin/campaigns (admin-only)", () => {
     expect(res.status).toBe(403);
     expect(dbMock.campaign.create).not.toHaveBeenCalled();
   });
+
+  it("rejeita ASSISTANT de ORGANIZER, mesmo com a permissão concedida", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValue({ id: "perm-1" });
+    // checkAdminOnlyApiPermission e resolveCampaignListContext cada um chama resolveActingScope,
+    // então db.user.findUnique é consultado duas vezes nesse fluxo — mockResolvedValue (não Once)
+    // garante a mesma resposta nas duas chamadas.
+    dbMock.user.findUnique.mockResolvedValue({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
+
+    const res = await GET(makeRequest("GET"));
+
+    expect(res.status).toBe(403);
+    expect(dbMock.campaign.findMany).not.toHaveBeenCalled();
+  });
+
+  it("permite ASSISTANT de ADMIN, com a permissão concedida", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findUnique.mockResolvedValue({ id: "perm-2" });
+    dbMock.user.findUnique.mockResolvedValue({ createdBy: { role: "ADMIN", organizerProfile: null } });
+    dbMock.campaign.findMany.mockResolvedValueOnce([platformDraftCampaign]);
+
+    const res = await GET(makeRequest("GET"));
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { eventId: null } }),
+    );
+  });
 });
 
 describe("GET/PATCH /api/admin/campaigns/[campaignId]", () => {
@@ -168,6 +196,16 @@ describe("POST /api/admin/campaigns/[campaignId]/duplicate", () => {
     expect(dbMock.campaign.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ eventId: null, status: "DRAFT" }) }),
     );
+  });
+
+  it("rejeita ORGANIZER ao duplicar, mesmo com campaignsEnabled", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await DUPLICATE(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.campaign.create).not.toHaveBeenCalled();
   });
 });
 
