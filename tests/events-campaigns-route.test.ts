@@ -45,10 +45,13 @@ describe("GET/POST /api/events/[id]/campaigns", () => {
 
     expect(res.status).toBe(200);
     expect(data.campaigns).toHaveLength(1);
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-profile-1" },
+    });
   });
 
   it("bloqueia quando o organizador não tem campaignsEnabled", async () => {
-    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ campaignsEnabled: false });
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: false });
 
     const res = await GET(makeRequest("GET"), { params: Promise.resolve({ id: "event-1" }) });
 
@@ -110,6 +113,9 @@ describe("GET/PATCH /api/events/[id]/campaigns/[campaignId]", () => {
   it("retorna a campanha", async () => {
     const res = await GET_ONE(makeRequest("GET"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
     expect(res.status).toBe(200);
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-profile-1" },
+    });
   });
 
   it("retorna 404 quando a campanha não pertence ao evento", async () => {
@@ -164,6 +170,9 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/cancel", () => {
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "CAMPAIGN_CANCELLED" }) }),
     );
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-profile-1" },
+    });
   });
 
   it("rejeita cancelar uma campanha já cancelada", async () => {
@@ -203,5 +212,8 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/duplicate", () => {
       }),
     );
     expect(data.campaign.name).toBe("Cópia de Campanha de teste");
+    expect(dbMock.event.findFirst).toHaveBeenCalledWith({
+      where: { id: "event-1", organizerId: "organizer-profile-1" },
+    });
   });
 });
