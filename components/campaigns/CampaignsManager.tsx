@@ -105,14 +105,20 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: editForm.name,
-        description: editForm.description,
+        ...(editForm.description ? { description: editForm.description } : {}),
         messageBody: editForm.messageBody,
       }),
     });
     setEditSaving(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setActionError(typeof data.error === "string" ? data.error : "Erro ao salvar campanha");
+      const fieldErrors = data.error?.fieldErrors as Record<string, string[]> | undefined;
+      setActionError(
+        data.error?.formErrors?.[0] ??
+          (fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined) ??
+          (typeof data.error === "string" ? data.error : undefined) ??
+          "Erro ao salvar campanha",
+      );
       return;
     }
     setEditId(null);
