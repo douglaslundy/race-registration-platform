@@ -22,6 +22,7 @@ const patchSchema = z.object({
   state: z.string().nullable().optional(),
   teamName: z.string().nullable().optional(),
   preferredShirtSize: z.enum(["PP", "P", "M", "G", "GG", "XGG"]).nullable().optional(),
+  campaignsEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -100,6 +101,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
       }
 
+      const organizerData: Record<string, unknown> = {};
+      if (parsed.data.campaignsEnabled !== undefined) organizerData.campaignsEnabled = parsed.data.campaignsEnabled;
+
+      if (Object.keys(organizerData).length > 0) {
+        await tx.organizerProfile.upsert({
+          where: { userId: id },
+          create: { userId: id, ...organizerData },
+          update: organizerData,
+        });
+      }
+
       await tx.auditLog.create({
         data: {
           userId: session.user.id,
@@ -109,6 +121,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           metadata: {
             ...data,
             ...athleteData,
+            ...organizerData,
             passwordHash: parsed.data.password ? "[redacted]" : undefined,
           },
         },

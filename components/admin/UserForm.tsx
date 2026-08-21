@@ -25,6 +25,7 @@ type InitialUser = {
   role: UserRole;
   active: boolean;
   athleteProfile?: { cpf: string | null; birthDate: Date | string | null } | null;
+  organizerProfile?: { campaignsEnabled: boolean } | null;
 };
 
 export default function UserForm({
@@ -46,6 +47,9 @@ export default function UserForm({
     initialUser?.athleteProfile?.birthDate
       ? new Date(initialUser.athleteProfile.birthDate).toISOString().split("T")[0]
       : "",
+  );
+  const [campaignsEnabled, setCampaignsEnabled] = useState(
+    initialUser?.organizerProfile?.campaignsEnabled ?? false,
   );
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -72,6 +76,10 @@ export default function UserForm({
     if (isEdit && role === "ATHLETE") {
       if (cpf.trim()) payload.cpf = cpf.trim();
       if (birthDate) payload.birthDate = birthDate;
+    }
+
+    if (isEdit && role === "ORGANIZER") {
+      payload.campaignsEnabled = campaignsEnabled;
     }
 
     const res = await fetch(isEdit ? `/api/admin/users/${initialUser?.id}` : "/api/admin/users", {
@@ -167,6 +175,22 @@ export default function UserForm({
               onChange={(e) => setBirthDate(e.target.value)}
             />
           </div>
+        </div>
+      )}
+
+      {isEdit && role === "ORGANIZER" && (
+        <div className="space-y-1">
+          <label className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-3">
+            <input
+              type="checkbox"
+              checked={campaignsEnabled}
+              onChange={(e) => setCampaignsEnabled(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Habilitar campanhas de WhatsApp pra este organizador
+            </span>
+          </label>
         </div>
       )}
 

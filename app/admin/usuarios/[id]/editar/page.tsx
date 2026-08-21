@@ -20,6 +20,7 @@ export default async function EditAdminUserPage({ params }: { params: Promise<{ 
       role: true,
       active: true,
       athleteProfile: { select: { cpf: true, birthDate: true } },
+      organizerProfile: { select: { campaignsEnabled: true } },
     },
   });
 

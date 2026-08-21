@@ -364,6 +364,74 @@ describe("admin users API", () => {
     expect(dbMock.$transaction).not.toHaveBeenCalled();
   });
 
+  it("habilita campaignsEnabled num organizador via upsert em organizerProfile", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "org-user-1", email: "organizador@exemplo.com" });
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
+      id: "org-user-1",
+      name: "Organizador",
+      email: "organizador@exemplo.com",
+      role: "ORGANIZER",
+      active: true,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    const txOrganizerProfileUpsert = vi.fn().mockResolvedValueOnce({});
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        user: { update: txUserUpdate },
+        athleteProfile: { upsert: vi.fn() },
+        organizerProfile: { upsert: txOrganizerProfileUpsert },
+        auditLog: { create: vi.fn() },
+      }),
+    );
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/org-user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ campaignsEnabled: true }),
+      }) as any,
+      { params: Promise.resolve({ id: "org-user-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(txOrganizerProfileUpsert).toHaveBeenCalledWith({
+      where: { userId: "org-user-1" },
+      create: { userId: "org-user-1", campaignsEnabled: true },
+      update: { campaignsEnabled: true },
+    });
+  });
+
+  it("não toca em organizerProfile quando campaignsEnabled não é enviado", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "org-user-1", email: "organizador@exemplo.com" });
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
+      id: "org-user-1",
+      name: "Novo Nome",
+      email: "organizador@exemplo.com",
+      role: "ORGANIZER",
+      active: true,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    const txOrganizerProfileUpsert = vi.fn();
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({
+        user: { update: txUserUpdate },
+        athleteProfile: { upsert: vi.fn() },
+        organizerProfile: { upsert: txOrganizerProfileUpsert },
+        auditLog: { create: vi.fn() },
+      }),
+    );
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/org-user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ name: "Novo Nome" }),
+      }) as any,
+      { params: Promise.resolve({ id: "org-user-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(txOrganizerProfileUpsert).not.toHaveBeenCalled();
+  });
+
   it("prevents deleting users with linked orders or registrations", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce({
       id: "user-1",
