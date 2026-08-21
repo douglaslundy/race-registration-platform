@@ -27,6 +27,12 @@ export function normalizePhoneForWhatsApp(phone: string): string {
   return digits;
 }
 
+/** Verifica se um telefone já normalizado (via normalizePhoneForWhatsApp) tem formato válido pra
+ * WhatsApp: DDI 55 (Brasil) + 10 ou 11 dígitos locais (fixo ou celular). */
+export function isValidWhatsAppPhone(normalized: string): boolean {
+  return /^55\d{10,11}$/.test(normalized);
+}
+
 /** Envia uma mensagem de WhatsApp usando a configuração salva (Evolution API). */
 export async function sendWhatsAppMessage(
   phone: string,

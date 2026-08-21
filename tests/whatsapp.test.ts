@@ -12,7 +12,7 @@ vi.mock("@/lib/message-logs", () => ({
   recordMessageLog: vi.fn(),
 }));
 
-import { sendWhatsAppMessage, sendWhatsAppDocument, normalizePhoneForWhatsApp } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppDocument, normalizePhoneForWhatsApp, isValidWhatsAppPhone } from "@/lib/whatsapp";
 import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import { sendTextMessage, sendMediaMessage } from "@/lib/whatsapp/evolution-client";
 import { recordMessageLog } from "@/lib/message-logs";
@@ -41,6 +41,32 @@ describe("normalizePhoneForWhatsApp", () => {
 
   it("devolve só os dígitos sem alterar quando o formato é inesperado", () => {
     expect(normalizePhoneForWhatsApp("123")).toBe("123");
+  });
+});
+
+describe("isValidWhatsAppPhone", () => {
+  it("aceita um celular normalizado (DDI 55 + 11 dígitos)", () => {
+    expect(isValidWhatsAppPhone("5511999999999")).toBe(true);
+  });
+
+  it("aceita um fixo normalizado (DDI 55 + 10 dígitos)", () => {
+    expect(isValidWhatsAppPhone("551133334444")).toBe(true);
+  });
+
+  it("rejeita string vazia", () => {
+    expect(isValidWhatsAppPhone("")).toBe(false);
+  });
+
+  it("rejeita telefone sem DDI 55", () => {
+    expect(isValidWhatsAppPhone("11999999999")).toBe(false);
+  });
+
+  it("rejeita telefone claramente curto demais", () => {
+    expect(isValidWhatsAppPhone("5511999")).toBe(false);
+  });
+
+  it("rejeita telefone longo demais", () => {
+    expect(isValidWhatsAppPhone("551199999999999")).toBe(false);
   });
 });
 
