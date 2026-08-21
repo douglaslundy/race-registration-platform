@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { getBatchStatus, type BatchForStatus } from "@/lib/batch-status";
+import { getBatchStatus, getEventDisplayStatus, type BatchForStatus } from "@/lib/batch-status";
 import type { EventModality, EventStatus } from "@prisma/client";
 
 interface EventCardProps {
@@ -53,7 +53,12 @@ const STATUS_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 export default function EventCard({ event }: EventCardProps) {
-  const badge = STATUS_BADGE[event.status];
+  // Status "efetivo" pra exibição — reconcilia event.status (campo persistido) com a
+  // disponibilidade real dos lotes, pra badge e botão nunca mostrarem mensagens contraditórias
+  // (ex.: "Inscrições abertas" + "Inscrições fechadas" juntas quando os lotes esgotam mas o campo
+  // de status do evento continua REGISTRATIONS_OPEN). Ver lib/batch-status.ts.
+  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches);
+  const badge = STATUS_BADGE[displayStatus];
   const lowestBatch = event.ticketBatches[0];
   const days = daysUntilEvent(event.startAt);
   const bannerSrc = event.listBannerUrl ?? event.bannerUrl;
@@ -138,7 +143,7 @@ export default function EventCard({ event }: EventCardProps) {
               </button>
             ) : (
               <button disabled className="btn-primary w-full text-sm py-2 opacity-50 cursor-not-allowed">
-                {event.status === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
+                {displayStatus === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
               </button>
             )}
           </div>
