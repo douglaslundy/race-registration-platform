@@ -1,6 +1,82 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-20, mais recente — Endereço obrigatório do atleta — CONCLUÍDO, revisão final limpa)
+## Última atualização (2026-08-21, mais recente — Campanhas de WhatsApp, Fase A — CONCLUÍDA, revisão final limpa)
+
+**Sub-projeto 3 de 3 do `taskwhatsapp.md`** ("Campanhas de WhatsApp em massa" — o maior e mais
+complexo dos três, decomposto via `superpowers:brainstorming` em **6 fases menores**, cada uma com
+seu próprio spec/plano/execução: A = modelo de dados + CRUD básico [[concluída, este bloco]];
+B = população de destinatários; C = composição de mensagem (variáveis/preview/teste); D =
+agendamento + worker + rate limiting + retries; E = status de entrega + métricas; F = pausar/
+retomar + concorrência. Spec da Fase A:
+`docs/superpowers/specs/2026-08-20-campanhas-whatsapp-fase-a-design.md`. Plano (5 tasks):
+`docs/superpowers/plans/2026-08-20-campanhas-whatsapp-fase-a.md`. Executado via
+`superpowers:subagent-driven-development`, direto na `main`, sem worktree.
+
+**Decisões do usuário confirmadas nesta sessão**: (1) campanhas são geridas pelo organizador, por
+evento, com supervisão/gestão total do admin (mesmo padrão de outros módulos por evento deste
+projeto); (2) acesso à feature é controlado individualmente pelo admin, por organizador — toggle
+simples (`campaignsEnabled`), sem fluxo de solicitação/aprovação; (3) versão da Evolution API em
+produção informada como **2.3.7** (relevante só a partir da Fase D/E, quando o disparo de verdade e
+a confirmação de entrega entrarem em jogo).
+
+**O que foi implementado nesta fase**: `Campaign` (por evento, `DRAFT ⇄ CANCELLED` nesta fase, mas
+com o enum completo de 8 estados já definido — evita `ALTER TYPE` custoso nas fases futuras) +
+`OrganizerProfile.campaignsEnabled` (default `false`, habilitado pelo admin na tela de editar
+usuário). API completa (listar/criar/ver/editar-só-em-DRAFT/cancelar/duplicar) espelhando
+`app/api/events/[id]/sponsors/*` — o template já corrigido do bug de `actingAsAdmin` ausente nas
+mutações que `social-links` ainda tem (não copiado). Permissões de assistente
+(`campaigns.view/create/edit/cancel`) adicionadas no mesmo commit da API (lição da feature de
+patrocinadores, que esqueceu isso e virou fix wave). Telas de organizador
+(`/organizador/eventos/[id]/campanhas`) e admin (`/admin/eventos/[id]/campanhas`) compartilhando um
+único componente React (`CampaignsManager.tsx`), já que a API resolve a diferença de papel
+transparentemente.
+
+**5 tasks, 2 com 1 rodada de fix cada** (Task 4: 2 gaps de teste — um mock sem `id` fazia o teste
+"bloqueia sem campaignsEnabled" exercitar o branch errado, e faltava assertion do `where` com
+`organizerId` pra pegar regressão de IDOR; Task 5: achado **Crítico** real — editar uma campanha
+sem descrição quebrava silenciosamente, porque `saveEdit` mandava `description: ""` em vez de
+omitir como `handleCreate` já fazia certo).
+
+**Revisão final de branch inteira (opus)**: reconfirmou de forma independente os 2 achados já
+corrigidos, e achou mais 3 Importantes + 8 Minor. Fix wave único aplicado (commit `564323e`,
+re-revisão limpa):
+1. **Importante real, achado sério**: `Campaign.event` no `schema.prisma` não declarava
+   `onDelete: Cascade` (os 2 modelos-irmãos, `EventSocialLink`/`EventSponsor`, declaram) — o
+   default do Prisma pra relação obrigatória é `RESTRICT`, então schema e SQL discordavam de
+   verdade. Como o deploy deste projeto usa `prisma db push` (sincroniza o schema com o banco
+   vivo), isso viraria RESTRICT silenciosamente e quebraria `tx.event.deleteMany({})` (restauração
+   de backup) assim que existisse 1 campanha. Corrigido só no schema (o SQL já estava certo, não
+   precisou de migration nova).
+2. **Importante real**: `handleCreate` ficou assimétrico com o `saveEdit` já corrigido (faltava o
+   fallback de erro em string simples pra 401/403/404) — corrigido, agora idênticos.
+3. **Importante real**: o fix da Task 5 (omitir `description` vazia) tinha um efeito colateral —
+   impossível limpar uma descrição já salva (ficava silenciosamente sem efeito). Corrigido:
+   `description` vira `.nullable()` na API, `saveEdit` manda `null` explícito pra limpar
+   (`handleCreate` continua omitindo quando vazio — assimetria intencional, criar sem descrição é o
+   padrão natural).
+4. Minor corrigido (bundled): `PATCH` com corpo vazio `{}` virava no-op silencioso com auditoria
+   vazia — `.refine()` exigindo pelo menos 1 campo.
+
+Minors parqueados (não bloqueiam, ver ledger do SDD se precisar do detalhe completo): extrair
+helper único pro preâmbulo de gate repetido 6x nos 4 arquivos de rota (recomendado **antes** da
+Fase B começar, não corrigido agora — é refactor, não defeito); cancelamento não-atômico
+(check-then-write, vira risco real só na Fase F quando `RUNNING` existir); sem teste de papel
+`ASSISTANT` nas 6 rotas; backup não inclui campanhas (sistêmico, `EventSponsor` tem a mesma
+lacuna); sem teste cobrindo `description: null`/rejeição do novo `.refine()` (achado pela
+re-revisão do fix wave, parqueado pra Fase B).
+
+Suíte completa (234 arquivos / 1649 testes) e `tsc --noEmit` limpos. **Não testado no navegador**
+(mesmo problema de DNS de sempre nesta sessão).
+
+**Migration pendente de deploy** (aditiva: enum novo + tabela nova + coluna nova em
+`organizer_profiles`) — 3 migrations agora em fila (preferências + endereço + campanhas), aplicar
+todas via `psql` manual, na ordem, antes do `db push`.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta fase. Push/deploy aguardando autorização explícita do
+usuário. Depois: Fase B (população de destinatários) do sub-projeto de campanhas, quando o usuário
+pedir.
+
+## Última atualização (2026-08-20, item anterior — Endereço obrigatório do atleta — CONCLUÍDO, revisão final limpa)
 
 **Sub-projeto 2 de 3 do `taskwhatsapp.md`** ("Endereço obrigatório do atleta"). Spec:
 `docs/superpowers/specs/2026-08-20-endereco-obrigatorio-atleta-design.md`. Plano (7 tasks):
