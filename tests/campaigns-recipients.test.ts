@@ -126,6 +126,49 @@ describe("prepareCampaignRecipients", () => {
     expect(result.total).toBe(500);
   });
 
+  it("detecta duplicado de telefone quando as ocorrências caem em lotes diferentes", async () => {
+    const DUP_PHONE = "11999999999";
+    const DUP_NORMALIZED = "5511999999999";
+
+    const batch1 = Array.from({ length: 500 }, (_, i) => ({
+      id: `reg-${i}`,
+      athleteUserId: `athlete-${i}`,
+      athlete: {
+        receivePromotionalMessages: true,
+        athleteProfile: {
+          phone: i === 499 ? DUP_PHONE : `119${String(10000000 + i).slice(-8)}`,
+        },
+      },
+    }));
+    const batch2 = [
+      {
+        id: "reg-500",
+        athleteUserId: "athlete-500",
+        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: DUP_PHONE } },
+      },
+    ];
+    dbMock.registration.findMany.mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2);
+
+    const result = await prepareCampaignRecipients("campaign-1", "event-1");
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledTimes(2);
+    expect(result.total).toBe(501);
+    expect(result.pending).toBe(500);
+    expect(result.duplicate).toBe(1);
+
+    const batch1Rows = dbMock.campaignRecipient.createMany.mock.calls[0][0].data;
+    const batch2Rows = dbMock.campaignRecipient.createMany.mock.calls[1][0].data;
+
+    expect(batch1Rows[499].registrationId).toBe("reg-499");
+    expect(batch1Rows[499].normalizedPhone).toBe(DUP_NORMALIZED);
+    expect(batch1Rows[499].status).toBe("PENDING");
+
+    expect(batch2Rows[0].registrationId).toBe("reg-500");
+    expect(batch2Rows[0].normalizedPhone).toBe(DUP_NORMALIZED);
+    expect(batch2Rows[0].status).toBe("SKIPPED");
+    expect(batch2Rows[0].failureReason).toBe("Telefone duplicado nesta campanha");
+  });
+
   it("usa User (role ATHLETE, active) em vez de Registration quando eventId é null (modo plataforma)", async () => {
     dbMock.user.findMany.mockResolvedValueOnce([
       { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
