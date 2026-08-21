@@ -77,6 +77,7 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
       setFormError(
         data.error?.formErrors?.[0] ??
           (fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined) ??
+          (typeof data.error === "string" ? data.error : undefined) ??
           "Erro ao criar campanha",
       );
     } else {
@@ -105,7 +106,7 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: editForm.name,
-        ...(editForm.description ? { description: editForm.description } : {}),
+        description: editForm.description.trim() || null,
         messageBody: editForm.messageBody,
       }),
     });

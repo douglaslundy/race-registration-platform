@@ -923,7 +923,7 @@ model Campaign {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  event         Event @relation(fields: [eventId], references: [id])
+  event         Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   createdByUser User  @relation(fields: [createdByUserId], references: [id])
 
   @@index([eventId, status])

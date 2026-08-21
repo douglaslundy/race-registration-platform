@@ -4,11 +4,13 @@ import { hasCampaignsAccess } from "@/lib/campaigns/access";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const patchSchema = z.object({
-  name: z.string().trim().min(1).optional(),
-  description: z.string().trim().min(1).optional(),
-  messageBody: z.string().trim().min(1).optional(),
-});
+const patchSchema = z
+  .object({
+    name: z.string().trim().min(1).optional(),
+    description: z.string().trim().min(1).nullable().optional(),
+    messageBody: z.string().trim().min(1).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "Nenhum campo para atualizar" });
 
 async function loadEventAndCampaign(scope: AssistantScope, eventId: string, campaignId: string) {
   const event = scope.actingAsAdmin
