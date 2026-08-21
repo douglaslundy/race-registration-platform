@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
-import { hasCampaignsAccess } from "@/lib/campaigns/access";
+import { checkApiPermission } from "@/lib/auth/rbac";
+import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
 import { db } from "@/lib/db";
 
 export async function POST(
@@ -12,29 +12,16 @@ export async function POST(
   const { session } = check;
 
   const { id, campaignId } = await params;
-  const scope = await resolveActingScope(session);
-  if (!(await hasCampaignsAccess(scope))) {
-    return NextResponse.json(
-      { error: "Campanhas de WhatsApp não estão habilitadas para este organizador" },
-      { status: 403 },
-    );
-  }
-
-  const event = scope.actingAsAdmin
-    ? await db.event.findUnique({ where: { id } })
-    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
-  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
-
-  const original = await db.campaign.findFirst({ where: { id: campaignId, eventId: id } });
-  if (!original) return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 });
+  const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
+  if (!context.ok) return context.response;
 
   const duplicate = await db.campaign.create({
     data: {
       eventId: id,
       createdByUserId: session.user.id,
-      name: `Cópia de ${original.name}`,
-      description: original.description,
-      messageBody: original.messageBody,
+      name: `Cópia de ${context.campaign.name}`,
+      description: context.campaign.description,
+      messageBody: context.campaign.messageBody,
       status: "DRAFT",
     },
   });

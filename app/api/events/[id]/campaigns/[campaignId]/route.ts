@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission, resolveActingScope, type AssistantScope } from "@/lib/auth/rbac";
-import { hasCampaignsAccess } from "@/lib/campaigns/access";
+import { checkApiPermission } from "@/lib/auth/rbac";
+import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -12,16 +12,6 @@ const patchSchema = z
   })
   .refine((data) => Object.keys(data).length > 0, { message: "Nenhum campo para atualizar" });
 
-async function loadEventAndCampaign(scope: AssistantScope, eventId: string, campaignId: string) {
-  const event = scope.actingAsAdmin
-    ? await db.event.findUnique({ where: { id: eventId } })
-    : await db.event.findFirst({ where: { id: eventId, organizerId: scope.organizerId ?? "__none__" } });
-  if (!event) return { event: null, campaign: null };
-
-  const campaign = await db.campaign.findFirst({ where: { id: campaignId, eventId } });
-  return { event, campaign };
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; campaignId: string }> },
@@ -31,19 +21,10 @@ export async function GET(
   const { session } = check;
 
   const { id, campaignId } = await params;
-  const scope = await resolveActingScope(session);
-  if (!(await hasCampaignsAccess(scope))) {
-    return NextResponse.json(
-      { error: "Campanhas de WhatsApp não estão habilitadas para este organizador" },
-      { status: 403 },
-    );
-  }
+  const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
+  if (!context.ok) return context.response;
 
-  const { event, campaign } = await loadEventAndCampaign(scope, id, campaignId);
-  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
-  if (!campaign) return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 });
-
-  return NextResponse.json({ campaign });
+  return NextResponse.json({ campaign: context.campaign });
 }
 
 export async function PATCH(
@@ -55,18 +36,10 @@ export async function PATCH(
   const { session } = check;
 
   const { id, campaignId } = await params;
-  const scope = await resolveActingScope(session);
-  if (!(await hasCampaignsAccess(scope))) {
-    return NextResponse.json(
-      { error: "Campanhas de WhatsApp não estão habilitadas para este organizador" },
-      { status: 403 },
-    );
-  }
+  const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
+  if (!context.ok) return context.response;
 
-  const { event, campaign } = await loadEventAndCampaign(scope, id, campaignId);
-  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
-  if (!campaign) return NextResponse.json({ error: "Campanha não encontrada" }, { status: 404 });
-  if (campaign.status !== "DRAFT") {
+  if (context.campaign.status !== "DRAFT") {
     return NextResponse.json({ error: "Só é possível editar campanhas em rascunho" }, { status: 400 });
   }
 

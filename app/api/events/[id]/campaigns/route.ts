@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
-import { hasCampaignsAccess } from "@/lib/campaigns/access";
+import { checkApiPermission } from "@/lib/auth/rbac";
+import { resolveCampaignListContext } from "@/lib/campaigns/service";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -16,18 +16,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { session } = check;
 
   const { id } = await params;
-  const scope = await resolveActingScope(session);
-  if (!(await hasCampaignsAccess(scope))) {
-    return NextResponse.json(
-      { error: "Campanhas de WhatsApp não estão habilitadas para este organizador" },
-      { status: 403 },
-    );
-  }
-
-  const event = scope.actingAsAdmin
-    ? await db.event.findUnique({ where: { id } })
-    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
-  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+  const context = await resolveCampaignListContext({ session, eventId: id });
+  if (!context.ok) return context.response;
 
   const campaigns = await db.campaign.findMany({ where: { eventId: id }, orderBy: { createdAt: "desc" } });
   return NextResponse.json({ campaigns });
@@ -39,18 +29,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { session } = check;
 
   const { id } = await params;
-  const scope = await resolveActingScope(session);
-  if (!(await hasCampaignsAccess(scope))) {
-    return NextResponse.json(
-      { error: "Campanhas de WhatsApp não estão habilitadas para este organizador" },
-      { status: 403 },
-    );
-  }
-
-  const event = scope.actingAsAdmin
-    ? await db.event.findUnique({ where: { id } })
-    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
-  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+  const context = await resolveCampaignListContext({ session, eventId: id });
+  if (!context.ok) return context.response;
 
   const body = await req.json();
   const parsed = campaignSchema.safeParse(body);
