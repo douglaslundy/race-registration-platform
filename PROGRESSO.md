@@ -1,6 +1,31 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-21, mais recente — Campanhas de WhatsApp, Fase C — CONCLUÍDA, revisão final + fix wave limpos)
+## Última atualização (2026-08-21, mais recente — DEPLOY CONFIRMADO EM PRODUÇÃO)
+
+**Deploy de tudo que estava pendente nesta sessão** (sub-projetos 1/2/3 do `taskwhatsapp.md` até
+Fase C + os 2 fixes independentes de cancelamento/badge): `git push origin main` (`4236260..ff8730b`,
+71 commits) → VPS (`root@144.91.92.70`) `git pull` em `/opt/corridas/src` → `docker build` →
+`docker compose run --rm app sh -c "npx prisma db push --skip-generate"` (sem `--accept-data-loss`,
+já que as 4 migrations pendentes — preferências, endereço, campanhas Fase A/B — são só aditivas;
+"Your database is now in sync... Done in 624ms", sem aviso de perda de dado nenhum) →
+`docker compose up -d --no-deps app`. Confirmado no banco real: tabelas `campaigns`/
+`campaign_recipients` e colunas `users.receivePromotionalMessages`/`receiveEventMessages` e
+`athlete_profiles.postalCode`/`street`/`neighborhood` todas presentes. Smoke test via
+`https://circuitodascorridas.com.br`: `/`, `/eventos` 200; `/admin/campanhas` (tela nova da Fase B),
+`/organizador` 307 (redirect de login, esperado sem sessão). `docker logs corridas-app` sem
+erro/exception/fatal nos minutos seguintes ao tráfego de teste.
+
+**Nota de processo**: o `_prisma_migrations` do banco só tinha registro até uma migration de
+2026-07-08 — não porque os deploys anteriores (patrocinadores, redes sociais, kit de retirada) não
+tivessem acontecido, mas porque este projeto usa `prisma db push` (que sincroniza o schema
+diretamente, sem gravar histórico de migration) em vez de `prisma migrate deploy`. Confirmado
+diretamente checando a existência das tabelas/colunas no banco, não pela tabela de histórico.
+
+**Pendente agora**: as 2 permissões novas de assistente (`registrations.cancel-pending`/`-any`) só
+foram criadas no catálogo — nenhum assistente tem elas concedidas por padrão, precisa ser feito
+manualmente por quem for usar o botão de cancelamento pendente.
+
+## Última atualização (2026-08-21, item anterior — Campanhas de WhatsApp, Fase C — CONCLUÍDA, revisão final + fix wave limpos)
 
 **Sub-projeto 3 de 3 do `taskwhatsapp.md`, Fase C de 6** ("composição de mensagem" — variáveis,
 preview, envio de teste). Spec:
