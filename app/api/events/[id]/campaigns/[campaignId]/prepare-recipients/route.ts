@@ -31,7 +31,7 @@ export async function POST(
       action: "CAMPAIGN_RECIPIENTS_PREPARED",
       entityType: "Campaign",
       entityId: campaignId,
-      metadata: summary as any,
+      metadata: summary,
     },
   });
 

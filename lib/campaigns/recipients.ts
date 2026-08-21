@@ -1,13 +1,13 @@
 import { db } from "@/lib/db";
 import { normalizePhoneForWhatsApp, isValidWhatsAppPhone } from "@/lib/whatsapp";
 
-export interface PrepareRecipientsResult {
+export type PrepareRecipientsResult = {
   total: number;
   pending: number;
   optedOut: number;
   invalidPhone: number;
   duplicate: number;
-}
+};
 
 const BATCH_SIZE = 500;
 
@@ -100,8 +100,9 @@ export async function prepareCampaignRecipients(
           campaignId,
           athleteUserId: candidate.athleteUserId,
           registrationId: candidate.registrationId,
-          normalizedPhone: normalized,
+          normalizedPhone: "",
           status: "OPTED_OUT" as const,
+          failureReason: null,
         };
       }
 
@@ -111,8 +112,9 @@ export async function prepareCampaignRecipients(
           campaignId,
           athleteUserId: candidate.athleteUserId,
           registrationId: candidate.registrationId,
-          normalizedPhone: normalized,
+          normalizedPhone: "",
           status: "INVALID_PHONE" as const,
+          failureReason: null,
         };
       }
 
@@ -122,7 +124,7 @@ export async function prepareCampaignRecipients(
           campaignId,
           athleteUserId: candidate.athleteUserId,
           registrationId: candidate.registrationId,
-          normalizedPhone: normalized,
+          normalizedPhone: "",
           status: "SKIPPED" as const,
           failureReason: "Telefone duplicado nesta campanha",
         };
@@ -136,6 +138,7 @@ export async function prepareCampaignRecipients(
         registrationId: candidate.registrationId,
         normalizedPhone: normalized,
         status: "PENDING" as const,
+        failureReason: null,
       };
     });
 
