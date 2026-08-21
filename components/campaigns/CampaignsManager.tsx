@@ -331,8 +331,6 @@ export default function CampaignsManager({
         onCancel={() => setPreparingConfirmId(null)}
       />
 
-      <ErrorModal message={actionError} onClose={() => setActionError(null)} />
-
       {previewResult !== null && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -462,6 +460,8 @@ export default function CampaignsManager({
           </form>
         </div>
       )}
+
+      <ErrorModal message={actionError} onClose={() => setActionError(null)} />
 
       <div className="flex items-center justify-between">
         <div>

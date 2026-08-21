@@ -50,14 +50,19 @@ describe("GET /api/admin/campaigns/alert-options", () => {
     dbMock.messageTemplate.findFirst.mockResolvedValue(null);
   });
 
-  it("só lista alertas WhatsApp voltados a atleta/comprador", async () => {
+  it("filtra alertas cujo texto usa variáveis fora do escopo de plataforma (eventId null)", async () => {
     const res = await ALERT_OPTIONS(new Request("http://localhost") as any);
     const data = await res.json();
 
     expect(res.status).toBe(200);
     const keys = data.options.map((o: any) => o.alertKey);
-    expect(keys).toContain("ORDER_CONFIRMED");
+    // Todos os alertas WHATSAPP voltados a atleta/comprador (ORDER_CONFIRMED e afins) usam
+    // {{nome_evento}} (categoria Evento), que só é permitida quando a campanha tem um evento
+    // associado — numa campanha de plataforma inteira (eventId null) nenhum deles cabe, então a
+    // lista fica vazia.
+    expect(keys).not.toContain("ORDER_CONFIRMED");
     expect(keys).not.toContain("RECONCILIATION_MISMATCH");
+    expect(data.options).toEqual([]);
   });
 });
 
@@ -88,6 +93,7 @@ describe("POST /api/admin/campaigns/[campaignId]/preview", () => {
     expect(data.body).not.toContain("{{");
     expect(data.body).toContain("RODAPE_TESTE");
     expect(sendMock).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 });
 
@@ -107,5 +113,7 @@ describe("POST /api/admin/campaigns/[campaignId]/test-send", () => {
 
     expect(res.status).toBe(200);
     expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.stringContaining("[TESTE]"), "CAMPAIGN_TEST");
+    expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.stringContaining("RODAPE_TESTE"), "CAMPAIGN_TEST");
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 });

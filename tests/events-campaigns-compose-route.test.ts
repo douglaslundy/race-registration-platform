@@ -107,6 +107,7 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/preview", () => {
     expect(data.body).not.toContain("{{");
     expect(data.body).toContain("RODAPE_TESTE");
     expect(sendMock).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 });
 
@@ -128,6 +129,8 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/test-send", () => {
 
     expect(res.status).toBe(200);
     expect(sendMock).toHaveBeenCalledWith("5511999999999", expect.stringContaining("[TESTE]"), "CAMPAIGN_TEST");
+    expect(sendMock).toHaveBeenCalledWith("5511999999999", expect.stringContaining("RODAPE_TESTE"), "CAMPAIGN_TEST");
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 
   it("400 quando a conta não tem telefone cadastrado", async () => {
