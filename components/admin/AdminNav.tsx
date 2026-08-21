@@ -24,6 +24,7 @@ export default function AdminNav() {
           <Link href="/admin/whatsapp" className="hover:text-gray-300">WhatsApp</Link>
           <Link href="/admin/alertas" className="hover:text-gray-300">Alertas</Link>
           <Link href="/admin/mensagens" className="hover:text-gray-300">Mensagens</Link>
+          <Link href="/admin/campanhas" className="hover:text-gray-300">Campanhas</Link>
           <Link href="/admin/anuncios" className="hover:text-gray-300">Anúncios</Link>
           <Link href="/admin/anunciantes/solicitacoes" className="hover:text-gray-300">Solicitações</Link>
           <Link href="/admin/seo" className="hover:text-gray-300">SEO</Link>

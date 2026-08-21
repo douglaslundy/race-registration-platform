@@ -5,5 +5,11 @@ import CampaignsManager from "@/components/campaigns/CampaignsManager";
 
 export default function AdminCampaignsPage() {
   const { id } = useParams<{ id: string }>();
-  return <CampaignsManager eventId={id} backHref={`/admin/eventos/${id}`} />;
+  return (
+    <CampaignsManager
+      apiBase={`/api/events/${id}/campaigns`}
+      backHref={`/admin/eventos/${id}`}
+      scopeLabel="pros inscritos deste evento"
+    />
+  );
 }

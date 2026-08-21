@@ -13,6 +13,8 @@ type Campaign = {
   messageBody: string;
 };
 
+type PrepareSummary = { total: number; pending: number; optedOut: number; invalidPhone: number; duplicate: number };
+
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Rascunho",
   SCHEDULED: "Agendada",
@@ -24,7 +26,15 @@ const STATUS_LABEL: Record<string, string> = {
   FAILED: "Falhou",
 };
 
-export default function CampaignsManager({ eventId, backHref }: { eventId: string; backHref: string }) {
+export default function CampaignsManager({
+  apiBase,
+  backHref,
+  scopeLabel,
+}: {
+  apiBase: string;
+  backHref: string;
+  scopeLabel: string;
+}) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -38,9 +48,11 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [preparingId, setPreparingId] = useState<string | null>(null);
+  const [recipientSummaries, setRecipientSummaries] = useState<Record<string, PrepareSummary>>({});
 
   async function reload() {
-    const res = await fetch(`/api/events/${eventId}/campaigns`);
+    const res = await fetch(apiBase);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setPageError(data.error ?? "Erro ao carregar campanhas");
@@ -56,13 +68,13 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
+  }, [apiBase]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
     setSaving(true);
-    const res = await fetch(`/api/events/${eventId}/campaigns`, {
+    const res = await fetch(apiBase, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -101,7 +113,7 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
     e.preventDefault();
     if (!editId) return;
     setEditSaving(true);
-    const res = await fetch(`/api/events/${eventId}/campaigns/${editId}`, {
+    const res = await fetch(`${apiBase}/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -129,7 +141,7 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
   async function doCancel() {
     if (!cancelingId) return;
     setCanceling(true);
-    const res = await fetch(`/api/events/${eventId}/campaigns/${cancelingId}/cancel`, { method: "POST" });
+    const res = await fetch(`${apiBase}/${cancelingId}/cancel`, { method: "POST" });
     setCanceling(false);
     setCancelingId(null);
     if (!res.ok) {
@@ -141,13 +153,26 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
   }
 
   async function doDuplicate(campaignId: string) {
-    const res = await fetch(`/api/events/${eventId}/campaigns/${campaignId}/duplicate`, { method: "POST" });
+    const res = await fetch(`${apiBase}/${campaignId}/duplicate`, { method: "POST" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setActionError(typeof data.error === "string" ? data.error : "Erro ao duplicar campanha");
       return;
     }
     await reload();
+  }
+
+  async function doPrepareRecipients(campaignId: string) {
+    setPreparingId(campaignId);
+    const res = await fetch(`${apiBase}/${campaignId}/prepare-recipients`, { method: "POST" });
+    setPreparingId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao preparar destinatários");
+      return;
+    }
+    const data = await res.json();
+    setRecipientSummaries((prev) => ({ ...prev, [campaignId]: data.summary }));
   }
 
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
@@ -230,7 +255,7 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
             ← Voltar
           </Link>
           <h1 className="text-xl font-bold mt-1">Campanhas de WhatsApp</h1>
-          <p className="text-sm text-gray-500">Mensagens promocionais em massa pros inscritos deste evento.</p>
+          <p className="text-sm text-gray-500">Mensagens promocionais em massa {scopeLabel}.</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary text-sm">
           + Nova campanha
@@ -311,6 +336,13 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
                       <button onClick={() => setCancelingId(campaign.id)} className="text-red-500 hover:text-red-700 text-sm">
                         Cancelar
                       </button>
+                      <button
+                        onClick={() => void doPrepareRecipients(campaign.id)}
+                        disabled={preparingId === campaign.id}
+                        className="text-green-700 hover:text-green-900 text-sm"
+                      >
+                        {preparingId === campaign.id ? "Preparando..." : "Preparar destinatários"}
+                      </button>
                     </>
                   )}
                   <button onClick={() => void doDuplicate(campaign.id)} className="text-gray-600 hover:text-gray-800 text-sm">
@@ -318,6 +350,15 @@ export default function CampaignsManager({ eventId, backHref }: { eventId: strin
                   </button>
                 </div>
               </div>
+              {recipientSummaries[campaign.id] && (
+                <p className="text-xs text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2">
+                  Total: {recipientSummaries[campaign.id].total} · Elegíveis:{" "}
+                  {recipientSummaries[campaign.id].pending} · Opt-out:{" "}
+                  {recipientSummaries[campaign.id].optedOut} · Telefone inválido:{" "}
+                  {recipientSummaries[campaign.id].invalidPhone} · Duplicados:{" "}
+                  {recipientSummaries[campaign.id].duplicate}
+                </p>
+              )}
             </div>
           ))}
         </div>
