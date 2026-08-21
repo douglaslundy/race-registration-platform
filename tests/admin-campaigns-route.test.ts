@@ -74,6 +74,16 @@ describe("GET/POST /api/admin/campaigns (admin-only)", () => {
       expect.objectContaining({ data: expect.objectContaining({ eventId: null, createdByUserId: "admin-1" }) }),
     );
   });
+
+  it("rejeita ORGANIZER ao criar campanha, mesmo com campaignsEnabled", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await POST(makeRequest("POST", { name: "Campanha de plataforma", messageBody: "Olá!" }));
+
+    expect(res.status).toBe(403);
+    expect(dbMock.campaign.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("GET/PATCH /api/admin/campaigns/[campaignId]", () => {
@@ -100,6 +110,19 @@ describe("GET/PATCH /api/admin/campaigns/[campaignId]", () => {
 
     expect(res.status).toBe(200);
   });
+
+  it("rejeita ORGANIZER ao editar, mesmo com campaignsEnabled", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "Nome novo" }),
+      { params: Promise.resolve({ campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(403);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/admin/campaigns/[campaignId]/cancel", () => {
@@ -116,6 +139,16 @@ describe("POST /api/admin/campaigns/[campaignId]/cancel", () => {
 
     expect(res.status).toBe(200);
     expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "CANCELLED" } });
+  });
+
+  it("rejeita ORGANIZER ao cancelar, mesmo com campaignsEnabled", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await CANCEL(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
   });
 });
 
@@ -154,6 +187,16 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
     expect(res.status).toBe(200);
     expect(prepareMock).toHaveBeenCalledWith("campaign-1", null);
     expect(data.summary.total).toBe(1000);
+  });
+
+  it("rejeita ORGANIZER ao preparar destinatários, mesmo com campaignsEnabled", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await PREPARE(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(prepareMock).not.toHaveBeenCalled();
   });
 });
 
