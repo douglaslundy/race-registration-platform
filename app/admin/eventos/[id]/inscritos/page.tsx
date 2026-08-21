@@ -9,8 +9,10 @@ import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organize
 import { formatCurrency } from "@/lib/format";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
+import CancelPendingRegistrationButton from "@/components/registrations/CancelPendingRegistrationButton";
 import { BADGE } from "@/lib/badge-colors";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
+import { canCancelPendingRegistration } from "@/lib/registrations/pending-cancellation";
 
 export const metadata: Metadata = { title: "Inscritos — Admin" };
 
@@ -324,6 +326,9 @@ export default async function AdminInscritosPage({
               const payment = r.order.payments[0];
               return (
                 <>
+                  {canCancelPendingRegistration(r) && (
+                    <CancelPendingRegistrationButton endpoint={`/api/admin/registrations/${r.id}/cancel-pending`} />
+                  )}
                   {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (
                     <ResendPaymentNotificationButton
                       endpoint={`/api/admin/registrations/${r.id}/resend-payment-notification`}

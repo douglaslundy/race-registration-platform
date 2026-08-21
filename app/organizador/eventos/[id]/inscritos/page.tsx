@@ -10,9 +10,11 @@ import RefundRegistrationButton from "@/components/organizer/RefundRegistrationB
 import CancellationDecisionButtons from "@/components/organizer/CancellationDecisionButtons";
 import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
 import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
+import CancelPendingRegistrationButton from "@/components/registrations/CancelPendingRegistrationButton";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 import AutoPrint from "@/components/ui/AutoPrint";
+import { canCancelPendingRegistration } from "@/lib/registrations/pending-cancellation";
 
 export const metadata: Metadata = { title: "Inscritos" };
 
@@ -338,6 +340,9 @@ export default async function InscritosPage({
                     />
                   )}
                   {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
+                  {canCancelPendingRegistration(r) && (
+                    <CancelPendingRegistrationButton endpoint={`/api/organizer/registrations/${r.id}/cancel-pending`} />
+                  )}
                   {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (
                     <ResendPaymentNotificationButton
                       endpoint={`/api/organizer/registrations/${r.id}/resend-payment-notification`}
