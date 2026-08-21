@@ -14,6 +14,7 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "batches.create", label: "Criar lote de ingresso (qualquer evento)" },
   { key: "registrations.view", label: "Ver e exportar inscritos (qualquer evento)" },
   { key: "registrations.cancellation-decision-any", label: "Decidir cancelamento (qualquer inscrição)" },
+  { key: "registrations.cancel-pending-any", label: "Cancelar inscrição pendente de pagamento há mais de 4h (qualquer inscrição)" },
   { key: "registrations.resend-confirmation-email-any", label: "Reenviar e-mail de confirmação (qualquer inscrição)" },
   { key: "registrations.resend-payment-notification-any", label: "Reenviar notificação de erro de pagamento (qualquer inscrição)" },
   { key: "registrations.expire-payments-any", label: "Expirar pagamentos pendentes (plataforma inteira)" },

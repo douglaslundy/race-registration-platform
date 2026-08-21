@@ -20,6 +20,10 @@ export class SandboxPaymentProvider implements PaymentProvider {
     return { providerPaymentId: id, status: "PAID" };
   }
 
+  async cancelPayment(_providerPaymentId: string): Promise<void> {
+    // no-op — sandbox não fala com gateway nenhum
+  }
+
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
     return { providerRefundId: `sandbox_refund_${input.providerPaymentId}` };
   }

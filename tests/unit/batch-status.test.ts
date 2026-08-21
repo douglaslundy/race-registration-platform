@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBatchStatus, isBatchAvailable, type BatchForStatus } from "@/lib/batch-status";
+import { getBatchStatus, getEventDisplayStatus, isBatchAvailable, type BatchForStatus } from "@/lib/batch-status";
 
 const HOUR = 60 * 60 * 1000;
 const now = new Date();
@@ -110,5 +110,58 @@ describe("isBatchAvailable", () => {
     const upcoming = makeBatch({ startAt: new Date(now.getTime() + HOUR) });
     expect(isBatchAvailable(active, [active])).toBe(true);
     expect(isBatchAvailable(upcoming, [upcoming])).toBe(false);
+  });
+});
+
+describe("getEventDisplayStatus", () => {
+  // Bug corrigido: com status="REGISTRATIONS_OPEN" no banco mas todos os lotes esgotados, o card
+  // mostrava "Inscrições abertas" (badge, direto de event.status) e "Inscrições fechadas"/"Esgotado"
+  // (botão, calculado dos lotes) ao mesmo tempo — as duas mensagens contraditórias juntas. Badge e
+  // botão devem sempre ler o MESMO valor (o retorno desta função), nunca event.status cru.
+
+  it("mantém REGISTRATIONS_OPEN quando existe lote ACTIVE", () => {
+    const active = makeBatch({ activationMode: "MANUAL", active: true });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [active])).toBe("REGISTRATIONS_OPEN");
+  });
+
+  it("reinterpreta REGISTRATIONS_OPEN como SOLD_OUT quando todos os lotes estão esgotados (o bug relatado)", () => {
+    const soldOut = makeBatch({ soldCount: 100, capacity: 100 });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [soldOut])).toBe("SOLD_OUT");
+  });
+
+  it("reinterpreta REGISTRATIONS_OPEN como SOLD_OUT com mistura de lotes esgotados e fechados por data (nenhum ACTIVE/UPCOMING)", () => {
+    const soldOut = makeBatch({ id: "b1", soldCount: 100, capacity: 100 });
+    const closedByDate = makeBatch({ id: "b2", endAt: new Date(now.getTime() - HOUR) });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [soldOut, closedByDate])).toBe("SOLD_OUT");
+  });
+
+  it("reinterpreta REGISTRATIONS_OPEN como PUBLISHED (Em breve) quando só há lote UPCOMING", () => {
+    const upcoming = makeBatch({ startAt: new Date(now.getTime() + HOUR) });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [upcoming])).toBe("PUBLISHED");
+  });
+
+  it("reinterpreta REGISTRATIONS_OPEN como PUBLISHED (Em breve), não como fechado, quando o único lote está INACTIVE dentro da janela de datas", () => {
+    const inactive = makeBatch({ activationMode: "MANUAL", active: false });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [inactive])).toBe("PUBLISHED");
+  });
+
+  it("reinterpreta REGISTRATIONS_OPEN como REGISTRATIONS_CLOSED quando os lotes só estão fechados por data, nunca esgotados", () => {
+    const closedByDate = makeBatch({ endAt: new Date(now.getTime() - HOUR) });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [closedByDate])).toBe("REGISTRATIONS_CLOSED");
+  });
+
+  it("mantém REGISTRATIONS_OPEN quando o evento não tem nenhum lote cadastrado", () => {
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [])).toBe("REGISTRATIONS_OPEN");
+  });
+
+  it("não mexe em status que não seja REGISTRATIONS_OPEN, mesmo com lotes esgotados", () => {
+    const soldOut = makeBatch({ soldCount: 100, capacity: 100 });
+    expect(getEventDisplayStatus("SOLD_OUT", [soldOut])).toBe("SOLD_OUT");
+    expect(getEventDisplayStatus("REGISTRATIONS_CLOSED", [soldOut])).toBe("REGISTRATIONS_CLOSED");
+    expect(getEventDisplayStatus("COMPLETED", [soldOut])).toBe("COMPLETED");
+    expect(getEventDisplayStatus("DRAFT", [soldOut])).toBe("DRAFT");
+    expect(getEventDisplayStatus("UNDER_REVIEW", [soldOut])).toBe("UNDER_REVIEW");
+    expect(getEventDisplayStatus("PUBLISHED", [soldOut])).toBe("PUBLISHED");
+    expect(getEventDisplayStatus("CANCELLED", [soldOut])).toBe("CANCELLED");
   });
 });

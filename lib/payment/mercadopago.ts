@@ -205,6 +205,13 @@ export class MercadoPagoProvider implements PaymentProvider {
     };
   }
 
+  async cancelPayment(providerPaymentId: string): Promise<void> {
+    const client = await getClient();
+    const paymentApi = new Payment(client);
+    console.log("[mp] cancelPayment providerPaymentId=%s", providerPaymentId);
+    await paymentApi.cancel({ id: providerPaymentId });
+  }
+
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
     const client = await getClient();
     const refundApi = new PaymentRefund(client);

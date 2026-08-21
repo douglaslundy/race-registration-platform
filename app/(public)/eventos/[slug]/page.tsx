@@ -17,7 +17,7 @@ import {
   getServiceFeeMin,
 } from "@/lib/settings";
 import { MODALITY_LABEL } from "@/lib/admin/labels";
-import { getBatchStatus } from "@/lib/batch-status";
+import { getBatchStatus, getEventDisplayStatus } from "@/lib/batch-status";
 import JsonLd from "@/components/seo/JsonLd";
 import { buildEventJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/build-event-json-ld";
 
@@ -107,6 +107,7 @@ export default async function EventoPage({ params }: Props) {
     (b) => getBatchStatus(b, event.ticketBatches) === "UPCOMING"
   );
   const canRegister = event.status === "REGISTRATIONS_OPEN" && hasActiveBatch;
+  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches);
   const availableBatches = event.ticketBatches.filter((b) => b.soldCount < b.capacity);
   const heroBannerUrl = event.bannerUrl ?? event.listBannerUrl;
 
@@ -270,7 +271,7 @@ export default async function EventoPage({ params }: Props) {
                 </button>
               ) : (
                 <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
-                  {event.status === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
+                  {displayStatus === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
                 </button>
               )}
             </div>
