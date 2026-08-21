@@ -142,14 +142,26 @@ no mesmo nível — mesmo padrão que já existe hoje entre `campaigns/route.ts`
 `POST app/api/events/[id]/campaigns/[campaignId]/preview/route.ts` e equivalente admin —
 `campaigns.view`. Busca a campanha via `resolveCampaignDetailContext` (mesmo gate das rotas já
 existentes), renderiza `campaign.messageBody` com `renderTemplate(body, SAMPLE_VALUES,
-"WHATSAPP")`, devolve `{ body: string }`. Não muda nenhum estado.
+"WHATSAPP")` **e acrescenta o rodapé de opt-out** (ver abaixo), devolve `{ body: string }`. Não
+muda nenhum estado.
 
 `POST app/api/events/[id]/campaigns/[campaignId]/test-send/route.ts` e equivalente admin —
-`campaigns.edit`. Mesmo lookup, mesma renderização, mas envia via `sendWhatsAppMessage` pro
-`User.phone` da própria sessão (`session.user.id`, nunca um valor da requisição — 400 se a conta não
-tiver telefone cadastrado, mesma mensagem de erro já usada em `message-templates`), prefixado
-`[TESTE]`, com `messageType: "CAMPAIGN_TEST"` (nunca cria `CampaignRecipient`, então nunca entra nas
-métricas reais da campanha nem depende de nada da Fase B/D pra "não contar").
+`campaigns.edit`. Mesmo lookup, mesma renderização (com rodapé), mas envia via
+`sendWhatsAppMessage` pro `User.phone` da própria sessão (`session.user.id`, nunca um valor da
+requisição — 400 se a conta não tiver telefone cadastrado, mesma mensagem de erro já usada em
+`message-templates`), prefixado `[TESTE]`, com `messageType: "CAMPAIGN_TEST"` (nunca cria
+`CampaignRecipient`, então nunca entra nas métricas reais da campanha nem depende de nada da Fase
+B/D pra "não contar").
+
+**Rodapé de opt-out sempre presente.** Diferente de `message-templates` (cujo preview/teste NUNCA
+mostram o rodapé, porque cobre alertas de todo tipo — inclusive não-promocionais, como redefinição
+de senha, onde o rodapé não se aplica), campanhas são **sempre** promocionais por definição — é
+exatamente o que `receivePromotionalMessages` filtra na Fase B. Por isso, preview e teste de
+campanha SEMPRE acrescentam o mesmo texto de rodapé que um envio real (Fase D) vai usar, pra dar
+uma prévia fiel do que o destinatário realmente vai receber. `buildPreferencesFooterText()`
+(hoje uma função não-exportada em `lib/whatsapp.ts`) ganha `export`, e as 2 rotas de preview e as 2
+de teste a chamam depois de `renderTemplate`, antes de devolver/enviar o texto — sem duplicar o
+texto do rodapé em um segundo lugar.
 
 `SAMPLE_VALUES` (hoje duplicado entre `message-templates/[id]/preview` e `.../test-send`) é extraído
 pra `lib/templates/variables.ts` como constante exportada e reusado nos 4 lugares (2 já existentes +
@@ -205,10 +217,10 @@ envio de teste apareça com um rótulo legível no filtro de `/admin/mensagens` 
   e a árvore admin devolve só o subconjunto sempre-disponível; teste de que `alert-options` só lista
   alertas com papel `BUYER`/`ATHLETE` (uma alerta admin-only como `RECONCILIATION_MISMATCH` nunca
   aparece).
-- Rotas de `preview`: renderiza com `SAMPLE_VALUES`, nunca muda `campaign.status` nem cria
-  `CampaignRecipient`.
+- Rotas de `preview`: renderiza com `SAMPLE_VALUES` e inclui o texto do rodapé de opt-out; nunca
+  muda `campaign.status` nem cria `CampaignRecipient`.
 - Rotas de `test-send`: 400 quando a conta de quem chama não tem telefone; sucesso chama
-  `sendWhatsAppMessage` com o telefone da própria sessão (nunca um valor do corpo da requisição);
-  `messageType` gravado é `"CAMPAIGN_TEST"`.
+  `sendWhatsAppMessage` com o telefone da própria sessão (nunca um valor do corpo da requisição) e
+  o texto enviado inclui o rodapé de opt-out; `messageType` gravado é `"CAMPAIGN_TEST"`.
 - Sem testes de componente de UI (convenção já estabelecida no projeto) — `tsc --noEmit` e a suíte
   completa cobrem regressão.
