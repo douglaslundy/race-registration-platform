@@ -49,6 +49,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       categories: { orderBy: { name: "asc" } },
       ticketBatches: { orderBy: { startAt: "asc" } },
       coupons: { orderBy: { createdAt: "asc" } },
+      organizer: { select: { campaignsEnabled: true } },
     },
   });
 
@@ -421,6 +422,11 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <Link href={`/organizador/eventos/${id}/patrocinio`} className="btn-secondary text-center">
           Patrocínio
         </Link>
+        {event.organizer.campaignsEnabled && (
+          <Link href={`/organizador/eventos/${id}/campanhas`} className="btn-secondary text-center">
+            Campanhas de WhatsApp
+          </Link>
+        )}
         <Link href={`/organizador/eventos/${id}/resultados`} className="btn-secondary text-center">
           Importar resultados
         </Link>
