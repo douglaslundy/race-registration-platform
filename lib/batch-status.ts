@@ -70,7 +70,11 @@ export function getEventDisplayStatus(
 
   const statuses = batches.map((b) => getBatchStatus(b, batches));
   if (statuses.includes("ACTIVE")) return status;
-  if (statuses.includes("UPCOMING")) return "PUBLISHED";
+  // INACTIVE (lote MANUAL desativado pelo organizador, mas ainda dentro da janela de datas) entra
+  // no mesmo balde que UPCOMING: não é "fechado" de verdade, é "ainda não aberto" — tratar como
+  // fechado seria regressão (antes desta função existir, esse caso indevidamente aparecia como
+  // aberto; jogar pra "Encerrado" é indevido também, e pior pro organizador).
+  if (statuses.includes("UPCOMING") || statuses.includes("INACTIVE")) return "PUBLISHED";
   if (statuses.includes("SOLD_OUT")) return "SOLD_OUT";
   return "REGISTRATIONS_CLOSED";
 }

@@ -326,7 +326,7 @@ export default async function AdminInscritosPage({
               const payment = r.order.payments[0];
               return (
                 <>
-                  {canCancelPendingRegistration(r) && (
+                  {canCancelPendingRegistration(r, payment) && (
                     <CancelPendingRegistrationButton endpoint={`/api/admin/registrations/${r.id}/cancel-pending`} />
                   )}
                   {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (

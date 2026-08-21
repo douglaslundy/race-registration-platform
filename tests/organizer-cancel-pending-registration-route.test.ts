@@ -3,13 +3,13 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/payment/expire-payments", () => ({ cancelExpiredPayment: vi.fn() }));
+vi.mock("@/lib/payment/cancel-pending-manually", () => ({ cancelPendingPaymentManually: vi.fn() }));
 
 import { POST } from "@/app/api/organizer/registrations/[id]/cancel-pending/route";
-import { cancelExpiredPayment } from "@/lib/payment/expire-payments";
+import { cancelPendingPaymentManually } from "@/lib/payment/cancel-pending-manually";
 
 const authMock = vi.mocked(auth);
-const cancelExpiredPaymentMock = vi.mocked(cancelExpiredPayment);
+const cancelPendingPaymentManuallyMock = vi.mocked(cancelPendingPaymentManually);
 const dbMock = db as any;
 
 const HOUR = 60 * 60 * 1000;
@@ -50,12 +50,12 @@ describe("POST /api/organizer/registrations/[id]/cancel-pending", () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(null);
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(404);
-    expect(cancelExpiredPaymentMock).not.toHaveBeenCalled();
+    expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 
   it("escopa a busca da inscrição ao organizerId do organizador logado", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration());
-    cancelExpiredPaymentMock.mockResolvedValueOnce(true);
+    cancelPendingPaymentManuallyMock.mockResolvedValueOnce({ ok: true });
 
     await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
 
@@ -68,7 +68,7 @@ describe("POST /api/organizer/registrations/[id]/cancel-pending", () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration({ status: "CONFIRMED" }));
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(400);
-    expect(cancelExpiredPaymentMock).not.toHaveBeenCalled();
+    expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 
   it("retorna 400 quando a inscrição pendente tem menos de 4h de criada — botão não deveria nem ter aparecido, mas a rota também barra", async () => {
@@ -77,14 +77,14 @@ describe("POST /api/organizer/registrations/[id]/cancel-pending", () => {
     );
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(400);
-    expect(cancelExpiredPaymentMock).not.toHaveBeenCalled();
+    expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 
   it("retorna 400 quando não há nenhum pagamento associado ao pedido", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration({ payments: [] }));
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(400);
-    expect(cancelExpiredPaymentMock).not.toHaveBeenCalled();
+    expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 
   it("retorna 400 quando o último pagamento não está mais PENDING", async () => {
@@ -93,25 +93,25 @@ describe("POST /api/organizer/registrations/[id]/cancel-pending", () => {
     );
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(400);
-    expect(cancelExpiredPaymentMock).not.toHaveBeenCalled();
+    expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 
-  it("retorna 400 quando cancelExpiredPayment não consegue cancelar (corrida — pagamento pago nesse ínterim)", async () => {
+  it("retorna 400 quando cancelPendingPaymentManually não consegue cancelar (gateway recusou ou corrida — pagamento pago nesse ínterim)", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration());
-    cancelExpiredPaymentMock.mockResolvedValueOnce(false);
+    cancelPendingPaymentManuallyMock.mockResolvedValueOnce({ ok: false, error: "Não foi possível cancelar" });
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
     expect(res.status).toBe(400);
     expect(dbMock.auditLog.create).not.toHaveBeenCalled();
   });
 
-  it("cancela reaproveitando cancelExpiredPayment (mesma lógica do cron expire-payments) e grava auditoria", async () => {
+  it("cancela reaproveitando cancelPendingPaymentManually (cancela no gateway e localmente) e grava auditoria", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration());
-    cancelExpiredPaymentMock.mockResolvedValueOnce(true);
+    cancelPendingPaymentManuallyMock.mockResolvedValueOnce({ ok: true });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
 
     expect(res.status).toBe(200);
-    expect(cancelExpiredPaymentMock).toHaveBeenCalledWith("payment-1");
+    expect(cancelPendingPaymentManuallyMock).toHaveBeenCalledWith("payment-1");
     expect(dbMock.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "organizer-1",
@@ -128,7 +128,7 @@ describe("POST /api/organizer/registrations/[id]/cancel-pending", () => {
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration());
-    cancelExpiredPaymentMock.mockResolvedValueOnce(true);
+    cancelPendingPaymentManuallyMock.mockResolvedValueOnce({ ok: true });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
 

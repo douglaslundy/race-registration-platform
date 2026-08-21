@@ -140,6 +140,11 @@ describe("getEventDisplayStatus", () => {
     expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [upcoming])).toBe("PUBLISHED");
   });
 
+  it("reinterpreta REGISTRATIONS_OPEN como PUBLISHED (Em breve), não como fechado, quando o único lote está INACTIVE dentro da janela de datas", () => {
+    const inactive = makeBatch({ activationMode: "MANUAL", active: false });
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [inactive])).toBe("PUBLISHED");
+  });
+
   it("reinterpreta REGISTRATIONS_OPEN como REGISTRATIONS_CLOSED quando os lotes só estão fechados por data, nunca esgotados", () => {
     const closedByDate = makeBatch({ endAt: new Date(now.getTime() - HOUR) });
     expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [closedByDate])).toBe("REGISTRATIONS_CLOSED");

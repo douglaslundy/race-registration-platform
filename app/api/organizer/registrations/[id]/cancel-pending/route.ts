@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
-import { cancelExpiredPayment } from "@/lib/payment/expire-payments";
+import { cancelPendingPaymentManually } from "@/lib/payment/cancel-pending-manually";
 import { canCancelPendingRegistration, PENDING_CANCELLATION_THRESHOLD_HOURS } from "@/lib/registrations/pending-cancellation";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -35,21 +35,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Esta inscrição não está aguardando pagamento" }, { status: 400 });
   }
 
-  if (!canCancelPendingRegistration(registration)) {
+  const payment = registration.order.payments[0];
+
+  if (!canCancelPendingRegistration(registration, payment)) {
     return NextResponse.json(
       { error: `Só é possível cancelar uma inscrição pendente de pagamento após ${PENDING_CANCELLATION_THRESHOLD_HOURS} horas da inscrição` },
       { status: 400 },
     );
   }
 
-  const payment = registration.order.payments[0];
-  if (!payment || payment.status !== "PENDING") {
-    return NextResponse.json({ error: "Nenhum pagamento pendente encontrado para esta inscrição" }, { status: 400 });
+  if (!payment) {
+    return NextResponse.json({ error: "Nenhum pagamento encontrado para esta inscrição" }, { status: 400 });
   }
 
-  const cancelled = await cancelExpiredPayment(payment.id);
-  if (!cancelled) {
-    return NextResponse.json({ error: "Não foi possível cancelar — o pagamento já não está mais pendente" }, { status: 400 });
+  const result = await cancelPendingPaymentManually(payment.id);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
   await db.auditLog.create({

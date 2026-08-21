@@ -340,7 +340,7 @@ export default async function InscritosPage({
                     />
                   )}
                   {r.status === "PENDING_PAYMENT" && <ManualConfirmButton registrationId={r.id} />}
-                  {canCancelPendingRegistration(r) && (
+                  {canCancelPendingRegistration(r, payment) && (
                     <CancelPendingRegistrationButton endpoint={`/api/organizer/registrations/${r.id}/cancel-pending`} />
                   )}
                   {((payment?.status === "EXPIRED" || payment?.status === "CANCELLED") || (r.status === "CANCELLED" && !payment)) && (

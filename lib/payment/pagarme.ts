@@ -151,6 +151,10 @@ export class PagarMeProvider implements PaymentProvider {
     throw new Error(`Método ${input.method} não suportado pelo Pagar.me`);
   }
 
+  async cancelPayment(providerPaymentId: string): Promise<void> {
+    await request(`/charges/${providerPaymentId}`, {}, undefined, "DELETE");
+  }
+
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
     const data = await request(`/charges/${input.providerPaymentId}`, {}, undefined, "DELETE");
     return { providerRefundId: data.id !== undefined ? String(data.id) : undefined };

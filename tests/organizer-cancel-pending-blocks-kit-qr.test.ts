@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 // Ao contrário de tests/organizer-cancel-pending-registration-route.test.ts (que mocka
-// cancelExpiredPayment pra testar só a lógica da rota em isolamento), este arquivo deixa
+// cancelPendingPaymentManually pra testar só a lógica da rota em isolamento), este arquivo deixa
 // cancelExpiredPayment rodar de verdade (só o $transaction do Prisma é mockado) pra provar,
 // ponta a ponta, que o cancelamento manual do organizador realmente grava
 // `Registration.status = "CANCELLED"` no banco — e portanto passa a falhar tanto no gate de QR
@@ -11,15 +11,21 @@ import { auth } from "@/lib/auth";
 // app/dashboard/inscricoes/[id]/page.tsx) quanto no filtro `status: "CONFIRMED"` que
 // findRegistrationForKitDelivery usa pro balcão físico de retirada (lib/kit-delivery.ts,
 // já coberto por tests/lib-kit-delivery.test.ts).
+//
+// O gateway (getPaymentProvider) é mockado — cancelar de verdade no Mercado Pago/Pagar.me está
+// fora do escopo deste teste, que é sobre o efeito local (Registration/TicketBatch/notificação).
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/alerts/payment-error", () => ({ notifyPaymentError: vi.fn() }));
+vi.mock("@/lib/payment", () => ({ getPaymentProvider: vi.fn() }));
 
 import { POST } from "@/app/api/organizer/registrations/[id]/cancel-pending/route";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
 import { findRegistrationForKitDelivery } from "@/lib/kit-delivery";
+import { getPaymentProvider } from "@/lib/payment";
 
 const authMock = vi.mocked(auth);
 const notifyPaymentErrorMock = vi.mocked(notifyPaymentError);
+const getPaymentProviderMock = vi.mocked(getPaymentProvider);
 const dbMock = db as any;
 
 const HOUR = 60 * 60 * 1000;
@@ -45,6 +51,12 @@ describe("cancelamento manual do organizador bloqueia o QR code de retirada de k
       order: { id: "order-1", payments: [{ id: "payment-1", status: "PENDING" }] },
     });
 
+    // Lookup que cancelPendingPaymentManually faz antes de tudo, pra saber com qual
+    // providerPaymentId cancelar no gateway.
+    dbMock.payment.findUnique.mockResolvedValueOnce({ status: "PENDING", providerPaymentId: "mp-1" });
+    const cancelPaymentGateway = vi.fn().mockResolvedValueOnce(undefined);
+    getPaymentProviderMock.mockResolvedValueOnce({ cancelPayment: cancelPaymentGateway } as any);
+
     const registrationUpdate = vi.fn();
     const ticketBatchUpdate = vi.fn();
     dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
@@ -66,6 +78,9 @@ describe("cancelamento manual do organizador bloqueia o QR code de retirada de k
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
 
     expect(res.status).toBe(200);
+    // Cancela no gateway ANTES de tocar no banco local (Fix crítico: sem isso, o PIX continuaria
+    // pagável no Mercado Pago por até ~20h depois deste cancelamento manual).
+    expect(cancelPaymentGateway).toHaveBeenCalledWith("mp-1");
     // A mesma inscrição vira CANCELLED — o gate `isConfirmed = status === "CONFIRMED"` da tela
     // "Minha inscrição" (app/dashboard/inscricoes/[id]/page.tsx) passa a ser falso, então o bloco
     // do QR code nem é renderizado.

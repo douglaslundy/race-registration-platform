@@ -54,6 +54,7 @@ export interface PaymentStatusResult {
 
 export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
+  cancelPayment(providerPaymentId: string): Promise<void>;
   refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult>;
   verifyWebhookSignature(payload: string, signature: string): Promise<boolean>;
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload;
