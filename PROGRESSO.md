@@ -1,6 +1,84 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-21, mais recente — Campanhas de WhatsApp, Fase A — CONCLUÍDA, revisão final limpa)
+## Última atualização (2026-08-21, mais recente — Campanhas de WhatsApp, Fase B — CONCLUÍDA, revisão final + fix wave limpos)
+
+**Sub-projeto 3 de 3 do `taskwhatsapp.md`, Fase B de 6** ("população de destinatários" — a Fase A
+já tinha o CRUD de `Campaign`; esta fase constrói quem realmente recebe a campanha). Spec:
+`docs/superpowers/specs/2026-08-21-campanhas-whatsapp-fase-b-design.md`. Plano (6 tasks):
+`docs/superpowers/plans/2026-08-21-campanhas-whatsapp-fase-b.md`. Executado via
+`superpowers:subagent-driven-development`, direto na `main`, sem worktree.
+
+**Decisão de escopo do usuário nesta fase (fora do menu que ofereci)**: campanhas devem poder
+mirar **todos os inscritos independente do status** (não só confirmados) E deve existir opção de
+mandar pra **toda a base de atletas da plataforma**, não só pra um evento — restrito a admin
+(organizador, mesmo com `campaignsEnabled`, nunca alcança o modo plataforma). População é
+**síncrona, em lotes**, sem fila/estado assíncrono nesta fase.
+
+**O que foi implementado**: `Campaign.eventId` virou opcional (`null` = campanha de plataforma,
+`onDelete: Cascade` preservado); `CampaignRecipient` novo (enum de 12 estados definido de uma vez,
+só 4 alcançáveis nesta fase: `PENDING/OPTED_OUT/INVALID_PHONE/SKIPPED`); `lib/campaigns/service.ts`
+extraído (recomendação da revisão final da Fase A) — `resolveCampaignListContext`/
+`resolveCampaignDetailContext` substituem o preâmbulo duplicado nas 4 rotas de evento (refactor
+puro, os 12 testes da Fase A passaram sem alteração); `isValidWhatsAppPhone` +
+`prepareCampaignRecipients` (`lib/campaigns/recipients.ts`) — lê registrations do evento (todos os
+status) ou `User` ativo/atleta (modo plataforma), aplica `receivePromotionalMessages` sempre,
+valida/normaliza telefone, deduplica por telefone com `Set` persistente entre lotes de 500,
+idempotente (`deleteMany` antes de repopular); rotas `prepare-recipients`/`recipients/summary` por
+evento e uma árvore admin-only paralela (`/api/admin/campaigns/*`, 6 rotas) pro modo plataforma;
+`CampaignsManager.tsx` generalizado (`apiBase`/`scopeLabel`) + botão "Preparar destinatários" +
+nova tela `/admin/campanhas`.
+
+**6 tasks, 2 com 1 rodada de fix cada**: Task 3 — faltava teste de dedup de telefone **entre
+lotes** (o cenário que o próprio plano apontava como fácil de errar; código já estava certo,
+só faltava a prova); Task 5 — cobertura de teste do gate ORGANIZER-403 só existia em 1 dos 8
+handlers da árvore admin, ampliada pros 4 handlers de mutação (lógica de acesso em si já revisada
+linha a linha por um reviewer opus contra o código-fonte de `lib/campaigns/service.ts`, sem
+brecha encontrada).
+
+**Revisão final de branch inteira (opus)**: nenhum Crítico (nenhum caminho de não-admin alcança
+campanha de plataforma; `receivePromotionalMessages` inbypassável por construção — a função não
+tem parâmetro pra desligar o filtro). 4 Importantes + vários Minor, fix wave único aplicado
+(commits `9bf87b9`..`ac009c7`, re-revisão limpa):
+1. As 6 rotas admin usavam `checkApiPermission` em vez de `checkAdminOnlyApiPermission` (as
+   outras 63 rotas de `/api/admin/*` usam a mais restrita) — defesa em profundidade, não era
+   brecha viva (o gate de `eventId: null` já bloqueava ORGANIZER), mas destoava da convenção.
+2. Zero teste de papel `ASSISTANT` em toda a feature (Fase A + B) — o único branch de
+   `resolveActingScope` (walk-up via `createdBy`) que decide se assistente-de-admin ou
+   assistente-de-organizador alcança a árvore de plataforma nunca tinha sido exercitado.
+   Adicionados: assistente-de-organizador → 403, assistente-de-admin → 200.
+3. Rotas `recipients/summary` (Tasks 4 e 5) não tinham consumidor nenhum na UI — resumo só vinha
+   da resposta efêmera do POST, perdido ao recarregar a página. Agora `reload()` busca o resumo de
+   cada campanha via GET e reconcilia o formato `groupBy` com o formato do POST.
+4. `normalizedPhone` era gravado mesmo em linhas `OPTED_OUT`/`INVALID_PHONE`/`SKIPPED` — risco
+   futuro (Fase D esquecer de filtrar `status = PENDING` mandaria mensagem pra quem optou por não
+   receber, com telefone já pronto na linha). Zerado nas 3 linhas não-`PENDING`; contagens
+   agregadas continuam iguais.
+5-7 (Minor, corrigidos no mesmo wave): `PrepareRecipientsResult` virou `type` (removeu 2 `as any`
+   no `metadata` do audit log); teste negativo faltante na rota `duplicate` da árvore admin;
+   `ConfirmModal` antes de "Preparar destinatários" (um clique dispara `deleteMany` + varredura
+   completa — na tela de plataforma, da base inteira de atletas).
+
+Minors parqueados (não bloqueiam, decisão explícita de não corrigir agora): índice em
+`users(role, active)`/paginação por `skip` a escala (irrelevante no volume atual); modo
+plataforma sem teste de múltiplos lotes (só 1 candidato testado; caminho idêntico ao de evento,
+que tem cobertura completa); `scope`/`event` retornados pelas duas funções do service não são
+lidos por nenhum dos 12 call sites atuais (manter pra Fase C); telefone fixo (10 dígitos) conta
+como elegível mas vai falhar no envio real da Fase D (contrato já existente de
+`normalizePhoneForWhatsApp`); preparação sem transação/marcador de estado (autocura, já que a
+função é idempotente).
+
+Suíte completa (237 arquivos / 1684 testes) e `tsc --noEmit` limpos. **Não testado no navegador**
+(mesmo problema de DNS de sempre nesta sessão).
+
+**Migration pendente de deploy** (aditiva: `eventId` vira opcional + tabela `campaign_recipients`
+nova) — agora 4 migrations em fila (preferências + endereço + campanhas Fase A + campanhas Fase
+B), aplicar todas via `psql` manual, na ordem, antes do `db push`.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta fase. Push/deploy aguardando autorização explícita do
+usuário. Depois: Fase C (composição de mensagem — variáveis, preview, envio de teste) do
+sub-projeto de campanhas, quando o usuário pedir.
+
+## Última atualização (2026-08-21, item anterior — Campanhas de WhatsApp, Fase A — CONCLUÍDA, revisão final limpa)
 
 **Sub-projeto 3 de 3 do `taskwhatsapp.md`** ("Campanhas de WhatsApp em massa" — o maior e mais
 complexo dos três, decomposto via `superpowers:brainstorming` em **6 fases menores**, cada uma com
