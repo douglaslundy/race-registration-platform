@@ -1,6 +1,102 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-21, mais recente — Campanhas de WhatsApp, Fase B — CONCLUÍDA, revisão final + fix wave limpos)
+## Última atualização (2026-08-21, mais recente — Campanhas de WhatsApp, Fase C — CONCLUÍDA, revisão final + fix wave limpos)
+
+**Sub-projeto 3 de 3 do `taskwhatsapp.md`, Fase C de 6** ("composição de mensagem" — variáveis,
+preview, envio de teste). Spec:
+`docs/superpowers/specs/2026-08-21-campanhas-whatsapp-fase-c-design.md`. Plano (6 tasks):
+`docs/superpowers/plans/2026-08-21-campanhas-whatsapp-fase-c.md`. Executado via
+`superpowers:subagent-driven-development`, direto na `main`, sem worktree.
+
+**Descoberta principal**: o sistema de alertas já tinha exatamente a infraestrutura que esta fase
+precisava — `lib/templates/{variables,render,resolve}.ts` (catálogo único de variáveis, motor de
+renderização sem `eval`, resolução de texto efetivo com override por evento) e um padrão pronto de
+preview/teste (`message-templates/[id]/preview` e `.../test-send`, que já mandam pro telefone da
+própria conta de quem clica, nunca um destinatário do corpo da requisição). Reaproveitado
+integralmente, sem segundo motor de templates.
+
+**O que foi implementado**: `lib/campaigns/variables.ts` — única fonte de verdade decidindo quais
+categorias de variável uma campanha pode usar (Atleta+Plataforma sempre; Evento+Organizador+
+Inscrição só se a campanha tiver evento associado, já que não resolvem pra campanha de plataforma
+inteira). Validação no salvar (criar/editar, nas 4 rotas — evento e admin) usando essa lista +
+`validateTemplateVariables` já existente. 8 rotas novas: catálogo de variáveis e "começar a partir
+de um alerta existente" (WHATSAPP + papel atleta/comprador, texto efetivo via `getEffectiveTemplate`
+— reaproveita override por evento se houver) por árvore; preview e envio de teste por árvore
+(sempre com rodapé de opt-out, já que campanha é sempre promocional — diferente do preview genérico
+de `message-templates`, que nunca mostra o rodapé por cobrir alertas não-promocionais também).
+`CampaignsManager.tsx` ganhou dropdown categorizado de variáveis + contador (criar e editar),
+atalho de "partir de alerta" (só no formulário de criar) e botões Visualizar/Enviar teste + modal
+de preview (só no modal de editar).
+
+**6 tasks, 1 achado parqueado (não é bug de código)**: Task 3 — o próprio relatório do implementador
+subcontou o número de testes novos que escreveu (disse 4, o diff tinha os 6 corretos batendo com o
+plano) — parqueado porque só afeta a narrativa do relatório interno da SDD (apagado ao final), o
+código e os testes de verdade estão corretos. Task 4 — achado real no PRÓPRIO PLANO: a asserção de
+teste que eu tinha escrito assumia que o corpo WHATSAPP do alerta `ORDER_CONFIRMED` continha
+`{{nome_atleta}}`, mas só a variante EMAIL tem esse cumprimento — implementador corrigiu a asserção
+pra checar `{{codigo_confirmacao}}` (presente nos dois canais), confirmado certo por mim e
+re-confirmado de forma independente pelo revisor da task contra os 12 alertas do registro.
+
+**Revisão final de branch inteira (opus)**: nenhum Crítico (as 4 invariantes de segurança da fase —
+fonte única de verdade, opera só sobre mensagem já salva, teste sempre pro telefone de quem clica,
+rodapé sempre presente nas 4 rotas, nunca cria `CampaignRecipient` — todas confirmadas por inspeção
+direta). 3 Importantes + 6 Minor, fix wave único aplicado (commit `7e43647`, re-revisão limpa):
+1. **Achado real e sério**: o atalho "partir de um alerta existente" era inútil na árvore admin
+   (campanha de plataforma) — os 6 alertas que sobrevivem ao filtro WHATSAPP+atleta/comprador usam
+   todos `{{nome_evento}}` (categoria Evento), nunca permitida em modo plataforma — ou seja, 100%
+   dos cliques em "Usar este texto" ali resultavam em erro 400 ao salvar. Falhava com segurança (a
+   validação da Task 3 pegava), mas a funcionalidade nunca funcionava de verdade nessa árvore.
+   Corrigido filtrando as opções pela mesma função de escopo permitido — resultado esperado e
+   correto: a lista de alertas na árvore admin agora fica sempre vazia (a UI já esconde o bloco
+   quando a lista é vazia).
+2. Testes faltando: nenhum teste de `test-send` verificava o rodapé de opt-out no texto enviado
+   (só os de preview verificavam); nenhum teste confirmava que preview/teste nunca criam
+   `CampaignRecipient` (uma das invariantes da fase). Adicionados nos 2 arquivos de teste, nas 2
+   árvores.
+3. **UX real**: `ErrorModal` renderizava ANTES do modal de editar campanha no JSX — os dois são
+   `fixed inset-0 z-50`, então o modal de editar (irmão posterior no DOM) pintava por cima e
+   escondia qualquer erro de Visualizar/Enviar teste, incluindo o erro mais provável de todos
+   ("Sua conta não tem telefone cadastrado"). Corrigido movendo o `ErrorModal` pra depois do bloco
+   do modal de editar.
+4. Minor corrigido (bundled): as 2 rotas de "opções de alerta" faziam até 12 consultas sequenciais
+   ao banco por requisição — paralelizado com `Promise.all`.
+
+Minors parqueados (decisão explícita de não corrigir agora, carregar pra Fase D): granularidade de
+categoria (variáveis só do resumo diário aparecendo em "Plataforma" — decisão de escopo, bate com o
+plano); falha silenciosa se o catálogo não carregar; descrição de alerta pode truncar visualmente no
+seletor; sem rate limit no envio de teste (mesmo formato do `message-templates` já existente); rotas
+de duplicar campanha (Fase A/B) não rodam a validação nova (inofensivo — duplicação preserva escopo,
+corpo copiado já era válido; corrige sozinho na primeira edição); envio real da Fase D deve usar
+`sendWhatsAppMessage(..., { appendPreferencesFooter: true })` pra ficar idêntico ao que o preview
+mostra — registrado pra aquela fase, não construído agora.
+
+Suíte completa (240 arquivos / 1707 testes, usando `--exclude "**/.claude/worktrees/**"` — havia um
+worktree paralelo de outro agente no disco durante esta sessão) e `tsc --noEmit` limpos. **Não
+testado no navegador** (mesmo problema de DNS de sempre nesta sessão) — o checklist final do plano
+recomenda esse passo antes de deploy.
+
+**Sem migration nova nesta fase** — nenhuma mudança de schema. Seguem em fila as 4 migrations
+(preferências + endereço + campanhas Fase A + campanhas Fase B) já pendentes de deploy.
+
+**PRÓXIMA TAREFA**: nenhuma pendente desta fase. Push/deploy aguardando autorização explícita do
+usuário. Depois: Fase D (agendamento + worker + rate limiting + retries) do sub-projeto de
+campanhas, quando o usuário pedir.
+
+**Trabalho paralelo nesta sessão (fora do sub-projeto de campanhas)**: usuário pediu, via agente
+independente em worktree isolado, 2 correções: (1) botão do organizador/admin pra cancelar
+manualmente uma inscrição pendente de pagamento há mais de 4h (libera vaga, notifica o atleta,
+bloqueia geração de QR code) — reaproveitou `cancelExpiredPayment` do cron `expire-payments`
+existente em vez de duplicar lógica; (2) bug onde o card de evento mostrava "Inscrições abertas" e
+"Inscrições encerradas" ao mesmo tempo quando esgotava vagas — causa raiz era `Event.status` nunca
+recalculado a partir dos lotes reais, corrigido com `getEventDisplayStatus()` centralizando as duas
+fontes. 233 arquivos / 1612 testes passando, `tsc` limpo, 3 commits num worktree isolado
+(`.claude/worktrees/agent-a3ad99d072dcd5540`, branch `worktree-agent-a3ad99d072dcd5540`) — **ainda
+não mesclado nem revisado pelo usuário**. Pontos que o agente pediu confirmação: as 2 permissões
+novas de assistente (`registrations.cancel-pending`/`-any`) não são concedidas a ninguém por padrão;
+se o pagamento mais recente da inscrição não estiver `PENDING` (bug de "vagas fantasma" já
+documentado em sessões antigas), a rota nova retorna 400 em vez de tentar reconciliar.
+
+## Última atualização (2026-08-21, item anterior — Campanhas de WhatsApp, Fase B — CONCLUÍDA, revisão final + fix wave limpos)
 
 **Sub-projeto 3 de 3 do `taskwhatsapp.md`, Fase B de 6** ("população de destinatários" — a Fase A
 já tinha o CRUD de `Campaign`; esta fase constrói quem realmente recebe a campanha). Spec:
