@@ -111,3 +111,7 @@ export function getVariablesByNames(names: string[]): VariableDefinition[] {
 }
 
 export const VARIABLE_CATEGORIES: string[] = [...new Set(ALL_VARIABLES.map((v) => v.category))];
+
+export const SAMPLE_VALUES: Record<string, string> = Object.fromEntries(
+  ALL_VARIABLES.map((v) => [v.name, v.sample]),
+);

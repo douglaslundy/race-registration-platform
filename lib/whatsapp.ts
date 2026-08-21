@@ -6,7 +6,7 @@ function truncateForSubject(text: string): string {
   return text.length > 80 ? `${text.slice(0, 77)}...` : text;
 }
 
-function buildPreferencesFooterText(): string {
+export function buildPreferencesFooterText(): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
   return `\n\nPara alterar ou cancelar o recebimento de mensagens, acesse suas preferências de comunicação: ${baseUrl}/preferencias`;
 }

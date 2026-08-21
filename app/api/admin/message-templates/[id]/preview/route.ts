@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { renderTemplate, renderTemplateSubject } from "@/lib/templates/render";
-import { ALL_VARIABLES } from "@/lib/templates/variables";
-
-const SAMPLE_VALUES: Record<string, string> = Object.fromEntries(
-  ALL_VARIABLES.map((v) => [v.name, v.sample]),
-);
+import { SAMPLE_VALUES } from "@/lib/templates/variables";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const check = await checkAdminOnlyApiPermission("message-templates.manage");

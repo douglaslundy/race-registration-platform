@@ -29,6 +29,7 @@ export const MESSAGE_TYPE_LABEL: Record<string, string> = {
   AD_REPORT: "Relatório de anúncio",
   WHATSAPP_CONNECTION_TEST: "Teste de conexão do WhatsApp",
   SENSITIVE_ACTION_CODE: "Código de verificação",
+  CAMPAIGN_TEST: "Teste de campanha de WhatsApp",
 };
 
 export interface RecordMessageLogParams {
