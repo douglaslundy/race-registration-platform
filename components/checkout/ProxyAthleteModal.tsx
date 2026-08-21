@@ -71,11 +71,11 @@ export default function ProxyAthleteModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm overflow-y-auto py-8"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm overflow-y-auto py-8"
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg mx-4 space-y-4"
+        className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg mx-4 my-auto space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Dados do atleta</h2>
