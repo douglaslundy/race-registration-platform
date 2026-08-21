@@ -112,6 +112,17 @@ describe("GET/POST /api/admin/campaigns (admin-only)", () => {
       expect.objectContaining({ where: { eventId: null } }),
     );
   });
+
+  it("rejeita variável de categoria Evento numa campanha de plataforma", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await POST(makeRequest("POST", { name: "Campanha de plataforma", messageBody: "Vem pro {{nome_evento}}!" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.unknownVariables).toEqual(["nome_evento"]);
+    expect(dbMock.campaign.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("GET/PATCH /api/admin/campaigns/[campaignId]", () => {
@@ -149,6 +160,18 @@ describe("GET/PATCH /api/admin/campaigns/[campaignId]", () => {
     );
 
     expect(res.status).toBe(403);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+
+  it("rejeita editar com variável de categoria Evento", async () => {
+    const res = await PATCH(
+      makeRequest("PATCH", { messageBody: "Vem pro {{nome_evento}}!" }),
+      { params: Promise.resolve({ campaignId: "campaign-1" }) },
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.unknownVariables).toEqual(["nome_evento"]);
     expect(dbMock.campaign.update).not.toHaveBeenCalled();
   });
 });

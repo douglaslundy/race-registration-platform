@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
+import { getAllowedCampaignVariableNames } from "@/lib/campaigns/variables";
+import { validateTemplateVariables } from "@/lib/templates/render";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -46,6 +48,13 @@ export async function PATCH(
   const body = await req.json();
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+
+  if (parsed.data.messageBody !== undefined) {
+    const { valid, unknown } = validateTemplateVariables(parsed.data.messageBody, getAllowedCampaignVariableNames(null));
+    if (!valid) {
+      return NextResponse.json({ error: "Variável desconhecida na mensagem", unknownVariables: unknown }, { status: 400 });
+    }
+  }
 
   const updated = await db.campaign.update({ where: { id: campaignId }, data: parsed.data });
 

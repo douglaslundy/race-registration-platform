@@ -86,6 +86,29 @@ describe("GET/POST /api/events/[id]/campaigns", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejeita mensagem com variável desconhecida", async () => {
+    const res = await POST(
+      makeRequest("POST", { name: "Campanha de teste", messageBody: "Olá {{variavel_invalida}}!" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.unknownVariables).toEqual(["variavel_invalida"]);
+    expect(dbMock.campaign.create).not.toHaveBeenCalled();
+  });
+
+  it("aceita variável de categoria Evento, já que a campanha tem um evento associado", async () => {
+    dbMock.campaign.create.mockResolvedValueOnce({ ...draftCampaign, messageBody: "Vem pro {{nome_evento}}!" });
+
+    const res = await POST(
+      makeRequest("POST", { name: "Campanha de teste", messageBody: "Vem pro {{nome_evento}}!" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(201);
+  });
+
   it("cria uma campanha como ADMIN, mesmo sem ser o organizador do evento", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
@@ -148,6 +171,29 @@ describe("GET/PATCH /api/events/[id]/campaigns/[campaignId]", () => {
 
     expect(res.status).toBe(400);
     expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+
+  it("rejeita editar com mensagem contendo variável desconhecida", async () => {
+    const res = await PATCH(
+      makeRequest("PATCH", { messageBody: "Olá {{variavel_invalida}}!" }),
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.unknownVariables).toEqual(["variavel_invalida"]);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+
+  it("não valida variáveis quando messageBody não está no PATCH", async () => {
+    dbMock.campaign.update.mockResolvedValueOnce({ ...draftCampaign, name: "Nome novo" });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "Nome novo" }),
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(200);
   });
 });
 
