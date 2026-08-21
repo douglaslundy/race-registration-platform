@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission } from "@/lib/auth/rbac";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -16,7 +16,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
-  const check = await checkApiPermission("campaigns.view");
+  const check = await checkAdminOnlyApiPermission("campaigns.view");
   if (!check.allowed) return check.response;
   const { session } = check;
 
@@ -31,7 +31,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
-  const check = await checkApiPermission("campaigns.edit");
+  const check = await checkAdminOnlyApiPermission("campaigns.edit");
   if (!check.allowed) return check.response;
   const { session } = check;
 

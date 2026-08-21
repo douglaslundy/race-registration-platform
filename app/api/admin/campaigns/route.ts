@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission } from "@/lib/auth/rbac";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { resolveCampaignListContext } from "@/lib/campaigns/service";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -11,7 +11,7 @@ const campaignSchema = z.object({
 });
 
 export async function GET(_req: NextRequest) {
-  const check = await checkApiPermission("campaigns.view");
+  const check = await checkAdminOnlyApiPermission("campaigns.view");
   if (!check.allowed) return check.response;
   const { session } = check;
 
@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const check = await checkApiPermission("campaigns.create");
+  const check = await checkAdminOnlyApiPermission("campaigns.create");
   if (!check.allowed) return check.response;
   const { session } = check;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission } from "@/lib/auth/rbac";
+import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
 import { db } from "@/lib/db";
 
@@ -7,7 +7,7 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
-  const check = await checkApiPermission("campaigns.create");
+  const check = await checkAdminOnlyApiPermission("campaigns.create");
   if (!check.allowed) return check.response;
   const { session } = check;
 
