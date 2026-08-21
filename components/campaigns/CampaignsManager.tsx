@@ -15,6 +15,20 @@ type Campaign = {
 
 type PrepareSummary = { total: number; pending: number; optedOut: number; invalidPhone: number; duplicate: number };
 
+// GET recipients/summary retorna uma contagem agrupada por status (groupBy do Prisma), ex.:
+// { PENDING: 8, OPTED_OUT: 1 } — formato diferente do PrepareSummary acima (que vem do POST
+// prepare-recipients, com chaves fixas). Traduzimos aqui pra reaproveitar o mesmo card de exibição
+// pros dois casos.
+function summaryFromGrouped(grouped: Record<string, number>): PrepareSummary {
+  return {
+    total: Object.values(grouped).reduce((sum, n) => sum + n, 0),
+    pending: grouped.PENDING ?? 0,
+    optedOut: grouped.OPTED_OUT ?? 0,
+    invalidPhone: grouped.INVALID_PHONE ?? 0,
+    duplicate: grouped.SKIPPED ?? 0,
+  };
+}
+
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Rascunho",
   SCHEDULED: "Agendada",
@@ -49,6 +63,7 @@ export default function CampaignsManager({
   const [canceling, setCanceling] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
+  const [preparingConfirmId, setPreparingConfirmId] = useState<string | null>(null);
   const [recipientSummaries, setRecipientSummaries] = useState<Record<string, PrepareSummary>>({});
 
   async function reload() {
@@ -59,7 +74,30 @@ export default function CampaignsManager({
       return;
     }
     setPageError(null);
-    setCampaigns(data.campaigns ?? []);
+    const list: Campaign[] = data.campaigns ?? [];
+    setCampaigns(list);
+
+    // Recupera o resumo de destinatários de cada campanha (perdido em memória a cada reload) sem
+    // esperar o operador clicar em "Preparar destinatários" de novo — essa ação é cara (reconstrói
+    // a lista do zero). Uma campanha nunca preparada retorna um groupBy vazio; nesse caso não
+    // populamos a entrada, pra não exibir um card "Total: 0" pra quem ainda não preparou nada.
+    const summaryEntries = await Promise.all(
+      list.map(async (campaign) => {
+        const summaryRes = await fetch(`${apiBase}/${campaign.id}/recipients/summary`);
+        if (!summaryRes.ok) return null;
+        const summaryData = await summaryRes.json().catch(() => ({}));
+        const grouped = summaryData.summary as Record<string, number> | undefined;
+        if (!grouped || Object.keys(grouped).length === 0) return null;
+        return [campaign.id, summaryFromGrouped(grouped)] as const;
+      }),
+    );
+    setRecipientSummaries((prev) => {
+      const next = { ...prev };
+      for (const entry of summaryEntries) {
+        if (entry) next[entry[0]] = entry[1];
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -187,6 +225,21 @@ export default function CampaignsManager({
         loading={canceling}
         onConfirm={doCancel}
         onCancel={() => setCancelingId(null)}
+      />
+
+      <ConfirmModal
+        open={!!preparingConfirmId}
+        title="Preparar destinatários"
+        message="Isso vai apagar a lista de destinatários atual (se houver) e reconstruí-la do zero, varrendo toda a base elegível. Pode demorar um pouco. Deseja continuar?"
+        confirmLabel="Preparar"
+        loading={preparingId !== null && preparingId === preparingConfirmId}
+        onConfirm={async () => {
+          const campaignId = preparingConfirmId;
+          if (!campaignId) return;
+          await doPrepareRecipients(campaignId);
+          setPreparingConfirmId(null);
+        }}
+        onCancel={() => setPreparingConfirmId(null)}
       />
 
       <ErrorModal message={actionError} onClose={() => setActionError(null)} />
@@ -337,7 +390,7 @@ export default function CampaignsManager({
                         Cancelar
                       </button>
                       <button
-                        onClick={() => void doPrepareRecipients(campaign.id)}
+                        onClick={() => setPreparingConfirmId(campaign.id)}
                         disabled={preparingId === campaign.id}
                         className="text-green-700 hover:text-green-900 text-sm"
                       >
