@@ -1,6 +1,77 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-18, mais recente — fix de feedback do cupom no checkout)
+## Última atualização (2026-08-21 — worktree isolado, 2 itens independentes CONCLUÍDOS, NÃO MESCLADO NA MAIN)
+
+Trabalho feito num worktree separado (`.claude/worktrees/agent-a3ad99d072dcd5540`), por pedido
+explícito — **não** faz parte da `main` ainda, aguardando revisão humana antes de merge/push/deploy.
+
+**Item 1 — botão de cancelamento manual de inscrição pendente (organizador/admin) — CONCLUÍDO.**
+Pedido do usuário: organizador (e admin) poder cancelar uma inscrição pendente de pagamento há mais
+de 4h, liberando a vaga, notificando o atleta, e bloqueando geração de QR code de kit depois.
+Decisão de arquitetura: **reaproveitado** `cancelExpiredPayment` (`lib/payment/expire-payments.ts`)
+— a MESMA função que o cron `expire-payments` já usa — em vez de duplicar lógica. Ela já cancela
+Order+Registration, decrementa `TicketBatch.soldCount` (libera a vaga) e dispara
+`notifyPaymentError` (alerta `PAYMENT_ERROR`, já existente, texto "Inscrição cancelada — pagamento
+não identificado", e-mail+WhatsApp) — só precisou ser chamada manualmente em vez de esperar o cron.
+QR code: confirmado (não assumido) que `Registration.status !== "CONFIRMED"` já bloqueia em 2
+lugares independentes — `app/dashboard/inscricoes/[id]/page.tsx` (`isConfirmed` gate) e
+`lib/kit-delivery.ts::findRegistrationForKitDelivery` (filtro `status: "CONFIRMED"` na query) —
+provado com teste automatizado ponta a ponta em `tests/organizer-cancel-pending-blocks-kit-qr.test.ts`
+(roda `cancelExpiredPayment` de verdade, sem mock, e confirma `status: "CANCELLED"` gravado).
+
+Arquivos novos:
+- `lib/registrations/pending-cancellation.ts` — regra única "PENDING_PAYMENT + >4h de criada"
+  (`canCancelPendingRegistration`), usada tanto pra decidir se o botão aparece quanto pela API.
+- `app/api/organizer/registrations/[id]/cancel-pending/route.ts` e
+  `app/api/admin/registrations/[id]/cancel-pending/route.ts` — mesmo padrão de par organizer/admin
+  já usado por `cancellation-decision`/`resend-payment-notification` (organizer escopado por
+  `event.organizerId`, admin sem escopo, via `checkApiPermission`/`checkAdminOnlyApiPermission`).
+- `components/registrations/CancelPendingRegistrationButton.tsx` — usa `ConfirmModal`/`ErrorModal`
+  (nunca `confirm()`/`alert()` nativos, conforme CLAUDE.md).
+- Testes: `tests/unit/pending-cancellation.test.ts`,
+  `tests/organizer-cancel-pending-registration-route.test.ts`,
+  `tests/admin-cancel-pending-registration-route.test.ts`,
+  `tests/organizer-cancel-pending-blocks-kit-qr.test.ts`.
+
+Arquivos editados: `app/organizador/eventos/[id]/inscritos/page.tsx` e
+`app/admin/eventos/[id]/inscritos/page.tsx` (botão novo no `renderActions`, condicionado a
+`canCancelPendingRegistration(r)`); `app/organizador/assistentes/page.tsx` (permissão
+`registrations.cancel-pending`) e `app/admin/assistentes/page.tsx`
+(`registrations.cancel-pending-any`) — os 2 catálogos, lição de features anteriores.
+
+Decisão que ficou de fora por não ter sido pedida: não criei uma rota de reconciliação pro caso raro
+em que o `Payment` mais recente já não está `PENDING` (ex.: o bug sistêmico de "vagas fantasma" já
+documentado nesta sessão antiga, mais abaixo neste arquivo) — a rota simplesmente retorna erro 400
+nesse caso em vez de tentar consertar o dado, mesmo comportamento defensivo de outras rotas
+existentes.
+
+**Item 2 — bug "Inscrições abertas" + "Inscrições encerradas" juntos quando esgota — CORRIGIDO.**
+Causa raiz: `Event.status` é um campo persistido que só muda por ação explícita (nunca é
+recalculado automaticamente a partir dos lotes), então um evento podia ficar com
+`status="REGISTRATIONS_OPEN"` no banco pra sempre mesmo com todos os lotes esgotados. O card de
+evento (`components/events/EventCard.tsx`, usado em `/` e `/eventos`) lia a badge de cima
+diretamente de `event.status` ("Inscrições abertas") e calculava o botão de baixo a partir da
+disponibilidade REAL dos lotes ("Inscrições fechadas"/"Esgotado") — as duas fontes divergiam e
+apareciam juntas. Corrigido com uma função nova `getEventDisplayStatus(status, batches)` em
+`lib/batch-status.ts` que reconcilia os dois: quando `status===REGISTRATIONS_OPEN` mas nenhum lote
+está ACTIVE, reinterpreta pra `SOLD_OUT` (algum lote esgotado), `PUBLISHED`/"Em breve" (só lote
+UPCOMING) ou `REGISTRATIONS_CLOSED` (lotes só fechados por data, nunca esgotados) — badge e botão
+agora sempre leem o MESMO valor, nunca mais divergem. Aplicado em `EventCard.tsx` (badge + botão) e,
+por consistência, também no botão da página de detalhe do evento
+(`app/(public)/eventos/[slug]/page.tsx`) — não achei ali um caso de badge duplicada, só o mesmo
+texto impreciso ("Inscrições fechadas" em vez de "Esgotado"), corrigido pro mesmo padrão.
+Teste: `tests/unit/batch-status.test.ts` (7 casos novos cobrindo os 4 ramos + os status que não
+devem ser reinterpretados).
+
+**Verificação**: `npx tsc --noEmit` limpo. Suíte completa 233 arquivos / 1612 testes passando (era
+230/1578 antes desta sessão, +4 arquivos novos de teste / +34 testes novos — nenhuma quebra).
+
+**PRÓXIMA TAREFA**: nenhuma pendente de implementação nos 2 itens. Isolado no worktree
+`.claude/worktrees/agent-a3ad99d072dcd5540` — não mesclado, não commitado ainda na `main`, aguardando
+revisão humana antes de merge/push/deploy (Item 1 tem migration zero — não mexe em schema — mas
+adiciona 2 permissões novas de assistente que precisam ser concedidas manualmente a quem for usar).
+
+## Última atualização (2026-08-18, item anterior — fix de feedback do cupom no checkout)
 
 **Bug relatado pelo usuário: cupom sem feedback na inscrição — CORRIGIDO.** Usuário reportou que ao
 digitar um cupom na página de inscrição (`/inscricao/[slug]`, componente `CheckoutForm.tsx`) a
