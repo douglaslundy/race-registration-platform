@@ -75,6 +75,8 @@ export default function CampaignsManager({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [testSendLoading, setTestSendLoading] = useState(false);
   const [testSendMessage, setTestSendMessage] = useState<string | null>(null);
+  const [schedulingLoading, setSchedulingLoading] = useState(false);
+  const [scheduledAtInput, setScheduledAtInput] = useState("");
   const createBodyRef = useRef<HTMLTextAreaElement>(null);
   const editBodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -180,6 +182,7 @@ export default function CampaignsManager({
     });
     setPreviewResult(null);
     setTestSendMessage(null);
+    setScheduledAtInput("");
   }
 
   function insertVariable(
@@ -302,6 +305,25 @@ export default function CampaignsManager({
     setTestSendMessage("Teste enviado para o seu telefone cadastrado.");
   }
 
+  async function doSchedule(sendNow: boolean) {
+    if (!editId) return;
+    setSchedulingLoading(true);
+    setActionError(null);
+    const res = await fetch(`${apiBase}/${editId}/schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sendNow ? {} : { scheduledAt: new Date(scheduledAtInput).toISOString() }),
+    });
+    setSchedulingLoading(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao agendar/disparar campanha");
+      return;
+    }
+    setEditId(null);
+    await reload();
+  }
+
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
@@ -358,6 +380,7 @@ export default function CampaignsManager({
             setEditId(null);
             setPreviewResult(null);
             setTestSendMessage(null);
+            setScheduledAtInput("");
           }}
         >
           <form
@@ -437,6 +460,30 @@ export default function CampaignsManager({
                 {testSendLoading ? "Enviando..." : "Enviar teste"}
               </button>
             </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+              <input
+                type="datetime-local"
+                value={scheduledAtInput}
+                onChange={(e) => setScheduledAtInput(e.target.value)}
+                className="input text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => void doSchedule(false)}
+                disabled={schedulingLoading || !scheduledAtInput}
+                className="btn-secondary text-sm px-3 disabled:opacity-50"
+              >
+                Agendar envio
+              </button>
+              <button
+                type="button"
+                onClick={() => void doSchedule(true)}
+                disabled={schedulingLoading}
+                className="text-sm px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+              >
+                {schedulingLoading ? "Enviando..." : "Disparar agora"}
+              </button>
+            </div>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
@@ -444,6 +491,7 @@ export default function CampaignsManager({
                   setEditId(null);
                   setPreviewResult(null);
                   setTestSendMessage(null);
+                  setScheduledAtInput("");
                 }}
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
