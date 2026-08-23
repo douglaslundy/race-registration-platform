@@ -41,6 +41,7 @@ describe("resolveCampaignRecipientVariables", () => {
       status: "CONFIRMED",
       createdAt: new Date("2026-08-01T00:00:00Z"),
       route: { name: "5km" },
+      category: { name: "Elite" },
       event: {
         title: "Corrida Exemplo",
         description: "Descrição",
@@ -60,11 +61,39 @@ describe("resolveCampaignRecipientVariables", () => {
     expect(values.nome_evento).toBe("Corrida Exemplo");
     expect(values.cidade_evento).toBe("São Paulo");
     expect(values.nome_modalidade).toBe("5km");
+    expect(values.categoria_inscricao).toBe("Elite");
     expect(values.nome_organizador).toBe("João Organizador");
     expect(values.empresa_organizador).toBe("Organização Exemplo");
     expect(values.status_inscricao).toBe("Confirmada");
     expect(values.valor_inscricao).toContain("90,00");
     expect(values.codigo_confirmacao).toBe("order-1");
+  });
+
+  it("modo evento sem categoria (categoryId null): categoria_inscricao resolve para string vazia", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      id: "reg-1",
+      status: "CONFIRMED",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      route: { name: "5km" },
+      category: null,
+      event: {
+        title: "Corrida Exemplo",
+        description: "Descrição",
+        startAt: new Date("2026-09-20T10:00:00Z"),
+        venueName: "Parque Exemplo",
+        city: "São Paulo",
+        state: "SP",
+        addressLine: "Av. Exemplo, 1000",
+        slug: "corrida-exemplo",
+        organizer: { companyName: "Organização Exemplo", phone: "1197777777", user: { name: "João Organizador", email: "joao@org.com" } },
+      },
+      order: { id: "order-1", totalAmount: 9000 },
+    });
+
+    const values = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+
+    expect(values.categoria_inscricao).toBe("");
   });
 
   it("nunca resolve patrocinio/redes_sociais (excluídas de getAllowedCampaignVariableNames)", async () => {

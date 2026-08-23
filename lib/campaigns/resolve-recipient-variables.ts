@@ -51,6 +51,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
       status: true,
       createdAt: true,
       route: { select: { name: true } },
+      category: { select: { name: true } },
       event: {
         select: {
           title: true,
@@ -70,7 +71,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
 
   if (!registration) return values;
 
-  values.categoria_inscricao = "";
+  values.categoria_inscricao = registration.category?.name ?? "";
   values.nome_modalidade = registration.route?.name ?? "";
   values.nome_evento = registration.event.title;
   values.descricao_evento = registration.event.description ?? "";
