@@ -57,24 +57,26 @@ export async function POST(req: NextRequest) {
 
   await db.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "PROCESSING" } });
 
-  // 5. Re-checa consentimento AGORA — uma campanha longa dá tempo de sobra pro atleta mudar de
-  // ideia em /preferencias depois que a Fase B já preparou a lista.
-  const athlete = await db.user.findUnique({
-    where: { id: recipient.athleteUserId },
-    select: { receivePromotionalMessages: true, athleteProfile: { select: { phone: true } } },
-  });
-
-  if (!athlete?.receivePromotionalMessages) {
-    await db.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "OPTED_OUT" } });
-    return NextResponse.json({ processed: true, result: "opted_out" });
-  }
-
   try {
-    // A campanha, a resolução de variáveis e a renderização do template agora vivem dentro do
-    // try: qualquer exceção aqui (erro transiente de banco, bug na resolução de variáveis,
-    // messageBody malformado) precisa cair na mesma lógica de retry/FAILED/circuit-breaker do
-    // catch abaixo — senão o destinatário fica preso em PROCESSING pra sempre e a guarda do passo
-    // 2 (linha ~29) trava TODO o envio de campanhas em todo tick futuro, sem log nem alerta.
+    // A re-checagem de consentimento, a campanha, a resolução de variáveis e a renderização do
+    // template vivem dentro do try: qualquer exceção aqui (erro transiente de banco, bug na
+    // resolução de variáveis, messageBody malformado) precisa cair na mesma lógica de
+    // retry/FAILED/circuit-breaker do catch abaixo — senão o destinatário fica preso em
+    // PROCESSING pra sempre e a guarda do passo 2 (linha ~29) trava TODO o envio de campanhas em
+    // todo tick futuro, sem log nem alerta.
+
+    // 5. Re-checa consentimento AGORA — uma campanha longa dá tempo de sobra pro atleta mudar de
+    // ideia em /preferencias depois que a Fase B já preparou a lista.
+    const athlete = await db.user.findUnique({
+      where: { id: recipient.athleteUserId },
+      select: { receivePromotionalMessages: true, athleteProfile: { select: { phone: true } } },
+    });
+
+    if (!athlete?.receivePromotionalMessages) {
+      await db.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "OPTED_OUT" } });
+      return NextResponse.json({ processed: true, result: "opted_out" });
+    }
+
     const campaign = await db.campaign.findFirst({ where: { id: recipient.campaignId } });
     if (!campaign) {
       throw new Error("Campanha não encontrada");

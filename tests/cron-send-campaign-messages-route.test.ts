@@ -203,6 +203,27 @@ describe("POST /api/cron/send-campaign-messages", () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
+  it("erro na re-checagem de consentimento (db.user.findUnique) não deixa o destinatário preso em PROCESSING", async () => {
+    dbMock.campaignRecipient.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "rec-1", athleteUserId: "athlete-1", registrationId: null, campaignId: "campaign-1", attempts: 0 });
+    dbMock.user.findUnique.mockRejectedValueOnce(new Error("erro ao re-checar consentimento"));
+
+    await POST(makeRequest());
+
+    // Mesma lógica de retry que uma falha de envio ou de resolução de variáveis já segue — a
+    // consulta de consentimento agora vive dentro do try, então uma exceção aqui cai no mesmo
+    // catch (PENDING+attempts / FAILED / circuit breaker), em vez de deixar o destinatário preso
+    // em PROCESSING para sempre.
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "rec-1" },
+        data: expect.objectContaining({ status: "PENDING", attempts: 1, failureReason: "erro ao re-checar consentimento" }),
+      }),
+    );
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
   it("re-checa receivePromotionalMessages no momento do envio — revogado vira OPTED_OUT sem enviar", async () => {
     dbMock.campaignRecipient.findFirst
       .mockResolvedValueOnce(null)
