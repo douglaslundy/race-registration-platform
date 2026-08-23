@@ -956,6 +956,9 @@ model CampaignRecipient {
   normalizedPhone String
   status          CampaignRecipientStatus @default(PENDING)
   failureReason   String?
+  attempts        Int                     @default(0)
+  providerMessageId String?
+  sentAt          DateTime?
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 

@@ -35,4 +35,10 @@ describe("getAllowedCampaignVariables", () => {
     const names = getAllowedCampaignVariableNames("event-1");
     expect(names).toContain("nome_evento");
   });
+
+  it("nunca inclui patrocinio/redes_sociais, mesmo em modo evento (efeito colateral de cota)", () => {
+    const names = getAllowedCampaignVariableNames("event-1");
+    expect(names).not.toContain("patrocinio");
+    expect(names).not.toContain("redes_sociais");
+  });
 });
