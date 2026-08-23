@@ -645,6 +645,11 @@ describe("POST /api/cron/send-campaign-messages", () => {
     dbMock.campaignRecipient.findFirst.mockResolvedValue(null);
     dbMock.campaign.updateMany.mockResolvedValue({ count: 0 });
     dbMock.campaign.findMany.mockResolvedValue([]);
+    // Default: atleta com consentimento e telefone — testes que precisam do caminho OPTED_OUT
+    // sobrescrevem isto com mockResolvedValueOnce. Sem este default, qualquer teste que não mocka
+    // explicitamente db.user.findUnique cairia sempre no ramo OPTED_OUT (valor undefined vira
+    // falsy), nunca exercitando o envio/retry/falha que o teste alega testar.
+    dbMock.user.findUnique.mockResolvedValue({ receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } });
   });
 
   it("401 sem o segredo correto", async () => {
@@ -683,10 +688,8 @@ describe("POST /api/cron/send-campaign-messages", () => {
       .mockResolvedValueOnce(null) // guarda PROCESSING
       .mockResolvedValueOnce({ id: "rec-1", athleteUserId: "athlete-1", registrationId: null, campaignId: "campaign-1" }); // próximo PENDING
     dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá {{nome_atleta}}" });
-    dbMock.user.findUnique.mockResolvedValueOnce({ phone: null }); // não usado neste teste, evita quebra se código consultar
+    dbMock.user.findUnique.mockResolvedValueOnce({ receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } });
     dbMock.campaignRecipient.update.mockResolvedValueOnce({});
-    dbMock.athleteProfile ??= {};
-    dbMock.campaignRecipient.findFirst.mockImplementation; // no-op guard against accidental overwrite above
     sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
 
     await POST(makeRequest());
