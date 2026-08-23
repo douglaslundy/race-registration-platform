@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { resolveCampaignRecipientVariables } from "@/lib/campaigns/resolve-recipient-variables";
+import { getAllowedCampaignVariableNames } from "@/lib/campaigns/variables";
 
 const dbMock = db as any;
 
@@ -108,5 +109,44 @@ describe("resolveCampaignRecipientVariables", () => {
 
     expect(values.patrocinio).toBeUndefined();
     expect(values.redes_sociais).toBeUndefined();
+  });
+
+  it("every allowed platform-mode variable name is resolvable in platform mode", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
+
+    const values = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: null });
+    const allowedNames = getAllowedCampaignVariableNames(null);
+    for (const name of allowedNames) {
+      expect(Object.prototype.hasOwnProperty.call(values, name)).toBe(true);
+    }
+  });
+
+  it("every allowed event-mode variable name is resolvable in event mode", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      id: "reg-1",
+      status: "CONFIRMED",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      route: { name: "5km" },
+      category: { name: "Elite" },
+      event: {
+        title: "Corrida Exemplo",
+        description: "Descrição",
+        startAt: new Date("2026-09-20T10:00:00Z"),
+        venueName: "Parque Exemplo",
+        city: "São Paulo",
+        state: "SP",
+        addressLine: "Av. Exemplo, 1000",
+        slug: "corrida-exemplo",
+        organizer: { companyName: "Organização Exemplo", phone: "1197777777", user: { name: "João Organizador", email: "joao@org.com" } },
+      },
+      order: { id: "order-1", totalAmount: 9000 },
+    });
+
+    const values = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "r1" });
+    const allowedNames = getAllowedCampaignVariableNames("event1");
+    for (const name of allowedNames) {
+      expect(Object.prototype.hasOwnProperty.call(values, name)).toBe(true);
+    }
   });
 });
