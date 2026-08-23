@@ -77,6 +77,7 @@ export default function CampaignsManager({
   const [testSendMessage, setTestSendMessage] = useState<string | null>(null);
   const [schedulingLoading, setSchedulingLoading] = useState(false);
   const [scheduledAtInput, setScheduledAtInput] = useState("");
+  const [confirmingDispatch, setConfirmingDispatch] = useState(false);
   const createBodyRef = useRef<HTMLTextAreaElement>(null);
   const editBodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -183,6 +184,7 @@ export default function CampaignsManager({
     setPreviewResult(null);
     setTestSendMessage(null);
     setScheduledAtInput("");
+    setConfirmingDispatch(false);
   }
 
   function insertVariable(
@@ -353,6 +355,20 @@ export default function CampaignsManager({
         onCancel={() => setPreparingConfirmId(null)}
       />
 
+      <ConfirmModal
+        open={confirmingDispatch}
+        title="Disparar agora"
+        message="Isso vai enviar mensagens reais de WhatsApp para todos os destinatários já preparados desta campanha, imediatamente. Essa ação não pode ser desfeita. Deseja continuar?"
+        confirmLabel="Disparar"
+        tone="danger"
+        loading={schedulingLoading}
+        onConfirm={async () => {
+          await doSchedule(true);
+          setConfirmingDispatch(false);
+        }}
+        onCancel={() => setConfirmingDispatch(false)}
+      />
+
       {previewResult !== null && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -381,6 +397,7 @@ export default function CampaignsManager({
             setPreviewResult(null);
             setTestSendMessage(null);
             setScheduledAtInput("");
+            setConfirmingDispatch(false);
           }}
         >
           <form
@@ -477,7 +494,7 @@ export default function CampaignsManager({
               </button>
               <button
                 type="button"
-                onClick={() => void doSchedule(true)}
+                onClick={() => setConfirmingDispatch(true)}
                 disabled={schedulingLoading}
                 className="text-sm px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
               >
@@ -492,6 +509,7 @@ export default function CampaignsManager({
                   setPreviewResult(null);
                   setTestSendMessage(null);
                   setScheduledAtInput("");
+                  setConfirmingDispatch(false);
                 }}
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
