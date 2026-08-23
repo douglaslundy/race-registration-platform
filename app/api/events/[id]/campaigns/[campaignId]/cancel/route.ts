@@ -15,8 +15,11 @@ export async function POST(
   const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
   if (!context.ok) return context.response;
 
-  if (context.campaign.status !== "DRAFT") {
-    return NextResponse.json({ error: "Só é possível cancelar campanhas em rascunho" }, { status: 400 });
+  if (context.campaign.status !== "DRAFT" && context.campaign.status !== "SCHEDULED") {
+    return NextResponse.json(
+      { error: "Só é possível cancelar campanhas em rascunho ou agendadas" },
+      { status: 400 },
+    );
   }
 
   const updated = await db.campaign.update({ where: { id: campaignId }, data: { status: "CANCELLED" } });

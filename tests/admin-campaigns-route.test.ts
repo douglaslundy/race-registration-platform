@@ -201,6 +201,25 @@ describe("POST /api/admin/campaigns/[campaignId]/cancel", () => {
     expect(res.status).toBe(403);
     expect(dbMock.campaign.update).not.toHaveBeenCalled();
   });
+
+  it("cancela uma campanha de plataforma em SCHEDULED", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "SCHEDULED" });
+    dbMock.campaign.update.mockResolvedValueOnce({ ...platformDraftCampaign, status: "CANCELLED" });
+
+    const res = await CANCEL(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "CANCELLED" } });
+  });
+
+  it("rejeita cancelar uma campanha RUNNING", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "RUNNING" });
+
+    const res = await CANCEL(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/admin/campaigns/[campaignId]/duplicate", () => {
