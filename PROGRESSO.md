@@ -1,6 +1,16 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-21, mais recente — SESSÃO PAUSADA: plano da Fase D escrito, aguardando execução)
+## Última atualização (2026-08-21, mais recente — fix urgente de mobile deployado, retomando Fase D)
+
+**Fix urgente reportado pelo usuário, corrigido e deployado**: no modal de inscrição por procuração
+(`components/checkout/ProxyAthleteModal.tsx`), Nome e Data de nascimento (primeiros campos) ficavam
+inacessíveis no celular. Causa: `flex items-center` + `overflow-y-auto` no mesmo container — quando
+o conteúdo é mais alto que a tela, essa combinação impede rolar até o topo (a rolagem começa no
+meio do conteúdo). Corrigido: `items-start` no container + `my-auto` no card (centraliza quando
+cabe, permite rolar até o topo quando não cabe). Commit `1f54015`, deployado em produção
+(`git pull` → `docker build` → restart), smoke test ok, sem erro nos logs.
+
+## Última atualização (2026-08-21, item anterior — SESSÃO PAUSADA: plano da Fase D escrito, aguardando execução)
 
 **Motivo da pausa**: limite semanal do usuário sendo atingido. Sessão parada logo depois de
 escrever (não executar) o plano de implementação da Fase D.
