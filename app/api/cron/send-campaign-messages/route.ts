@@ -69,19 +69,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ processed: true, result: "opted_out" });
   }
 
-  const campaign = await db.campaign.findFirst({ where: { id: recipient.campaignId } });
-  if (!campaign) {
-    await db.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "FAILED", failureReason: "Campanha não encontrada" } });
-    return NextResponse.json({ processed: true, result: "campaign_not_found" });
-  }
-
-  const values = await resolveCampaignRecipientVariables({
-    athleteUserId: recipient.athleteUserId,
-    registrationId: recipient.registrationId,
-  });
-  const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
-
   try {
+    // A campanha, a resolução de variáveis e a renderização do template agora vivem dentro do
+    // try: qualquer exceção aqui (erro transiente de banco, bug na resolução de variáveis,
+    // messageBody malformado) precisa cair na mesma lógica de retry/FAILED/circuit-breaker do
+    // catch abaixo — senão o destinatário fica preso em PROCESSING pra sempre e a guarda do passo
+    // 2 (linha ~29) trava TODO o envio de campanhas em todo tick futuro, sem log nem alerta.
+    const campaign = await db.campaign.findFirst({ where: { id: recipient.campaignId } });
+    if (!campaign) {
+      throw new Error("Campanha não encontrada");
+    }
+
+    const values = await resolveCampaignRecipientVariables({
+      athleteUserId: recipient.athleteUserId,
+      registrationId: recipient.registrationId,
+    });
+    const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
+
     const { providerMessageId } = await sendWhatsAppMessage(recipient.normalizedPhone, body, "CAMPAIGN_MESSAGE");
     await db.campaignRecipient.update({
       where: { id: recipient.id },
