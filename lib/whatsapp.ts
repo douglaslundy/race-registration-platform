@@ -47,7 +47,7 @@ export async function sendWhatsAppMessage(
      * receivePromotionalMessages, nunca em código de verificação ou mensagem de sistema. */
     appendPreferencesFooter?: boolean;
   },
-): Promise<void> {
+): Promise<{ providerMessageId?: string }> {
   const config = await getWhatsAppConfig();
   if (!isWhatsAppConfigured(config)) {
     throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
@@ -72,6 +72,7 @@ export async function sendWhatsAppMessage(
       ...(providerMessageId ? { providerMessageId } : {}),
       ...relatedEntity,
     });
+    return { providerMessageId: providerMessageId ?? undefined };
   } catch (err) {
     await recordMessageLog({
       channel: "WHATSAPP",

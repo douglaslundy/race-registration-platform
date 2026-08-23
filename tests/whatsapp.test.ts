@@ -217,6 +217,15 @@ describe("sendWhatsAppMessage", () => {
 
     expect(sendTextMessage).toHaveBeenCalledWith(config, "5511999999999", "Olá!");
   });
+
+  it("devolve o providerMessageId em caso de sucesso", async () => {
+    const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
+    vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
+    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
+    vi.mocked(sendTextMessage).mockResolvedValueOnce({ providerMessageId: "wamid.123" });
+    const result = await sendWhatsAppMessage("11999999999", "Olá");
+    expect(result).toEqual({ providerMessageId: "wamid.123" });
+  });
 });
 
 describe("sendWhatsAppDocument", () => {
