@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sendWhatsAppMessage, buildPreferencesFooterText } from "@/lib/whatsapp";
+import {
+  sendWhatsAppMessage,
+  buildPreferencesFooterText,
+  normalizePhoneForWhatsApp,
+  isValidWhatsAppPhone,
+} from "@/lib/whatsapp";
 import { renderTemplate } from "@/lib/templates/render";
 import { resolveCampaignRecipientVariables } from "@/lib/campaigns/resolve-recipient-variables";
 import {
@@ -77,6 +82,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ processed: true, result: "opted_out" });
     }
 
+    // 5b. Usa o telefone ATUAL do atleta (buscado agora), não o snapshot capturado quando a Fase B
+    // preparou a lista — pode estar dias desatualizado numa campanha lenta, e enviar pro número
+    // errado (reatribuído/corrigido nesse meio-tempo) seria uma mensagem promocional pra quem não
+    // consentiu, enquanto quem consentiu de fato nunca recebe.
+    const freshPhone = athlete.athleteProfile?.phone
+      ? normalizePhoneForWhatsApp(athlete.athleteProfile.phone)
+      : null;
+    if (!freshPhone || !isValidWhatsAppPhone(freshPhone)) {
+      await db.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "INVALID_PHONE" } });
+      return NextResponse.json({ processed: true, result: "invalid_phone" });
+    }
+
     const campaign = await db.campaign.findFirst({ where: { id: recipient.campaignId } });
     if (!campaign) {
       throw new Error("Campanha não encontrada");
@@ -88,10 +105,20 @@ export async function POST(req: NextRequest) {
     });
     const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
 
-    const { providerMessageId } = await sendWhatsAppMessage(recipient.normalizedPhone, body, "CAMPAIGN_MESSAGE");
+    let sendResult: { providerMessageId?: string };
+    try {
+      sendResult = await sendWhatsAppMessage(freshPhone, body, "CAMPAIGN_MESSAGE");
+    } catch (sendErr) {
+      const { tripped } = await recordCampaignSendFailure();
+      if (tripped) {
+        await db.campaign.updateMany({ where: { status: "RUNNING" }, data: { status: "PAUSED" } });
+      }
+      throw sendErr;
+    }
+
     await db.campaignRecipient.update({
       where: { id: recipient.id },
-      data: { status: "SENT", sentAt: new Date(), providerMessageId },
+      data: { status: "SENT", sentAt: new Date(), providerMessageId: sendResult.providerMessageId, failureReason: null },
     });
     await recordCampaignSendSuccess();
     return NextResponse.json({ processed: true, result: "sent" });
@@ -106,12 +133,11 @@ export async function POST(req: NextRequest) {
         failureReason: err instanceof Error ? err.message : String(err),
       },
     });
-
-    const { tripped } = await recordCampaignSendFailure();
-    if (tripped) {
-      await db.campaign.updateMany({ where: { status: "RUNNING" }, data: { status: "PAUSED" } });
-    }
-
+    // Nota: recordCampaignSendFailure() já foi chamado acima, dentro do try interno, se o erro
+    // veio de sendWhatsAppMessage. Erros de qualquer outra etapa (busca de campanha, resolução de
+    // variáveis, renderização, telefone inválido) chegam aqui SEM contar pro circuit breaker
+    // global — só uma falha de envio real deve contar, senão blips transitórios de banco
+    // pausariam todas as campanhas.
     return NextResponse.json({ processed: true, result: failed ? "failed" : "retry_scheduled" });
   }
 }

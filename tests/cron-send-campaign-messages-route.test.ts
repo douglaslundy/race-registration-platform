@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 
-vi.mock("@/lib/whatsapp", () => ({
-  sendWhatsAppMessage: vi.fn(),
-  buildPreferencesFooterText: () => "\n\nRODAPE",
-}));
+vi.mock("@/lib/whatsapp", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/whatsapp")>("@/lib/whatsapp");
+  return {
+    ...actual,
+    sendWhatsAppMessage: vi.fn(),
+    buildPreferencesFooterText: () => "\n\nRODAPE",
+  };
+});
 vi.mock("@/lib/campaigns/resolve-recipient-variables", () => ({
   resolveCampaignRecipientVariables: vi.fn().mockResolvedValue({ nome_atleta: "Maria" }),
 }));
@@ -113,7 +117,9 @@ describe("POST /api/cron/send-campaign-messages", () => {
         athleteUserId: "athlete-1",
         registrationId: null,
         campaignId: "campaign-1",
-        normalizedPhone: "5511999999999",
+        // Telefone capturado pela Fase B, deliberadamente DIFERENTE do telefone atual do atleta
+        // (buscado logo abaixo) — prova que o envio usa o telefone FRESCO, não este snapshot stale.
+        normalizedPhone: "5511888888888",
       }); // próximo PENDING
     dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá {{nome_atleta}}" });
     dbMock.user.findUnique.mockResolvedValueOnce({ receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } });
@@ -128,14 +134,37 @@ describe("POST /api/cron/send-campaign-messages", () => {
         data: expect.objectContaining({ status: "PROCESSING" }),
       }),
     );
-    expect(sendMock).toHaveBeenCalledWith(expect.any(String), expect.stringContaining("RODAPE"), "CAMPAIGN_MESSAGE");
+    // Usa o telefone recém-buscado (normaliza "11999999999" -> "5511999999999"), não o
+    // normalizedPhone stale ("5511888888888") capturado quando a Fase B populou a lista.
+    expect(sendMock).toHaveBeenCalledWith("5511999999999", expect.stringContaining("RODAPE"), "CAMPAIGN_MESSAGE");
     expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "rec-1" },
-        data: expect.objectContaining({ status: "SENT", providerMessageId: "wamid.1" }),
+        data: expect.objectContaining({ status: "SENT", providerMessageId: "wamid.1", failureReason: null }),
       }),
     );
     expect(recordCampaignSendSuccess).toHaveBeenCalled();
+  });
+
+  it("telefone atual do atleta ausente/inválido: recipiente vira INVALID_PHONE, sem enviar nem contar pro circuit breaker", async () => {
+    dbMock.campaignRecipient.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "rec-1",
+        athleteUserId: "athlete-1",
+        registrationId: null,
+        campaignId: "campaign-1",
+        normalizedPhone: "5511999999999",
+      });
+    dbMock.user.findUnique.mockResolvedValueOnce({ receivePromotionalMessages: true, athleteProfile: { phone: "" } });
+
+    await POST(makeRequest());
+
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "rec-1" }, data: expect.objectContaining({ status: "INVALID_PHONE" }) }),
+    );
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(recordCampaignSendFailure).not.toHaveBeenCalled();
   });
 
   it("falha com attempts < 3: volta pra PENDING, incrementa attempts e o contador de falhas", async () => {
@@ -201,6 +230,9 @@ describe("POST /api/cron/send-campaign-messages", () => {
       }),
     );
     expect(sendMock).not.toHaveBeenCalled();
+    // Falha PRÉ-envio (resolução de variáveis) — não deve contar pro circuit breaker global, só uma
+    // falha de envio real deve.
+    expect(recordCampaignSendFailure).not.toHaveBeenCalled();
   });
 
   it("erro na re-checagem de consentimento (db.user.findUnique) não deixa o destinatário preso em PROCESSING", async () => {
@@ -222,6 +254,8 @@ describe("POST /api/cron/send-campaign-messages", () => {
       }),
     );
     expect(sendMock).not.toHaveBeenCalled();
+    // Falha PRÉ-envio (re-checagem de consentimento) — não deve contar pro circuit breaker global.
+    expect(recordCampaignSendFailure).not.toHaveBeenCalled();
   });
 
   it("re-checa receivePromotionalMessages no momento do envio — revogado vira OPTED_OUT sem enviar", async () => {
