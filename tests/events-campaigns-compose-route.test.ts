@@ -12,6 +12,7 @@ import { GET as VARIABLES } from "@/app/api/events/[id]/campaigns/variables/rout
 import { GET as ALERT_OPTIONS } from "@/app/api/events/[id]/campaigns/alert-options/route";
 import { POST as PREVIEW } from "@/app/api/events/[id]/campaigns/[campaignId]/preview/route";
 import { POST as TEST_SEND } from "@/app/api/events/[id]/campaigns/[campaignId]/test-send/route";
+import { POST as SCHEDULE } from "@/app/api/events/[id]/campaigns/[campaignId]/schedule/route";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 const authMock = vi.mocked(auth);
@@ -142,5 +143,65 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/test-send", () => {
 
     expect(res.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/events/[id]/campaigns/[campaignId]/schedule", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: "event-1", status: "DRAFT" });
+  });
+
+  it("400 quando a campanha não tem destinatários preparados", async () => {
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(0);
+
+    const res = await SCHEDULE(
+      new Request("http://localhost", { method: "POST", body: "{}" }) as any,
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("sem scheduledAt: vira RUNNING agora", async () => {
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5);
+    dbMock.campaign.update.mockResolvedValueOnce({ id: "campaign-1", status: "RUNNING" });
+
+    const res = await SCHEDULE(
+      new Request("http://localhost", { method: "POST", body: "{}" }) as any,
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "RUNNING", scheduledAt: null } });
+  });
+
+  it("com scheduledAt no futuro: vira SCHEDULED", async () => {
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5);
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    dbMock.campaign.update.mockResolvedValueOnce({ id: "campaign-1", status: "SCHEDULED" });
+
+    const res = await SCHEDULE(
+      new Request("http://localhost", { method: "POST", body: JSON.stringify({ scheduledAt: future }) }) as any,
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "SCHEDULED", scheduledAt: new Date(future) } });
+  });
+
+  it("400 com scheduledAt no passado", async () => {
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5);
+    const past = new Date(Date.now() - 3600_000).toISOString();
+
+    const res = await SCHEDULE(
+      new Request("http://localhost", { method: "POST", body: JSON.stringify({ scheduledAt: past }) }) as any,
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(400);
   });
 });
