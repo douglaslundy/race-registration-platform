@@ -209,10 +209,8 @@ export default function CampaignsManager({
     });
   }
 
-  async function saveEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editId) return;
-    setEditSaving(true);
+  async function saveCampaignEdits(): Promise<boolean> {
+    if (!editId) return false;
     const res = await fetch(`${apiBase}/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -222,7 +220,6 @@ export default function CampaignsManager({
         messageBody: editForm.messageBody,
       }),
     });
-    setEditSaving(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       const fieldErrors = data.error?.fieldErrors as Record<string, string[]> | undefined;
@@ -235,8 +232,17 @@ export default function CampaignsManager({
           (typeof data.error === "string" ? data.error : undefined) ??
           "Erro ao salvar campanha",
       );
-      return;
+      return false;
     }
+    return true;
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    setEditSaving(true);
+    const ok = await saveCampaignEdits();
+    setEditSaving(false);
+    if (!ok) return;
     setEditId(null);
     await reload();
   }
@@ -311,6 +317,16 @@ export default function CampaignsManager({
     if (!editId) return;
     setSchedulingLoading(true);
     setActionError(null);
+
+    // Salva as edições pendentes do formulário ANTES de agendar/disparar — sem isso, clicar aqui sem
+    // antes clicar em "Salvar" enviava o messageBody já salvo anteriormente, descartando
+    // silenciosamente o texto recém-digitado, para destinatários reais, de forma irreversível.
+    const saved = await saveCampaignEdits();
+    if (!saved) {
+      setSchedulingLoading(false);
+      return;
+    }
+
     const res = await fetch(`${apiBase}/${editId}/schedule`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -355,19 +371,21 @@ export default function CampaignsManager({
         onCancel={() => setPreparingConfirmId(null)}
       />
 
-      <ConfirmModal
-        open={confirmingDispatch}
-        title="Disparar agora"
-        message="Isso vai enviar mensagens reais de WhatsApp para todos os destinatários já preparados desta campanha, imediatamente. Essa ação não pode ser desfeita. Deseja continuar?"
-        confirmLabel="Disparar"
-        tone="danger"
-        loading={schedulingLoading}
-        onConfirm={async () => {
-          await doSchedule(true);
-          setConfirmingDispatch(false);
-        }}
-        onCancel={() => setConfirmingDispatch(false)}
-      />
+      <div className="relative z-[60]">
+        <ConfirmModal
+          open={confirmingDispatch}
+          title="Disparar agora"
+          message="Isso vai enviar mensagens reais de WhatsApp para todos os destinatários já preparados desta campanha, imediatamente. Essa ação não pode ser desfeita. Deseja continuar?"
+          confirmLabel="Disparar"
+          tone="danger"
+          loading={schedulingLoading}
+          onConfirm={async () => {
+            await doSchedule(true);
+            setConfirmingDispatch(false);
+          }}
+          onCancel={() => setConfirmingDispatch(false)}
+        />
+      </div>
 
       {previewResult !== null && (
         <div
