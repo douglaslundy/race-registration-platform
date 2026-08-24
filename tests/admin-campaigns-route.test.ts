@@ -4,6 +4,9 @@ import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/campaigns/recipients", () => ({ prepareCampaignRecipients: vi.fn() }));
+vi.mock("@/lib/campaigns/circuit-breaker", () => ({
+  resetCircuitBreakerIfTripped: vi.fn().mockResolvedValue(false),
+}));
 
 import { GET, POST } from "@/app/api/admin/campaigns/route";
 import { GET as GET_ONE, PATCH } from "@/app/api/admin/campaigns/[campaignId]/route";
@@ -11,7 +14,10 @@ import { POST as CANCEL } from "@/app/api/admin/campaigns/[campaignId]/cancel/ro
 import { POST as DUPLICATE } from "@/app/api/admin/campaigns/[campaignId]/duplicate/route";
 import { POST as PREPARE } from "@/app/api/admin/campaigns/[campaignId]/prepare-recipients/route";
 import { GET as SUMMARY } from "@/app/api/admin/campaigns/[campaignId]/recipients/summary/route";
+import { POST as PAUSE } from "@/app/api/admin/campaigns/[campaignId]/pause/route";
+import { POST as RESUME } from "@/app/api/admin/campaigns/[campaignId]/resume/route";
 import { prepareCampaignRecipients } from "@/lib/campaigns/recipients";
+import { resetCircuitBreakerIfTripped } from "@/lib/campaigns/circuit-breaker";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
@@ -295,5 +301,69 @@ describe("GET /api/admin/campaigns/[campaignId]/recipients/summary", () => {
 
     expect(res.status).toBe(200);
     expect(data.summary).toEqual({ PENDING: 950 });
+  });
+});
+
+describe("POST /api/admin/campaigns/[campaignId]/pause", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+  });
+
+  it("pausa uma campanha RUNNING", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "RUNNING" });
+    dbMock.campaign.update.mockResolvedValueOnce({ ...platformDraftCampaign, status: "PAUSED" });
+
+    const res = await PAUSE(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "PAUSED" } });
+  });
+
+  it("rejeita pausar uma campanha em DRAFT", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "DRAFT" });
+
+    const res = await PAUSE(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+
+  it("rejeita ORGANIZER ao pausar, mesmo com campaignsEnabled", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await PAUSE(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/admin/campaigns/[campaignId]/resume", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+  });
+
+  it("retoma uma campanha PAUSED e reseta o circuit breaker quando ele está disparado", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "PAUSED" });
+    dbMock.campaign.update.mockResolvedValueOnce({ ...platformDraftCampaign, status: "RUNNING" });
+    vi.mocked(resetCircuitBreakerIfTripped).mockResolvedValueOnce(true);
+
+    const res = await RESUME(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.breakerWasReset).toBe(true);
+  });
+
+  it("rejeita retomar uma campanha RUNNING", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "RUNNING" });
+
+    const res = await RESUME(makeRequest("POST"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
   });
 });

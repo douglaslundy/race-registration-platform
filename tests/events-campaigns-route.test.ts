@@ -3,11 +3,17 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/campaigns/circuit-breaker", () => ({
+  resetCircuitBreakerIfTripped: vi.fn().mockResolvedValue(false),
+}));
 
 import { GET, POST } from "@/app/api/events/[id]/campaigns/route";
 import { GET as GET_ONE, PATCH } from "@/app/api/events/[id]/campaigns/[campaignId]/route";
 import { POST as CANCEL } from "@/app/api/events/[id]/campaigns/[campaignId]/cancel/route";
 import { POST as DUPLICATE } from "@/app/api/events/[id]/campaigns/[campaignId]/duplicate/route";
+import { POST as PAUSE } from "@/app/api/events/[id]/campaigns/[campaignId]/pause/route";
+import { POST as RESUME } from "@/app/api/events/[id]/campaigns/[campaignId]/resume/route";
+import { resetCircuitBreakerIfTripped } from "@/lib/campaigns/circuit-breaker";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
@@ -280,5 +286,82 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/duplicate", () => {
     expect(dbMock.event.findFirst).toHaveBeenCalledWith({
       where: { id: "event-1", organizerId: "organizer-profile-1" },
     });
+  });
+});
+
+describe("POST /api/events/[id]/campaigns/[campaignId]/pause", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+  });
+
+  it("pausa uma campanha RUNNING", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign, status: "RUNNING" });
+    dbMock.campaign.update.mockResolvedValueOnce({ ...draftCampaign, status: "PAUSED" });
+
+    const res = await PAUSE(makeRequest("POST"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "PAUSED" } });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "CAMPAIGN_PAUSED" }) }),
+    );
+  });
+
+  it("rejeita pausar uma campanha em DRAFT", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign, status: "DRAFT" });
+
+    const res = await PAUSE(makeRequest("POST"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/events/[id]/campaigns/[campaignId]/resume", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+  });
+
+  it("retoma uma campanha PAUSED e reseta o circuit breaker quando ele está disparado", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign, status: "PAUSED" });
+    dbMock.campaign.update.mockResolvedValueOnce({ ...draftCampaign, status: "RUNNING" });
+    vi.mocked(resetCircuitBreakerIfTripped).mockResolvedValueOnce(true);
+
+    const res = await RESUME(makeRequest("POST"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "RUNNING" } });
+    expect(data.breakerWasReset).toBe(true);
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "CAMPAIGN_RESUMED" }) }),
+    );
+  });
+
+  it("retoma uma campanha PAUSED sem mexer no circuit breaker quando ele não está disparado", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign, status: "PAUSED" });
+    dbMock.campaign.update.mockResolvedValueOnce({ ...draftCampaign, status: "RUNNING" });
+    vi.mocked(resetCircuitBreakerIfTripped).mockResolvedValueOnce(false);
+
+    const res = await RESUME(makeRequest("POST"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.breakerWasReset).toBe(false);
+  });
+
+  it("rejeita retomar uma campanha RUNNING", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign, status: "RUNNING" });
+
+    const res = await RESUME(makeRequest("POST"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
   });
 });
