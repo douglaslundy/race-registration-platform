@@ -149,8 +149,8 @@ export default function CouponManager({ rows, events }: { rows: CouponRow[]; eve
       />
 
       {editId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setEditId(null)}>
-          <form onSubmit={saveEdit} className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <form onSubmit={saveEdit} className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar cupom</h2>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usos máximos (vazio = ilimitado)</label>

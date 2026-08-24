@@ -50,10 +50,7 @@ export default function CodeVerificationModal({
   const seconds = secondsLeft !== null ? secondsLeft % 60 : 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={() => !loading && onCancel()}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div
         className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md mx-4"
         onClick={(e) => e.stopPropagation()}
