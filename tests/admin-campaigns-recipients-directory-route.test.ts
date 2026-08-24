@@ -67,6 +67,20 @@ describe("GET /api/admin/campaigns/recipients-directory", () => {
     expect(res.status).toBe(403);
     expect(dbMock.user.findMany).not.toHaveBeenCalled();
   });
+
+  it("filtra por eventId quando informado (só quem tem inscrição CONFIRMED naquele evento)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([]);
+
+    await DIRECTORY(makeRequest("http://localhost/api/admin/campaigns/recipients-directory?eventId=event-9"));
+
+    expect(dbMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          registrations: { some: { eventId: "event-9", status: "CONFIRMED" } },
+        }),
+      }),
+    );
+  });
 });
 
 describe("GET /api/admin/campaigns/recipients-directory/ids", () => {
@@ -87,6 +101,20 @@ describe("GET /api/admin/campaigns/recipients-directory/ids", () => {
       expect.objectContaining({
         where: { role: "ATHLETE", active: true, receivePromotionalMessages: true },
         select: { id: true },
+      }),
+    );
+  });
+
+  it("filtra por eventId quando informado", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([]);
+
+    await DIRECTORY_IDS(makeRequest("http://localhost/api/admin/campaigns/recipients-directory/ids?eventId=event-9"));
+
+    expect(dbMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          registrations: { some: { eventId: "event-9", status: "CONFIRMED" } },
+        }),
       }),
     );
   });

@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim() || undefined;
+  const eventId = url.searchParams.get("eventId")?.trim() || undefined;
 
   const searchClause = q
     ? {
@@ -19,8 +20,16 @@ export async function GET(req: NextRequest) {
       }
     : {};
 
+  const where = {
+    role: "ATHLETE" as const,
+    active: true,
+    receivePromotionalMessages: true,
+    ...(eventId ? { registrations: { some: { eventId, status: "CONFIRMED" as const } } } : {}),
+    ...searchClause,
+  };
+
   const rows = await db.user.findMany({
-    where: { role: "ATHLETE", active: true, receivePromotionalMessages: true, ...searchClause },
+    where,
     select: { id: true },
   });
 

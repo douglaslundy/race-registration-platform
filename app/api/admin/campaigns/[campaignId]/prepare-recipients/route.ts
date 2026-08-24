@@ -5,7 +5,10 @@ import { prepareCampaignRecipients } from "@/lib/campaigns/recipients";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const bodySchema = z.object({ athleteUserIds: z.array(z.string()).optional() });
+const bodySchema = z.object({
+  athleteUserIds: z.array(z.string()).optional(),
+  manualEventId: z.string().optional(),
+});
 
 export async function POST(
   req: NextRequest,
@@ -28,12 +31,18 @@ export async function POST(
 
   const rawBody = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(rawBody);
-  if (!parsed.success && rawBody && typeof rawBody === "object" && "athleteUserIds" in rawBody) {
-    return NextResponse.json({ error: "athleteUserIds deve ser uma lista de IDs" }, { status: 400 });
+  if (
+    !parsed.success &&
+    rawBody &&
+    typeof rawBody === "object" &&
+    ("athleteUserIds" in rawBody || "manualEventId" in rawBody)
+  ) {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
   const athleteUserIds = parsed.success ? parsed.data.athleteUserIds : undefined;
+  const manualEventId = parsed.success ? parsed.data.manualEventId : undefined;
 
-  const summary = await prepareCampaignRecipients(campaignId, null, athleteUserIds);
+  const summary = await prepareCampaignRecipients(campaignId, null, athleteUserIds, manualEventId);
 
   await db.auditLog.create({
     data: {

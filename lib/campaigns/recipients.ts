@@ -22,10 +22,11 @@ async function fetchCandidateBatch(
   eventId: string | null,
   skip: number,
   athleteUserIds?: string[],
+  manualEventId?: string,
 ): Promise<CandidateRow[]> {
   if (eventId !== null) {
     const registrations = await db.registration.findMany({
-      where: { eventId },
+      where: { eventId, status: "CONFIRMED" },
       select: {
         id: true,
         athleteUserId: true,
@@ -65,28 +66,44 @@ async function fetchCandidateBatch(
     orderBy: { id: "asc" },
   });
 
+  // Seleção manual filtrada por evento: cada destinatário precisa saber a qual inscrição ele se
+  // refere pra variáveis de Evento/Inscrição resolverem corretamente (ver
+  // messageUsesEventScopedVariables em lib/campaigns/variables.ts). Busca em lote — 1 query pro
+  // batch inteiro, não 1 por atleta.
+  let registrationByAthlete = new Map<string, string>();
+  if (manualEventId && users.length > 0) {
+    const registrations = await db.registration.findMany({
+      where: { eventId: manualEventId, status: "CONFIRMED", athleteUserId: { in: users.map((u) => u.id) } },
+      select: { id: true, athleteUserId: true },
+    });
+    registrationByAthlete = new Map(registrations.map((r) => [r.athleteUserId, r.id]));
+  }
+
   return users.map((u) => ({
     athleteUserId: u.id,
-    registrationId: null,
+    registrationId: registrationByAthlete.get(u.id) ?? null,
     receivePromotionalMessages: u.receivePromotionalMessages,
     phone: u.athleteProfile?.phone ?? null,
   }));
 }
 
 /** Repopula os destinatários de uma campanha: apaga os existentes e busca candidatos de novo — do
- * evento (qualquer status de inscrição), se `eventId` não for nulo, ou de toda a base de atletas
+ * evento (só inscrições CONFIRMED), se `eventId` não for nulo, ou de toda a base de atletas
  * ativos, se for — em lotes, sem carregar tudo em memória de uma vez. Aplica, nesta ordem, o
  * filtro de receivePromotionalMessages (sempre, nunca opcional), validação/normalização de
  * telefone, e deduplicação por telefone dentro da campanha (a 1ª ocorrência permanece PENDING, as
  * demais viram SKIPPED). Idempotente — pode ser chamada de novo a qualquer momento; a rota que
  * chama garante que a campanha ainda está em DRAFT, esta função não checa `status` de novo.
  * Aceita `athleteUserIds` opcional (só usado quando `eventId` é nulo) pra restringir os candidatos
- * a uma lista explícita de atletas — usado pela seleção manual de destinatários; sem esse
- * parâmetro, comportamento idêntico ao automático de sempre. */
+ * a uma lista explícita de atletas — usado pela seleção manual de destinatários. Aceita também
+ * `manualEventId` opcional (só junto com `athleteUserIds`) pra vincular cada destinatário
+ * selecionado manualmente à sua inscrição CONFIRMED naquele evento específico — sem isso,
+ * `registrationId` fica `null` e variáveis de Evento/Inscrição não resolvem pra essa pessoa. */
 export async function prepareCampaignRecipients(
   campaignId: string,
   eventId: string | null,
   athleteUserIds?: string[],
+  manualEventId?: string,
 ): Promise<PrepareRecipientsResult> {
   await db.campaignRecipient.deleteMany({ where: { campaignId } });
 
@@ -95,7 +112,7 @@ export async function prepareCampaignRecipients(
   let skip = 0;
 
   while (true) {
-    const candidates = await fetchCandidateBatch(eventId, skip, athleteUserIds);
+    const candidates = await fetchCandidateBatch(eventId, skip, athleteUserIds, manualEventId);
     if (candidates.length === 0) break;
     skip += candidates.length;
 

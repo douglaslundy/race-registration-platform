@@ -222,4 +222,61 @@ describe("prepareCampaignRecipients", () => {
       expect.objectContaining({ where: { role: "ATHLETE", active: true } }),
     );
   });
+
+  it("modo evento automático só considera inscrições CONFIRMED", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    await prepareCampaignRecipients("campaign-1", "event-1");
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { eventId: "event-1", status: "CONFIRMED" } }),
+    );
+  });
+
+  it("seleção manual com manualEventId vincula registrationId da inscrição CONFIRMED do atleta naquele evento", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+    ]);
+    dbMock.registration.findMany.mockResolvedValueOnce([{ id: "reg-99", athleteUserId: "athlete-1" }]);
+
+    const result = await prepareCampaignRecipients("campaign-1", null, ["athlete-1"], "event-9");
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { eventId: "event-9", status: "CONFIRMED", athleteUserId: { in: ["athlete-1"] } },
+      }),
+    );
+    expect(dbMock.campaignRecipient.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ athleteUserId: "athlete-1", registrationId: "reg-99" }),
+      ],
+    });
+    expect(result.pending).toBe(1);
+  });
+
+  it("seleção manual com manualEventId, mas atleta sem inscrição CONFIRMED naquele evento, cai pra registrationId null", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+    ]);
+    dbMock.registration.findMany.mockResolvedValueOnce([]); // ninguém com inscrição CONFIRMED nesse evento
+
+    await prepareCampaignRecipients("campaign-1", null, ["athlete-1"], "event-9");
+
+    expect(dbMock.campaignRecipient.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ athleteUserId: "athlete-1", registrationId: null })],
+    });
+  });
+
+  it("seleção manual sem manualEventId continua com registrationId null (regressão)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+    ]);
+
+    await prepareCampaignRecipients("campaign-1", null, ["athlete-1"]);
+
+    expect(dbMock.registration.findMany).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ registrationId: null })],
+    });
+  });
 });

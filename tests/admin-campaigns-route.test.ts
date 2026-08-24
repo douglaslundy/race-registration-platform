@@ -272,7 +272,7 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, undefined);
+    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, undefined, undefined);
     expect(data.summary.total).toBe(1000);
   });
 
@@ -296,7 +296,7 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, ["athlete-1", "athlete-2"]);
+    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, ["athlete-1", "athlete-2"], undefined);
   });
 
   it("rejeita athleteUserIds malformado (chave presente mas de tipo errado) em vez de cair no modo automático", async () => {
@@ -309,6 +309,19 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
 
     expect(res.status).toBe(400);
     expect(prepareMock).not.toHaveBeenCalled();
+  });
+
+  it("repassa manualEventId do corpo pra prepareCampaignRecipients", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign });
+    prepareMock.mockResolvedValueOnce({ total: 1, pending: 1, optedOut: 0, invalidPhone: 0, duplicate: 0 });
+
+    const res = await PREPARE(
+      makeRequest("POST", { athleteUserIds: ["athlete-1"], manualEventId: "event-9" }),
+      { params: Promise.resolve({ campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, ["athlete-1"], "event-9");
   });
 });
 
