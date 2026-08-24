@@ -392,7 +392,7 @@ describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
 
     expect(res.status).toBe(200);
     expect(dbMock.campaignRecipient.deleteMany).toHaveBeenCalledWith({
-      where: { campaignId: "campaign-1", status: { notIn: ["SENT", "DELIVERED", "READ", "FAILED"] } },
+      where: { campaignId: "campaign-1", status: { notIn: ["PROCESSING", "SENT", "DELIVERED", "READ", "FAILED"] } },
     });
     expect(dbMock.campaign.delete).toHaveBeenCalledWith({ where: { id: "campaign-1" } });
   });
@@ -407,11 +407,13 @@ describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
     expect(dbMock.campaign.delete).not.toHaveBeenCalled();
   });
 
-  it("rejeita e não deleta nada se um envio real acontece durante a exclusão (corrida com o cron)", async () => {
-    // Simula o cron (app/api/cron/send-campaign-messages) transicionando um recipient pra SENT
-    // entre o deleteMany (que só apaga não-enviados) e a recontagem dentro da mesma transação:
-    // a recontagem ainda encontra 1 registro (o que acabou de virar SENT), então a exclusão
-    // inteira deve ser abortada e nada deve ser removido.
+  it("rejeita e não deleta nada se um recipient PROCESSING/SENT sobrevive ao deleteMany (corrida com o cron)", async () => {
+    // Simula o cron (app/api/cron/send-campaign-messages) tendo reivindicado um recipient
+    // (status PROCESSING, envio em andamento/prestes a acontecer via WhatsApp) ou já concluído
+    // pra SENT bem no meio da exclusão. O deleteMany exclui explicitamente PROCESSING/SENT/etc do
+    // seu WHERE, então essa linha sempre sobrevive; a recontagem pós-deleteMany ainda encontra 1
+    // registro, então a transação inteira é abortada (deleteMany incluso) e nada é removido —
+    // fecha tanto a janela "já tinha envio real" quanto a janela "envio em voo via PROCESSING".
     dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign });
     dbMock.campaignRecipient.count.mockResolvedValueOnce(1);
 
