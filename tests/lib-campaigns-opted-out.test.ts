@@ -16,7 +16,7 @@ describe("listOptedOutAthletes", () => {
 
     expect(dbMock.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { role: "ATHLETE", receivePromotionalMessages: false },
+        where: { role: "ATHLETE", active: true, receivePromotionalMessages: false },
       }),
     );
   });

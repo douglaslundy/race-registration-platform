@@ -36,7 +36,7 @@ export async function listOptedOutAthletes(params: {
       }
     : {};
 
-  const where = { role: "ATHLETE" as const, receivePromotionalMessages: false, ...searchClause };
+  const where = { role: "ATHLETE" as const, active: true, receivePromotionalMessages: false, ...searchClause };
 
   const [rows, total] = await Promise.all([
     db.user.findMany({

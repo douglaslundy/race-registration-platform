@@ -86,7 +86,7 @@ export async function DELETE(
   try {
     await db.$transaction(async (tx) => {
       await tx.campaignRecipient.deleteMany({
-        where: { campaignId, status: { notIn: ["PROCESSING", "SENT", "DELIVERED", "READ", "FAILED"] } },
+        where: { campaignId, status: { in: ["PENDING", "SKIPPED", "OPTED_OUT", "INVALID_PHONE", "CANCELLED"] } },
       });
       const remaining = await tx.campaignRecipient.count({ where: { campaignId } });
       if (remaining > 0) {

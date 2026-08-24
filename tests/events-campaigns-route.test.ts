@@ -392,7 +392,7 @@ describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
 
     expect(res.status).toBe(200);
     expect(dbMock.campaignRecipient.deleteMany).toHaveBeenCalledWith({
-      where: { campaignId: "campaign-1", status: { notIn: ["PROCESSING", "SENT", "DELIVERED", "READ", "FAILED"] } },
+      where: { campaignId: "campaign-1", status: { in: ["PENDING", "SKIPPED", "OPTED_OUT", "INVALID_PHONE", "CANCELLED"] } },
     });
     expect(dbMock.campaign.delete).toHaveBeenCalledWith({ where: { id: "campaign-1" } });
   });
