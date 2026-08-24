@@ -106,6 +106,10 @@ export default function CampaignsManager({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [testSendLoading, setTestSendLoading] = useState(false);
   const [testSendMessage, setTestSendMessage] = useState<string | null>(null);
+  const [sendToNumberInput, setSendToNumberInput] = useState("");
+  const [sendingToNumber, setSendingToNumber] = useState(false);
+  const [sendToNumberMessage, setSendToNumberMessage] = useState<string | null>(null);
+  const [confirmingSendToNumber, setConfirmingSendToNumber] = useState(false);
   const [schedulingLoading, setSchedulingLoading] = useState(false);
   const [scheduledAtInput, setScheduledAtInput] = useState("");
   const [confirmingDispatch, setConfirmingDispatch] = useState(false);
@@ -216,6 +220,9 @@ export default function CampaignsManager({
     setTestSendMessage(null);
     setScheduledAtInput("");
     setConfirmingDispatch(false);
+    setSendToNumberInput("");
+    setSendToNumberMessage(null);
+    setConfirmingSendToNumber(false);
   }
 
   function insertVariable(
@@ -433,6 +440,26 @@ export default function CampaignsManager({
     setTestSendMessage("Teste enviado para o seu telefone cadastrado.");
   }
 
+  async function doSendToNumber() {
+    if (!editId) return;
+    setSendingToNumber(true);
+    setActionError(null);
+    setSendToNumberMessage(null);
+    const res = await fetch(`${apiBase}/${editId}/send-to-number`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: sendToNumberInput }),
+    });
+    setSendingToNumber(false);
+    setConfirmingSendToNumber(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao enviar pro número informado");
+      return;
+    }
+    setSendToNumberMessage(`Mensagem enviada para ${sendToNumberInput}.`);
+  }
+
   async function doSchedule(sendNow: boolean) {
     if (!editId) return;
     setSchedulingLoading(true);
@@ -496,6 +523,17 @@ export default function CampaignsManager({
         loading={resuming}
         onConfirm={doResume}
         onCancel={() => setResumingConfirmId(null)}
+      />
+
+      <ConfirmModal
+        open={confirmingSendToNumber}
+        title="Enviar para número específico"
+        message={`Isso vai enviar uma mensagem de WhatsApp real e imediata para ${sendToNumberInput}, sem passar pela fila de campanha. Essa ação não pode ser desfeita. Deseja continuar?`}
+        confirmLabel="Enviar"
+        tone="danger"
+        loading={sendingToNumber}
+        onConfirm={doSendToNumber}
+        onCancel={() => setConfirmingSendToNumber(false)}
       />
 
       <ConfirmModal
@@ -736,6 +774,23 @@ export default function CampaignsManager({
                 {testSendLoading ? "Enviando..." : "Enviar teste"}
               </button>
             </div>
+            <div className="flex gap-2 items-center">
+              <input
+                value={sendToNumberInput}
+                onChange={(e) => setSendToNumberInput(e.target.value)}
+                placeholder="Telefone (ex: 11988888888)"
+                className="input text-sm flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setConfirmingSendToNumber(true)}
+                disabled={sendingToNumber || !sendToNumberInput.trim()}
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              >
+                {sendingToNumber ? "Enviando..." : "Enviar para este número"}
+              </button>
+            </div>
+            {sendToNumberMessage && <p className="text-sm text-green-700 dark:text-green-400">{sendToNumberMessage}</p>}
             <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
               <input
                 type="datetime-local"
