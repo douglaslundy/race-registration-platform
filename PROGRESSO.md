@@ -38,10 +38,11 @@ do WhatsApp (~1024 caracteres).
 
 Suíte completa verde em cada etapa (253 arquivos / 1869 testes ao final), `tsc --noEmit` limpo. Fix
 wave único aplicado após a revisão final (5 commits), re-revisão focada CONFIRMOU limpo (os 6
-achados resolvidos, nada residual pra adjudicar). Workspace do SDD deletado. Branch encerrada,
-aguardando decisão do usuário sobre merge/push/manter como está.
+achados resolvidos, nada residual pra adjudicar). Workspace do SDD deletado.
 
-**Push/deploy**: ainda não solicitados. **Migration pendente de deploy** (aditiva):
+**Push confirmado**: `git push origin main` (`acf702b..10b6041`, 21 commits). **Deploy na VPS ainda
+NÃO feito** — aguardando pedido explícito do usuário, mesmo padrão de sempre. **Migration pendente
+de deploy** (aditiva):
 `CampaignRecipient.redesSociaisText String?` — aplicar via `prisma db push` no próximo deploy, sem
 esquecer (lição do incidente de deploy documentado nesta mesma sessão em fases anteriores).
 
