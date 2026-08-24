@@ -9,6 +9,7 @@ vi.mock("@/lib/campaigns/circuit-breaker", () => ({
 
 import { GET, POST } from "@/app/api/events/[id]/campaigns/route";
 import { GET as GET_ONE, PATCH } from "@/app/api/events/[id]/campaigns/[campaignId]/route";
+import { DELETE as DELETE_CAMPAIGN } from "@/app/api/events/[id]/campaigns/[campaignId]/route";
 import { POST as CANCEL } from "@/app/api/events/[id]/campaigns/[campaignId]/cancel/route";
 import { POST as DUPLICATE } from "@/app/api/events/[id]/campaigns/[campaignId]/duplicate/route";
 import { POST as PAUSE } from "@/app/api/events/[id]/campaigns/[campaignId]/pause/route";
@@ -363,5 +364,32 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/resume", () => {
 
     expect(res.status).toBe(400);
     expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+  });
+
+  it("exclui uma campanha sem nenhum envio real", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(0);
+
+    const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("rejeita excluir uma campanha que já teve envios reais", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign, status: "COMPLETED" });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5);
+
+    const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
   });
 });

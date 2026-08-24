@@ -10,6 +10,7 @@ vi.mock("@/lib/campaigns/circuit-breaker", () => ({
 
 import { GET, POST } from "@/app/api/admin/campaigns/route";
 import { GET as GET_ONE, PATCH } from "@/app/api/admin/campaigns/[campaignId]/route";
+import { DELETE as DELETE_CAMPAIGN } from "@/app/api/admin/campaigns/[campaignId]/route";
 import { POST as CANCEL } from "@/app/api/admin/campaigns/[campaignId]/cancel/route";
 import { POST as DUPLICATE } from "@/app/api/admin/campaigns/[campaignId]/duplicate/route";
 import { POST as PREPARE } from "@/app/api/admin/campaigns/[campaignId]/prepare-recipients/route";
@@ -378,5 +379,42 @@ describe("POST /api/admin/campaigns/[campaignId]/resume", () => {
 
     expect(res.status).toBe(400);
     expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/admin/campaigns/[campaignId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+  });
+
+  it("exclui uma campanha sem nenhum envio real", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(0);
+
+    const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "CAMPAIGN_DELETED" }) }),
+    );
+  });
+
+  it("rejeita excluir uma campanha que já teve envios reais", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign, status: "RUNNING" });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(3);
+
+    const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejeita ORGANIZER", async () => {
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+
+    const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(403);
   });
 });

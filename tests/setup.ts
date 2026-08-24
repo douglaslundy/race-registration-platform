@@ -67,6 +67,8 @@ vi.mock("@/lib/db", () => ({
       platformSetting: { findUnique: vi.fn(), upsert: vi.fn() },
       auditLog: { create: vi.fn(), updateMany: vi.fn(), findMany: vi.fn(), count: vi.fn() },
       event: { delete: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+      campaignRecipient: { deleteMany: vi.fn() },
+      campaign: { delete: vi.fn() },
       athleteProfile: { upsert: vi.fn() },
     })),
   },

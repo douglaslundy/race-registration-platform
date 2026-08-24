@@ -70,3 +70,43 @@ export async function PATCH(
 
   return NextResponse.json({ campaign: updated });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string; campaignId: string }> },
+) {
+  const check = await checkApiPermission("campaigns.edit");
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  const { id, campaignId } = await params;
+  const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
+  if (!context.ok) return context.response;
+
+  const sentCount = await db.campaignRecipient.count({
+    where: { campaignId, status: { in: ["SENT", "DELIVERED", "READ", "FAILED"] } },
+  });
+  if (sentCount > 0) {
+    return NextResponse.json(
+      { error: "Não é possível excluir uma campanha que já teve envios reais" },
+      { status: 400 },
+    );
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.campaignRecipient.deleteMany({ where: { campaignId } });
+    await tx.campaign.delete({ where: { id: campaignId } });
+  });
+
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "CAMPAIGN_DELETED",
+      entityType: "Campaign",
+      entityId: campaignId,
+      metadata: {},
+    },
+  });
+
+  return NextResponse.json({ ok: true });
+}
