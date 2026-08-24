@@ -102,6 +102,8 @@ export default function CampaignsManager({
   const [manualTotalPages, setManualTotalPages] = useState(1);
   const [manualLoading, setManualLoading] = useState(false);
   const [manualSelectedIds, setManualSelectedIds] = useState<Set<string>>(new Set());
+  const [manualEventOptions, setManualEventOptions] = useState<{ id: string; title: string }[]>([]);
+  const [manualEventId, setManualEventId] = useState("");
   const [manualPreparing, setManualPreparing] = useState(false);
   const [recipientSummaries, setRecipientSummaries] = useState<Record<string, PrepareSummary>>({});
   const [variables, setVariables] = useState<VariableDef[]>([]);
@@ -380,6 +382,7 @@ export default function CampaignsManager({
     setAppliedManualSearch(q);
     const params = new URLSearchParams({ page: String(page) });
     if (q) params.set("q", q);
+    if (manualEventId) params.set("eventId", manualEventId);
     const res = await fetch(`/api/admin/campaigns/recipients-directory?${params}`);
     setManualLoading(false);
     if (!res.ok) return;
@@ -393,13 +396,18 @@ export default function CampaignsManager({
     setManualSelectId(campaignId);
     setManualSearch("");
     setAppliedManualSearch("");
+    setManualEventId("");
     setManualSelectedIds(new Set());
     void loadManualDirectory(1, "");
+    void fetch("/api/admin/campaigns/events-directory")
+      .then((res) => (res.ok ? res.json() : { rows: [] }))
+      .then((data) => setManualEventOptions(data.rows ?? []));
   }
 
   async function selectAllManual() {
     const params = new URLSearchParams();
     if (appliedManualSearch) params.set("q", appliedManualSearch);
+    if (manualEventId) params.set("eventId", manualEventId);
     const res = await fetch(`/api/admin/campaigns/recipients-directory/ids?${params}`);
     if (!res.ok) return;
     const data = await res.json();
@@ -408,6 +416,12 @@ export default function CampaignsManager({
 
   function deselectAllManual() {
     setManualSelectedIds(new Set());
+  }
+
+  function changeManualEvent(eventId: string) {
+    setManualEventId(eventId);
+    setManualSelectedIds(new Set());
+    void loadManualDirectory(1, manualSearch);
   }
 
   function toggleManualId(id: string) {
@@ -425,7 +439,10 @@ export default function CampaignsManager({
     const res = await fetch(`${apiBase}/${manualSelectId}/prepare-recipients`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ athleteUserIds: Array.from(manualSelectedIds) }),
+      body: JSON.stringify({
+        athleteUserIds: Array.from(manualSelectedIds),
+        ...(manualEventId ? { manualEventId } : {}),
+      }),
     });
     setManualPreparing(false);
     if (!res.ok) {
@@ -637,6 +654,19 @@ export default function CampaignsManager({
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Selecionar destinatários</h2>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Filtrar por evento (opcional)</label>
+              <select
+                value={manualEventId}
+                onChange={(e) => changeManualEvent(e.target.value)}
+                className="input text-sm w-full"
+              >
+                <option value="">Todos os atletas da plataforma</option>
+                {manualEventOptions.map((ev) => (
+                  <option key={ev.id} value={ev.id}>{ev.title}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-2">
               <input
                 value={manualSearch}
