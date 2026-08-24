@@ -1,6 +1,29 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-24, mais recente — Fase E e Fase F de campanhas concluídas, ainda não pushadas)
+## Última atualização (2026-08-24, mais recente — cron de campanhas ativado, incidente de deploy corrigido)
+
+Usuário pediu pra ativar o cron real de campanhas (`/api/cron/send-campaign-messages`) — adicionado ao
+crontab da VPS (`* * * * * /opt/corridas/cron-jobs.sh send-campaign-messages`).
+
+**Incidente encontrado e corrigido na hora**: as 2 primeiras execuções do cron (06:20 e 06:21) retornaram
+HTTP 500 vazio — `campaign_recipients.attempts` não existia no banco de produção. Causa raiz: a migração de
+schema da Fase D nunca tinha sido aplicada na VPS, porque na época da implementação da Fase D o usuário
+escolheu "só push, sem deploy" (Fase D nunca chegou na VPS até o deploy de hoje). No deploy de hoje eu só
+conferi se Fase E/F sozinhas mudavam o schema (não mudam) e pulei o `prisma db push` — sem notar que essa
+era a PRIMEIRA vez que o schema da Fase D também chegava na VPS. Corrigido rodando
+`docker compose run --rm app sh -c "npx prisma db push --skip-generate"` (a partir de `/opt/corridas`,
+nunca `/opt/corridas/src` — `corridas-db` foi reaproveitado, não recriado, sem risco de dado) seguido de
+`docker compose up -d --no-deps app` pra reciclar as conexões do container principal. Confirmado estável
+por 2+ ciclos consecutivos do cron real (`{"processed":false,"reason":"nothing_pending"}`, esperado já que
+nenhuma campanha está RUNNING ainda).
+
+**Lição registrada em [[deploy_vps_process]]**: antes de pular o `prisma db push` num deploy, checar não só
+se o commit range sendo deployado tem mudança de schema, mas se TUDO que está pra trás (incluindo pushes
+anteriores que nunca foram deployados) já foi de fato sincronizado no banco de produção — `git diff
+--stat` entre dois pontos só prova que aquele INTERVALO específico não mudou o schema, não prova que o
+banco já está em dia com a `main` inteira.
+
+## Última atualização (2026-08-24, item anterior — Fase E e Fase F de campanhas concluídas, ainda não pushadas)
 
 Usuário pediu pra concluir Fase E e Fase F antes do deploy pendente da Fase D. Ambas concluídas:
 
