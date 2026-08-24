@@ -1,6 +1,28 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-24, mais recente — 2 lacunas menores da Fase F corrigidas, commit LOCAL)
+## Última atualização (2026-08-24, mais recente — destinatários avançados de campanhas concluído, commits LOCAIS)
+
+Usuário pediu 5 melhorias na feature de campanhas: seleção manual de destinatários, envio avulso pra
+número específico, excluir campanha sem envio, preview ao vivo da mensagem, e aba de atletas que
+optaram por não receber. Arquitetural (spec+plano+SDD), 8 tasks, todas concluídas e revisadas.
+
+**Achado sério na revisão final**: combinar o envio avulso (sem checagem de consentimento, já que não
+há atleta associado a um número digitado na hora) com a aba nova de opt-outs (mostra telefones) abria
+uma brecha real — um operador podia copiar o telefone de alguém que optou por não receber e mandar
+mensagem mesmo assim, violando a garantia "não negociável" da spec. Corrigido: `send-to-number` agora
+checa se o número digitado bate com o telefone de algum atleta que optou por não receber, antes de
+enviar. Mais 3 correções reais na mesma revisão final: "Marcar todos" usava o texto de busca não
+aplicado (podia selecionar muito mais gente do que o operador via na tela) e substituía a seleção em
+vez de somar (podia perder seleção manual anterior silenciosamente); `prepare-recipients` falhava
+aberto com corpo malformado (virava "enviar pra todo mundo" em vez de rejeitar); a guarda de excluir
+campanha usava lista de bloqueio em vez de permissão (um status novo no enum, ainda não usado hoje,
+passaria despercebido como "seguro pra excluir"). Task 5 (excluir campanha) sozinha teve 2 rodadas de
+correção fechando uma condição de corrida real que podia apagar o registro de um envio de verdade.
+
+Suite completa verde em cada etapa (251 arquivos / 1834 testes ao final), `tsc --noEmit` limpo.
+Commits locais, **ainda não pushados nem deployados** — próximo passo é perguntar ao usuário.
+
+## Última atualização (2026-08-24, item anterior — 2 lacunas menores da Fase F corrigidas, commit LOCAL)
 
 Usuário pediu pra resolver os itens pendentes do sub-projeto de campanhas. Corrigidos os 2 dos 3 Minors
 da revisão final da Fase F que valiam a pena (bounded, sem plano formal, TDD):
