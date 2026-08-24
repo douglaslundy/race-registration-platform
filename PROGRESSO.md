@@ -40,11 +40,26 @@ Suíte completa verde em cada etapa (253 arquivos / 1869 testes ao final), `tsc 
 wave único aplicado após a revisão final (5 commits), re-revisão focada CONFIRMOU limpo (os 6
 achados resolvidos, nada residual pra adjudicar). Workspace do SDD deletado.
 
-**Push confirmado**: `git push origin main` (`acf702b..10b6041`, 21 commits). **Deploy na VPS ainda
-NÃO feito** — aguardando pedido explícito do usuário, mesmo padrão de sempre. **Migration pendente
-de deploy** (aditiva):
-`CampaignRecipient.redesSociaisText String?` — aplicar via `prisma db push` no próximo deploy, sem
-esquecer (lição do incidente de deploy documentado nesta mesma sessão em fases anteriores).
+**Push + deploy confirmados**: `git push origin main` (`acf702b..7ba9ff7`, 22 commits) →
+`/opt/corridas/deploy.sh` na VPS (git pull + docker build + restart, "Ready in 0ms").
+
+**Incidente breve durante o deploy, autocorrigido**: `docker compose up -d --no-deps app` do
+`deploy.sh` recria o container ANTES do `prisma db push` rodar (ordem documentada em
+[[deploy_vps_process]]) — nessa janela de segundos, 1 tick do cron de campanhas bateu em
+`campaignRecipient.findFirst()` e logou `P2022 column campaign_recipients.redesSociaisText does not
+exist` (erro real, não fantasma — confirmado por timestamp: 20:31:02 UTC, antes do `db push` às
+20:31:15 UTC). Rodei `docker compose run --rm app sh -c "npx prisma db push --skip-generate"` (“in
+sync”, 348ms) e depois **`docker restart corridas-app`** — não `docker compose up -d --no-deps app`
+de novo, que fez NO-OP porque o compose não viu mudança de config e manteria o container antigo
+rodando. Confirmado limpo depois: `docker logs -t --since` mostrando só "Ready in 0ms" sem erro
+novo, coluna presente via `psql \d campaign_recipients`, smoke test (`/` 200, `/admin/campanhas`
+307 — redirect de login esperado sem sessão).
+
+**Lição nova pra [[deploy_vps_process]]**: numa leva com migration nova, `docker compose up -d
+--no-deps app` PODE não recriar o container se o compose achar que nada mudou — sempre confirmar
+com `docker ps --format '{{.Status}}'` (uptime baixo = recriou de verdade) ou forçar com `docker
+restart <container>` depois do `db push`, em vez de confiar cegamente que rodar o comando de novo
+garante um processo novo.
 
 ## Última atualização (2026-08-24, item anterior — destinatários avançados de campanhas concluído, commits LOCAIS)
 
