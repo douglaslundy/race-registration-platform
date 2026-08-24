@@ -208,6 +208,7 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
 
     expect(res.status).toBe(200);
     expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.stringContaining("RODAPE_TESTE"), "CAMPAIGN_MESSAGE");
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 
   it("aceita o número já com +55", async () => {
@@ -217,6 +218,7 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
 
     expect(res.status).toBe(200);
     expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.any(String), "CAMPAIGN_MESSAGE");
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 
   it("rejeita telefone inválido", async () => {
@@ -226,6 +228,7 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
 
     expect(res.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 
   it("rejeita corpo sem telefone", async () => {
@@ -235,5 +238,6 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
 
     expect(res.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
 });
