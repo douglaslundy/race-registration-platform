@@ -36,6 +36,7 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "patrocinio", label: "Patrocínio", category: "Evento", description: "Patrocinadores ativos cadastrados no evento. Pode ser vazio. Só disponível nos alertas de confirmação de inscrição.", sample: "Confira nosso patrocinador! https://patrocinador.com" },
   { name: "redes_sociais", label: "Redes sociais", category: "Evento", description: "Promoções de redes sociais cadastradas no evento, respeitando o limite de envios por pessoa. Pode ser vazio. Disponível nos alertas de confirmação, carrinho abandonado e erro de pagamento.", sample: "Segue a gente no Instagram! https://instagram.com/corrida" },
   { name: "nome_modalidade", label: "Modalidade/percurso", category: "Evento", description: "EventRoute.name, quando a inscrição tem rota associada.", sample: "5km" },
+  { name: "distancia_percurso", label: "Distância do percurso", category: "Evento", description: "EventRoute.distanceKm da inscrição, formatado em km. Pode ser vazio se a inscrição não tiver percurso associado.", sample: "5 km" },
 
   // Inscrição
   { name: "numero_inscricao", label: "Número da inscrição", category: "Inscrição", description: "Registration.id.", sample: "reg_exemplo123" },
@@ -43,6 +44,8 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "data_inscricao", label: "Data da inscrição", category: "Inscrição", description: "Registration.createdAt.", sample: "01/08/2026" },
   { name: "valor_inscricao", label: "Valor da inscrição", category: "Inscrição", description: "Order.totalAmount, formatado em R$.", sample: "R$ 90,00" },
   { name: "codigo_confirmacao", label: "Código do pedido", category: "Inscrição", description: "Order.id.", sample: "ord_exemplo123" },
+  { name: "numero_peito", label: "Número de peito", category: "Inscrição", description: "Registration.bibNumber. Pode ser vazio.", sample: "1234" },
+  { name: "equipe_inscricao", label: "Equipe (inscrição)", category: "Inscrição", description: "Registration.teamName — equipe informada nesta inscrição especificamente, pode diferir da equipe geral do perfil do atleta (equipe_atleta). Pode ser vazio.", sample: "Equipe Exemplo Corrida" },
 
   // Cancelamento
   { name: "data_cancelamento", label: "Data do cancelamento", category: "Cancelamento", description: "Data do evento de cancelamento (auditoria).", sample: "02/08/2026" },

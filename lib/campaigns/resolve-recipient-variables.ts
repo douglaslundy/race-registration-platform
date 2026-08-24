@@ -50,7 +50,9 @@ export async function resolveCampaignRecipientVariables(recipient: {
     select: {
       status: true,
       createdAt: true,
-      route: { select: { name: true } },
+      bibNumber: true,
+      teamName: true,
+      route: { select: { name: true, distanceKm: true } },
       category: { select: { name: true } },
       event: {
         select: {
@@ -73,6 +75,9 @@ export async function resolveCampaignRecipientVariables(recipient: {
 
   values.categoria_inscricao = registration.category?.name ?? "";
   values.nome_modalidade = registration.route?.name ?? "";
+  values.numero_peito = registration.bibNumber ?? "";
+  values.equipe_inscricao = registration.teamName ?? "";
+  values.distancia_percurso = registration.route?.distanceKm ? `${registration.route.distanceKm} km` : "";
   values.nome_evento = registration.event.title;
   values.descricao_evento = registration.event.description ?? "";
   values.data_evento = formatDate(registration.event.startAt);

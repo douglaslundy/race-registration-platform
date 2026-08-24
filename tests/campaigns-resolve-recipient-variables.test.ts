@@ -41,7 +41,9 @@ describe("resolveCampaignRecipientVariables", () => {
       id: "reg-1",
       status: "CONFIRMED",
       createdAt: new Date("2026-08-01T00:00:00Z"),
-      route: { name: "5km" },
+      bibNumber: "1234",
+      teamName: "Equipe Teste",
+      route: { name: "5km", distanceKm: 5 },
       category: { name: "Elite" },
       event: {
         title: "Corrida Exemplo",
@@ -68,6 +70,33 @@ describe("resolveCampaignRecipientVariables", () => {
     expect(values.status_inscricao).toBe("Confirmada");
     expect(values.valor_inscricao).toContain("90,00");
     expect(values.codigo_confirmacao).toBe("order-1");
+    expect(values.numero_peito).toBe("1234");
+    expect(values.equipe_inscricao).toBe("Equipe Teste");
+    expect(values.distancia_percurso).toBe("5 km");
+  });
+
+  it("numero_peito/equipe_inscricao/distancia_percurso ficam vazios quando os campos correspondentes são nulos", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Maria", email: "maria@example.com", athleteProfile: null });
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      status: "CONFIRMED",
+      createdAt: new Date("2026-01-01"),
+      bibNumber: null,
+      teamName: null,
+      route: null,
+      category: null,
+      event: {
+        title: "Corrida", description: null, startAt: new Date("2026-06-01T07:00:00Z"),
+        venueName: null, city: "São Paulo", state: "SP", addressLine: null, slug: "corrida",
+        organizer: { companyName: null, phone: null, user: { name: "Org", email: "org@example.com" } },
+      },
+      order: null,
+    });
+
+    const values = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+
+    expect(values.numero_peito).toBe("");
+    expect(values.equipe_inscricao).toBe("");
+    expect(values.distancia_percurso).toBe("");
   });
 
   it("modo evento sem categoria (categoryId null): categoria_inscricao resolve para string vazia", async () => {
