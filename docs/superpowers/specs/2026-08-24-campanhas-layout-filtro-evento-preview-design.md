@@ -176,6 +176,60 @@ variável do formulário de criação).
   `registrationId`.
 - Preview na criação: sem suíte de componente — verificado por leitura de código.
 
+## Adenda: liberar patrocínio/redes sociais em campanhas (pedido do usuário durante a execução)
+
+`patrocinio` e `redes_sociais` foram excluídas do catálogo de campanhas na Fase D com a justificativa
+"têm efeito colateral (incrementam cota de envio)". Investigação nesta adenda mostrou que essa
+justificativa está **parcialmente incorreta**:
+
+- `getSponsorPromoText` (`lib/event-sponsors.ts`) — **sem efeito colateral nenhum**, sem limite por
+  destinatário. Patrocínio é conteúdo pago do organizador, aparece sempre que ativo. Pode ser
+  liberada sem nenhuma proteção extra.
+- `getSocialPromoText` (`lib/event-social-links.ts`) — **tem** efeito colateral real: cada chamada
+  bem-sucedida incrementa `SocialLinkSend.count` (cota por link × destinatário), numa transação,
+  não é idempotente.
+
+Como o worker de campanha processa recipientes um de cada vez (nunca renderiza uma vez só pra todo
+mundo), a preocupação original ("nunca fizeram sentido pra uma campanha que renderiza o mesmo texto
+pra centenas/milhares de destinatários") não se aplica — mas existe um risco real e diferente: se o
+envio falhar e for tentado de novo (até 3 tentativas), `getSocialPromoText` seria chamada de novo a
+cada tentativa, incrementando a cota mais de uma vez pra uma mensagem que só foi (ou nunca foi)
+efetivamente entregue uma vez.
+
+**Decisão confirmada com o usuário**: resolver `redes_sociais` só na 1ª tentativa de envio de cada
+destinatário, guardar o texto resolvido, e reaproveitar nas tentativas seguintes sem chamar
+`getSocialPromoText` de novo (sem reincrementar a cota).
+
+### Arquitetura
+
+- **Schema**: novo campo `CampaignRecipient.redesSociaisText String?` — guarda o texto já resolvido
+  na 1ª tentativa. `null` = ainda não resolvido.
+- **`lib/campaigns/variables.ts`**: remove `"patrocinio"` e `"redes_sociais"` de `EXCLUDED_NAMES`;
+  atualiza o comentário da constante refletindo a distinção real entre as duas.
+- **`lib/campaigns/resolve-recipient-variables.ts`**: `resolveCampaignRecipientVariables` passa a
+  aceitar um `redesSociaisText?: string | null` opcional no parâmetro `recipient`, e retorna
+  `{ values, redesSociaisText? }` em vez de só `values` — o 2º campo só vem preenchido quando a
+  resolução foi feita NESTA chamada (precisa ser persistida pelo chamador). `patrocinio` resolve via
+  `getSponsorPromoText(registration.eventId)`, sem cache, sem condição especial. `redes_sociais`:
+  se `recipient.redesSociaisText` já veio preenchido, reaproveita; senão, chama
+  `getSocialPromoText(registration.eventId, recipient.athleteUserId)` e marca o resultado pra ser
+  persistido.
+- **`app/api/cron/send-campaign-messages/route.ts`**: depois de resolver as variáveis, se
+  `redesSociaisText` veio definido (resolução fresca), persiste imediatamente
+  (`db.campaignRecipient.update({ where: { id }, data: { redesSociaisText } })`) — **antes** de
+  tentar o envio, pra que uma falha de envio subsequente não force uma nova resolução/incremento na
+  próxima tentativa.
+
+### Testes
+
+- `lib/campaigns/variables.ts`: `patrocinio`/`redes_sociais` aparecem em `getAllowedCampaignVariableNames`
+  quando `eventId`/`forceEventCategories` liberam a categoria Evento.
+- `resolveCampaignRecipientVariables`: resolve `patrocinio` sempre; resolve `redes_sociais` fresco
+  quando `redesSociaisText` não é informado, e retorna o valor pra persistir; reaproveita sem
+  chamar `getSocialPromoText` de novo quando `redesSociaisText` já vem preenchido.
+- Worker: persiste `redesSociaisText` antes da tentativa de envio; uma 2ª tentativa (attempts > 0)
+  não chama `getSocialPromoText` de novo quando o valor já está cacheado.
+
 ## Fora de escopo (YAGNI)
 
 - Suporte a "vários eventos na mesma campanha" — confirmado explicitamente como fora de escopo;
