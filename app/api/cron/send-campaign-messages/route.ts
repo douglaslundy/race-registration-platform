@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       athleteUserId: recipient.athleteUserId,
       registrationId: recipient.registrationId,
       redesSociaisText: recipient.redesSociaisText,
+      messageBody: campaign.messageBody,
     });
     // Se redes_sociais foi resolvida fresca nesta tentativa (getSocialPromoText já incrementou a
     // cota de verdade), persiste ANTES de tentar o envio — assim, se o envio falhar e for tentado

@@ -28,7 +28,11 @@ describe("resolveCampaignRecipientVariables", () => {
   it("modo plataforma (registrationId null): só resolve Atleta + Plataforma, sem consultar Registration", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
 
-    const { values } = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: null });
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: null,
+      messageBody: "Olá {{nome_atleta}}!",
+    });
 
     expect(values.nome_atleta).toBe("Maria Exemplo");
     expect(values.primeiro_nome_atleta).toBe("Maria");
@@ -64,7 +68,11 @@ describe("resolveCampaignRecipientVariables", () => {
       order: { id: "order-1", totalAmount: 9000 },
     });
 
-    const { values } = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
 
     expect(values.nome_evento).toBe("Corrida Exemplo");
     expect(values.cidade_evento).toBe("São Paulo");
@@ -79,6 +87,8 @@ describe("resolveCampaignRecipientVariables", () => {
     expect(values.equipe_inscricao).toBe("Equipe Teste");
     expect(values.distancia_percurso).toBe("5 km");
     expect(values.qrcode_inscricao).toBe("");
+    expect(values.patrocinio).toBe("");
+    expect(values.redes_sociais).toBe("");
   });
 
   it("numero_peito/equipe_inscricao/distancia_percurso ficam vazios quando os campos correspondentes são nulos", async () => {
@@ -98,7 +108,11 @@ describe("resolveCampaignRecipientVariables", () => {
       order: null,
     });
 
-    const { values } = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
 
     expect(values.numero_peito).toBe("");
     expect(values.equipe_inscricao).toBe("");
@@ -127,7 +141,11 @@ describe("resolveCampaignRecipientVariables", () => {
       order: { id: "order-1", totalAmount: 9000 },
     });
 
-    const { values } = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
 
     expect(values.categoria_inscricao).toBe("");
   });
@@ -135,14 +153,18 @@ describe("resolveCampaignRecipientVariables", () => {
   it("every allowed platform-mode variable name is resolvable in platform mode", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
 
-    const { values } = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: null });
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: null,
+      messageBody: "Olá {{nome_atleta}}!",
+    });
     const allowedNames = getAllowedCampaignVariableNames(null);
     for (const name of allowedNames) {
       expect(Object.prototype.hasOwnProperty.call(values, name)).toBe(true);
     }
   });
 
-  it("resolve patrocinio sempre, sem cache, sem efeito colateral", async () => {
+  it("resolve patrocinio quando a mensagem usa {{patrocinio}}, sem cache, sem efeito colateral", async () => {
     vi.mocked(getSponsorPromoText).mockResolvedValueOnce("Patrocinador X");
     dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
     dbMock.registration.findUnique.mockResolvedValueOnce({
@@ -168,7 +190,11 @@ describe("resolveCampaignRecipientVariables", () => {
       order: { id: "order-1", totalAmount: 9000 },
     });
 
-    const result = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+    const result = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Confira {{patrocinio}}!",
+    });
 
     expect(getSponsorPromoText).toHaveBeenCalledWith("event-1");
     expect(result.values.patrocinio).toBe("Patrocinador X");
@@ -200,7 +226,11 @@ describe("resolveCampaignRecipientVariables", () => {
       order: { id: "order-1", totalAmount: 9000 },
     });
 
-    const result = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+    const result = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Segue {{redes_sociais}}!",
+    });
 
     expect(getSocialPromoText).toHaveBeenCalledWith("event-1", "athlete-1");
     expect(result.values.redes_sociais).toBe("Segue no Instagram!");
@@ -236,10 +266,49 @@ describe("resolveCampaignRecipientVariables", () => {
       athleteUserId: "athlete-1",
       registrationId: "reg-1",
       redesSociaisText: "Texto já resolvido antes",
+      messageBody: "Segue {{redes_sociais}}!",
     });
 
     expect(getSocialPromoText).not.toHaveBeenCalled();
     expect(result.values.redes_sociais).toBe("Texto já resolvido antes");
+    expect(result.redesSociaisText).toBeUndefined();
+  });
+
+  it("NÃO resolve patrocinio/redes_sociais quando a mensagem não usa essas variáveis (evita queimar cota à toa)", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      id: "reg-1",
+      status: "CONFIRMED",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      bibNumber: "1234",
+      teamName: "Equipe Teste",
+      eventId: "event-1",
+      route: { name: "5km", distanceKm: 5 },
+      category: { name: "Elite" },
+      event: {
+        title: "Corrida Exemplo",
+        description: "Descrição",
+        startAt: new Date("2026-09-20T10:00:00Z"),
+        venueName: "Parque Exemplo",
+        city: "São Paulo",
+        state: "SP",
+        addressLine: "Av. Exemplo, 1000",
+        slug: "corrida-exemplo",
+        organizer: { companyName: "Organização Exemplo", phone: "1197777777", user: { name: "João Organizador", email: "joao@org.com" } },
+      },
+      order: { id: "order-1", totalAmount: 9000 },
+    });
+
+    const result = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Faltam 3 dias pro {{nome_evento}}!",
+    });
+
+    expect(getSponsorPromoText).not.toHaveBeenCalled();
+    expect(getSocialPromoText).not.toHaveBeenCalled();
+    expect(result.values.patrocinio).toBe("");
+    expect(result.values.redes_sociais).toBe("");
     expect(result.redesSociaisText).toBeUndefined();
   });
 
@@ -265,7 +334,11 @@ describe("resolveCampaignRecipientVariables", () => {
       order: { id: "order-1", totalAmount: 9000 },
     });
 
-    const { values } = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "r1" });
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "r1",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
     const allowedNames = getAllowedCampaignVariableNames("event1");
     for (const name of allowedNames) {
       expect(Object.prototype.hasOwnProperty.call(values, name)).toBe(true);

@@ -163,6 +163,9 @@ describe("POST /api/cron/send-campaign-messages", () => {
     // Usa o telefone recém-buscado (normaliza "11999999999" -> "5511999999999"), não o
     // normalizedPhone stale ("5511888888888") capturado quando a Fase B populou a lista.
     expect(sendMock).toHaveBeenCalledWith("5511999999999", expect.stringContaining("RODAPE"), "CAMPAIGN_MESSAGE");
+    expect(resolveCampaignRecipientVariables).toHaveBeenCalledWith(
+      expect.objectContaining({ messageBody: "Olá {{nome_atleta}}" }),
+    );
     expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "rec-1" },
