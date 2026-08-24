@@ -36,7 +36,7 @@ vi.mock("@/lib/db", () => ({
     adMetricsSnapshot: { findMany: vi.fn(), upsert: vi.fn(), aggregate: vi.fn() },
     advertiserProfile: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     campaign: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    campaignRecipient: { findMany: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn(), groupBy: vi.fn(), update: vi.fn(), count: vi.fn() },
+    campaignRecipient: { findMany: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn(), groupBy: vi.fn(), update: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
     adPlan: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     adPurchase: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), count: vi.fn() },
     privateAd: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
