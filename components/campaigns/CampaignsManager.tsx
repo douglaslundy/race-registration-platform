@@ -1136,6 +1136,11 @@ export default function CampaignsManager({
                   {recipientSummaries[campaign.id].failed ?? 0}
                 </p>
               )}
+              {recipientSummaries[campaign.id] && campaign.messageBody.includes("{{qrcode_inscricao}}") && (
+                <p className="text-xs text-gray-400 italic">
+                  Esta mensagem usa QR code (envio por imagem) — o provedor não reporta Entregue/Lido pra esse tipo de envio, então esses números ficam sempre zerados aqui.
+                </p>
+              )}
             </div>
           ))}
         </div>
