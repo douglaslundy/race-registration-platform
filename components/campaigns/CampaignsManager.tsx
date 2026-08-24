@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ErrorModal from "@/components/ui/ErrorModal";
+import { renderTemplate } from "@/lib/templates/render";
+import { SAMPLE_VALUES } from "@/lib/templates/variables";
 
 type Campaign = {
   id: string;
@@ -734,7 +736,7 @@ export default function CampaignsManager({
         >
           <form
             onSubmit={saveEdit}
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4 space-y-4"
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-2xl mx-4 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar campanha</h2>
@@ -755,40 +757,53 @@ export default function CampaignsManager({
                 className="input w-full"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem</label>
-              <textarea
-                required
-                ref={editBodyRef}
-                value={editForm.messageBody}
-                onChange={(e) => setEditForm({ ...editForm, messageBody: e.target.value })}
-                className="input w-full"
-                rows={4}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    insertVariable(e.target.value, editBodyRef, editForm.messageBody, (v) => setEditForm({ ...editForm, messageBody: v }));
-                  }
-                  e.target.value = "";
-                }}
-                className="input text-sm"
-              >
-                <option value="">+ Inserir variável...</option>
-                {[...new Set(variables.map((v) => v.category))].map((cat) => (
-                  <optgroup key={cat} label={cat}>
-                    {variables
-                      .filter((v) => v.category === cat)
-                      .map((v) => (
-                        <option key={v.name} value={v.name}>{`{{${v.name}}} — ${v.label}`}</option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-              <span className="text-xs text-gray-400">{editForm.messageBody.length} caracteres</span>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem</label>
+                  <textarea
+                    required
+                    ref={editBodyRef}
+                    value={editForm.messageBody}
+                    onChange={(e) => setEditForm({ ...editForm, messageBody: e.target.value })}
+                    className="input w-full"
+                    rows={6}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        insertVariable(e.target.value, editBodyRef, editForm.messageBody, (v) => setEditForm({ ...editForm, messageBody: v }));
+                      }
+                      e.target.value = "";
+                    }}
+                    className="input text-sm"
+                  >
+                    <option value="">+ Inserir variável...</option>
+                    {[...new Set(variables.map((v) => v.category))].map((cat) => (
+                      <optgroup key={cat} label={cat}>
+                        {variables
+                          .filter((v) => v.category === cat)
+                          .map((v) => (
+                            <option key={v.name} value={v.name}>{`{{${v.name}}} — ${v.label}`}</option>
+                          ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-400">{editForm.messageBody.length} caracteres</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pré-visualização ao vivo</label>
+                <p className="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 min-h-[9rem]">
+                  {renderTemplate(editForm.messageBody, SAMPLE_VALUES, "WHATSAPP") || "Digite a mensagem para ver a pré-visualização..."}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Usa dados de amostra — o botão "Visualizar" abaixo mostra o texto exato com o rodapé de preferências.
+                </p>
+              </div>
             </div>
             {testSendMessage && <p className="text-sm text-green-700 dark:text-green-400">{testSendMessage}</p>}
             <div className="flex gap-2">
