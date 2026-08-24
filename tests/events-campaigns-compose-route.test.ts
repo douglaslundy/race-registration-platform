@@ -144,6 +144,17 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/test-send", () => {
     expect(res.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
   });
+
+  it("bloqueia com 400 quando a mensagem usa {{qrcode_inscricao}} (depende de inscrição real, não existe no teste)", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ ...draftCampaign, messageBody: "Retire seu kit: {{qrcode_inscricao}}" });
+
+    const res = await TEST_SEND(new Request("http://localhost", { method: "POST" }) as any, {
+      params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/events/[id]/campaigns/[campaignId]/schedule", () => {

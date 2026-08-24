@@ -123,6 +123,17 @@ describe("POST /api/admin/campaigns/[campaignId]/test-send", () => {
     expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.stringContaining("RODAPE_TESTE"), "CAMPAIGN_TEST");
     expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
   });
+
+  it("bloqueia com 400 quando a mensagem usa {{qrcode_inscricao}} (depende de inscrição real, não existe no teste)", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ ...platformDraftCampaign, messageBody: "Retire seu kit: {{qrcode_inscricao}}" });
+
+    const res = await TEST_SEND(new Request("http://localhost", { method: "POST" }) as any, {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/admin/campaigns/[campaignId]/schedule", () => {
@@ -309,5 +320,16 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "CAMPAIGN_SENT_TO_NUMBER" }) }),
     );
+  });
+
+  it("bloqueia com 400 quando a mensagem usa {{qrcode_inscricao}} (depende de inscrição real, não existe no envio avulso)", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ ...platformDraftCampaign, messageBody: "Retire seu kit: {{qrcode_inscricao}}" });
+
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "11988888888" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(sendMock).not.toHaveBeenCalled();
   });
 });

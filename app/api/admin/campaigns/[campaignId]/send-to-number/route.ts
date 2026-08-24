@@ -26,6 +26,13 @@ export async function POST(
   const context = await resolveCampaignDetailContext({ session, eventId: null, campaignId });
   if (!context.ok) return context.response;
 
+  if (context.campaign.messageBody.includes("{{qrcode_inscricao}}")) {
+    return NextResponse.json(
+      { error: "Esta variável só funciona no disparo real da campanha (depende de uma inscrição vinculada) — não está disponível no teste ou no envio avulso." },
+      { status: 400 },
+    );
+  }
+
   const rawBody = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(rawBody);
   if (!parsed.success) {
