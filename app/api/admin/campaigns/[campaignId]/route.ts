@@ -50,7 +50,10 @@ export async function PATCH(
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   if (parsed.data.messageBody !== undefined) {
-    const { valid, unknown } = validateTemplateVariables(parsed.data.messageBody, getAllowedCampaignVariableNames(null));
+    const { valid, unknown } = validateTemplateVariables(
+      parsed.data.messageBody,
+      getAllowedCampaignVariableNames(null, true),
+    );
     if (!valid) {
       return NextResponse.json({ error: "Variável desconhecida na mensagem", unknownVariables: unknown }, { status: 400 });
     }

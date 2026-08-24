@@ -152,7 +152,12 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/schedule", () => {
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
     dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
-    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: "event-1", status: "DRAFT" });
+    dbMock.campaign.findFirst.mockResolvedValue({
+      id: "campaign-1",
+      eventId: "event-1",
+      status: "DRAFT",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
   });
 
   it("400 quando a campanha não tem destinatários preparados", async () => {
@@ -203,5 +208,31 @@ describe("POST /api/events/[id]/campaigns/[campaignId]/schedule", () => {
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it("rejeita agendar/disparar quando a mensagem usa variável de evento mas há destinatário sem registrationId", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: "event-1", status: "DRAFT", messageBody: "Vem pro {{nome_evento}}!" });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5); // recipientCount > 0, passa a 1ª checagem
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(1); // 1 destinatário com registrationId: null
+
+    const res = await SCHEDULE(new Request("http://localhost", { method: "POST" }) as any, {
+      params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+
+  it("permite agendar/disparar quando a mensagem usa variável de evento e todos os destinatários têm registrationId", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: "event-1", status: "DRAFT", messageBody: "Vem pro {{nome_evento}}!" });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5);
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(0); // ninguém com registrationId null
+    dbMock.campaign.update.mockResolvedValueOnce({ id: "campaign-1", status: "RUNNING" });
+
+    const res = await SCHEDULE(new Request("http://localhost", { method: "POST" }) as any, {
+      params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(200);
   });
 });

@@ -43,23 +43,41 @@ const EXCLUDED_NAMES = new Set([
 ]);
 
 /** Decide quais categorias de variável uma campanha pode usar: Atleta/Plataforma sempre estão
- * disponíveis; Evento/Organizador/Inscrição só quando a campanha tem um evento associado
- * (eventId não-nulo) — não fazem sentido numa campanha de plataforma inteira, que não tem um
- * único evento/inscrição pra resolver essas variáveis. Única fonte de verdade: tanto a validação
- * no backend quanto o catálogo mostrado na UI consultam esta função. */
-export function getAllowedCampaignVariables(eventId: string | null): VariableDefinition[] {
+ * disponíveis; Evento/Organizador/Inscrição quando a campanha tem um evento associado (eventId
+ * não-nulo) OU quando `forceEventCategories` é true — usado pelo cadastro/edição de campanha de
+ * plataforma, que aceita essas variáveis no texto mas depende da guarda em
+ * messageUsesEventScopedVariables (checada no agendar/disparar) pra garantir que só sejam
+ * realmente enviadas quando todo destinatário tiver um registrationId (seleção manual filtrada
+ * por evento). Única fonte de verdade: tanto a validação no backend quanto o catálogo mostrado na
+ * UI consultam esta função. */
+export function getAllowedCampaignVariables(
+  eventId: string | null,
+  forceEventCategories = false,
+): VariableDefinition[] {
   const categories = new Set(
-    eventId !== null ? [...ALWAYS_CATEGORIES, ...EVENT_ONLY_CATEGORIES] : ALWAYS_CATEGORIES,
+    eventId !== null || forceEventCategories ? [...ALWAYS_CATEGORIES, ...EVENT_ONLY_CATEGORIES] : ALWAYS_CATEGORIES,
   );
   return ALL_VARIABLES.filter((v) => {
     if (!categories.has(v.category) || EXCLUDED_NAMES.has(v.name)) return false;
-    // categoria_inscricao só é resolvida quando há uma inscrição associada (modo evento) — ver
-    // resolveCampaignRecipientVariables.
-    if (v.name === "categoria_inscricao" && eventId === null) return false;
+    // categoria_inscricao só é resolvida quando há uma inscrição associada (modo evento, ou
+    // seleção manual de plataforma filtrada por evento — ver resolveCampaignRecipientVariables).
+    if (v.name === "categoria_inscricao" && eventId === null && !forceEventCategories) return false;
     return true;
   });
 }
 
-export function getAllowedCampaignVariableNames(eventId: string | null): string[] {
-  return getAllowedCampaignVariables(eventId).map((v) => v.name);
+export function getAllowedCampaignVariableNames(eventId: string | null, forceEventCategories = false): string[] {
+  return getAllowedCampaignVariables(eventId, forceEventCategories).map((v) => v.name);
+}
+
+/** Detecta se um texto de mensagem usa alguma variável de categoria Evento/Organizador/Inscrição —
+ * usado pela guarda de agendar/disparar: campanhas de plataforma só podem realmente enviar essas
+ * variáveis se TODOS os destinatários tiverem um registrationId (ver seleção manual filtrada por
+ * evento em lib/campaigns/recipients.ts). */
+export function messageUsesEventScopedVariables(messageBody: string): boolean {
+  const eventScopedNames = new Set(
+    ALL_VARIABLES.filter((v) => EVENT_ONLY_CATEGORIES.includes(v.category)).map((v) => v.name),
+  );
+  const found = [...messageBody.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
+  return found.some((name) => eventScopedNames.has(name));
 }

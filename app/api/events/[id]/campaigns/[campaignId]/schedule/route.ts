@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermission } from "@/lib/auth/rbac";
 import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
+import { messageUsesEventScopedVariables } from "@/lib/campaigns/variables";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -25,6 +26,21 @@ export async function POST(
   const recipientCount = await db.campaignRecipient.count({ where: { campaignId } });
   if (recipientCount === 0) {
     return NextResponse.json({ error: "Prepare os destinatários antes de agendar ou disparar" }, { status: 400 });
+  }
+
+  if (messageUsesEventScopedVariables(context.campaign.messageBody)) {
+    const withoutRegistration = await db.campaignRecipient.count({
+      where: { campaignId, registrationId: null },
+    });
+    if (withoutRegistration > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Esta mensagem usa variáveis de evento, mas nem todos os destinatários estão vinculados a uma inscrição de evento. Prepare os destinatários filtrando por um evento específico antes de agendar ou disparar.",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const body = await req.json().catch(() => ({}));

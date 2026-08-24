@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
   const parsed = campaignSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { valid, unknown } = validateTemplateVariables(parsed.data.messageBody, getAllowedCampaignVariableNames(null));
+  const { valid, unknown } = validateTemplateVariables(
+    parsed.data.messageBody,
+    getAllowedCampaignVariableNames(null, true),
+  );
   if (!valid) {
     return NextResponse.json({ error: "Variável desconhecida na mensagem", unknownVariables: unknown }, { status: 400 });
   }

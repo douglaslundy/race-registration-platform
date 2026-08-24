@@ -120,15 +120,14 @@ describe("GET/POST /api/admin/campaigns (admin-only)", () => {
     );
   });
 
-  it("rejeita variável de categoria Evento numa campanha de plataforma", async () => {
+  it("aceita variável de categoria Evento numa campanha de plataforma (guarda fica pro envio, não pro cadastro)", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.campaign.create.mockResolvedValueOnce({ ...platformDraftCampaign, messageBody: "Vem pro {{nome_evento}}!" });
 
     const res = await POST(makeRequest("POST", { name: "Campanha de plataforma", messageBody: "Vem pro {{nome_evento}}!" }));
-    const data = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(data.unknownVariables).toEqual(["nome_evento"]);
-    expect(dbMock.campaign.create).not.toHaveBeenCalled();
+    expect(res.status).toBe(201);
+    expect(dbMock.campaign.create).toHaveBeenCalled();
   });
 });
 
@@ -170,16 +169,16 @@ describe("GET/PATCH /api/admin/campaigns/[campaignId]", () => {
     expect(dbMock.campaign.update).not.toHaveBeenCalled();
   });
 
-  it("rejeita editar com variável de categoria Evento", async () => {
+  it("aceita editar com variável de categoria Evento (guarda fica pro envio, não pro cadastro)", async () => {
+    dbMock.campaign.update.mockResolvedValueOnce({ ...platformDraftCampaign, messageBody: "Vem pro {{nome_evento}}!" });
+
     const res = await PATCH(
       makeRequest("PATCH", { messageBody: "Vem pro {{nome_evento}}!" }),
       { params: Promise.resolve({ campaignId: "campaign-1" }) },
     );
-    const data = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(data.unknownVariables).toEqual(["nome_evento"]);
-    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(dbMock.campaign.update).toHaveBeenCalled();
   });
 });
 

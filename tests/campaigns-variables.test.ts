@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getAllowedCampaignVariables, getAllowedCampaignVariableNames } from "@/lib/campaigns/variables";
+import {
+  getAllowedCampaignVariables,
+  getAllowedCampaignVariableNames,
+  messageUsesEventScopedVariables,
+} from "@/lib/campaigns/variables";
 
 describe("getAllowedCampaignVariables", () => {
   it("modo plataforma (eventId null) só inclui categorias Atleta e Plataforma", () => {
@@ -46,5 +50,41 @@ describe("getAllowedCampaignVariables", () => {
     const names = getAllowedCampaignVariableNames(null);
     expect(names).not.toContain("patrocinio");
     expect(names).not.toContain("redes_sociais");
+  });
+});
+
+describe("getAllowedCampaignVariableNames com forceEventCategories", () => {
+  it("sem forceEventCategories, campanha de plataforma (eventId null) não inclui variáveis de Evento", () => {
+    const names = getAllowedCampaignVariableNames(null);
+    expect(names).not.toContain("nome_evento");
+  });
+
+  it("com forceEventCategories, campanha de plataforma passa a incluir variáveis de Evento", () => {
+    const names = getAllowedCampaignVariableNames(null, true);
+    expect(names).toContain("nome_evento");
+    expect(names).toContain("numero_inscricao");
+  });
+
+  it("campanha de evento (eventId não-nulo) já inclui variáveis de Evento, com ou sem o parâmetro novo", () => {
+    expect(getAllowedCampaignVariableNames("event-1")).toContain("nome_evento");
+    expect(getAllowedCampaignVariableNames("event-1", true)).toContain("nome_evento");
+  });
+});
+
+describe("messageUsesEventScopedVariables", () => {
+  it("detecta variável de categoria Evento", () => {
+    expect(messageUsesEventScopedVariables("Vem pro {{nome_evento}}!")).toBe(true);
+  });
+
+  it("detecta variável de categoria Inscrição", () => {
+    expect(messageUsesEventScopedVariables("Sua inscrição {{numero_inscricao}} está confirmada")).toBe(true);
+  });
+
+  it("não detecta quando só usa variáveis de Atleta/Plataforma", () => {
+    expect(messageUsesEventScopedVariables("Olá {{nome_atleta}}, bem-vindo à {{nome_plataforma}}!")).toBe(false);
+  });
+
+  it("não detecta em texto sem nenhuma variável", () => {
+    expect(messageUsesEventScopedVariables("Mensagem sem variáveis")).toBe(false);
   });
 });

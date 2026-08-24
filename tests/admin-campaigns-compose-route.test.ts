@@ -132,7 +132,12 @@ describe("POST /api/admin/campaigns/[campaignId]/schedule", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
-    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: null, status: "DRAFT" });
+    dbMock.campaign.findFirst.mockResolvedValue({
+      id: "campaign-1",
+      eventId: null,
+      status: "DRAFT",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
   });
 
   it("400 quando a campanha não tem destinatários preparados", async () => {
@@ -183,6 +188,32 @@ describe("POST /api/admin/campaigns/[campaignId]/schedule", () => {
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it("rejeita agendar/disparar quando a mensagem usa variável de evento mas há destinatário sem registrationId", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: null, status: "DRAFT", messageBody: "Vem pro {{nome_evento}}!" });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5); // recipientCount > 0, passa a 1ª checagem
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(1); // 1 destinatário com registrationId: null
+
+    const res = await SCHEDULE(new Request("http://localhost", { method: "POST" }) as any, {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.update).not.toHaveBeenCalled();
+  });
+
+  it("permite agendar/disparar quando a mensagem usa variável de evento e todos os destinatários têm registrationId", async () => {
+    dbMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1", eventId: null, status: "DRAFT", messageBody: "Vem pro {{nome_evento}}!" });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(5);
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(0); // ninguém com registrationId null
+    dbMock.campaign.update.mockResolvedValueOnce({ id: "campaign-1", status: "RUNNING" });
+
+    const res = await SCHEDULE(new Request("http://localhost", { method: "POST" }) as any, {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(200);
   });
 });
 
