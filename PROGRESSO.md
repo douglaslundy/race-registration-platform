@@ -1,6 +1,79 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-21, mais recente — fix urgente de mobile deployado, retomando Fase D)
+## Última atualização (2026-08-24, mais recente — Fase E e Fase F de campanhas concluídas, ainda não pushadas)
+
+Usuário pediu pra concluir Fase E e Fase F antes do deploy pendente da Fase D. Ambas concluídas:
+
+**Fase E** (bounded, sem plano formal): webhook de ACK do WhatsApp (`app/api/webhooks/whatsapp/route.ts`)
+agora também atualiza `CampaignRecipient` (função nova `updateCampaignRecipientStatusByProviderMessageId`
+em `lib/campaigns/delivery-status.ts`), e o card de campanha na UI mostra Enviados/Entregues/Lidos/Falhou.
+Commit `1c6529a`.
+
+**Fase F** (arquitetural, spec+plano+SDD): trocou a trava global de concorrência do worker de campanhas
+(bloqueava TUDO se um destinatário travasse) por reivindicação atômica por destinatário + varredura de
+recuperação automática (5 min); adicionou pausar/retomar manual (rotas + UI), com reset condicional do
+circuit breaker só quando ele está realmente disparado. 4 tasks via subagent-driven-development, revisão
+final limpa (3 Menores documentados, todos autocorretivos, decidi não corrigir agora — ver
+`[[session_paused_2026_08_24_campanhas_fase_ef]]` pra detalhe). Commits `6df78b2..ca580b1`.
+
+Suite completa verde (249 arquivos / 1806 testes), `tsc --noEmit` limpo, em ambas as fases.
+
+**Estado do git**: tudo local em `main`, ainda não pushado (a Fase D anterior já tinha sido pushada em
+`580ce64..2bbe34f`; E e F são commits novos por cima disso, ainda não enviados). Próximo passo: perguntar
+ao usuário sobre push/deploy (estava aguardando terminar E+F antes de decidir).
+
+## Última atualização (2026-08-24, item anterior — Fase D pushada pro GitHub, deploy NÃO feito ainda)
+
+**Push feito**: `git push origin main` (`580ce64..2bbe34f`, 16 commits — os 3 sub-projetos
+anteriores + toda a Fase D de campanhas). Usuário escolheu explicitamente **só push, sem deploy**
+desta vez — a VPS ainda está rodando a versão anterior. Workspace do SDD dessa fase
+(`.superpowers/sdd/2026-08-21-campanhas-whatsapp-fase-d/`) já foi deletado (revisão final estava
+limpa). Suite completa rodada de novo antes do push: 248 arquivos / 1786 testes, `tsc --noEmit`
+limpo.
+
+**Próximo passo, quando o usuário pedir**: deploy na VPS (processo de sempre — ver
+[[deploy_vps_process]]) e, só com autorização explícita separada, ativar o cron novo
+(`/api/cron/send-campaign-messages`) no crontab.
+
+## Última atualização (2026-08-24, item anterior — Fase D 100% implementada e revisada, SESSÃO PAUSADA)
+
+**Fase D (agendamento + envio real de campanhas WhatsApp) está completa**: as 7 tasks do plano
+(`docs/superpowers/plans/2026-08-21-campanhas-whatsapp-fase-d.md`) foram todas implementadas,
+revisadas individualmente, e passaram por uma revisão final de branch inteiro (2 Critical + 4
+Important encontrados) + UM fix wave (todos os 8 itens corrigidos, incluindo 2 Minors) + UM
+re-review focado (limpo, salvo 2 lacunas pequenas que corrigi direto sem novo subagente). Todos os
+commits estão em `main`, local, ainda **não enviados** (`git push`) nem deployados.
+
+**O que falta antes de considerar a feature 100% fechada**: só falta perguntar ao usuário se
+quer mesclar/push/manter como está (etapa `superpowers:finishing-a-development-branch` — não
+executada ainda, precisa de decisão do usuário) e, só com autorização explícita, adicionar o cron
+novo no crontab da VPS (`/api/cron/send-campaign-messages`) — sem essa entrada no cron, nenhuma
+mensagem real sai, então não há urgência.
+
+**Correções feitas no fix wave final** (ledger completo em
+`.superpowers/sdd/2026-08-21-campanhas-whatsapp-fase-d/progress.md`, commits `ed4af90..2bbe34f`):
+z-index do modal "Disparar agora" (ficava atrás do modal de edição, botão morto); catálogo de
+variáveis de campanha tinha ~20 variáveis que o resolver nunca preenche (saía em branco num envio
+real, mas aparecia preenchido no preview/teste — agora com teste travando o invariante); rota de
+cancelar campanha agora aceita `SCHEDULED` além de `DRAFT` (e o botão "Cancelar" agora aparece na
+UI pra campanha agendada, gap que só o re-review pegou); telefone usado no envio agora é o atual
+(re-buscado), não mais o snapshot da Fase B; só falha de envio real conta pro circuit breaker
+global (falha de banco/resolução de variável não conta mais, evitando pausa falsa de todas as
+campanhas); "Agendar envio"/"Disparar agora" agora salvam o texto editado antes de agendar/disparar
+(evitava enviar texto antigo se o operador esquecesse de clicar "Salvar" antes); fallback
+`NEXT_PUBLIC_APP_URL ?? NEXTAUTH_URL` aplicado no link da campanha (convenção usada em 15+ lugares
+do projeto, tinha ficado de fora por engano do controller, não do implementador).
+
+**Motivo da pausa**: usuário pediu explicitamente para salvar o progresso em memória e retomar só
+quando disser "continue", numa sessão nova.
+
+**Contexto necessário pra retomar**: nenhum arquivo de código específico — só é preciso saber que
+a próxima ação é apresentar ao usuário o menu do `superpowers:finishing-a-development-branch`
+(mesclar local / push+PR / manter como está) pra essa branch (que é o próprio `main`, sem
+worktree — trabalho direto em `main` confirmado pelo usuário nesta sessão de campanhas). Ver
+memória `[[session_paused_2026_08_24_campanhas_fase_d_completa]]` pra detalhes completos.
+
+## Última atualização (2026-08-21, item anterior — fix urgente de mobile deployado, retomando Fase D)
 
 **Fix urgente reportado pelo usuário, corrigido e deployado**: no modal de inscrição por procuração
 (`components/checkout/ProxyAthleteModal.tsx`), Nome e Data de nascimento (primeiros campos) ficavam
