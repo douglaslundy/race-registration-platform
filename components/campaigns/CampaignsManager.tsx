@@ -995,41 +995,54 @@ export default function CampaignsManager({
               </div>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem *</label>
-            <textarea
-              required
-              ref={createBodyRef}
-              value={form.messageBody}
-              onChange={(e) => setForm({ ...form, messageBody: e.target.value })}
-              className="input w-full"
-              rows={4}
-              placeholder="Escreva a mensagem que será enviada..."
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  insertVariable(e.target.value, createBodyRef, form.messageBody, (v) => setForm({ ...form, messageBody: v }));
-                }
-                e.target.value = "";
-              }}
-              className="input text-sm"
-            >
-              <option value="">+ Inserir variável...</option>
-              {[...new Set(variables.map((v) => v.category))].map((cat) => (
-                <optgroup key={cat} label={cat}>
-                  {variables
-                    .filter((v) => v.category === cat)
-                    .map((v) => (
-                      <option key={v.name} value={v.name}>{`{{${v.name}}} — ${v.label}`}</option>
-                    ))}
-                </optgroup>
-              ))}
-            </select>
-            <span className="text-xs text-gray-400">{form.messageBody.length} caracteres</span>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mensagem *</label>
+                <textarea
+                  required
+                  ref={createBodyRef}
+                  value={form.messageBody}
+                  onChange={(e) => setForm({ ...form, messageBody: e.target.value })}
+                  className="input w-full"
+                  rows={6}
+                  placeholder="Escreva a mensagem que será enviada..."
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      insertVariable(e.target.value, createBodyRef, form.messageBody, (v) => setForm({ ...form, messageBody: v }));
+                    }
+                    e.target.value = "";
+                  }}
+                  className="input text-sm"
+                >
+                  <option value="">+ Inserir variável...</option>
+                  {[...new Set(variables.map((v) => v.category))].map((cat) => (
+                    <optgroup key={cat} label={cat}>
+                      {variables
+                        .filter((v) => v.category === cat)
+                        .map((v) => (
+                          <option key={v.name} value={v.name}>{`{{${v.name}}} — ${v.label}`}</option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">{form.messageBody.length} caracteres</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pré-visualização ao vivo</label>
+              <p className="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 min-h-[9rem]">
+                {renderTemplate(form.messageBody, SAMPLE_VALUES, "WHATSAPP") || "Digite a mensagem para ver a pré-visualização..."}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Usa dados de amostra — o preview aparece assim que você começar a digitar, sem precisar salvar.
+              </p>
+            </div>
           </div>
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="btn-primary">
