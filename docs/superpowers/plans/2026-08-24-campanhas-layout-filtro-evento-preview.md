@@ -5,14 +5,17 @@
 **Goal:** Corrigir o layout dos botões de ação, adicionar filtro por evento na seleção manual de
 destinatários (com vínculo real de inscrição por destinatário), liberar patrocínio/redes sociais
 (com cache de cota) e variáveis de evento em campanhas de plataforma com uma guarda de segurança no
-envio, adicionar 3 variáveis novas, e corrigir o preview pra funcionar também na criação de uma
-nova mensagem.
+envio, adicionar variáveis novas (incluindo uma que anexa o QR code da inscrição como imagem), e
+corrigir o preview pra funcionar também na criação de uma nova mensagem.
 
-**Architecture:** 7 tasks. Task 1 (layout) é independente. Task 2 (backend de recipientes) precisa
+**Architecture:** 8 tasks. Task 1 (layout) é independente. Task 2 (backend de recipientes) precisa
 vir antes da Task 3 (UI do filtro). Task 4 (variáveis novas) precisa vir antes da Task 6 (guarda de
 envio, que referencia o catálogo completo). Task 5 (patrocínio/redes sociais, adicionada durante a
 execução a pedido do usuário) só tem uma mudança de schema real deste plano — as demais tasks não
-mudam schema. Task 7 (preview na criação) é independente.
+mudam schema. Task 7 (preview na criação) é independente. Task 8 (variável de QR code da inscrição,
+adicionada durante a execução a pedido do usuário) precisa vir depois da Task 6 (reaproveita a mesma
+guarda de registrationId) — sem mudança de schema, reaproveita `CampaignRecipient.registrationId`
+que já existe.
 
 **Tech Stack:** Next.js App Router + TypeScript + Prisma/Postgres + Vitest.
 
@@ -1705,4 +1708,264 @@ Rode: `npx tsc --noEmit -p tsconfig.json` e `npx vitest run`.
 ```bash
 git add components/campaigns/CampaignsManager.tsx
 git commit -m "feat: preview ao vivo no formulario de criacao de campanha (antes do primeiro salvamento)"
+```
+
+---
+
+### Task 8: Backend — variável de QR code da inscrição (envia como imagem anexada)
+
+**Files:**
+- Modify: `lib/templates/variables.ts`
+- Modify: `lib/campaigns/resolve-recipient-variables.ts`
+- Modify: `app/api/cron/send-campaign-messages/route.ts`
+- Test: `tests/campaigns-resolve-recipient-variables.test.ts` (adicionar asserção)
+- Test: `tests/cron-send-campaign-messages-route.test.ts` (adicionar casos)
+
+**Interfaces:**
+- Consumes: `generateKitQrCodePng(registrationId: string): Promise<Buffer>` (`lib/kit-qr-code.ts`,
+  já existe); `sendWhatsAppDocument(phone, base64, filename, caption, options)` (`lib/whatsapp.ts`,
+  já existe, já usado hoje pela notificação de confirmação de inscrição); `messageUsesEventScopedVariables`
+  (Task 6) já cobre esta variável automaticamente pra fins de guarda de agendar/disparar, porque sua
+  categoria é "Inscrição" — nenhuma mudança extra em `lib/campaigns/variables.ts` é necessária.
+- Produces: nova variável `qrcode_inscricao` no catálogo. Quando uma mensagem a usa, o worker do
+  cron envia aquele destinatário como IMAGEM (o QR) com o texto renderizado como legenda, em vez de
+  mensagem de texto pura.
+
+QR code não é texto — não pode ser substituído inline como as demais variáveis. `resolveCampaignRecipientVariables`
+resolve `qrcode_inscricao` sempre como string vazia (só pra o token sumir do corpo renderizado); o
+worker decide o MODO DE ENVIO checando se o corpo bruto da mensagem contém o token, antes de
+renderizar.
+
+- [ ] **Step 1: Escrever o teste falhando pra resolução de `qrcode_inscricao`**
+
+Em `tests/campaigns-resolve-recipient-variables.test.ts`, no teste
+`"modo evento (registrationId presente): resolve também Evento/Organizador/Inscrição"`, adicione
+mais uma asserção logo depois de `expect(values.distancia_percurso).toBe("5 km");`:
+
+```ts
+    expect(values.qrcode_inscricao).toBe("");
+```
+
+- [ ] **Step 2: Rodar e confirmar que falha**
+
+Rode: `npx vitest run tests/campaigns-resolve-recipient-variables.test.ts`.
+
+- [ ] **Step 3: Adicionar a variável em `lib/templates/variables.ts`**
+
+Localize a seção `// Inscrição` dentro de `ALL_VARIABLES`. Adicione, logo depois da entrada
+`equipe_inscricao`:
+
+```ts
+  { name: "qrcode_inscricao", label: "QR code da inscrição (anexo)", category: "Inscrição", description: "Anexa a imagem do QR code de retirada do kit (mesmo código da tela de retirada, gerado a partir de Registration.id). Ao usar esta variável, a mensagem inteira é enviada como imagem, com o restante do texto como legenda — o token em si não aparece como texto.", sample: "[a mensagem será enviada como imagem, com este texto como legenda]" },
+```
+
+- [ ] **Step 4: Modificar `lib/campaigns/resolve-recipient-variables.ts`**
+
+Adicione, logo depois de `values.distancia_percurso = ...`:
+
+```ts
+  values.qrcode_inscricao = "";
+```
+
+- [ ] **Step 5: Rodar e confirmar que passa**
+
+Rode: `npx vitest run tests/campaigns-resolve-recipient-variables.test.ts`.
+
+- [ ] **Step 6: Escrever os testes falhando pro worker**
+
+Em `tests/cron-send-campaign-messages-route.test.ts`, modifique o `vi.mock("@/lib/whatsapp", ...)`
+no topo do arquivo pra incluir `sendWhatsAppDocument`:
+
+```ts
+vi.mock("@/lib/whatsapp", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/whatsapp")>("@/lib/whatsapp");
+  return {
+    ...actual,
+    sendWhatsAppMessage: vi.fn(),
+    sendWhatsAppDocument: vi.fn(),
+    buildPreferencesFooterText: () => "\n\nRODAPE",
+  };
+});
+```
+
+Adicione um novo `vi.mock` pro gerador de QR, junto dos outros mocks no topo:
+
+```ts
+vi.mock("@/lib/kit-qr-code", () => ({ generateKitQrCodePng: vi.fn() }));
+```
+
+Adicione os imports novos junto dos existentes:
+
+```ts
+import { sendWhatsAppDocument } from "@/lib/whatsapp";
+import { generateKitQrCodePng } from "@/lib/kit-qr-code";
+```
+
+E, logo depois de `const sendMock = vi.mocked(sendWhatsAppMessage);`:
+
+```ts
+const sendDocumentMock = vi.mocked(sendWhatsAppDocument);
+const qrMock = vi.mocked(generateKitQrCodePng);
+```
+
+Adicione estes 3 testes no describe principal (antes do `});` final):
+
+```ts
+  it("mensagem com {{qrcode_inscricao}} envia como imagem (QR), não como texto", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({
+      id: "campaign-1", messageBody: "Seu QR: {{qrcode_inscricao}}",
+    });
+    qrMock.mockResolvedValueOnce(Buffer.from("fake-png"));
+    dbMock.campaignRecipient.update.mockResolvedValueOnce({});
+
+    await POST(makeRequest());
+
+    expect(qrMock).toHaveBeenCalledWith("reg-1");
+    expect(sendDocumentMock).toHaveBeenCalledWith(
+      "5511999999999",
+      Buffer.from("fake-png").toString("base64"),
+      "qrcode-inscricao.png",
+      expect.stringContaining("Seu QR:"),
+      expect.objectContaining({ mediatype: "image", messageType: "CAMPAIGN_MESSAGE" }),
+    );
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "rec-1" }, data: expect.objectContaining({ status: "SENT" }) }),
+    );
+  });
+
+  it("mensagem sem {{qrcode_inscricao}} continua enviando como texto normal", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá {{nome_atleta}}" });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(sendDocumentMock).not.toHaveBeenCalled();
+    expect(qrMock).not.toHaveBeenCalled();
+    expect(sendMock).toHaveBeenCalled();
+  });
+
+  it("mensagem com {{qrcode_inscricao}} mas destinatário sem registrationId falha ANTES do envio, sem contar pro circuit breaker", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: null, campaignId: "campaign-1", attempts: 0,
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({
+      id: "campaign-1", messageBody: "Seu QR: {{qrcode_inscricao}}",
+    });
+
+    await POST(makeRequest());
+
+    expect(qrMock).not.toHaveBeenCalled();
+    expect(sendDocumentMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(recordCampaignSendFailure).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "rec-1" },
+        data: expect.objectContaining({ status: "PENDING", attempts: 1 }),
+      }),
+    );
+  });
+```
+
+(O 1º teste depende do default de `dbMock.user.findUnique` já configurado no `beforeEach` deste
+arquivo, que devolve o telefone `"11999999999"` — normaliza pra `"5511999999999"`, mesmo valor usado
+nos outros testes de envio bem-sucedido deste arquivo.)
+
+- [ ] **Step 7: Rodar e confirmar que falha**
+
+Rode: `npx vitest run tests/cron-send-campaign-messages-route.test.ts`.
+
+- [ ] **Step 8: Modificar o worker (`app/api/cron/send-campaign-messages/route.ts`)**
+
+Adicione `sendWhatsAppDocument` ao import existente de `@/lib/whatsapp`:
+
+```ts
+import {
+  sendWhatsAppMessage,
+  sendWhatsAppDocument,
+  buildPreferencesFooterText,
+  normalizePhoneForWhatsApp,
+  isValidWhatsAppPhone,
+} from "@/lib/whatsapp";
+```
+
+Adicione o import novo, logo abaixo:
+
+```ts
+import { generateKitQrCodePng } from "@/lib/kit-qr-code";
+```
+
+Troque o bloco (a partir de `const body = renderTemplate(...)` até o fim do `try` de envio):
+
+```ts
+    const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
+
+    let sendResult: { providerMessageId?: string };
+    try {
+      sendResult = await sendWhatsAppMessage(freshPhone, body, "CAMPAIGN_MESSAGE");
+    } catch (sendErr) {
+      const { tripped } = await recordCampaignSendFailure();
+      if (tripped) {
+        await db.campaign.updateMany({ where: { status: "RUNNING" }, data: { status: "PAUSED" } });
+      }
+      throw sendErr;
+    }
+```
+
+por:
+
+```ts
+    const usesQrCode = /\{\{qrcode_inscricao\}\}/.test(campaign.messageBody);
+    const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
+
+    // A guarda de agendar/disparar (messageUsesEventScopedVariables, categoria "Inscrição") já
+    // garante que todo destinatário tem registrationId quando a mensagem usa esta variável — este
+    // erro só dispararia se esse invariante fosse quebrado por algum caminho futuro. Fica FORA do
+    // try de envio de propósito: não é uma falha de envio real, não deve contar pro circuit breaker
+    // (mesma convenção já usada pra qualquer erro de etapa anterior ao envio).
+    if (usesQrCode && !recipient.registrationId) {
+      throw new Error("Mensagem usa qrcode_inscricao, mas o destinatário não tem inscrição vinculada");
+    }
+
+    let sendResult: { providerMessageId?: string };
+    try {
+      if (usesQrCode) {
+        const qrPng = await generateKitQrCodePng(recipient.registrationId!);
+        await sendWhatsAppDocument(freshPhone, qrPng.toString("base64"), "qrcode-inscricao.png", body, {
+          messageType: "CAMPAIGN_MESSAGE",
+          mediatype: "image",
+        });
+        sendResult = {};
+      } else {
+        sendResult = await sendWhatsAppMessage(freshPhone, body, "CAMPAIGN_MESSAGE");
+      }
+    } catch (sendErr) {
+      const { tripped } = await recordCampaignSendFailure();
+      if (tripped) {
+        await db.campaign.updateMany({ where: { status: "RUNNING" }, data: { status: "PAUSED" } });
+      }
+      throw sendErr;
+    }
+```
+
+- [ ] **Step 9: Rodar e confirmar que passa**
+
+Rode: `npx vitest run tests/cron-send-campaign-messages-route.test.ts`.
+
+- [ ] **Step 10: Rodar a suíte inteira e confirmar que não há regressão**
+
+Rode: `npx vitest run`.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add lib/templates/variables.ts lib/campaigns/resolve-recipient-variables.ts app/api/cron/send-campaign-messages/route.ts tests/campaigns-resolve-recipient-variables.test.ts tests/cron-send-campaign-messages-route.test.ts
+git commit -m "feat: variavel qrcode_inscricao — anexa QR code da inscricao como imagem no envio"
 ```

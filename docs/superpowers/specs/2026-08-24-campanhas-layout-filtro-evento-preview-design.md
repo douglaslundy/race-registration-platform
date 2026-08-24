@@ -207,13 +207,16 @@ destinatário, guardar o texto resolvido, e reaproveitar nas tentativas seguinte
 - **`lib/campaigns/variables.ts`**: remove `"patrocinio"` e `"redes_sociais"` de `EXCLUDED_NAMES`;
   atualiza o comentário da constante refletindo a distinção real entre as duas.
 - **`lib/campaigns/resolve-recipient-variables.ts`**: `resolveCampaignRecipientVariables` passa a
-  aceitar um `redesSociaisText?: string | null` opcional no parâmetro `recipient`, e retorna
-  `{ values, redesSociaisText? }` em vez de só `values` — o 2º campo só vem preenchido quando a
-  resolução foi feita NESTA chamada (precisa ser persistida pelo chamador). `patrocinio` resolve via
-  `getSponsorPromoText(registration.eventId)`, sem cache, sem condição especial. `redes_sociais`:
-  se `recipient.redesSociaisText` já veio preenchido, reaproveita; senão, chama
-  `getSocialPromoText(registration.eventId, recipient.athleteUserId)` e marca o resultado pra ser
-  persistido.
+  aceitar um `redesSociaisText?: string | null` opcional e um `messageBody: string` obrigatório no
+  parâmetro `recipient`, e retorna `{ values, redesSociaisText? }` em vez de só `values` — o 2º
+  campo só vem preenchido quando a resolução foi feita NESTA chamada (precisa ser persistida pelo
+  chamador). **Correção pós-revisão final** (a versão original desta adenda tinha `patrocinio`
+  resolvendo incondicionalmente pra todo destinatário em modo evento — regressão real encontrada na
+  revisão final do branch inteiro, que queimava a cota de `redes_sociais` mesmo em campanhas que
+  nunca usam essa variável): `patrocinio` só resolve via `getSponsorPromoText(registration.eventId)`
+  quando `messageBody` contém `{{patrocinio}}`; caso contrário, `""`, sem chamar a função. Mesma
+  lógica pra `redes_sociais`: só entra na checagem de cache/`getSocialPromoText` quando `messageBody`
+  contém `{{redes_sociais}}`; caso contrário, `""`, sem chamar a função nem consultar o cache.
 - **`app/api/cron/send-campaign-messages/route.ts`**: depois de resolver as variáveis, se
   `redesSociaisText` veio definido (resolução fresca), persiste imediatamente
   (`db.campaignRecipient.update({ where: { id }, data: { redesSociaisText } })`) — **antes** de
@@ -229,6 +232,94 @@ destinatário, guardar o texto resolvido, e reaproveitar nas tentativas seguinte
   chamar `getSocialPromoText` de novo quando `redesSociaisText` já vem preenchido.
 - Worker: persiste `redesSociaisText` antes da tentativa de envio; uma 2ª tentativa (attempts > 0)
   não chama `getSocialPromoText` de novo quando o valor já está cacheado.
+
+## Adenda 2: variável de QR code da inscrição (pedido do usuário durante a execução)
+
+Usuário pediu uma variável que envia o QR code da inscrição (o mesmo usado na retirada de kit).
+Investigação confirmou que a infraestrutura já existe, reaproveitada da notificação de confirmação
+de inscrição: `generateKitQrCodePng(registrationId)` (`lib/kit-qr-code.ts`, gera um PNG codificando
+`Registration.id`) e `sendWhatsAppDocument(phone, base64, filename, caption, {mediatype: "image"})`
+(`lib/whatsapp.ts`, já registra sucesso/falha no MessageLog).
+
+Diferença fundamental em relação às outras variáveis: QR code não é texto, então não pode ser
+substituído inline como as demais. Usar esta variável muda o MODO DE ENVIO do destinatário inteiro:
+em vez de mensagem de texto, o worker envia uma imagem (o QR), usando o restante do texto renderizado
+como legenda.
+
+**Decisão confirmada com o usuário**: nova variável `qrcode_inscricao`, categoria "Inscrição" — cai
+automaticamente sob a mesma guarda da Task 6 (`messageUsesEventScopedVariables`), já que Inscrição
+está em `EVENT_ONLY_CATEGORIES`: uma campanha só pode agendar/disparar usando esta variável se todo
+destinatário tiver `registrationId`. No preview (texto, ambos os modais), o token é substituído pelo texto de amostra (`sample`) da
+variável, que descreve explicitamente o comportamento real ("a mensagem será enviada como imagem,
+com este texto como legenda") — **correção pós-revisão final**: a versão original desta adenda dizia
+que o token "some substituído por string vazia" no preview; na implementação real o preview usa
+`SAMPLE_VALUES` (não uma string vazia), e a revisão final do branch inteiro julgou esse resultado
+melhor que o especificado aqui, por explicar o modo de envio diretamente no preview — corrigindo a
+spec para refletir o comportamento implementado, não o contrário. Na resolução real (envio de
+campanha), o valor É `""` (ver `resolveCampaignRecipientVariables` abaixo), já que ali o texto
+existe só pra o token sumir do corpo renderizado, nunca pra aparecer como legenda visível.
+
+### Arquitetura
+
+- **`lib/templates/variables.ts`**: nova entrada em `ALL_VARIABLES`, categoria "Inscrição",
+  descrição explicando que o envio vira imagem com o texto restante como legenda.
+- **`lib/campaigns/resolve-recipient-variables.ts`**: `values.qrcode_inscricao = ""` sempre (nunca
+  texto real — só existe pra o token ser removido do corpo renderizado; o preview mostra o texto ao
+  redor do token, sem o token em si).
+- **`app/api/cron/send-campaign-messages/route.ts`**: detecta `/\{\{qrcode_inscricao\}\}/.test(campaign.messageBody)`
+  no corpo BRUTO (antes de renderizar). Se presente: gera o PNG via `generateKitQrCodePng(recipient.registrationId)`
+  e envia com `sendWhatsAppDocument(freshPhone, base64, "qrcode-inscricao.png", body, {mediatype: "image", messageType: "CAMPAIGN_MESSAGE"})`
+  em vez de `sendWhatsAppMessage`. Um `registrationId` nulo nesse ponto (nunca deveria acontecer,
+  dada a guarda da Task 6) lança um erro ANTES do try de envio — não conta pro circuit breaker,
+  mesma convenção já usada pra qualquer erro que não seja uma falha de envio real.
+- Nenhuma mudança em `lib/campaigns/variables.ts` — a categoria "Inscrição" já é tratada
+  genericamente por `getAllowedCampaignVariables`/`messageUsesEventScopedVariables` (Task 6), sem
+  necessidade de caso especial pra este nome.
+- Nenhuma mudança de schema — reaproveita `CampaignRecipient.registrationId`, que já existe.
+
+### Testes
+
+- `resolveCampaignRecipientVariables`: `values.qrcode_inscricao` é sempre `""` em modo evento.
+- Worker: mensagem com `{{qrcode_inscricao}}` chama `sendWhatsAppDocument` com o PNG gerado a partir
+  do `registrationId`, não chama `sendWhatsAppMessage`; mensagem sem a variável continua chamando
+  `sendWhatsAppMessage` normalmente; `registrationId` nulo com a variável presente lança erro antes
+  do envio, sem contar pro circuit breaker.
+
+## Adenda 3: correções da revisão final do branch inteiro
+
+A revisão final (depois das 8 tasks, olhando o branch como um todo) encontrou 1 achado Crítico e
+alguns Importantes/Menores que nenhuma revisão por task isolada podia ver:
+
+- **Crítico, corrigido**: `patrocinio`/`redes_sociais` resolviam incondicionalmente pra todo
+  destinatário em modo evento (Task 5), mesmo quando a mensagem nunca usa essas variáveis — uma
+  campanha comum de evento queimava cota real de `SocialLinkSend` (via `getSocialPromoText`) sem
+  necessidade. Corrigido: `resolveCampaignRecipientVariables` agora recebe `messageBody` e só
+  resolve cada uma quando o token correspondente aparece no corpo bruto — mesmo padrão de detecção
+  já usado por `qrcode_inscricao` (Adenda 2) e por `messageUsesEventScopedVariables` (Task 6). Ver
+  correção na seção "Arquitetura" da Adenda 1, acima.
+- **Importante, corrigido**: `app/api/admin/campaigns/variables/route.ts` (catálogo que alimenta o
+  seletor "+ Inserir variável" da UI) e `app/api/admin/campaigns/alert-options/route.ts` não tinham
+  sido atualizados pra `forceEventCategories: true` junto com as rotas de criar/editar (Task 6) — o
+  operador não conseguia descobrir/inserir por clique as variáveis de Evento/Organizador/Inscrição
+  liberadas pelas Tasks 4/5/6/8 numa campanha de plataforma. Corrigido (mesmo argumento `(null, true)`
+  já usado nas rotas de criar/editar).
+- **Importante, mitigado**: campanhas que usam `{{qrcode_inscricao}}` nunca reportam Entregue/Lido no
+  resumo do painel (`sendWhatsAppDocument` não retorna `providerMessageId`, e o webhook de status só
+  casa por esse id) — limitação pré-existente do envio de mídia, não uma regressão desta feature, mas
+  agora fica visível numa campanha de verdade (antes só no fluxo de confirmação de inscrição). Em vez
+  de resolver a causa raiz (fora de escopo — exigiria mudança no provedor/webhook), o painel passa a
+  mostrar uma nota explicando a limitação quando a mensagem usa essa variável.
+- **Menor, corrigido**: "Enviar teste" e "Enviar pra número" (envio avulso, `SAMPLE_VALUES`) agora
+  rejeitam com erro claro quando a mensagem usa `{{qrcode_inscricao}}` — o avulso não tem uma
+  inscrição real vinculada pra gerar o QR, e antes da correção mandava um texto confuso com o
+  placeholder literal do `sample` em vez de uma imagem.
+- **Menor, corrigido**: `PAGE_SIZE` do seletor de evento (`events-directory`) subiu de 20 pra um
+  valor bem mais folgado — o limite rígido de 20 tornava eventos além dos 20 primeiros
+  (`ORDER BY title ASC`) impossíveis de selecionar no filtro, não uma simplificação de UX como a
+  entrada original de "Fora de escopo" abaixo presumia.
+- **Menor, corrigido**: descrição de `qrcode_inscricao` ganhou uma nota sobre o limite de caracteres
+  de legenda de mídia do WhatsApp (~1024, contra ~4096 de mensagem de texto) — um corpo promocional
+  longo que funciona bem como texto pode ser truncado/rejeitado ao virar legenda de imagem.
 
 ## Fora de escopo (YAGNI)
 
