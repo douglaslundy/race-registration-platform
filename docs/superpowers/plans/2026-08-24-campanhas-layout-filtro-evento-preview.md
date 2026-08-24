@@ -3,13 +3,16 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Corrigir o layout dos botões de ação, adicionar filtro por evento na seleção manual de
-destinatários (com vínculo real de inscrição por destinatário), permitir variáveis de evento em
-campanhas de plataforma com uma guarda de segurança no envio, adicionar 3 variáveis novas, e
-corrigir o preview pra funcionar também na criação de uma nova mensagem.
+destinatários (com vínculo real de inscrição por destinatário), liberar patrocínio/redes sociais
+(com cache de cota) e variáveis de evento em campanhas de plataforma com uma guarda de segurança no
+envio, adicionar 3 variáveis novas, e corrigir o preview pra funcionar também na criação de uma
+nova mensagem.
 
-**Architecture:** 6 tasks. Task 1 (layout) é independente. Task 2 (backend de recipientes) precisa
-vir antes da Task 3 (UI do filtro). Task 4 (variáveis novas) precisa vir antes da Task 5 (guarda de
-envio, que referencia o catálogo completo). Task 6 (preview na criação) é independente.
+**Architecture:** 7 tasks. Task 1 (layout) é independente. Task 2 (backend de recipientes) precisa
+vir antes da Task 3 (UI do filtro). Task 4 (variáveis novas) precisa vir antes da Task 6 (guarda de
+envio, que referencia o catálogo completo). Task 5 (patrocínio/redes sociais, adicionada durante a
+execução a pedido do usuário) só tem uma mudança de schema real deste plano — as demais tasks não
+mudam schema. Task 7 (preview na criação) é independente.
 
 **Tech Stack:** Next.js App Router + TypeScript + Prisma/Postgres + Vitest.
 
@@ -17,8 +20,9 @@ envio, que referencia o catálogo completo). Task 6 (preview na criação) é in
 
 ## Global Constraints
 
-- Nenhuma mudança de schema — tudo composto em cima de campos que já existem
-  (`Registration.bibNumber`, `Registration.teamName`, `EventRoute.distanceKm`,
+- Nenhuma mudança de schema, EXCETO a Task 5 (`CampaignRecipient.redesSociaisText`, adicionada
+  durante a execução a pedido do usuário) — as demais tasks são compostas em cima de campos que já
+  existem (`Registration.bibNumber`, `Registration.teamName`, `EventRoute.distanceKm`,
   `CampaignRecipient.registrationId`).
 - Status de inscrição válido pra fins de mensagem = `CONFIRMED`, único valor — mesma convenção já
   usada em `lib/kit-delivery.ts` e `lib/alerts/daily-summary-metrics.ts`. Não usar nenhum outro
@@ -986,7 +990,332 @@ git commit -m "feat: variaveis novas — numero_peito, equipe_inscricao, distanc
 
 ---
 
-### Task 5: Backend — variáveis de evento em campanha de plataforma + guarda no envio
+### Task 5: Backend — liberar patrocínio/redes sociais em campanhas (com cache de cota no 1º envio)
+
+**Files:**
+- Modify: `prisma/schema.prisma`
+- Create: `prisma/migrations/20260824000000_add_campaign_recipient_redes_sociais_text/migration.sql`
+- Modify: `lib/campaigns/variables.ts`
+- Modify: `lib/campaigns/resolve-recipient-variables.ts`
+- Modify: `app/api/cron/send-campaign-messages/route.ts`
+- Test: `tests/campaigns-resolve-recipient-variables.test.ts` (adicionar casos)
+- Test: `tests/cron-send-campaign-messages-route.test.ts` (adicionar casos)
+- Test: `tests/lib-campaigns-variables.test.ts` (adicionar caso, se aplicável ao arquivo que a Task 6 já cria/usa — se a Task 6 ainda não rodou quando esta task rodar, crie o caso direto no describe já existente de `getAllowedCampaignVariableNames`)
+
+**Interfaces:**
+- Consumes: `getSponsorPromoText(eventId)` (`lib/event-sponsors.ts`, já existe, sem efeito
+  colateral) e `getSocialPromoText(eventId, userId)` (`lib/event-social-links.ts`, já existe, COM
+  efeito colateral — incrementa `SocialLinkSend.count` a cada chamada bem-sucedida).
+- Produces: `resolveCampaignRecipientVariables` passa a retornar
+  `{ values: Record<string,string>, redesSociaisText?: string }` em vez de só o objeto de valores
+  — mudança de assinatura que a Task 6 (guarda de envio) NÃO precisa conhecer (ela só lê
+  `context.campaign.messageBody`, nunca chama este resolver diretamente).
+
+Investigação confirmou que a justificativa original pra excluir essas 2 variáveis (Fase D) estava
+parcialmente incorreta: `getSponsorPromoText` (patrocínio) não tem NENHUM efeito colateral nem
+limite por destinatário — é conteúdo pago do organizador, aparece sempre que ativo. Só
+`getSocialPromoText` (redes sociais) tem efeito colateral real (incrementa cota por link ×
+destinatário, numa transação, não é idempotente). Como o worker de campanha já processa um
+destinatário por vez (nunca renderiza uma vez só pra todo mundo), a preocupação original de
+"campanha renderiza o mesmo texto pra milhares de gente" não se aplica — mas existe um risco
+diferente e real: se o envio falhar e for tentado de novo (até 3 tentativas), `getSocialPromoText`
+seria chamada de novo a cada tentativa, incrementando a cota mais de uma vez pra uma mensagem que
+só foi (ou nunca foi) efetivamente entregue uma vez. Decisão confirmada com o usuário: resolver
+`redes_sociais` só na 1ª tentativa, guardar o texto resolvido em `CampaignRecipient.redesSociaisText`,
+reaproveitar nas tentativas seguintes sem chamar `getSocialPromoText` de novo.
+
+- [ ] **Step 1: Adicionar o campo novo ao schema**
+
+Em `prisma/schema.prisma`, no `model CampaignRecipient`, adicione `redesSociaisText String?` logo
+depois de `sentAt DateTime?`:
+
+```prisma
+model CampaignRecipient {
+  id              String                  @id @default(cuid())
+  campaignId      String
+  athleteUserId   String
+  registrationId  String?
+  normalizedPhone String
+  status          CampaignRecipientStatus @default(PENDING)
+  failureReason   String?
+  attempts        Int                     @default(0)
+  providerMessageId String?
+  sentAt          DateTime?
+  redesSociaisText String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  athlete      User          @relation(fields: [athleteUserId], references: [id])
+  registration Registration? @relation(fields: [registrationId], references: [id])
+
+  @@index([campaignId, status])
+  @@map("campaign_recipients")
+}
+```
+
+- [ ] **Step 2: Criar a migration**
+
+`prisma/migrations/` é gitignored — lembre de usar `git add -f` no Step 10, senão o arquivo fica só
+no disco, nunca commitado (incidente já registrado neste projeto antes). Crie
+`prisma/migrations/20260824000000_add_campaign_recipient_redes_sociais_text/migration.sql`:
+
+```sql
+-- AlterTable
+ALTER TABLE "campaign_recipients" ADD COLUMN "redesSociaisText" TEXT;
+```
+
+- [ ] **Step 3: Escrever os testes falhando pra `resolveCampaignRecipientVariables`**
+
+Em `tests/campaigns-resolve-recipient-variables.test.ts`, adicione (mockando
+`@/lib/event-sponsors` e `@/lib/event-social-links` no topo do arquivo, junto dos outros
+`vi.mock`):
+
+```ts
+vi.mock("@/lib/event-sponsors", () => ({ getSponsorPromoText: vi.fn() }));
+vi.mock("@/lib/event-social-links", () => ({ getSocialPromoText: vi.fn() }));
+```
+
+E importe as duas funções mockadas junto dos outros imports:
+
+```ts
+import { getSponsorPromoText } from "@/lib/event-sponsors";
+import { getSocialPromoText } from "@/lib/event-social-links";
+```
+
+Adicione estes testes (ajuste o mock de `db.registration.findUnique` pro mesmo padrão já usado
+nos outros testes deste arquivo, garantindo que `eventId` esteja no objeto retornado — se o
+`select` atual não inclui `eventId` na raiz, o Step 5 abaixo já adiciona):
+
+```ts
+  it("resolve patrocinio sempre, sem cache, sem efeito colateral", async () => {
+    vi.mocked(getSponsorPromoText).mockResolvedValueOnce("Patrocinador X");
+    dbMock.registration.findUnique.mockResolvedValueOnce({ /* ...mesmo shape completo já usado nos outros testes deste arquivo, com eventId: "event-1" */ });
+
+    const result = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+
+    expect(getSponsorPromoText).toHaveBeenCalledWith("event-1");
+    expect(result.values.patrocinio).toBe("Patrocinador X");
+  });
+
+  it("resolve redes_sociais fresco quando redesSociaisText não é informado, e retorna o valor pra ser persistido", async () => {
+    vi.mocked(getSocialPromoText).mockResolvedValueOnce("Segue no Instagram!");
+    dbMock.registration.findUnique.mockResolvedValueOnce({ /* mesmo shape, eventId: "event-1" */ });
+
+    const result = await resolveCampaignRecipientVariables({ athleteUserId: "athlete-1", registrationId: "reg-1" });
+
+    expect(getSocialPromoText).toHaveBeenCalledWith("event-1", "athlete-1");
+    expect(result.values.redes_sociais).toBe("Segue no Instagram!");
+    expect(result.redesSociaisText).toBe("Segue no Instagram!");
+  });
+
+  it("reaproveita redesSociaisText já cacheado, sem chamar getSocialPromoText de novo", async () => {
+    dbMock.registration.findUnique.mockResolvedValueOnce({ /* mesmo shape, eventId: "event-1" */ });
+
+    const result = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      redesSociaisText: "Texto já resolvido antes",
+    });
+
+    expect(getSocialPromoText).not.toHaveBeenCalled();
+    expect(result.values.redes_sociais).toBe("Texto já resolvido antes");
+    expect(result.redesSociaisText).toBeUndefined();
+  });
+```
+
+(Copie o `select` mock completo de `db.registration.findUnique` de um teste já existente neste
+arquivo — só acrescente `eventId: "event-1"` no objeto retornado, e ajuste conforme o Step 5
+alterar o `select` real.)
+
+- [ ] **Step 4: Rodar e confirmar que falha**
+
+Rode: `npx vitest run tests/campaigns-resolve-recipient-variables.test.ts`.
+
+- [ ] **Step 5: Modificar `lib/campaigns/resolve-recipient-variables.ts`**
+
+Adicione os imports no topo:
+
+```ts
+import { getSponsorPromoText } from "@/lib/event-sponsors";
+import { getSocialPromoText } from "@/lib/event-social-links";
+```
+
+No `select` de `db.registration.findUnique`, adicione `eventId: true` na raiz (junto de `status`,
+`createdAt`, `bibNumber`, `teamName`):
+
+```ts
+    select: {
+      status: true,
+      createdAt: true,
+      bibNumber: true,
+      teamName: true,
+      eventId: true,
+```
+
+Troque a assinatura da função e o `return` final. De:
+
+```ts
+export async function resolveCampaignRecipientVariables(recipient: {
+  athleteUserId: string;
+  registrationId: string | null;
+}): Promise<Record<string, string>> {
+```
+
+para:
+
+```ts
+export async function resolveCampaignRecipientVariables(recipient: {
+  athleteUserId: string;
+  registrationId: string | null;
+  redesSociaisText?: string | null;
+}): Promise<{ values: Record<string, string>; redesSociaisText?: string }> {
+```
+
+Todo `return values;` existente (o early-return de `registrationId === null`, e o de
+`!registration`) vira `return { values };` (sem 2º campo — patrocínio/redes_sociais só fazem
+sentido quando há uma inscrição/evento real).
+
+Antes do `return` final (depois de `values.codigo_confirmacao = ...`), adicione:
+
+```ts
+  values.patrocinio = await getSponsorPromoText(registration.eventId);
+
+  let redesSociaisText: string | undefined;
+  if (recipient.redesSociaisText != null) {
+    values.redes_sociais = recipient.redesSociaisText;
+  } else {
+    const resolved = await getSocialPromoText(registration.eventId, recipient.athleteUserId);
+    values.redes_sociais = resolved;
+    redesSociaisText = resolved;
+  }
+
+  return { values, redesSociaisText };
+```
+
+- [ ] **Step 6: Rodar e confirmar que passa**
+
+Rode: `npx vitest run tests/campaigns-resolve-recipient-variables.test.ts`.
+
+- [ ] **Step 7: Liberar as 2 variáveis no catálogo**
+
+Em `lib/campaigns/variables.ts`, remova `"patrocinio"` e `"redes_sociais"` do `EXCLUDED_NAMES`, e
+atualize o comentário logo acima da constante (que hoje afirma que as duas têm efeito colateral —
+isso está incorreto pra patrocínio) pra algo como:
+
+```ts
+/** redes_sociais tem efeito colateral real (incrementa cota de envio por link, via
+ * getSocialPromoText) — o worker de campanha (app/api/cron/send-campaign-messages/route.ts)
+ * resolve essa variável só na 1ª tentativa de cada destinatário e reaproveita o valor cacheado
+ * (CampaignRecipient.redesSociaisText) nas tentativas seguintes, pra nunca incrementar a cota
+ * mais de uma vez pela mesma mensagem. patrocinio (getSponsorPromoText) não tem efeito colateral
+ * nem limite por destinatário — resolve sempre, sem cache.
+ *
+ * As demais entradas abaixo são variáveis específicas de UM alerta pontual (resumo diário,
+ * carrinho abandonado, inscrição por procuração) que resolveCampaignRecipientVariables
+ * (lib/campaigns/resolve-recipient-variables.ts) nunca resolve — oferecê-las aqui faria o texto
+ * sair com o campo em branco num envio real, já que renderTemplate substitui variável não
+ * resolvida por "" silenciosamente. Se um novo alerta específico ganhar uma variável nova que
+ * compartilhe categoria com uma variável de campanha, adicione o nome aqui também. */
+```
+
+- [ ] **Step 8: Modificar o worker (`app/api/cron/send-campaign-messages/route.ts`)**
+
+Troque a linha:
+
+```ts
+    const values = await resolveCampaignRecipientVariables({
+      athleteUserId: recipient.athleteUserId,
+      registrationId: recipient.registrationId,
+    });
+```
+
+por:
+
+```ts
+    const { values, redesSociaisText } = await resolveCampaignRecipientVariables({
+      athleteUserId: recipient.athleteUserId,
+      registrationId: recipient.registrationId,
+      redesSociaisText: recipient.redesSociaisText,
+    });
+    // Se redes_sociais foi resolvida fresca nesta tentativa (getSocialPromoText já incrementou a
+    // cota de verdade), persiste ANTES de tentar o envio — assim, se o envio falhar e for tentado
+    // de novo, a próxima tentativa reaproveita o valor já cacheado em vez de incrementar a cota
+    // outra vez pela mesma mensagem que ainda não foi (ou nunca será) entregue.
+    if (redesSociaisText !== undefined) {
+      await db.campaignRecipient.update({ where: { id: recipient.id }, data: { redesSociaisText } });
+    }
+```
+
+(Este bloco fica dentro do mesmo `try` que já existe — se a persistência falhar, cai no mesmo
+catch/retry de sempre, sem risco de destinatário preso em `PROCESSING`.)
+
+- [ ] **Step 9: Escrever os testes falhando pro worker**
+
+Em `tests/cron-send-campaign-messages-route.test.ts`, ajuste o mock de
+`resolveCampaignRecipientVariables` no topo (hoje provavelmente
+`vi.fn().mockResolvedValue({ nome_atleta: "Maria" })`) pra devolver a nova forma
+`{ values: { nome_atleta: "Maria" } }` em todos os testes existentes que dependem do valor
+default (rode a suíte depois de ajustar e veja o que quebra). Adicione 2 casos novos no describe
+principal:
+
+```ts
+  it("persiste redesSociaisText no CampaignRecipient quando resolvido fresco, antes de tentar o envio", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1", redesSociaisText: null,
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá" });
+    vi.mocked(resolveCampaignRecipientVariables).mockResolvedValueOnce({
+      values: { nome_atleta: "Maria" },
+      redesSociaisText: "Segue no Instagram!",
+    });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith({
+      where: { id: "rec-1" },
+      data: { redesSociaisText: "Segue no Instagram!" },
+    });
+  });
+
+  it("não persiste redesSociaisText quando o valor já veio cacheado (redesSociaisText undefined no retorno)", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1", redesSociaisText: "já resolvido antes",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá" });
+    vi.mocked(resolveCampaignRecipientVariables).mockResolvedValueOnce({
+      values: { nome_atleta: "Maria" },
+    });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(dbMock.campaignRecipient.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ redesSociaisText: expect.anything() }) }),
+    );
+  });
+```
+
+- [ ] **Step 10: Rodar e confirmar que passa**
+
+Rode: `npx vitest run tests/cron-send-campaign-messages-route.test.ts`.
+
+- [ ] **Step 11: Rodar a suíte inteira e confirmar que não há regressão**
+
+Rode: `npx vitest run`.
+
+- [ ] **Step 12: Commit**
+
+```bash
+git add prisma/schema.prisma tests/campaigns-resolve-recipient-variables.test.ts tests/cron-send-campaign-messages-route.test.ts lib/campaigns/variables.ts lib/campaigns/resolve-recipient-variables.ts app/api/cron/send-campaign-messages/route.ts
+git add -f prisma/migrations/20260824000000_add_campaign_recipient_redes_sociais_text/migration.sql
+git commit -m "feat: libera patrocinio/redes_sociais em campanhas, com cache de cota de redes_sociais no 1o envio"
+```
+
+---
+
+### Task 6: Backend — variáveis de evento em campanha de plataforma + guarda no envio
 
 **Files:**
 - Modify: `lib/campaigns/variables.ts`
@@ -1249,7 +1578,7 @@ git commit -m "feat: libera variaveis de evento em campanha de plataforma, com g
 
 ---
 
-### Task 6: UI — preview ao vivo no formulário de criação
+### Task 7: UI — preview ao vivo no formulário de criação
 
 **Files:**
 - Modify: `components/campaigns/CampaignsManager.tsx`
