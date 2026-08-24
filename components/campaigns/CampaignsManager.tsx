@@ -87,6 +87,8 @@ export default function CampaignsManager({
   const [pausing, setPausing] = useState(false);
   const [resumingConfirmId, setResumingConfirmId] = useState<string | null>(null);
   const [resuming, setResuming] = useState(false);
+  const [deletingConfirmId, setDeletingConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
   const [preparingConfirmId, setPreparingConfirmId] = useState<string | null>(null);
@@ -299,6 +301,26 @@ export default function CampaignsManager({
     await reload();
   }
 
+  function canDeleteCampaign(campaignId: string): boolean {
+    const summary = recipientSummaries[campaignId];
+    if (!summary) return true;
+    return (summary.sent ?? 0) + (summary.delivered ?? 0) + (summary.read ?? 0) + (summary.failed ?? 0) === 0;
+  }
+
+  async function doDelete() {
+    if (!deletingConfirmId) return;
+    setDeleting(true);
+    const res = await fetch(`${apiBase}/${deletingConfirmId}`, { method: "DELETE" });
+    setDeleting(false);
+    setDeletingConfirmId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao excluir campanha");
+      return;
+    }
+    await reload();
+  }
+
   async function doPause() {
     if (!pausingConfirmId) return;
     setPausing(true);
@@ -501,6 +523,17 @@ export default function CampaignsManager({
         loading={canceling}
         onConfirm={doCancel}
         onCancel={() => setCancelingId(null)}
+      />
+
+      <ConfirmModal
+        open={!!deletingConfirmId}
+        title="Excluir campanha"
+        message="Isso vai apagar esta campanha permanentemente — diferente de cancelar, que só muda o status. Essa ação não pode ser desfeita. Deseja continuar?"
+        confirmLabel="Excluir"
+        tone="danger"
+        loading={deleting}
+        onConfirm={doDelete}
+        onCancel={() => setDeletingConfirmId(null)}
       />
 
       <ConfirmModal
@@ -1022,6 +1055,11 @@ export default function CampaignsManager({
                   <button onClick={() => void doDuplicate(campaign.id)} className="text-gray-600 hover:text-gray-800 text-sm">
                     Duplicar
                   </button>
+                  {canDeleteCampaign(campaign.id) && (
+                    <button onClick={() => setDeletingConfirmId(campaign.id)} className="text-red-700 hover:text-red-900 text-sm">
+                      Excluir
+                    </button>
+                  )}
                 </div>
               </div>
               {recipientSummaries[campaign.id] && (
