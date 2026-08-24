@@ -525,16 +525,18 @@ export default function CampaignsManager({
         onCancel={() => setResumingConfirmId(null)}
       />
 
-      <ConfirmModal
-        open={confirmingSendToNumber}
-        title="Enviar para número específico"
-        message={`Isso vai enviar uma mensagem de WhatsApp real e imediata para ${sendToNumberInput}, sem passar pela fila de campanha. Essa ação não pode ser desfeita. Deseja continuar?`}
-        confirmLabel="Enviar"
-        tone="danger"
-        loading={sendingToNumber}
-        onConfirm={doSendToNumber}
-        onCancel={() => setConfirmingSendToNumber(false)}
-      />
+      <div className="relative z-[60]">
+        <ConfirmModal
+          open={confirmingSendToNumber}
+          title="Enviar para número específico"
+          message={`Isso vai enviar uma mensagem de WhatsApp real e imediata para ${sendToNumberInput}, sem passar pela fila de campanha. Essa ação não pode ser desfeita. Deseja continuar?`}
+          confirmLabel="Enviar"
+          tone="danger"
+          loading={sendingToNumber}
+          onConfirm={doSendToNumber}
+          onCancel={() => setConfirmingSendToNumber(false)}
+        />
+      </div>
 
       <ConfirmModal
         open={!!preparingConfirmId}
