@@ -64,10 +64,12 @@ export default function CampaignsManager({
   apiBase,
   backHref,
   scopeLabel,
+  allowManualRecipients = false,
 }: {
   apiBase: string;
   backHref: string;
   scopeLabel: string;
+  allowManualRecipients?: boolean;
 }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +90,14 @@ export default function CampaignsManager({
   const [actionError, setActionError] = useState<string | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
   const [preparingConfirmId, setPreparingConfirmId] = useState<string | null>(null);
+  const [manualSelectId, setManualSelectId] = useState<string | null>(null);
+  const [manualSearch, setManualSearch] = useState("");
+  const [manualRows, setManualRows] = useState<{ id: string; name: string; email: string; phone: string | null }[]>([]);
+  const [manualPage, setManualPage] = useState(1);
+  const [manualTotalPages, setManualTotalPages] = useState(1);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualSelectedIds, setManualSelectedIds] = useState<Set<string>>(new Set());
+  const [manualPreparing, setManualPreparing] = useState(false);
   const [recipientSummaries, setRecipientSummaries] = useState<Record<string, PrepareSummary>>({});
   const [variables, setVariables] = useState<VariableDef[]>([]);
   const [alertOptions, setAlertOptions] = useState<AlertOption[]>([]);
@@ -333,6 +343,67 @@ export default function CampaignsManager({
     setRecipientSummaries((prev) => ({ ...prev, [campaignId]: data.summary }));
   }
 
+  async function loadManualDirectory(page: number, q: string) {
+    setManualLoading(true);
+    const params = new URLSearchParams({ page: String(page) });
+    if (q) params.set("q", q);
+    const res = await fetch(`/api/admin/campaigns/recipients-directory?${params}`);
+    setManualLoading(false);
+    if (!res.ok) return;
+    const data = await res.json();
+    setManualRows(data.rows);
+    setManualPage(data.page);
+    setManualTotalPages(data.totalPages);
+  }
+
+  function openManualSelect(campaignId: string) {
+    setManualSelectId(campaignId);
+    setManualSearch("");
+    setManualSelectedIds(new Set());
+    void loadManualDirectory(1, "");
+  }
+
+  async function selectAllManual() {
+    const params = new URLSearchParams();
+    if (manualSearch) params.set("q", manualSearch);
+    const res = await fetch(`/api/admin/campaigns/recipients-directory/ids?${params}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setManualSelectedIds(new Set<string>(data.ids));
+  }
+
+  function deselectAllManual() {
+    setManualSelectedIds(new Set());
+  }
+
+  function toggleManualId(id: string) {
+    setManualSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function confirmManualPrepare() {
+    if (!manualSelectId) return;
+    setManualPreparing(true);
+    const res = await fetch(`${apiBase}/${manualSelectId}/prepare-recipients`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ athleteUserIds: Array.from(manualSelectedIds) }),
+    });
+    setManualPreparing(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao preparar destinatários");
+      return;
+    }
+    const data = await res.json();
+    setRecipientSummaries((prev) => ({ ...prev, [manualSelectId]: data.summary }));
+    setManualSelectId(null);
+  }
+
   async function doPreview() {
     if (!editId) return;
     setPreviewLoading(true);
@@ -472,6 +543,105 @@ export default function CampaignsManager({
             <div className="flex justify-end">
               <button type="button" onClick={() => setPreviewResult(null)} className="btn-secondary text-sm px-4">
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manualSelectId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setManualSelectId(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg mx-4 space-y-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Selecionar destinatários</h2>
+            <div className="flex gap-2">
+              <input
+                value={manualSearch}
+                onChange={(e) => setManualSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void loadManualDirectory(1, manualSearch);
+                }}
+                placeholder="Buscar por nome, e-mail ou telefone"
+                className="input flex-1 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => void loadManualDirectory(1, manualSearch)}
+                className="btn-secondary text-sm px-3"
+              >
+                Buscar
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">{manualSelectedIds.size} selecionado(s)</span>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => void selectAllManual()} className="text-blue-600 hover:text-blue-800">
+                  Marcar todos
+                </button>
+                <button type="button" onClick={deselectAllManual} className="text-gray-600 hover:text-gray-800">
+                  Desmarcar todos
+                </button>
+              </div>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
+              {manualLoading ? (
+                <p className="p-3 text-sm text-gray-500">Carregando...</p>
+              ) : manualRows.length === 0 ? (
+                <p className="p-3 text-sm text-gray-500">Nenhum atleta encontrado.</p>
+              ) : (
+                manualRows.map((row) => (
+                  <label key={row.id} className="flex items-center gap-2 p-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={manualSelectedIds.has(row.id)} onChange={() => toggleManualId(row.id)} />
+                    <span className="flex-1">
+                      {row.name} <span className="text-gray-400">— {row.phone ?? "sem telefone"}</span>
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+            {manualTotalPages > 1 && (
+              <div className="flex items-center justify-between text-sm">
+                <button
+                  type="button"
+                  disabled={manualPage <= 1}
+                  onClick={() => void loadManualDirectory(manualPage - 1, manualSearch)}
+                  className="btn-secondary text-sm px-3 disabled:opacity-50"
+                >
+                  ‹ Anterior
+                </button>
+                <span className="text-gray-500">
+                  Página {manualPage} de {manualTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={manualPage >= manualTotalPages}
+                  onClick={() => void loadManualDirectory(manualPage + 1, manualSearch)}
+                  className="btn-secondary text-sm px-3 disabled:opacity-50"
+                >
+                  Próxima ›
+                </button>
+              </div>
+            )}
+            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => setManualSelectId(null)}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmManualPrepare()}
+                disabled={manualPreparing || manualSelectedIds.size === 0}
+                className="btn-primary text-sm px-4 disabled:opacity-50"
+              >
+                {manualPreparing ? "Preparando..." : `Preparar com ${manualSelectedIds.size} destinatário(s)`}
               </button>
             </div>
           </div>
@@ -767,6 +937,14 @@ export default function CampaignsManager({
                       >
                         {preparingId === campaign.id ? "Preparando..." : "Preparar destinatários"}
                       </button>
+                      {allowManualRecipients && (
+                        <button
+                          onClick={() => openManualSelect(campaign.id)}
+                          className="text-green-700 hover:text-green-900 text-sm"
+                        >
+                          Selecionar destinatários
+                        </button>
+                      )}
                     </>
                   )}
                   {campaign.status === "SCHEDULED" && (

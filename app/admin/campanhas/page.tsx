@@ -8,6 +8,7 @@ export default function AdminPlatformCampaignsPage() {
       apiBase="/api/admin/campaigns"
       backHref="/admin"
       scopeLabel="pra toda a base de atletas da plataforma"
+      allowManualRecipients
     />
   );
 }
