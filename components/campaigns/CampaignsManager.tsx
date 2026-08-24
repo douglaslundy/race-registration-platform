@@ -698,6 +698,11 @@ export default function CampaignsManager({
                       </button>
                     </>
                   )}
+                  {campaign.status === "SCHEDULED" && (
+                    <button onClick={() => setCancelingId(campaign.id)} className="text-red-500 hover:text-red-700 text-sm">
+                      Cancelar
+                    </button>
+                  )}
                   <button onClick={() => void doDuplicate(campaign.id)} className="text-gray-600 hover:text-gray-800 text-sm">
                     Duplicar
                   </button>

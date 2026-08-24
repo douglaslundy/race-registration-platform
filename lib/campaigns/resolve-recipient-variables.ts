@@ -37,7 +37,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
     nome_plataforma: await getAppName(),
     email_suporte: (await getSetting("support_email")) ?? "",
     telefone_suporte: (await getSetting("support_phone")) ?? "",
-    link_plataforma: process.env.NEXT_PUBLIC_APP_URL ?? "",
+    link_plataforma: process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "",
     ano_atual: String(new Date().getFullYear()),
   };
 
@@ -81,7 +81,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
   values.cidade_evento = registration.event.city;
   values.estado_evento = registration.event.state;
   values.endereco_evento = registration.event.addressLine ?? "";
-  values.link_evento = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/eventos/${registration.event.slug}`;
+  values.link_evento = `${process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? ""}/eventos/${registration.event.slug}`;
   values.nome_organizador = registration.event.organizer.user.name;
   values.email_organizador = registration.event.organizer.user.email;
   values.telefone_organizador = registration.event.organizer.phone ?? "";
