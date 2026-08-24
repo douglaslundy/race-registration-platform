@@ -244,7 +244,10 @@ describe("POST /api/cron/send-campaign-messages", () => {
     dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
       id: "rec-1", athleteUserId: "athlete-1", registrationId: null, campaignId: "campaign-1",
     });
-    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá" });
+    // Nota: não mocka campaign.findFirst aqui de propósito — o ramo OPTED_OUT retorna logo após
+    // db.user.findUnique, antes de db.campaign.findFirst ser chamado neste caminho. Um
+    // mockResolvedValueOnce nunca seria consumido e vazaria (não-consumido) pro próximo teste, já
+    // que vi.clearAllMocks() não limpa a fila de retornos "Once" pendentes.
     dbMock.user.findUnique.mockResolvedValueOnce({ receivePromotionalMessages: false });
 
     await POST(makeRequest());
