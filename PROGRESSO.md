@@ -1,6 +1,26 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-24, mais recente — cron de campanhas ativado, incidente de deploy corrigido)
+## Última atualização (2026-08-24, mais recente — 2 lacunas menores da Fase F corrigidas, commit LOCAL)
+
+Usuário pediu pra resolver os itens pendentes do sub-projeto de campanhas. Corrigidos os 2 dos 3 Minors
+da revisão final da Fase F que valiam a pena (bounded, sem plano formal, TDD):
+
+1. **Reivindicação atômica do worker** (`app/api/cron/send-campaign-messages/route.ts`) agora também
+   re-checa `campaign.status === "RUNNING"` no `WHERE` da reivindicação (não só o `id`/`status` do
+   destinatário) — fecha a janela de milissegundos onde pausar uma campanha bem no instante de uma
+   reivindicação deixava 1 mensagem a mais sair.
+2. **Varredura de conclusão** agora também considera campanhas `PAUSED` com zero destinatários
+   pendentes (antes só `RUNNING`) — uma campanha pausada que já não tinha mais nada pendente vira
+   `COMPLETED` sozinha, em vez de ficar `PAUSED` pra sempre até alguém retomar manualmente.
+
+O 3º Minor (falta teste de integração pausar→retomar→worker) foi deliberadamente NÃO criado — seria
+introduzir um padrão de teste e2e que o projeto inteiro não usa em nenhum outro lugar.
+
+Suite completa verde (249 arquivos / 1808 testes), `tsc --noEmit` limpo. Commit `10f3a90`, **local,
+NÃO pushado nem deployado** — usuário escolheu explicitamente manter local por enquanto quando
+perguntado. Isso encerra tudo que se sabia estar pendente no sub-projeto de campanhas de WhatsApp.
+
+## Última atualização (2026-08-24, item anterior — cron de campanhas ativado, incidente de deploy corrigido)
 
 Usuário pediu pra ativar o cron real de campanhas (`/api/cron/send-campaign-messages`) — adicionado ao
 crontab da VPS (`* * * * * /opt/corridas/cron-jobs.sh send-campaign-messages`).
