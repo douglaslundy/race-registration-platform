@@ -191,6 +191,7 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     dbMock.campaign.findFirst.mockResolvedValue({ ...platformDraftCampaign });
+    dbMock.user.findMany.mockResolvedValue([]);
   });
 
   function makeRequest(body: unknown) {
@@ -239,5 +240,46 @@ describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
     expect(res.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
     expect(dbMock.campaignRecipient.createMany).not.toHaveBeenCalled();
+  });
+
+  it("rejeita quando o número bate com o telefone de um atleta que optou por não receber", async () => {
+    // "+5511988888888" e "11988888888" normalizam pro mesmo valor sob o mock de
+    // normalizePhoneForWhatsApp deste arquivo (que só lida com prefixo +/55, sem stripar formatação).
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { receivePromotionalMessages: false, athleteProfile: { phone: "+5511988888888" } },
+    ]);
+
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "11988888888" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error).toContain("optou por não receber");
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it("não bloqueia quando o candidato encontrado optou por receber (ou não há candidatos)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { receivePromotionalMessages: true, athleteProfile: { phone: "+5511988888888" } },
+    ]);
+
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "11988888888" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.any(String), "CAMPAIGN_MESSAGE");
+  });
+
+  it("registra auditoria CAMPAIGN_SENT_TO_NUMBER num envio bem-sucedido", async () => {
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "11988888888" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "CAMPAIGN_SENT_TO_NUMBER" }) }),
+    );
   });
 });
