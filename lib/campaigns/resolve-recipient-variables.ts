@@ -16,7 +16,10 @@ function firstName(fullName: string): string {
  * (getSocialPromoText) TEM efeito colateral real (incrementa cota de envio por link) — por isso as
  * duas só são chamadas quando `recipient.messageBody` realmente contém o token correspondente
  * (`{{patrocinio}}`/`{{redes_sociais}}`); chamar incondicionalmente queimaria cota real de
- * redes_sociais em campanhas comuns que nunca mencionam essas variáveis. Quando
+ * redes_sociais em campanhas comuns que nunca mencionam essas variáveis. `redes_sociais` é resolvida
+ * com `{ bypassQuota: true }` — uma campanha é um disparo deliberado do operador e deve incluir o
+ * texto sempre, mesmo que o atleta já tenha atingido o limite de envios daquele link (limite que só
+ * vale pros alertas transacionais). Quando
  * `recipient.redesSociaisText` já vem preenchido (valor cacheado de uma tentativa anterior), reusa
  * esse valor sem chamar getSocialPromoText de novo; só resolve fresco (e retorna o valor resolvido
  * em `redesSociaisText`, pro chamador persistir) quando ainda não havia sido resolvido antes. */
@@ -124,7 +127,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
     if (recipient.redesSociaisText != null) {
       values.redes_sociais = recipient.redesSociaisText;
     } else {
-      const resolved = await getSocialPromoText(registration.eventId, recipient.athleteUserId);
+      const resolved = await getSocialPromoText(registration.eventId, recipient.athleteUserId, { bypassQuota: true });
       values.redes_sociais = resolved;
       redesSociaisText = resolved;
     }

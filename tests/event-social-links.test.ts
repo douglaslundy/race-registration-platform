@@ -77,6 +77,29 @@ describe("getSocialPromoText", () => {
     expect(result).toBe("Segue no Insta! https://instagram.com/corrida\n\nBora no Strava! https://strava.com/routes/1");
   });
 
+  it("com bypassQuota: inclui os links mesmo se o atleta já bateu o limite, sem checar nem incrementar", async () => {
+    dbMock.eventSocialLink.findMany.mockResolvedValueOnce([
+      { id: "link-1", message: "Segue no Insta!", url: "https://instagram.com/corrida", maxSends: 1 },
+    ]);
+
+    const result = await getSocialPromoText("event-1", "user-1", { bypassQuota: true });
+
+    expect(result).toBe("Segue no Insta! https://instagram.com/corrida");
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("com bypassQuota: concatena vários links sem tocar na cota", async () => {
+    dbMock.eventSocialLink.findMany.mockResolvedValueOnce([
+      { id: "link-1", message: "Segue no Insta!", url: "https://instagram.com/corrida", maxSends: 1 },
+      { id: "link-2", message: "Bora no Strava!", url: "https://strava.com/routes/1", maxSends: 1 },
+    ]);
+
+    const result = await getSocialPromoText("event-1", "user-1", { bypassQuota: true });
+
+    expect(result).toBe("Segue no Insta! https://instagram.com/corrida\n\nBora no Strava! https://strava.com/routes/1");
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
   it("busca só links ativos do evento", async () => {
     dbMock.eventSocialLink.findMany.mockResolvedValueOnce([]);
 

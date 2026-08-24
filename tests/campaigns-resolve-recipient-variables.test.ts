@@ -232,7 +232,7 @@ describe("resolveCampaignRecipientVariables", () => {
       messageBody: "Segue {{redes_sociais}}!",
     });
 
-    expect(getSocialPromoText).toHaveBeenCalledWith("event-1", "athlete-1");
+    expect(getSocialPromoText).toHaveBeenCalledWith("event-1", "athlete-1", { bypassQuota: true });
     expect(result.values.redes_sociais).toBe("Segue no Instagram!");
     expect(result.redesSociaisText).toBe("Segue no Instagram!");
   });
