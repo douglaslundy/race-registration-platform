@@ -398,7 +398,7 @@ export default function CampaignsManager({
     setAppliedManualSearch("");
     setManualEventId("");
     setManualSelectedIds(new Set());
-    void loadManualDirectory(1, "");
+    void loadManualDirectory(1, "", "");
     void fetch("/api/admin/campaigns/events-directory")
       .then((res) => (res.ok ? res.json() : { rows: [] }))
       .then((data) => setManualEventOptions(data.rows ?? []));
