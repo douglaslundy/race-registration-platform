@@ -331,8 +331,19 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
     if (recipients.length === 0) return { sent, failed };
 
     const eventIds = [...new Set(recipients.map((r) => r.eventId as string))];
-    const events = await db.event.findMany({ where: { id: { in: eventIds } }, select: { id: true, title: true } });
+    const events = await db.event.findMany({
+      where: { id: { in: eventIds } },
+      select: { id: true, title: true, status: true, startAt: true },
+    });
     const eventTitleMap = new Map(events.map((e) => [e.id, e.title]));
+    // Um evento "encerrado" (a corrida já aconteceu — startAt cai num dia ANTES do dia sendo
+    // resumido — ou foi cancelado) não deve mais gerar resumo diário: sem isso, o contato configurado
+    // continua recebendo mensagem todo dia pra sempre, mesmo anos depois do evento, até alguém lembrar
+    // de remover o contato manualmente na tela de configuração. O dia do próprio evento (startAt cai
+    // dentro de [dayStart, dayEnd)) ainda gera o resumo final — só os dias DEPOIS do evento param.
+    const activeEventIds = new Set(
+      events.filter((e) => e.status !== "CANCELLED" && e.startAt >= dayStart).map((e) => e.id),
+    );
 
     const cfg = await getSmtpConfig();
     const smtpReady = isSmtpReady(cfg);
@@ -340,9 +351,11 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
     const dateLabel = formatDateLabel(dayStart);
 
     // Calcula a métrica UMA vez por evento (não uma vez por contato) — vários contatos do mesmo
-    // evento reaproveitam o mesmo resultado.
+    // evento reaproveitam o mesmo resultado. Eventos encerrados/cancelados nem entram aqui — economiza
+    // a consulta de métricas pra um evento que não vai gerar mensagem nenhuma de qualquer forma.
     const metricsCache = new Map<string, EventDailySummary>();
     for (const eventId of eventIds) {
+      if (!activeEventIds.has(eventId)) continue;
       try {
         metricsCache.set(eventId, await getEventDailySummary(eventId, dayStart, dayEnd));
       } catch (err) {
@@ -352,6 +365,9 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
 
     for (const recipient of recipients) {
       const eventId = recipient.eventId as string;
+      // Evento encerrado/cancelado: pula silenciosamente, sem contar como falha — não é um erro,
+      // é o comportamento esperado depois que a corrida acontece.
+      if (!activeEventIds.has(eventId)) continue;
       const metrics = metricsCache.get(eventId);
       if (!metrics) {
         failed++;

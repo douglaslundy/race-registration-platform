@@ -548,7 +548,9 @@ describe("sendEventDailySummaries", () => {
       { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
       { id: "r2", name: "João", type: "WHATSAPP", value: "5511999999999", eventId: "event-1" },
     ]);
-    dbMock.event.findMany.mockResolvedValueOnce([{ id: "event-1", title: "Corrida X" }]);
+    dbMock.event.findMany.mockResolvedValueOnce([
+      { id: "event-1", title: "Corrida X", status: "REGISTRATIONS_CLOSED", startAt: new Date("2026-07-12T10:00:00.000Z") },
+    ]);
 
     const result = await sendEventDailySummaries(dayStart, dayEnd);
 
@@ -569,11 +571,58 @@ describe("sendEventDailySummaries", () => {
     dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([
       { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
     ]);
-    dbMock.event.findMany.mockResolvedValueOnce([{ id: "event-1", title: "Corrida X" }]);
+    dbMock.event.findMany.mockResolvedValueOnce([
+      { id: "event-1", title: "Corrida X", status: "REGISTRATIONS_CLOSED", startAt: new Date("2026-07-12T10:00:00.000Z") },
+    ]);
 
     const result = await sendEventDailySummaries(dayStart, dayEnd);
 
     expect(sendEventDailySummaryEmail).not.toHaveBeenCalled();
     expect(result).toEqual({ sent: 0, failed: 0 });
+  });
+
+  it("não envia resumo pra evento encerrado (startAt antes do dia sendo resumido)", async () => {
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([
+      { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
+    ]);
+    dbMock.event.findMany.mockResolvedValueOnce([
+      { id: "event-1", title: "Corrida X", status: "REGISTRATIONS_CLOSED", startAt: new Date("2026-07-01T10:00:00.000Z") },
+    ]);
+
+    const result = await sendEventDailySummaries(dayStart, dayEnd);
+
+    expect(getEventDailySummary).not.toHaveBeenCalled();
+    expect(sendEventDailySummaryEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ sent: 0, failed: 0 });
+  });
+
+  it("não envia resumo pra evento cancelado, mesmo com startAt no futuro", async () => {
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([
+      { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
+    ]);
+    dbMock.event.findMany.mockResolvedValueOnce([
+      { id: "event-1", title: "Corrida X", status: "CANCELLED", startAt: new Date("2026-09-01T10:00:00.000Z") },
+    ]);
+
+    const result = await sendEventDailySummaries(dayStart, dayEnd);
+
+    expect(getEventDailySummary).not.toHaveBeenCalled();
+    expect(sendEventDailySummaryEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ sent: 0, failed: 0 });
+  });
+
+  it("ainda envia o resumo do próprio dia da corrida (startAt dentro do dia sendo resumido)", async () => {
+    dbMock.dailySummaryRecipient.findMany.mockResolvedValueOnce([
+      { id: "r1", name: "Maria", type: "EMAIL", value: "maria@example.com", eventId: "event-1" },
+    ]);
+    dbMock.event.findMany.mockResolvedValueOnce([
+      { id: "event-1", title: "Corrida X", status: "REGISTRATIONS_CLOSED", startAt: new Date("2026-07-12T23:00:00.000Z") },
+    ]);
+
+    const result = await sendEventDailySummaries(dayStart, dayEnd);
+
+    expect(getEventDailySummary).toHaveBeenCalledWith("event-1", dayStart, dayEnd);
+    expect(sendEventDailySummaryEmail).toHaveBeenCalled();
+    expect(result).toEqual({ sent: 1, failed: 0 });
   });
 });
