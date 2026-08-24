@@ -18,9 +18,11 @@ final limpa (3 Menores documentados, todos autocorretivos, decidi não corrigir 
 
 Suite completa verde (249 arquivos / 1806 testes), `tsc --noEmit` limpo, em ambas as fases.
 
-**Estado do git**: tudo local em `main`, ainda não pushado (a Fase D anterior já tinha sido pushada em
-`580ce64..2bbe34f`; E e F são commits novos por cima disso, ainda não enviados). Próximo passo: perguntar
-ao usuário sobre push/deploy (estava aguardando terminar E+F antes de decidir).
+**Push + deploy confirmados**: `git push origin main` (`2bbe34f..7cadf0f`), depois `/opt/corridas/deploy.sh`
+na VPS (sem mudança de schema/migração nesta leva — Fase E e F não tocaram `prisma/schema.prisma`).
+Build e restart do container `corridas-app` ok ("Ready in 0ms"), logs limpos sem erro. **O cron novo de
+campanhas continua NÃO ativado** (autorização separada, pendente, como sempre) — nenhuma mensagem real de
+campanha sai até isso ser pedido explicitamente.
 
 ## Última atualização (2026-08-24, item anterior — Fase D pushada pro GitHub, deploy NÃO feito ainda)
 
