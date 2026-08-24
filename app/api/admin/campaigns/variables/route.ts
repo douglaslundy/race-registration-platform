@@ -11,5 +11,5 @@ export async function GET(_req: NextRequest) {
   const context = await resolveCampaignListContext({ session, eventId: null });
   if (!context.ok) return context.response;
 
-  return NextResponse.json({ variables: getAllowedCampaignVariables(null) });
+  return NextResponse.json({ variables: getAllowedCampaignVariables(null, true) });
 }

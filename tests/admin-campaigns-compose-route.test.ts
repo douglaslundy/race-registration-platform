@@ -34,13 +34,13 @@ describe("GET /api/admin/campaigns/variables", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
   });
 
-  it("não inclui variáveis de Evento numa campanha de plataforma", async () => {
+  it("inclui variáveis de Evento no catálogo de uma campanha de plataforma (guarda de uso real fica pro agendar/disparar, não pro catálogo)", async () => {
     const res = await VARIABLES(new Request("http://localhost") as any);
     const data = await res.json();
 
     expect(res.status).toBe(200);
     const names = data.variables.map((v: any) => v.name);
-    expect(names).not.toContain("nome_evento");
+    expect(names).toContain("nome_evento");
     expect(names).toContain("nome_atleta");
   });
 
@@ -60,19 +60,16 @@ describe("GET /api/admin/campaigns/alert-options", () => {
     dbMock.messageTemplate.findFirst.mockResolvedValue(null);
   });
 
-  it("filtra alertas cujo texto usa variáveis fora do escopo de plataforma (eventId null)", async () => {
+  it("inclui alertas WHATSAPP de atleta/comprador que usam variáveis de categoria Evento numa campanha de plataforma (eventId null)", async () => {
     const res = await ALERT_OPTIONS(new Request("http://localhost") as any);
     const data = await res.json();
 
     expect(res.status).toBe(200);
     const keys = data.options.map((o: any) => o.alertKey);
-    // Todos os alertas WHATSAPP voltados a atleta/comprador (ORDER_CONFIRMED e afins) usam
-    // {{nome_evento}} (categoria Evento), que só é permitida quando a campanha tem um evento
-    // associado — numa campanha de plataforma inteira (eventId null) nenhum deles cabe, então a
-    // lista fica vazia.
-    expect(keys).not.toContain("ORDER_CONFIRMED");
-    expect(keys).not.toContain("RECONCILIATION_MISMATCH");
-    expect(data.options).toEqual([]);
+    // getAllowedCampaignVariableNames(null, true) libera a categoria Evento pro catálogo de
+    // alert-options de campanha de plataforma, igual já valia pro create/edit da campanha (task 6)
+    // — o alerta ORDER_CONFIRMED usa {{nome_evento}} e agora aparece como opção.
+    expect(keys).toContain("ORDER_CONFIRMED");
   });
 });
 

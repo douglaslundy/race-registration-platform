@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest) {
     }),
   );
 
-  const allowedVariables = getAllowedCampaignVariableNames(null);
+  const allowedVariables = getAllowedCampaignVariableNames(null, true);
   const options = resolved.filter((opt) => validateTemplateVariables(opt.body, allowedVariables).valid);
 
   return NextResponse.json({ options });
