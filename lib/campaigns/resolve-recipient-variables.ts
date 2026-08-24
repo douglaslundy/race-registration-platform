@@ -84,6 +84,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
   values.numero_peito = registration.bibNumber ?? "";
   values.equipe_inscricao = registration.teamName ?? "";
   values.distancia_percurso = registration.route?.distanceKm ? `${registration.route.distanceKm} km` : "";
+  values.qrcode_inscricao = "";
   values.nome_evento = registration.event.title;
   values.descricao_evento = registration.event.description ?? "";
   values.data_evento = formatDate(registration.event.startAt);

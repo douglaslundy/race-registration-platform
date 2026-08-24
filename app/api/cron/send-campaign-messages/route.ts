@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
   sendWhatsAppMessage,
+  sendWhatsAppDocument,
   buildPreferencesFooterText,
   normalizePhoneForWhatsApp,
   isValidWhatsAppPhone,
 } from "@/lib/whatsapp";
+import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 import { renderTemplate } from "@/lib/templates/render";
 import { resolveCampaignRecipientVariables } from "@/lib/campaigns/resolve-recipient-variables";
 import {
@@ -136,11 +138,30 @@ export async function POST(req: NextRequest) {
     if (redesSociaisText !== undefined) {
       await db.campaignRecipient.update({ where: { id: recipient.id }, data: { redesSociaisText } });
     }
+    const usesQrCode = /\{\{qrcode_inscricao\}\}/.test(campaign.messageBody);
     const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
+
+    // A guarda de agendar/disparar (messageUsesEventScopedVariables, categoria "Inscrição") já
+    // garante que todo destinatário tem registrationId quando a mensagem usa esta variável — este
+    // erro só dispararia se esse invariante fosse quebrado por algum caminho futuro. Fica FORA do
+    // try de envio de propósito: não é uma falha de envio real, não deve contar pro circuit breaker
+    // (mesma convenção já usada pra qualquer erro de etapa anterior ao envio).
+    if (usesQrCode && !recipient.registrationId) {
+      throw new Error("Mensagem usa qrcode_inscricao, mas o destinatário não tem inscrição vinculada");
+    }
 
     let sendResult: { providerMessageId?: string };
     try {
-      sendResult = await sendWhatsAppMessage(freshPhone, body, "CAMPAIGN_MESSAGE");
+      if (usesQrCode) {
+        const qrPng = await generateKitQrCodePng(recipient.registrationId!);
+        await sendWhatsAppDocument(freshPhone, qrPng.toString("base64"), "qrcode-inscricao.png", body, {
+          messageType: "CAMPAIGN_MESSAGE",
+          mediatype: "image",
+        });
+        sendResult = {};
+      } else {
+        sendResult = await sendWhatsAppMessage(freshPhone, body, "CAMPAIGN_MESSAGE");
+      }
     } catch (sendErr) {
       const { tripped } = await recordCampaignSendFailure();
       if (tripped) {

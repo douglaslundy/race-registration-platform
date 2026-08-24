@@ -46,6 +46,7 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "codigo_confirmacao", label: "Código do pedido", category: "Inscrição", description: "Order.id.", sample: "ord_exemplo123" },
   { name: "numero_peito", label: "Número de peito", category: "Inscrição", description: "Registration.bibNumber. Pode ser vazio.", sample: "1234" },
   { name: "equipe_inscricao", label: "Equipe (inscrição)", category: "Inscrição", description: "Registration.teamName — equipe informada nesta inscrição especificamente, pode diferir da equipe geral do perfil do atleta (equipe_atleta). Pode ser vazio.", sample: "Equipe Exemplo Corrida" },
+  { name: "qrcode_inscricao", label: "QR code da inscrição (anexo)", category: "Inscrição", description: "Anexa a imagem do QR code de retirada do kit (mesmo código da tela de retirada, gerado a partir de Registration.id). Ao usar esta variável, a mensagem inteira é enviada como imagem, com o restante do texto como legenda — o token em si não aparece como texto.", sample: "[a mensagem será enviada como imagem, com este texto como legenda]" },
 
   // Cancelamento
   { name: "data_cancelamento", label: "Data do cancelamento", category: "Cancelamento", description: "Data do evento de cancelamento (auditoria).", sample: "02/08/2026" },

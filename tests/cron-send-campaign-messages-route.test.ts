@@ -6,9 +6,11 @@ vi.mock("@/lib/whatsapp", async () => {
   return {
     ...actual,
     sendWhatsAppMessage: vi.fn(),
+    sendWhatsAppDocument: vi.fn(),
     buildPreferencesFooterText: () => "\n\nRODAPE",
   };
 });
+vi.mock("@/lib/kit-qr-code", () => ({ generateKitQrCodePng: vi.fn() }));
 vi.mock("@/lib/campaigns/resolve-recipient-variables", () => ({
   resolveCampaignRecipientVariables: vi.fn().mockResolvedValue({ values: { nome_atleta: "Maria" } }),
 }));
@@ -19,12 +21,15 @@ vi.mock("@/lib/campaigns/circuit-breaker", () => ({
 }));
 
 import { POST } from "@/app/api/cron/send-campaign-messages/route";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, sendWhatsAppDocument } from "@/lib/whatsapp";
+import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 import { recordCampaignSendFailure, recordCampaignSendSuccess, isCircuitBreakerTripped } from "@/lib/campaigns/circuit-breaker";
 import { resolveCampaignRecipientVariables } from "@/lib/campaigns/resolve-recipient-variables";
 
 const dbMock = db as any;
 const sendMock = vi.mocked(sendWhatsAppMessage);
+const sendDocumentMock = vi.mocked(sendWhatsAppDocument);
+const qrMock = vi.mocked(generateKitQrCodePng);
 
 function makeRequest() {
   return new Request("http://localhost", { method: "POST", headers: { "x-cron-secret": "test-secret" } }) as any;
@@ -345,5 +350,67 @@ describe("POST /api/cron/send-campaign-messages", () => {
     await POST(makeRequest());
 
     expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-2" }, data: { status: "COMPLETED" } });
+  });
+
+  it("mensagem com {{qrcode_inscricao}} envia como imagem (QR), não como texto", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({
+      id: "campaign-1", messageBody: "Seu QR: {{qrcode_inscricao}}",
+    });
+    qrMock.mockResolvedValueOnce(Buffer.from("fake-png"));
+    dbMock.campaignRecipient.update.mockResolvedValueOnce({});
+
+    await POST(makeRequest());
+
+    expect(qrMock).toHaveBeenCalledWith("reg-1");
+    expect(sendDocumentMock).toHaveBeenCalledWith(
+      "5511999999999",
+      Buffer.from("fake-png").toString("base64"),
+      "qrcode-inscricao.png",
+      expect.stringContaining("Seu QR:"),
+      expect.objectContaining({ mediatype: "image", messageType: "CAMPAIGN_MESSAGE" }),
+    );
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "rec-1" }, data: expect.objectContaining({ status: "SENT" }) }),
+    );
+  });
+
+  it("mensagem sem {{qrcode_inscricao}} continua enviando como texto normal", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá {{nome_atleta}}" });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(sendDocumentMock).not.toHaveBeenCalled();
+    expect(qrMock).not.toHaveBeenCalled();
+    expect(sendMock).toHaveBeenCalled();
+  });
+
+  it("mensagem com {{qrcode_inscricao}} mas destinatário sem registrationId falha ANTES do envio, sem contar pro circuit breaker", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: null, campaignId: "campaign-1", attempts: 0,
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({
+      id: "campaign-1", messageBody: "Seu QR: {{qrcode_inscricao}}",
+    });
+
+    await POST(makeRequest());
+
+    expect(qrMock).not.toHaveBeenCalled();
+    expect(sendDocumentMock).not.toHaveBeenCalled();
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(recordCampaignSendFailure).not.toHaveBeenCalled();
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "rec-1" },
+        data: expect.objectContaining({ status: "PENDING", attempts: 1 }),
+      }),
+    );
   });
 });

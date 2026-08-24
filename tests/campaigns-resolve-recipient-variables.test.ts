@@ -78,6 +78,7 @@ describe("resolveCampaignRecipientVariables", () => {
     expect(values.numero_peito).toBe("1234");
     expect(values.equipe_inscricao).toBe("Equipe Teste");
     expect(values.distancia_percurso).toBe("5 km");
+    expect(values.qrcode_inscricao).toBe("");
   });
 
   it("numero_peito/equipe_inscricao/distancia_percurso ficam vazios quando os campos correspondentes são nulos", async () => {
