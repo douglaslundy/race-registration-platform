@@ -1029,26 +1029,26 @@ export default function CampaignsManager({
                   {campaign.description && <p className="text-sm text-gray-500">{campaign.description}</p>}
                   <p className="text-sm text-gray-400 truncate max-w-md">{campaign.messageBody}</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex flex-wrap gap-2 shrink-0 justify-end">
                   {campaign.status === "DRAFT" && (
                     <>
-                      <button onClick={() => openEdit(campaign)} className="text-blue-600 hover:text-blue-800 text-sm">
+                      <button onClick={() => openEdit(campaign)} className="text-xs px-2 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors">
                         Editar
                       </button>
-                      <button onClick={() => setCancelingId(campaign.id)} className="text-red-500 hover:text-red-700 text-sm">
+                      <button onClick={() => setCancelingId(campaign.id)} className="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors">
                         Cancelar
                       </button>
                       <button
                         onClick={() => setPreparingConfirmId(campaign.id)}
                         disabled={preparingId === campaign.id}
-                        className="text-green-700 hover:text-green-900 text-sm"
+                        className="text-xs px-2 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 transition-colors disabled:opacity-50"
                       >
                         {preparingId === campaign.id ? "Preparando..." : "Preparar destinatários"}
                       </button>
                       {allowManualRecipients && (
                         <button
                           onClick={() => openManualSelect(campaign.id)}
-                          className="text-green-700 hover:text-green-900 text-sm"
+                          className="text-xs px-2 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 transition-colors"
                         >
                           Selecionar destinatários
                         </button>
@@ -1056,25 +1056,25 @@ export default function CampaignsManager({
                     </>
                   )}
                   {campaign.status === "SCHEDULED" && (
-                    <button onClick={() => setCancelingId(campaign.id)} className="text-red-500 hover:text-red-700 text-sm">
+                    <button onClick={() => setCancelingId(campaign.id)} className="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors">
                       Cancelar
                     </button>
                   )}
                   {campaign.status === "RUNNING" && (
-                    <button onClick={() => setPausingConfirmId(campaign.id)} className="text-amber-600 hover:text-amber-800 text-sm">
+                    <button onClick={() => setPausingConfirmId(campaign.id)} className="text-xs px-2 py-1.5 rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors">
                       Pausar
                     </button>
                   )}
                   {campaign.status === "PAUSED" && (
-                    <button onClick={() => setResumingConfirmId(campaign.id)} className="text-green-700 hover:text-green-900 text-sm">
+                    <button onClick={() => setResumingConfirmId(campaign.id)} className="text-xs px-2 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 transition-colors">
                       Retomar
                     </button>
                   )}
-                  <button onClick={() => void doDuplicate(campaign.id)} className="text-gray-600 hover:text-gray-800 text-sm">
+                  <button onClick={() => void doDuplicate(campaign.id)} className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors">
                     Duplicar
                   </button>
                   {canDeleteCampaign(campaign.id) && (
-                    <button onClick={() => setDeletingConfirmId(campaign.id)} className="text-red-700 hover:text-red-900 text-sm">
+                    <button onClick={() => setDeletingConfirmId(campaign.id)} className="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors">
                       Excluir
                     </button>
                   )}
