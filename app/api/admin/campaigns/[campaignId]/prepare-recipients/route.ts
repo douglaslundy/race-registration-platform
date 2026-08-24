@@ -28,6 +28,9 @@ export async function POST(
 
   const rawBody = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(rawBody);
+  if (!parsed.success && rawBody && typeof rawBody === "object" && "athleteUserIds" in rawBody) {
+    return NextResponse.json({ error: "athleteUserIds deve ser uma lista de IDs" }, { status: 400 });
+  }
   const athleteUserIds = parsed.success ? parsed.data.athleteUserIds : undefined;
 
   const summary = await prepareCampaignRecipients(campaignId, null, athleteUserIds);

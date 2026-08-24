@@ -298,6 +298,18 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
     expect(res.status).toBe(200);
     expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, ["athlete-1", "athlete-2"]);
   });
+
+  it("rejeita athleteUserIds malformado (chave presente mas de tipo errado) em vez de cair no modo automático", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign });
+
+    const res = await PREPARE(
+      makeRequest("POST", { athleteUserIds: "not-an-array" }),
+      { params: Promise.resolve({ campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+    expect(prepareMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("GET /api/admin/campaigns/[campaignId]/recipients/summary", () => {
@@ -405,7 +417,7 @@ describe("DELETE /api/admin/campaigns/[campaignId]", () => {
 
     expect(res.status).toBe(200);
     expect(dbMock.campaignRecipient.deleteMany).toHaveBeenCalledWith({
-      where: { campaignId: "campaign-1", status: { notIn: ["PROCESSING", "SENT", "DELIVERED", "READ", "FAILED"] } },
+      where: { campaignId: "campaign-1", status: { in: ["PENDING", "SKIPPED", "OPTED_OUT", "INVALID_PHONE", "CANCELLED"] } },
     });
     expect(dbMock.campaign.delete).toHaveBeenCalledWith({ where: { id: "campaign-1" } });
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
