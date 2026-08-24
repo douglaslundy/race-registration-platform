@@ -13,7 +13,20 @@ type Campaign = {
   messageBody: string;
 };
 
-type PrepareSummary = { total: number; pending: number; optedOut: number; invalidPhone: number; duplicate: number };
+type PrepareSummary = {
+  total: number;
+  pending: number;
+  optedOut: number;
+  invalidPhone: number;
+  duplicate: number;
+  // Só populados quando o resumo vem de GET recipients/summary (depois de algum envio já ter
+  // acontecido) — a resposta de POST prepare-recipients nunca tem esses status ainda, porque nada
+  // foi enviado no momento da preparação.
+  sent?: number;
+  delivered?: number;
+  read?: number;
+  failed?: number;
+};
 
 type VariableDef = { name: string; label: string; category: string; description: string; sample: string };
 type AlertOption = { alertKey: string; description: string; body: string };
@@ -29,6 +42,10 @@ function summaryFromGrouped(grouped: Record<string, number>): PrepareSummary {
     optedOut: grouped.OPTED_OUT ?? 0,
     invalidPhone: grouped.INVALID_PHONE ?? 0,
     duplicate: grouped.SKIPPED ?? 0,
+    sent: grouped.SENT ?? 0,
+    delivered: grouped.DELIVERED ?? 0,
+    read: grouped.READ ?? 0,
+    failed: grouped.FAILED ?? 0,
   };
 }
 
@@ -714,7 +731,11 @@ export default function CampaignsManager({
                   {recipientSummaries[campaign.id].pending} · Opt-out:{" "}
                   {recipientSummaries[campaign.id].optedOut} · Telefone inválido:{" "}
                   {recipientSummaries[campaign.id].invalidPhone} · Duplicados:{" "}
-                  {recipientSummaries[campaign.id].duplicate}
+                  {recipientSummaries[campaign.id].duplicate} · Enviados:{" "}
+                  {recipientSummaries[campaign.id].sent ?? 0} · Entregues:{" "}
+                  {recipientSummaries[campaign.id].delivered ?? 0} · Lidos:{" "}
+                  {recipientSummaries[campaign.id].read ?? 0} · Falhou:{" "}
+                  {recipientSummaries[campaign.id].failed ?? 0}
                 </p>
               )}
             </div>

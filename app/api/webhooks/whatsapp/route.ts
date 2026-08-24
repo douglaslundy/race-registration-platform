@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateMessageLogStatusByProviderMessageId } from "@/lib/message-logs";
+import { updateCampaignRecipientStatusByProviderMessageId } from "@/lib/campaigns/delivery-status";
 
 const ACK_STATUS_MAP: Record<string, "DELIVERED" | "READ"> = {
   DELIVERY_ACK: "DELIVERED",
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
 
   if (keyId && ackStatus && ACK_STATUS_MAP[ackStatus]) {
     await updateMessageLogStatusByProviderMessageId(keyId, ACK_STATUS_MAP[ackStatus]);
+    await updateCampaignRecipientStatusByProviderMessageId(keyId, ACK_STATUS_MAP[ackStatus]);
   }
 
   return NextResponse.json({ ok: true });
