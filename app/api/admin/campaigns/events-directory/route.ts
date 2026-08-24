@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 200;
 
 export async function GET(req: NextRequest) {
   const check = await checkAdminOnlyApiPermission("campaigns.view");
