@@ -55,8 +55,14 @@ export async function POST(req: NextRequest) {
 
   if (!candidate) {
     // Nenhum PENDING em nenhuma campanha RUNNING — completa as que não têm mais nada pendente.
-    const runningCampaigns = await db.campaign.findMany({ where: { status: "RUNNING" }, select: { id: true } });
-    for (const c of runningCampaigns) {
+    // Inclui PAUSED também: uma campanha pausada manualmente que já não tinha mais nada pendente
+    // (ou cujo último destinatário terminou de processar bem antes da pausa) não deve ficar
+    // Pausada pra sempre — vira Concluída sozinha, igual uma RUNNING que esvazia.
+    const activeCampaigns = await db.campaign.findMany({
+      where: { status: { in: ["RUNNING", "PAUSED"] } },
+      select: { id: true },
+    });
+    for (const c of activeCampaigns) {
       const remaining = await db.campaignRecipient.count({ where: { campaignId: c.id, status: "PENDING" } });
       if (remaining === 0) {
         await db.campaign.update({ where: { id: c.id }, data: { status: "COMPLETED" } });
@@ -69,8 +75,12 @@ export async function POST(req: NextRequest) {
   // reivindicou esta linha entre o findFirst (passo 4) e aqui, count vem 0 e a gente simplesmente
   // não processa nada neste tick, sem erro, sem trava global. Isso substitui a guarda antiga por
   // algo que continua correto mesmo com mais de um processo rodando o cron ao mesmo tempo.
+  // Também re-checa campaign.status === "RUNNING" aqui (não só no candidate do passo 4) — fecha a
+  // janela entre a seleção do candidato e esta reivindicação onde um "Pausar" manual pode ter
+  // acabado de acontecer; sem essa checagem, 1 mensagem a mais sairia pra uma campanha que o
+  // operador já acredita estar pausada.
   const claim = await db.campaignRecipient.updateMany({
-    where: { id: candidate.id, status: "PENDING" },
+    where: { id: candidate.id, status: "PENDING", campaign: { status: "RUNNING" } },
     data: { status: "PROCESSING" },
   });
   if (claim.count === 0) {

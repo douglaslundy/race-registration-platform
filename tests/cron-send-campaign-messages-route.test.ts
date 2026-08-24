@@ -107,6 +107,33 @@ describe("POST /api/cron/send-campaign-messages", () => {
     expect(dbMock.campaignRecipient.update).not.toHaveBeenCalled();
   });
 
+  it("corrida perdida: campanha foi pausada entre a seleção do candidato e a reivindicação", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1",
+      athleteUserId: "athlete-1",
+      registrationId: null,
+      campaignId: "campaign-1",
+      normalizedPhone: "5511999999999",
+    });
+    // A reivindicação agora TAMBÉM filtra por campaign.status === RUNNING — se a campanha foi
+    // pausada manualmente bem nesse intervalo, o updateMany não encontra a linha (count: 0), mesmo
+    // que o destinatário ainda esteja PENDING, fechando a janela onde 1 mensagem a mais podia sair
+    // logo depois de um "Pausar".
+    dbMock.campaignRecipient.updateMany
+      .mockResolvedValueOnce({ count: 0 }) // varredura de recuperação
+      .mockResolvedValueOnce({ count: 0 }); // reivindicação: campanha não é mais RUNNING
+
+    const res = await POST(makeRequest());
+    const data = await res.json();
+
+    expect(dbMock.campaignRecipient.updateMany).toHaveBeenCalledWith({
+      where: { id: "rec-1", status: "PENDING", campaign: { status: "RUNNING" } },
+      data: { status: "PROCESSING" },
+    });
+    expect(data).toEqual({ processed: false, reason: "lost_claim_race" });
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
   it("envia com sucesso: marca SENT, grava sentAt/providerMessageId, zera contador de falhas", async () => {
     dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
       id: "rec-1",
@@ -125,7 +152,7 @@ describe("POST /api/cron/send-campaign-messages", () => {
     await POST(makeRequest());
 
     expect(dbMock.campaignRecipient.updateMany).toHaveBeenCalledWith({
-      where: { id: "rec-1", status: "PENDING" },
+      where: { id: "rec-1", status: "PENDING", campaign: { status: "RUNNING" } },
       data: { status: "PROCESSING" },
     });
     // Usa o telefone recém-buscado (normaliza "11999999999" -> "5511999999999"), não o
@@ -265,6 +292,22 @@ describe("POST /api/cron/send-campaign-messages", () => {
 
     await POST(makeRequest());
 
+    expect(dbMock.campaign.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: { in: ["RUNNING", "PAUSED"] } } }),
+    );
     expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-1" }, data: { status: "COMPLETED" } });
+  });
+
+  it("campanha PAUSED sem mais PENDING também vira COMPLETED sozinha", async () => {
+    // Uma campanha pausada manualmente que já não tinha mais nada pendente (ou cujo último
+    // destinatário terminou de processar logo antes da pausa) não deve ficar Pausada pra sempre —
+    // vira Concluída no próximo tick, igual uma RUNNING que esvazia.
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce(null);
+    dbMock.campaign.findMany.mockResolvedValueOnce([{ id: "campaign-2" }]);
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(0);
+
+    await POST(makeRequest());
+
+    expect(dbMock.campaign.update).toHaveBeenCalledWith({ where: { id: "campaign-2" }, data: { status: "COMPLETED" } });
   });
 });
