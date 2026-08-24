@@ -96,6 +96,7 @@ export default function CampaignsManager({
   const [preparingConfirmId, setPreparingConfirmId] = useState<string | null>(null);
   const [manualSelectId, setManualSelectId] = useState<string | null>(null);
   const [manualSearch, setManualSearch] = useState("");
+  const [appliedManualSearch, setAppliedManualSearch] = useState("");
   const [manualRows, setManualRows] = useState<{ id: string; name: string; email: string; phone: string | null }[]>([]);
   const [manualPage, setManualPage] = useState(1);
   const [manualTotalPages, setManualTotalPages] = useState(1);
@@ -376,6 +377,7 @@ export default function CampaignsManager({
 
   async function loadManualDirectory(page: number, q: string) {
     setManualLoading(true);
+    setAppliedManualSearch(q);
     const params = new URLSearchParams({ page: String(page) });
     if (q) params.set("q", q);
     const res = await fetch(`/api/admin/campaigns/recipients-directory?${params}`);
@@ -390,17 +392,18 @@ export default function CampaignsManager({
   function openManualSelect(campaignId: string) {
     setManualSelectId(campaignId);
     setManualSearch("");
+    setAppliedManualSearch("");
     setManualSelectedIds(new Set());
     void loadManualDirectory(1, "");
   }
 
   async function selectAllManual() {
     const params = new URLSearchParams();
-    if (manualSearch) params.set("q", manualSearch);
+    if (appliedManualSearch) params.set("q", appliedManualSearch);
     const res = await fetch(`/api/admin/campaigns/recipients-directory/ids?${params}`);
     if (!res.ok) return;
     const data = await res.json();
-    setManualSelectedIds(new Set<string>(data.ids));
+    setManualSelectedIds((prev) => new Set([...prev, ...(data.ids as string[])]));
   }
 
   function deselectAllManual() {
@@ -684,7 +687,7 @@ export default function CampaignsManager({
                 <button
                   type="button"
                   disabled={manualPage <= 1}
-                  onClick={() => void loadManualDirectory(manualPage - 1, manualSearch)}
+                  onClick={() => void loadManualDirectory(manualPage - 1, appliedManualSearch)}
                   className="btn-secondary text-sm px-3 disabled:opacity-50"
                 >
                   ‹ Anterior
@@ -695,7 +698,7 @@ export default function CampaignsManager({
                 <button
                   type="button"
                   disabled={manualPage >= manualTotalPages}
-                  onClick={() => void loadManualDirectory(manualPage + 1, manualSearch)}
+                  onClick={() => void loadManualDirectory(manualPage + 1, appliedManualSearch)}
                   className="btn-secondary text-sm px-3 disabled:opacity-50"
                 >
                   Próxima ›
