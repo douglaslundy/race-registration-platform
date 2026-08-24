@@ -6,6 +6,14 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/whatsapp", () => ({
   sendWhatsAppMessage: vi.fn(),
   buildPreferencesFooterText: () => "\n\nRODAPE_TESTE",
+  normalizePhoneForWhatsApp: (phone: string) => {
+    if (phone.startsWith("+")) return phone.slice(1);
+    if (!phone.startsWith("55")) return "55" + phone;
+    return phone;
+  },
+  isValidWhatsAppPhone: (phone: string) => {
+    return /^55\d{11}$/.test(phone);
+  },
 }));
 
 import { GET as VARIABLES } from "@/app/api/admin/campaigns/variables/route";
@@ -13,6 +21,7 @@ import { GET as ALERT_OPTIONS } from "@/app/api/admin/campaigns/alert-options/ro
 import { POST as PREVIEW } from "@/app/api/admin/campaigns/[campaignId]/preview/route";
 import { POST as TEST_SEND } from "@/app/api/admin/campaigns/[campaignId]/test-send/route";
 import { POST as SCHEDULE } from "@/app/api/admin/campaigns/[campaignId]/schedule/route";
+import { POST as SEND_TO_NUMBER } from "@/app/api/admin/campaigns/[campaignId]/send-to-number/route";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 const authMock = vi.mocked(auth);
@@ -174,5 +183,57 @@ describe("POST /api/admin/campaigns/[campaignId]/schedule", () => {
     );
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/admin/campaigns/[campaignId]/send-to-number", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.campaign.findFirst.mockResolvedValue({ ...platformDraftCampaign });
+  });
+
+  function makeRequest(body: unknown) {
+    return new Request("http://localhost", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }) as any;
+  }
+
+  it("normaliza e envia pro número informado (sem +55, assume Brasil)", async () => {
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "11988888888" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.stringContaining("RODAPE_TESTE"), "CAMPAIGN_MESSAGE");
+  });
+
+  it("aceita o número já com +55", async () => {
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "+5511988888888" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(sendMock).toHaveBeenCalledWith("5511988888888", expect.any(String), "CAMPAIGN_MESSAGE");
+  });
+
+  it("rejeita telefone inválido", async () => {
+    const res = await SEND_TO_NUMBER(makeRequest({ phone: "123" }), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it("rejeita corpo sem telefone", async () => {
+    const res = await SEND_TO_NUMBER(makeRequest({}), {
+      params: Promise.resolve({ campaignId: "campaign-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(sendMock).not.toHaveBeenCalled();
   });
 });
