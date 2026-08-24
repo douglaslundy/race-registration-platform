@@ -377,12 +377,12 @@ export default function CampaignsManager({
     setRecipientSummaries((prev) => ({ ...prev, [campaignId]: data.summary }));
   }
 
-  async function loadManualDirectory(page: number, q: string) {
+  async function loadManualDirectory(page: number, q: string, eventId: string = manualEventId) {
     setManualLoading(true);
     setAppliedManualSearch(q);
     const params = new URLSearchParams({ page: String(page) });
     if (q) params.set("q", q);
-    if (manualEventId) params.set("eventId", manualEventId);
+    if (eventId) params.set("eventId", eventId);
     const res = await fetch(`/api/admin/campaigns/recipients-directory?${params}`);
     setManualLoading(false);
     if (!res.ok) return;
@@ -421,7 +421,7 @@ export default function CampaignsManager({
   function changeManualEvent(eventId: string) {
     setManualEventId(eventId);
     setManualSelectedIds(new Set());
-    void loadManualDirectory(1, manualSearch);
+    void loadManualDirectory(1, manualSearch, eventId);
   }
 
   function toggleManualId(id: string) {
