@@ -21,6 +21,7 @@ interface CandidateRow {
 async function fetchCandidateBatch(
   eventId: string | null,
   skip: number,
+  athleteUserIds?: string[],
 ): Promise<CandidateRow[]> {
   if (eventId !== null) {
     const registrations = await db.registration.findMany({
@@ -49,7 +50,11 @@ async function fetchCandidateBatch(
   }
 
   const users = await db.user.findMany({
-    where: { role: "ATHLETE", active: true },
+    where: {
+      role: "ATHLETE",
+      active: true,
+      ...(athleteUserIds ? { id: { in: athleteUserIds } } : {}),
+    },
     select: {
       id: true,
       receivePromotionalMessages: true,
@@ -74,10 +79,14 @@ async function fetchCandidateBatch(
  * filtro de receivePromotionalMessages (sempre, nunca opcional), validação/normalização de
  * telefone, e deduplicação por telefone dentro da campanha (a 1ª ocorrência permanece PENDING, as
  * demais viram SKIPPED). Idempotente — pode ser chamada de novo a qualquer momento; a rota que
- * chama garante que a campanha ainda está em DRAFT, esta função não checa `status` de novo. */
+ * chama garante que a campanha ainda está em DRAFT, esta função não checa `status` de novo.
+ * Aceita `athleteUserIds` opcional (só usado quando `eventId` é nulo) pra restringir os candidatos
+ * a uma lista explícita de atletas — usado pela seleção manual de destinatários; sem esse
+ * parâmetro, comportamento idêntico ao automático de sempre. */
 export async function prepareCampaignRecipients(
   campaignId: string,
   eventId: string | null,
+  athleteUserIds?: string[],
 ): Promise<PrepareRecipientsResult> {
   await db.campaignRecipient.deleteMany({ where: { campaignId } });
 
@@ -86,7 +95,7 @@ export async function prepareCampaignRecipients(
   let skip = 0;
 
   while (true) {
-    const candidates = await fetchCandidateBatch(eventId, skip);
+    const candidates = await fetchCandidateBatch(eventId, skip, athleteUserIds);
     if (candidates.length === 0) break;
     skip += candidates.length;
 

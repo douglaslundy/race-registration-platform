@@ -195,4 +195,31 @@ describe("prepareCampaignRecipients", () => {
       ],
     });
   });
+
+  it("restringe candidatos por athleteUserIds quando informado (modo plataforma)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+    ]);
+
+    const result = await prepareCampaignRecipients("campaign-1", null, ["athlete-1", "athlete-2"]);
+
+    expect(dbMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { role: "ATHLETE", active: true, id: { in: ["athlete-1", "athlete-2"] } },
+      }),
+    );
+    expect(result.pending).toBe(1);
+  });
+
+  it("sem athleteUserIds, comportamento idêntico ao modo automático (regressão)", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+    ]);
+
+    await prepareCampaignRecipients("campaign-1", null);
+
+    expect(dbMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { role: "ATHLETE", active: true } }),
+    );
+  });
 });

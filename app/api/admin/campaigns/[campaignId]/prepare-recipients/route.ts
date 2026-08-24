@@ -3,9 +3,12 @@ import { checkAdminOnlyApiPermission } from "@/lib/auth/rbac";
 import { resolveCampaignDetailContext } from "@/lib/campaigns/service";
 import { prepareCampaignRecipients } from "@/lib/campaigns/recipients";
 import { db } from "@/lib/db";
+import { z } from "zod";
+
+const bodySchema = z.object({ athleteUserIds: z.array(z.string()).optional() });
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const check = await checkAdminOnlyApiPermission("campaigns.edit");
@@ -23,7 +26,11 @@ export async function POST(
     );
   }
 
-  const summary = await prepareCampaignRecipients(campaignId, null);
+  const rawBody = await req.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(rawBody);
+  const athleteUserIds = parsed.success ? parsed.data.athleteUserIds : undefined;
+
+  const summary = await prepareCampaignRecipients(campaignId, null, athleteUserIds);
 
   await db.auditLog.create({
     data: {

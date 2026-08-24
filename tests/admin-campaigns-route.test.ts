@@ -271,7 +271,7 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null);
+    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, undefined);
     expect(data.summary.total).toBe(1000);
   });
 
@@ -283,6 +283,19 @@ describe("POST /api/admin/campaigns/[campaignId]/prepare-recipients", () => {
 
     expect(res.status).toBe(403);
     expect(prepareMock).not.toHaveBeenCalled();
+  });
+
+  it("repassa athleteUserIds do corpo pra prepareCampaignRecipients (seleção manual)", async () => {
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...platformDraftCampaign });
+    prepareMock.mockResolvedValueOnce({ total: 2, pending: 2, optedOut: 0, invalidPhone: 0, duplicate: 0 });
+
+    const res = await PREPARE(
+      makeRequest("POST", { athleteUserIds: ["athlete-1", "athlete-2"] }),
+      { params: Promise.resolve({ campaignId: "campaign-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(prepareMock).toHaveBeenCalledWith("campaign-1", null, ["athlete-1", "athlete-2"]);
   });
 });
 
