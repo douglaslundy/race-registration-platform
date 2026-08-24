@@ -119,7 +119,8 @@ export default function CampaignsManager({
   const [confirmingSendToNumber, setConfirmingSendToNumber] = useState(false);
   const [schedulingLoading, setSchedulingLoading] = useState(false);
   const [scheduledAtInput, setScheduledAtInput] = useState("");
-  const [confirmingDispatch, setConfirmingDispatch] = useState(false);
+  const [dispatchingConfirmId, setDispatchingConfirmId] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState(false);
   const createBodyRef = useRef<HTMLTextAreaElement>(null);
   const editBodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -226,7 +227,6 @@ export default function CampaignsManager({
     setPreviewResult(null);
     setTestSendMessage(null);
     setScheduledAtInput("");
-    setConfirmingDispatch(false);
     setSendToNumberInput("");
     setSendToNumberMessage(null);
     setConfirmingSendToNumber(false);
@@ -533,6 +533,27 @@ export default function CampaignsManager({
     await reload();
   }
 
+  // Dispara a campanha JÁ SALVA direto da lista, sem precisar abrir o modal de editar — diferente
+  // de doSchedule (usado só pelo "Agendar envio" dentro do modal), não salva nenhuma edição
+  // pendente antes: opera sempre sobre o messageBody que já está persistido.
+  async function doDispatchNow() {
+    if (!dispatchingConfirmId) return;
+    setDispatching(true);
+    const res = await fetch(`${apiBase}/${dispatchingConfirmId}/schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    setDispatching(false);
+    setDispatchingConfirmId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao disparar campanha");
+      return;
+    }
+    await reload();
+  }
+
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
@@ -608,21 +629,16 @@ export default function CampaignsManager({
         onCancel={() => setPreparingConfirmId(null)}
       />
 
-      <div className="relative z-[60]">
-        <ConfirmModal
-          open={confirmingDispatch}
-          title="Disparar agora"
-          message="Isso vai enviar mensagens reais de WhatsApp para todos os destinatários já preparados desta campanha, imediatamente. Essa ação não pode ser desfeita. Deseja continuar?"
-          confirmLabel="Disparar"
-          tone="danger"
-          loading={schedulingLoading}
-          onConfirm={async () => {
-            await doSchedule(true);
-            setConfirmingDispatch(false);
-          }}
-          onCancel={() => setConfirmingDispatch(false)}
-        />
-      </div>
+      <ConfirmModal
+        open={!!dispatchingConfirmId}
+        title="Disparar agora"
+        message="Isso vai enviar mensagens reais de WhatsApp para todos os destinatários já preparados desta campanha, imediatamente, usando a mensagem já salva. Essa ação não pode ser desfeita. Deseja continuar?"
+        confirmLabel="Disparar"
+        tone="danger"
+        loading={dispatching}
+        onConfirm={doDispatchNow}
+        onCancel={() => setDispatchingConfirmId(null)}
+      />
 
       {previewResult !== null && (
         <div
@@ -645,13 +661,9 @@ export default function CampaignsManager({
       )}
 
       {manualSelectId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          onClick={() => setManualSelectId(null)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div
             className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg mx-4 space-y-4 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Selecionar destinatários</h2>
             <div>
@@ -757,20 +769,10 @@ export default function CampaignsManager({
       )}
 
       {editId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          onClick={() => {
-            setEditId(null);
-            setPreviewResult(null);
-            setTestSendMessage(null);
-            setScheduledAtInput("");
-            setConfirmingDispatch(false);
-          }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <form
             onSubmit={saveEdit}
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-2xl mx-4 space-y-4"
-            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-2xl mx-4 space-y-4 max-h-[90vh] overflow-y-auto"
           >
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar campanha</h2>
             <div>
@@ -889,15 +891,11 @@ export default function CampaignsManager({
               >
                 Agendar envio
               </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingDispatch(true)}
-                disabled={schedulingLoading}
-                className="text-sm px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-              >
-                {schedulingLoading ? "Enviando..." : "Disparar agora"}
-              </button>
             </div>
+            <p className="text-xs text-gray-400">
+              "Disparar agora" foi movido pra lista de campanhas — feche este modal e use o botão na
+              própria campanha, depois de salvar a mensagem.
+            </p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
@@ -906,7 +904,6 @@ export default function CampaignsManager({
                   setPreviewResult(null);
                   setTestSendMessage(null);
                   setScheduledAtInput("");
-                  setConfirmingDispatch(false);
                 }}
                 className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
@@ -1063,8 +1060,8 @@ export default function CampaignsManager({
         <div className="space-y-2">
           {campaigns.map((campaign) => (
             <div key={campaign.id} className="card space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
                   <p className="font-medium">
                     {campaign.name}{" "}
                     <span className="text-xs text-gray-400">({STATUS_LABEL[campaign.status] ?? campaign.status})</span>
@@ -1096,6 +1093,12 @@ export default function CampaignsManager({
                           Selecionar destinatários
                         </button>
                       )}
+                      <button
+                        onClick={() => setDispatchingConfirmId(campaign.id)}
+                        className="text-xs px-2 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 transition-colors"
+                      >
+                        Disparar agora
+                      </button>
                     </>
                   )}
                   {campaign.status === "SCHEDULED" && (
