@@ -81,6 +81,10 @@ export default function CampaignsManager({
   const [editSaving, setEditSaving] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+  const [pausingConfirmId, setPausingConfirmId] = useState<string | null>(null);
+  const [pausing, setPausing] = useState(false);
+  const [resumingConfirmId, setResumingConfirmId] = useState<string | null>(null);
+  const [resuming, setResuming] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
   const [preparingConfirmId, setPreparingConfirmId] = useState<string | null>(null);
@@ -278,6 +282,34 @@ export default function CampaignsManager({
     await reload();
   }
 
+  async function doPause() {
+    if (!pausingConfirmId) return;
+    setPausing(true);
+    const res = await fetch(`${apiBase}/${pausingConfirmId}/pause`, { method: "POST" });
+    setPausing(false);
+    setPausingConfirmId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao pausar campanha");
+      return;
+    }
+    await reload();
+  }
+
+  async function doResume() {
+    if (!resumingConfirmId) return;
+    setResuming(true);
+    const res = await fetch(`${apiBase}/${resumingConfirmId}/resume`, { method: "POST" });
+    setResuming(false);
+    setResumingConfirmId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(typeof data.error === "string" ? data.error : "Erro ao retomar campanha");
+      return;
+    }
+    await reload();
+  }
+
   async function doDuplicate(campaignId: string) {
     const res = await fetch(`${apiBase}/${campaignId}/duplicate`, { method: "POST" });
     if (!res.ok) {
@@ -371,6 +403,28 @@ export default function CampaignsManager({
         loading={canceling}
         onConfirm={doCancel}
         onCancel={() => setCancelingId(null)}
+      />
+
+      <ConfirmModal
+        open={!!pausingConfirmId}
+        title="Pausar campanha"
+        message="Isso vai parar o envio desta campanha imediatamente. Os destinatários que ainda não receberam a mensagem continuam pendentes e o envio pode ser retomado depois. Deseja continuar?"
+        confirmLabel="Pausar"
+        tone="danger"
+        loading={pausing}
+        onConfirm={doPause}
+        onCancel={() => setPausingConfirmId(null)}
+      />
+
+      <ConfirmModal
+        open={!!resumingConfirmId}
+        title="Retomar campanha"
+        message="Isso vai voltar a enviar mensagens reais de WhatsApp pros destinatários pendentes desta campanha. Se a pausa foi causada por falhas consecutivas de envio, o contador de falhas também será reiniciado. Deseja continuar?"
+        confirmLabel="Retomar"
+        tone="danger"
+        loading={resuming}
+        onConfirm={doResume}
+        onCancel={() => setResumingConfirmId(null)}
       />
 
       <ConfirmModal
@@ -718,6 +772,16 @@ export default function CampaignsManager({
                   {campaign.status === "SCHEDULED" && (
                     <button onClick={() => setCancelingId(campaign.id)} className="text-red-500 hover:text-red-700 text-sm">
                       Cancelar
+                    </button>
+                  )}
+                  {campaign.status === "RUNNING" && (
+                    <button onClick={() => setPausingConfirmId(campaign.id)} className="text-amber-600 hover:text-amber-800 text-sm">
+                      Pausar
+                    </button>
+                  )}
+                  {campaign.status === "PAUSED" && (
+                    <button onClick={() => setResumingConfirmId(campaign.id)} className="text-green-700 hover:text-green-900 text-sm">
+                      Retomar
                     </button>
                   )}
                   <button onClick={() => void doDuplicate(campaign.id)} className="text-gray-600 hover:text-gray-800 text-sm">
