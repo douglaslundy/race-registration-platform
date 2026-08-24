@@ -3,9 +3,12 @@ import { ALL_VARIABLES, type VariableDefinition } from "@/lib/templates/variable
 const ALWAYS_CATEGORIES = ["Atleta", "Plataforma"];
 const EVENT_ONLY_CATEGORIES = ["Evento", "Organizador", "Inscrição"];
 
-/** patrocinio/redes_sociais têm efeito colateral (incrementam cota de envio por link/patrocinador)
- * e foram desenhadas pra um envio por inscrição (um alerta de confirmação por vez) — nunca fizeram
- * sentido pra uma campanha que renderiza o mesmo texto pra centenas/milhares de destinatários.
+/** redes_sociais tem efeito colateral real (incrementa cota de envio por link, via
+ * getSocialPromoText) — o worker de campanha (app/api/cron/send-campaign-messages/route.ts)
+ * resolve essa variável só na 1ª tentativa de cada destinatário e reaproveita o valor cacheado
+ * (CampaignRecipient.redesSociaisText) nas tentativas seguintes, pra nunca incrementar a cota
+ * mais de uma vez pela mesma mensagem. patrocinio (getSponsorPromoText) não tem efeito colateral
+ * nem limite por destinatário — resolve sempre, sem cache.
  *
  * As demais entradas abaixo são variáveis específicas de UM alerta pontual (resumo diário,
  * carrinho abandonado, inscrição por procuração) que resolveCampaignRecipientVariables
@@ -14,8 +17,6 @@ const EVENT_ONLY_CATEGORIES = ["Evento", "Organizador", "Inscrição"];
  * resolvida por "" silenciosamente. Se um novo alerta específico ganhar uma variável nova que
  * compartilhe categoria com uma variável de campanha, adicione o nome aqui também. */
 const EXCLUDED_NAMES = new Set([
-  "patrocinio",
-  "redes_sociais",
   // Resumo diário (Plataforma)
   "data_resumo",
   "papel_destinatario",

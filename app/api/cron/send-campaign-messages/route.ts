@@ -124,10 +124,18 @@ export async function POST(req: NextRequest) {
       throw new Error("Campanha não encontrada");
     }
 
-    const values = await resolveCampaignRecipientVariables({
+    const { values, redesSociaisText } = await resolveCampaignRecipientVariables({
       athleteUserId: recipient.athleteUserId,
       registrationId: recipient.registrationId,
+      redesSociaisText: recipient.redesSociaisText,
     });
+    // Se redes_sociais foi resolvida fresca nesta tentativa (getSocialPromoText já incrementou a
+    // cota de verdade), persiste ANTES de tentar o envio — assim, se o envio falhar e for tentado
+    // de novo, a próxima tentativa reaproveita o valor já cacheado em vez de incrementar a cota
+    // outra vez pela mesma mensagem que ainda não foi (ou nunca será) entregue.
+    if (redesSociaisText !== undefined) {
+      await db.campaignRecipient.update({ where: { id: recipient.id }, data: { redesSociaisText } });
+    }
     const body = renderTemplate(campaign.messageBody, values, "WHATSAPP") + buildPreferencesFooterText();
 
     let sendResult: { providerMessageId?: string };

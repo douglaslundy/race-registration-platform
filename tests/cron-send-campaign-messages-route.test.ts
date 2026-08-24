@@ -10,7 +10,7 @@ vi.mock("@/lib/whatsapp", async () => {
   };
 });
 vi.mock("@/lib/campaigns/resolve-recipient-variables", () => ({
-  resolveCampaignRecipientVariables: vi.fn().mockResolvedValue({ nome_atleta: "Maria" }),
+  resolveCampaignRecipientVariables: vi.fn().mockResolvedValue({ values: { nome_atleta: "Maria" } }),
 }));
 vi.mock("@/lib/campaigns/circuit-breaker", () => ({
   recordCampaignSendFailure: vi.fn().mockResolvedValue({ tripped: false, count: 1 }),
@@ -282,6 +282,42 @@ describe("POST /api/cron/send-campaign-messages", () => {
     expect(sendMock).not.toHaveBeenCalled();
     expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "rec-1" }, data: expect.objectContaining({ status: "OPTED_OUT" }) }),
+    );
+  });
+
+  it("persiste redesSociaisText no CampaignRecipient quando resolvido fresco, antes de tentar o envio", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1", redesSociaisText: null,
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá" });
+    vi.mocked(resolveCampaignRecipientVariables).mockResolvedValueOnce({
+      values: { nome_atleta: "Maria" },
+      redesSociaisText: "Segue no Instagram!",
+    });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith({
+      where: { id: "rec-1" },
+      data: { redesSociaisText: "Segue no Instagram!" },
+    });
+  });
+
+  it("não persiste redesSociaisText quando o valor já veio cacheado (redesSociaisText undefined no retorno)", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1", athleteUserId: "athlete-1", registrationId: "reg-1", campaignId: "campaign-1", redesSociaisText: "já resolvido antes",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá" });
+    vi.mocked(resolveCampaignRecipientVariables).mockResolvedValueOnce({
+      values: { nome_atleta: "Maria" },
+    });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(dbMock.campaignRecipient.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ redesSociaisText: expect.anything() }) }),
     );
   });
 

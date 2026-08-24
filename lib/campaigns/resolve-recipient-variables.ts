@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { REGISTRATION_STATUS } from "@/lib/registration-status";
 import { getAppName, getSetting } from "@/lib/settings";
+import { getSponsorPromoText } from "@/lib/event-sponsors";
+import { getSocialPromoText } from "@/lib/event-social-links";
 
 function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
@@ -9,14 +11,17 @@ function firstName(fullName: string): string {
 
 /** Resolve os valores REAIS (não mais amostra) das variáveis permitidas pra um destinatário de
  * campanha. Sempre resolve Atleta + Plataforma; quando `registrationId` não é nulo (campanha de
- * evento), resolve também Evento + Organizador + Inscrição — nesse caso as variáveis de Evento
- * `patrocinio`/`redes_sociais` NUNCA são incluídas aqui, porque já foram excluídas na origem
- * (`getAllowedCampaignVariableNames`) por terem efeito colateral de cota — uma campanha nunca
- * deveria ter chegado a validar um texto que as usa, então este resolver nem tenta resolvê-las. */
+ * evento), resolve também Evento + Organizador + Inscrição + `patrocinio`/`redes_sociais`.
+ * `patrocinio` (getSponsorPromoText) não tem efeito colateral, resolve sempre. `redes_sociais`
+ * (getSocialPromoText) TEM efeito colateral real (incrementa cota de envio por link) — quando
+ * `recipient.redesSociaisText` já vem preenchido (valor cacheado de uma tentativa anterior), reusa
+ * esse valor sem chamar getSocialPromoText de novo; só resolve fresco (e retorna o valor resolvido
+ * em `redesSociaisText`, pro chamador persistir) quando ainda não havia sido resolvido antes. */
 export async function resolveCampaignRecipientVariables(recipient: {
   athleteUserId: string;
   registrationId: string | null;
-}): Promise<Record<string, string>> {
+  redesSociaisText?: string | null;
+}): Promise<{ values: Record<string, string>; redesSociaisText?: string }> {
   const user = await db.user.findUnique({
     where: { id: recipient.athleteUserId },
     select: {
@@ -42,7 +47,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
   };
 
   if (recipient.registrationId === null) {
-    return values;
+    return { values };
   }
 
   const registration = await db.registration.findUnique({
@@ -52,6 +57,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
       createdAt: true,
       bibNumber: true,
       teamName: true,
+      eventId: true,
       route: { select: { name: true, distanceKm: true } },
       category: { select: { name: true } },
       event: {
@@ -71,7 +77,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
     },
   });
 
-  if (!registration) return values;
+  if (!registration) return { values };
 
   values.categoria_inscricao = registration.category?.name ?? "";
   values.nome_modalidade = registration.route?.name ?? "";
@@ -97,5 +103,16 @@ export async function resolveCampaignRecipientVariables(recipient: {
   values.valor_inscricao = registration.order ? formatCurrency(registration.order.totalAmount) : "";
   values.codigo_confirmacao = registration.order?.id ?? "";
 
-  return values;
+  values.patrocinio = await getSponsorPromoText(registration.eventId);
+
+  let redesSociaisText: string | undefined;
+  if (recipient.redesSociaisText != null) {
+    values.redes_sociais = recipient.redesSociaisText;
+  } else {
+    const resolved = await getSocialPromoText(registration.eventId, recipient.athleteUserId);
+    values.redes_sociais = resolved;
+    redesSociaisText = resolved;
+  }
+
+  return { values, redesSociaisText };
 }
