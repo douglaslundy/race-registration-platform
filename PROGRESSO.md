@@ -1,6 +1,51 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-24, mais recente — destinatários avançados de campanhas concluído, commits LOCAIS)
+## Última atualização (2026-08-24, mais recente — layout/filtro por evento/variáveis novas/preview na criação de campanhas, 8 tasks concluídas + fix wave da revisão final, commits LOCAIS)
+
+Usuário reportou (com 3 screenshots) layout quebrado dos botões de ação do card de campanha, pediu
+filtro por evento na seleção manual de destinatários (com vínculo real de inscrição), variáveis
+novas, e preview funcionando também na criação (não só na edição). Arquitetural (spec+plano+SDD).
+Duas inserções mid-flight a pedido do usuário: (5) liberar `patrocinio`/`redes_sociais` em campanhas
+(com cache de cota pra não reincrementar em retry) e (8) variável `qrcode_inscricao` (anexa o QR de
+retirada de kit como imagem — muda o modo de envio do destinatário inteiro pra `sendWhatsAppDocument`
+em vez de texto). Plano final: 8 tasks, todas concluídas e revisadas individualmente sem findings.
+Spec: `docs/superpowers/specs/2026-08-24-campanhas-layout-filtro-evento-preview-design.md` (com
+Adenda 1 = patrocinio/redes_sociais, Adenda 2 = qrcode_inscricao, Adenda 3 = correções da revisão
+final). Plano: `docs/superpowers/plans/2026-08-24-campanhas-layout-filtro-evento-preview.md`.
+
+**Achado real na Task 2** (não presumido — bug pré-existente descoberto por comparação com
+`lib/kit-delivery.ts`/`lib/alerts/daily-summary-metrics.ts`): o modo evento automático de
+`prepareCampaignRecipients` nunca filtrava por `status: "CONFIRMED"` — incluía TODOS os status de
+inscrição. Corrigido junto com o filtro por evento na seleção manual (que agora vincula
+`CampaignRecipient.registrationId` à inscrição CONFIRMED real do atleta naquele evento).
+
+**Achado CRÍTICO real na revisão final de branch inteira** (nenhuma revisão por task isolada podia
+ver): `resolveCampaignRecipientVariables` chamava `getSponsorPromoText`/`getSocialPromoText`
+incondicionalmente pra todo destinatário em modo evento — uma campanha comum que nunca menciona
+`{{redes_sociais}}` queimava cota real de `SocialLinkSend` (efeito colateral não-idempotente) sem
+necessidade, esgotando a cota que alertas legítimos (confirmação, carrinho abandonado, erro de
+pagamento) dependem. Corrigido: resolver agora recebe `messageBody` e só resolve cada variável
+quando o token correspondente aparece no corpo bruto (mesmo padrão de `qrcode_inscricao`). Mais 2
+Importantes corrigidos no mesmo fix wave: catálogo de variáveis da UI (`+ Inserir variável`) e
+`alert-options` não tinham sido atualizados junto com a Task 6 (operador não conseguia descobrir as
+variáveis de evento liberadas numa campanha de plataforma); resumo do painel mostra Entregue/Lido
+zerados pra sempre em campanhas com QR code (limitação real do `sendWhatsAppDocument`, sem
+`providerMessageId` — mitigado com nota explicativa na UI, não é regressão). Mais 3 Menores:
+teste/envio avulso agora bloqueia `qrcode_inscricao` com erro claro (não tem inscrição real pra
+gerar o QR); `PAGE_SIZE` do seletor de evento subiu de 20 pra 200 (tinha virado teto rígido, não
+simplificação de UX); descrição de `qrcode_inscricao` ganhou nota sobre limite de legenda de mídia
+do WhatsApp (~1024 caracteres).
+
+Suíte completa verde em cada etapa (253 arquivos / 1869 testes ao final), `tsc --noEmit` limpo. Fix
+wave único aplicado após a revisão final (5 commits), re-revisão focada CONFIRMOU limpo (os 6
+achados resolvidos, nada residual pra adjudicar). Workspace do SDD deletado. Branch encerrada,
+aguardando decisão do usuário sobre merge/push/manter como está.
+
+**Push/deploy**: ainda não solicitados. **Migration pendente de deploy** (aditiva):
+`CampaignRecipient.redesSociaisText String?` — aplicar via `prisma db push` no próximo deploy, sem
+esquecer (lição do incidente de deploy documentado nesta mesma sessão em fases anteriores).
+
+## Última atualização (2026-08-24, item anterior — destinatários avançados de campanhas concluído, commits LOCAIS)
 
 Usuário pediu 5 melhorias na feature de campanhas: seleção manual de destinatários, envio avulso pra
 número específico, excluir campanha sem envio, preview ao vivo da mensagem, e aba de atletas que
