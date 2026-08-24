@@ -373,6 +373,15 @@ describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
     dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+    // Roteia o tx do $transaction pros mesmos spies de dbMock, pra podermos controlar os
+    // valores retornados (count pós-deleteMany) e também afirmar sobre as chamadas — mesmo
+    // padrão usado em tests/event-delete-route.test.ts.
+    dbMock.$transaction.mockImplementation(async (fn: any) =>
+      fn({
+        campaignRecipient: { deleteMany: dbMock.campaignRecipient.deleteMany, count: dbMock.campaignRecipient.count },
+        campaign: { delete: dbMock.campaign.delete },
+      }),
+    );
   });
 
   it("exclui uma campanha sem nenhum envio real", async () => {
@@ -382,6 +391,10 @@ describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
     const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
 
     expect(res.status).toBe(200);
+    expect(dbMock.campaignRecipient.deleteMany).toHaveBeenCalledWith({
+      where: { campaignId: "campaign-1", status: { notIn: ["SENT", "DELIVERED", "READ", "FAILED"] } },
+    });
+    expect(dbMock.campaign.delete).toHaveBeenCalledWith({ where: { id: "campaign-1" } });
   });
 
   it("rejeita excluir uma campanha que já teve envios reais", async () => {
@@ -391,5 +404,20 @@ describe("DELETE /api/events/[id]/campaigns/[campaignId]", () => {
     const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
 
     expect(res.status).toBe(400);
+    expect(dbMock.campaign.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejeita e não deleta nada se um envio real acontece durante a exclusão (corrida com o cron)", async () => {
+    // Simula o cron (app/api/cron/send-campaign-messages) transicionando um recipient pra SENT
+    // entre o deleteMany (que só apaga não-enviados) e a recontagem dentro da mesma transação:
+    // a recontagem ainda encontra 1 registro (o que acabou de virar SENT), então a exclusão
+    // inteira deve ser abortada e nada deve ser removido.
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ ...draftCampaign });
+    dbMock.campaignRecipient.count.mockResolvedValueOnce(1);
+
+    const res = await DELETE_CAMPAIGN(makeRequest("DELETE"), { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.campaign.delete).not.toHaveBeenCalled();
   });
 });

@@ -83,20 +83,26 @@ export async function DELETE(
   const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
   if (!context.ok) return context.response;
 
-  const sentCount = await db.campaignRecipient.count({
-    where: { campaignId, status: { in: ["SENT", "DELIVERED", "READ", "FAILED"] } },
-  });
-  if (sentCount > 0) {
-    return NextResponse.json(
-      { error: "Não é possível excluir uma campanha que já teve envios reais" },
-      { status: 400 },
-    );
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.campaignRecipient.deleteMany({
+        where: { campaignId, status: { notIn: ["SENT", "DELIVERED", "READ", "FAILED"] } },
+      });
+      const remaining = await tx.campaignRecipient.count({ where: { campaignId } });
+      if (remaining > 0) {
+        throw new Error("CAMPAIGN_HAS_SENDS");
+      }
+      await tx.campaign.delete({ where: { id: campaignId } });
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "CAMPAIGN_HAS_SENDS") {
+      return NextResponse.json(
+        { error: "Não é possível excluir uma campanha que já teve envios reais" },
+        { status: 400 },
+      );
+    }
+    throw err;
   }
-
-  await db.$transaction(async (tx) => {
-    await tx.campaignRecipient.deleteMany({ where: { campaignId } });
-    await tx.campaign.delete({ where: { id: campaignId } });
-  });
 
   await db.auditLog.create({
     data: {
