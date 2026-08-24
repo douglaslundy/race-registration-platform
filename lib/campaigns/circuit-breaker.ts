@@ -31,3 +31,12 @@ export async function recordCampaignSendSuccess(): Promise<void> {
 export async function isCircuitBreakerTripped(): Promise<boolean> {
   return (await readCount()) >= TRIP_THRESHOLD;
 }
+
+/** Chamado só pela rota de retomar campanha. Só reseta o contador se ele estiver REALMENTE
+ * disparado (>= 5) — nunca zera uma contagem parcial de falhas (ex: 3 seguidas, ainda não
+ * disparado) só porque uma campanha não relacionada foi retomada manualmente. */
+export async function resetCircuitBreakerIfTripped(): Promise<boolean> {
+  const tripped = await isCircuitBreakerTripped();
+  if (tripped) await writeCount(0);
+  return tripped;
+}

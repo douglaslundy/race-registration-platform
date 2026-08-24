@@ -4,6 +4,7 @@ import {
   recordCampaignSendFailure,
   recordCampaignSendSuccess,
   isCircuitBreakerTripped,
+  resetCircuitBreakerIfTripped,
 } from "@/lib/campaigns/circuit-breaker";
 
 const dbMock = db as any;
@@ -42,5 +43,41 @@ describe("circuit breaker de envio de campanhas", () => {
 
     dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
     expect(await isCircuitBreakerTripped()).toBe(false);
+  });
+
+  describe("resetCircuitBreakerIfTripped", () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it("reseta o contador e retorna true quando está disparado (>= 5)", async () => {
+      dbMock.platformSetting.findUnique.mockResolvedValueOnce({ key: "campaign_consecutive_failures", value: "7" });
+
+      const result = await resetCircuitBreakerIfTripped();
+
+      expect(result).toBe(true);
+      expect(dbMock.platformSetting.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { key: "campaign_consecutive_failures" },
+          update: { value: "0" },
+        }),
+      );
+    });
+
+    it("não mexe em nada e retorna false quando não está disparado (< 5)", async () => {
+      dbMock.platformSetting.findUnique.mockResolvedValueOnce({ key: "campaign_consecutive_failures", value: "3" });
+
+      const result = await resetCircuitBreakerIfTripped();
+
+      expect(result).toBe(false);
+      expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+    });
+
+    it("não mexe em nada e retorna false quando o contador nunca foi criado (nenhuma linha)", async () => {
+      dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
+
+      const result = await resetCircuitBreakerIfTripped();
+
+      expect(result).toBe(false);
+      expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+    });
   });
 });
