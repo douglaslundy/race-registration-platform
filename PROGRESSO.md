@@ -20,7 +20,11 @@ passaria despercebido como "seguro pra excluir"). Task 5 (excluir campanha) sozi
 correção fechando uma condição de corrida real que podia apagar o registro de um envio de verdade.
 
 Suite completa verde em cada etapa (251 arquivos / 1834 testes ao final), `tsc --noEmit` limpo.
-Commits locais, **ainda não pushados nem deployados** — próximo passo é perguntar ao usuário.
+
+**Push + deploy confirmados**: `git push origin main` (`2d7e120..1622043`), depois `/opt/corridas/deploy.sh`
+na VPS. `prisma db push` rodado proativamente mesmo sem mudança de schema conhecida (lição do
+incidente anterior) — confirmou "already in sync". Container reiniciado, logs limpos, cron real de
+campanhas confirmado saudável nos ciclos seguintes ao deploy (`{"processed":false,"reason":"nothing_pending"}`).
 
 ## Última atualização (2026-08-24, item anterior — 2 lacunas menores da Fase F corrigidas, commit LOCAL)
 
