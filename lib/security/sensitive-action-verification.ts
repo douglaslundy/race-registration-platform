@@ -4,7 +4,7 @@ import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { sendSensitiveActionCodeEmail } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
-export type SensitiveActionType = "PAYMENT_REFUND" | "REGISTRATION_CANCELLATION_REFUND";
+export type SensitiveActionType = "PAYMENT_REFUND" | "REGISTRATION_CANCELLATION_REFUND" | "REGISTRATION_CANCEL_CONFIRMED";
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -13,6 +13,7 @@ const INVALID_OR_EXPIRED = "Código expirado ou inválido, solicite um novo.";
 const ACTION_LABEL: Record<SensitiveActionType, string> = {
   PAYMENT_REFUND: "Confirmação de estorno de pagamento",
   REGISTRATION_CANCELLATION_REFUND: "Confirmação de aprovação de cancelamento com estorno",
+  REGISTRATION_CANCEL_CONFIRMED: "Confirmação de cancelamento de inscrição confirmada",
 };
 
 function hashCode(code: string): string {

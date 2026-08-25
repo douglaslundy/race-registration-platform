@@ -188,6 +188,27 @@ export async function sendCancellationRequestedEmail(params: {
   await sendMail({ to: params.to, messageType: "CANCELLATION_REQUESTED", subject, html: layout(appName, body) });
 }
 
+/** E-mail avisando o atleta que sua inscrição confirmada foi cancelada diretamente por um
+ * admin/organizador (fora do fluxo de pedido-de-cancelamento pelo próprio atleta). */
+export async function sendRegistrationCancelledByStaffEmail(params: {
+  to: string;
+  athleteName: string;
+  eventTitle?: string;
+  eventId?: string;
+  reason: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  const values = {
+    nome_atleta: params.athleteName,
+    nome_evento: params.eventTitle ?? "",
+    motivo_cancelamento: params.reason,
+  };
+  const template = await getEffectiveTemplate("REGISTRATION_CANCELLED_BY_STAFF", "EMAIL", "ATHLETE", params.eventId);
+  const subject = renderTemplateSubject(template.subject ?? "", values);
+  const body = renderTemplate(template.body, values, "EMAIL");
+  await sendMail({ to: params.to, messageType: "REGISTRATION_CANCELLED_BY_STAFF", subject, html: layout(appName, body) });
+}
+
 /** E-mail avisando o organizador que um lote está quase esgotado. */
 export async function sendLowStockEmail(params: {
   to: string;

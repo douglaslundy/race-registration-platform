@@ -8,6 +8,7 @@ export type AlertKey =
   | "PAYMENT_ERROR_ORDER_CANCELLED"
   | "RECONCILIATION_MISMATCH"
   | "CANCELLATION_REQUESTED"
+  | "REGISTRATION_CANCELLED_BY_STAFF"
   | "DAILY_SUMMARY"
   | "DAILY_SUMMARY_EVENT"
   | "ADVERTISER_REQUEST_PENDING"
@@ -147,6 +148,27 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
           }
         : {
             body: `{{nome_atleta}} solicitou o cancelamento da inscrição em "{{nome_evento}}". Motivo: {{motivo_cancelamento}}. Acesse o painel para aprovar ou rejeitar.`,
+          },
+  },
+
+  REGISTRATION_CANCELLED_BY_STAFF: {
+    alertKey: "REGISTRATION_CANCELLED_BY_STAFF",
+    description: "Cancelamento direto por admin/organizador — avisa o atleta com o motivo do cancelamento.",
+    channels: ["EMAIL", "WHATSAPP"],
+    recipientRoles: ["ATHLETE"],
+    variables: ["nome_atleta", "nome_evento", "motivo_cancelamento"],
+    factoryDefault: (channel) =>
+      channel === "EMAIL"
+        ? {
+            subject: "Sua inscrição em {{nome_evento}} foi cancelada",
+            body:
+              `<p>Olá {{nome_atleta}},</p>\n` +
+              `<p>Sua inscrição em <strong>{{nome_evento}}</strong> foi cancelada pela organização.</p>\n` +
+              `<p><strong>Motivo:</strong> {{motivo_cancelamento}}</p>\n` +
+              `<p>Se o pagamento já tiver sido efetuado, o estorno será processado.</p>`,
+          }
+        : {
+            body: `Sua inscrição em "{{nome_evento}}" foi cancelada pela organização. Motivo: {{motivo_cancelamento}}. Se já houver pagamento, o estorno será processado.`,
           },
   },
 

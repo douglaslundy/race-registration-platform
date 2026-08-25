@@ -23,6 +23,7 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "registrations.cancellation-decision", label: "Decidir cancelamento" },
   { key: "registrations.manual-confirm", label: "Confirmar inscrição manualmente" },
   { key: "registrations.cancel-pending", label: "Cancelar inscrição pendente de pagamento há mais de 4h" },
+  { key: "registrations.cancel-confirmed", label: "Cancelar inscrição confirmada" },
   { key: "registrations.edit-athlete", label: "Editar dados do atleta" },
   { key: "registrations.resend-confirmation-email", label: "Reenviar e-mail de confirmação" },
   { key: "registrations.resend-payment-notification", label: "Reenviar notificação de erro de pagamento" },

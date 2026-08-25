@@ -11,6 +11,7 @@ import CancellationDecisionButtons from "@/components/organizer/CancellationDeci
 import ManualConfirmButton from "@/components/organizer/ManualConfirmButton";
 import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
 import CancelPendingRegistrationButton from "@/components/registrations/CancelPendingRegistrationButton";
+import CancelConfirmedRegistrationButton from "@/components/registrations/CancelConfirmedRegistrationButton";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 import AutoPrint from "@/components/ui/AutoPrint";
@@ -349,11 +350,17 @@ export default async function InscritosPage({
                     />
                   )}
                   {r.status === "CONFIRMED" && (
-                    <ResendPaymentNotificationButton
-                      endpoint={`/api/organizer/registrations/${r.id}/resend-confirmation-email`}
-                      label="Reenviar confirmação"
-                      loadingLabel="Enviando..."
-                    />
+                    <>
+                      <ResendPaymentNotificationButton
+                        endpoint={`/api/organizer/registrations/${r.id}/resend-confirmation-email`}
+                        label="Reenviar confirmação"
+                        loadingLabel="Enviando..."
+                      />
+                      <CancelConfirmedRegistrationButton
+                        endpoint={`/api/organizer/registrations/${r.id}/cancel-confirmed`}
+                        requestCodeEndpoint={`/api/organizer/registrations/${r.id}/cancel-confirmed/request-code`}
+                      />
+                    </>
                   )}
                 </>
               );

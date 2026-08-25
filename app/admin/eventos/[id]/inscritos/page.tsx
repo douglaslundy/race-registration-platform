@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/format";
 import RegistrationsTable from "@/components/registrations/RegistrationsTable";
 import ResendPaymentNotificationButton from "@/components/registrations/ResendPaymentNotificationButton";
 import CancelPendingRegistrationButton from "@/components/registrations/CancelPendingRegistrationButton";
+import CancelConfirmedRegistrationButton from "@/components/registrations/CancelConfirmedRegistrationButton";
 import { BADGE } from "@/lib/badge-colors";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 import { canCancelPendingRegistration } from "@/lib/registrations/pending-cancellation";
@@ -335,11 +336,17 @@ export default async function AdminInscritosPage({
                     />
                   )}
                   {r.status === "CONFIRMED" && (
-                    <ResendPaymentNotificationButton
-                      endpoint={`/api/admin/registrations/${r.id}/resend-confirmation-email`}
-                      label="Reenviar confirmação"
-                      loadingLabel="Enviando..."
-                    />
+                    <>
+                      <ResendPaymentNotificationButton
+                        endpoint={`/api/admin/registrations/${r.id}/resend-confirmation-email`}
+                        label="Reenviar confirmação"
+                        loadingLabel="Enviando..."
+                      />
+                      <CancelConfirmedRegistrationButton
+                        endpoint={`/api/admin/registrations/${r.id}/cancel-confirmed`}
+                        requestCodeEndpoint={`/api/admin/registrations/${r.id}/cancel-confirmed/request-code`}
+                      />
+                    </>
                   )}
                 </>
               );
