@@ -40,6 +40,7 @@ export default async function AdminRelatorioGeralPage({
     select: {
       id: true,
       title: true,
+      startAt: true,
       categories: { select: { id: true, name: true }, orderBy: { name: "asc" } },
       routes: { select: { id: true, name: true }, orderBy: { name: "asc" } },
     },
@@ -171,7 +172,7 @@ export default async function AdminRelatorioGeralPage({
       {registrations.length === 0 ? (
         <div className="card text-center py-12 text-gray-500">Nenhuma inscrição confirmada encontrada.</div>
       ) : (
-        <GeneralReportTable registrations={registrationsWithPayment} />
+        <GeneralReportTable registrations={registrationsWithPayment} eventDate={event.startAt} />
       )}
     </div>
   );

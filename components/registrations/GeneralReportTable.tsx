@@ -19,7 +19,13 @@ export interface GeneralReportRow {
   payment: { method: string; paidAt: Date | null } | null;
 }
 
-export default function GeneralReportTable({ registrations }: { registrations: GeneralReportRow[] }) {
+export default function GeneralReportTable({
+  registrations,
+  eventDate,
+}: {
+  registrations: GeneralReportRow[];
+  eventDate: Date;
+}) {
   return (
     <div className="card overflow-x-auto print:overflow-visible print:shadow-none print:border-0 print:p-0">
       <table className="w-full text-xs print:text-[9px]">
@@ -50,7 +56,7 @@ export default function GeneralReportTable({ registrations }: { registrations: G
                 {r.athlete.athleteProfile?.birthDate ? formatDate(r.athlete.athleteProfile.birthDate) : "—"}
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                {r.athlete.athleteProfile?.birthDate ? calculateAge(r.athlete.athleteProfile.birthDate) : "—"}
+                {r.athlete.athleteProfile?.birthDate ? calculateAge(r.athlete.athleteProfile.birthDate, eventDate) : "—"}
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.athlete.athleteProfile?.cpf ?? "—"}</td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.athlete.athleteProfile?.phone ?? "—"}</td>

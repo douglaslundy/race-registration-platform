@@ -1,9 +1,10 @@
 import ExcelJS from "exceljs";
-import { formatDate } from "@/lib/format";
+import { calculateAge, formatDate } from "@/lib/format";
 
 export const REGISTRATION_EXPORT_HEADERS = [
   "Nome",
   "Data de Nascimento",
+  "Idade",
   "Sexo",
   "Equipe",
   "Categoria",
@@ -26,21 +27,27 @@ export interface RegistrationExportSource {
   medicalNotes: string | null;
 }
 
-/** Linhas da exportação de inscrições (CSV/XLSX) — mesmos 9 campos em ambos os formatos, pra
- * nunca divergirem entre si. Contato de emergência combina nome + telefone numa única coluna
- * (pedido explícito: só uma coluna "Contato de Emergência", não duas separadas). */
-export function buildRegistrationExportRows(registrations: RegistrationExportSource[]): string[][] {
-  return registrations.map((r) => [
-    r.athlete.name,
-    r.athlete.athleteProfile?.birthDate ? formatDate(r.athlete.athleteProfile.birthDate) : "",
-    r.athlete.athleteProfile?.gender ?? "",
-    r.teamName ?? "",
-    r.category?.name ?? "",
-    r.athlete.athleteProfile?.city ?? "",
-    r.route?.name ?? "",
-    [r.emergencyContactName, r.emergencyContactPhone].filter(Boolean).join(" — "),
-    r.medicalNotes ?? "",
-  ]);
+/** Linhas da exportação de inscrições (CSV/XLSX) — mesmos campos em ambos os formatos, pra nunca
+ * divergirem entre si. Contato de emergência combina nome + telefone numa única coluna (pedido
+ * explícito: só uma coluna "Contato de Emergência", não duas separadas). Idade é calculada na
+ * DATA DO EVENTO (`eventDate`), não na data de hoje — é a idade que o atleta tem/terá no dia da
+ * prova, não a idade atual de quem gera o relatório. */
+export function buildRegistrationExportRows(registrations: RegistrationExportSource[], eventDate: Date): string[][] {
+  return registrations.map((r) => {
+    const birthDate = r.athlete.athleteProfile?.birthDate;
+    return [
+      r.athlete.name,
+      birthDate ? formatDate(birthDate) : "",
+      birthDate ? String(calculateAge(birthDate, eventDate)) : "",
+      r.athlete.athleteProfile?.gender ?? "",
+      r.teamName ?? "",
+      r.category?.name ?? "",
+      r.athlete.athleteProfile?.city ?? "",
+      r.route?.name ?? "",
+      [r.emergencyContactName, r.emergencyContactPhone].filter(Boolean).join(" — "),
+      r.medicalNotes ?? "",
+    ];
+  });
 }
 
 /** CSV com BOM UTF-8 (`﻿`) — sem ele, Excel abre acentos corrompidos (interpreta o arquivo

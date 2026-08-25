@@ -50,7 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       orderBy: { athlete: { name: "asc" } },
     });
-    const rows = buildRegistrationExportRows(registrations);
+    const rows = buildRegistrationExportRows(registrations, event.startAt);
 
     if (format === "xlsx") {
       const buffer = await buildRegistrationsXlsx(rows);

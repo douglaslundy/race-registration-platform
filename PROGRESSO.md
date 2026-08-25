@@ -1,6 +1,33 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-25, mais recente — Fase 1 DEPLOYADA; aguardando autorização pra Fase 2)
+## Última atualização (2026-08-25, mais recente — coluna Idade no export CSV/XLSX + referência de data corrigida, deploy em andamento)
+
+Pedido do usuário antes de iniciar a Fase 2: adicionar coluna "Idade" na exportação CSV/XLSX de
+inscrições (Relatório Geral já tinha a coluna na tela, mas o export não) e corrigir a referência da
+idade para ser calculada **na data do evento** (`Event.startAt`), não na data de hoje — tanto na
+tela/impressão quanto no export.
+
+**O que foi feito:**
+- `lib/registrations/export.ts`: `buildRegistrationExportRows` agora recebe `eventDate: Date` como
+  2º parâmetro obrigatório; nova coluna "Idade" logo após "Data de Nascimento" (posição 2 de 10),
+  calculada com `calculateAge(birthDate, eventDate)`.
+- `app/api/events/[id]/registrations/route.ts`: passa `event.startAt` pro builder (o `event` já era
+  buscado sem `select`, então `startAt` já vinha implícito — sem mudança de query).
+- `components/registrations/GeneralReportTable.tsx`: nova prop obrigatória `eventDate: Date`; a
+  célula de Idade agora usa `calculateAge(birthDate, eventDate)` em vez do padrão "hoje" da função.
+  A impressão em PDF reusa a mesma tabela, então é corrigida de graça.
+- `app/organizador/eventos/[id]/relatorio-geral/page.tsx` e o equivalente `app/admin/...`: `select`
+  do evento ganhou `startAt: true`; `<GeneralReportTable eventDate={event.startAt} />`.
+- Testes atualizados/reescritos: `tests/lib-registrations-export.test.ts` (10 colunas, prova
+  explícita de que a idade muda conforme a data do evento, não "hoje") e
+  `tests/events-registrations-export-route.test.ts` (mocks de evento ganharam `startAt`).
+
+Suíte completa verde (260 arquivos / 1941 testes), `tsc --noEmit` limpo, `npm run build` limpo. Sem
+migration de schema (idade sempre calculada on-the-fly, nunca armazenada).
+
+**Push/deploy**: usuário pediu deploy assim que essa tarefa terminasse — em andamento agora.
+
+## Última atualização (2026-08-25, item anterior — Fase 1 DEPLOYADA; aguardando autorização pra Fase 2)
 
 **Push + deploy confirmados**: `git push origin main` (`3fe72ec..07be1fc`, 4 commits) →
 `/opt/corridas/deploy.sh`. Sem migration nesta leva. Meu acompanhamento local do deploy foi

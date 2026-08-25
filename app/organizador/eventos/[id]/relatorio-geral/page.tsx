@@ -43,11 +43,11 @@ export default async function RelatorioGeralPage({
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({
         where: { id },
-        select: { id: true, title: true, categories: { select: { id: true, name: true }, orderBy: { name: "asc" } }, routes: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
+        select: { id: true, title: true, startAt: true, categories: { select: { id: true, name: true }, orderBy: { name: "asc" } }, routes: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
       })
     : await db.event.findFirst({
         where: { id, organizerId: scope.organizerId ?? "__none__" },
-        select: { id: true, title: true, categories: { select: { id: true, name: true }, orderBy: { name: "asc" } }, routes: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
+        select: { id: true, title: true, startAt: true, categories: { select: { id: true, name: true }, orderBy: { name: "asc" } }, routes: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
       });
   if (!event) notFound();
 
@@ -176,7 +176,7 @@ export default async function RelatorioGeralPage({
       {registrations.length === 0 ? (
         <div className="card text-center py-12 text-gray-500">Nenhuma inscrição confirmada encontrada.</div>
       ) : (
-        <GeneralReportTable registrations={registrationsWithPayment} />
+        <GeneralReportTable registrations={registrationsWithPayment} eventDate={event.startAt} />
       )}
     </div>
   );

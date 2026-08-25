@@ -27,15 +27,18 @@ const fullRegistration = {
   medicalNotes: "Alérgica a dipirona",
 };
 
+// Evento em 2026-09-20 -> Ana (nasc. 15/03/1990) já fez aniversário no ano, então idade = 36.
+const eventFixture = { id: "event-1", startAt: new Date("2026-09-20T10:00:00.000Z") };
+
 describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "org-1" });
-    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+    dbMock.event.findFirst.mockResolvedValue(eventFixture);
   });
 
-  it("CSV: inclui só as 9 colunas pedidas, na ordem certa, com BOM UTF-8", async () => {
+  it("CSV: inclui as 10 colunas pedidas (com Idade calculada na data do evento), na ordem certa, com BOM UTF-8", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([fullRegistration]);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
@@ -47,9 +50,9 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     const csv = await res.text();
 
     expect(csv.split("\r\n")[0]).toBe(
-      '"Nome","Data de Nascimento","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias"',
+      '"Nome","Data de Nascimento","Idade","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias"',
     );
-    expect(csv).toContain('"Ana Silva","15/03/1990","Feminino","Equipe Exemplo","Adulto","São Paulo","10km","Carlos Silva — 11988887777","Alérgica a dipirona"');
+    expect(csv).toContain('"Ana Silva","15/03/1990","36","Feminino","Equipe Exemplo","Adulto","São Paulo","10km","Carlos Silva — 11988887777","Alérgica a dipirona"');
     expect(csv).not.toContain("Email");
     expect(csv).not.toContain("CPF");
   });
@@ -70,10 +73,10 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
     const csv = await res.text();
 
-    expect(csv).toContain('"Bruno Costa","","","","","","","",""');
+    expect(csv).toContain('"Bruno Costa","","","","","","","","",""');
   });
 
-  it("XLSX: gera um workbook válido com as mesmas 9 colunas e o content-type correto", async () => {
+  it("XLSX: gera um workbook válido com as mesmas 10 colunas (Idade calculada na data do evento) e o content-type correto", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([fullRegistration]);
 
     const res = await GET(makeRequest("format=xlsx"), { params: Promise.resolve({ id: "event-1" }) });
@@ -86,8 +89,10 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = workbook.getWorksheet("Inscritos")!;
     expect(sheet.getRow(1).getCell(1).value).toBe("Nome");
+    expect(sheet.getRow(1).getCell(3).value).toBe("Idade");
     expect(sheet.getRow(2).getCell(1).value).toBe("Ana Silva");
-    expect(sheet.getRow(2).getCell(6).value).toBe("São Paulo");
+    expect(sheet.getRow(2).getCell(3).value).toBe("36");
+    expect(sheet.getRow(2).getCell(7).value).toBe("São Paulo");
   });
 
   it("retorna 403 sem a permissão", async () => {
@@ -99,7 +104,7 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
 
   it("admin titular vê inscritos de qualquer evento (bypass)", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "admin-1", role: "ADMIN" } } as any);
-    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-9" });
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-9", startAt: new Date("2026-09-20T10:00:00.000Z") });
     dbMock.registration.findMany.mockResolvedValueOnce([]);
 
     const res = await GET(
@@ -116,7 +121,7 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
-    dbMock.event.findFirst.mockResolvedValueOnce({ id: "event-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce(eventFixture);
     dbMock.registration.findMany.mockResolvedValueOnce([]);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
