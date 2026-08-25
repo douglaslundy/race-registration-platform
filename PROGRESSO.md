@@ -1,6 +1,19 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-25, mais recente — Fase 1 de um pedido grande de 2 fases: exportação/relatório/kits/QR code, commits LOCAIS, aguardando autorização de deploy)
+## Última atualização (2026-08-25, mais recente — Fase 1 DEPLOYADA; aguardando autorização pra Fase 2)
+
+**Push + deploy confirmados**: `git push origin main` (`3fe72ec..07be1fc`, 4 commits) →
+`/opt/corridas/deploy.sh`. Sem migration nesta leva. Meu acompanhamento local do deploy foi
+interrompido por timeout da minha própria ferramenta de background (não do processo remoto) bem no
+passo "Reiniciando container" — confirmei direto na VPS que o `deploy.sh` continuou e terminou
+sozinho: `corridas-app` de pé com a imagem nova, logs limpos, sem crash-loop. Smoke test ok (`/`
+200, `/admin/campanhas` 307 — redirect de login esperado, `/eventos` 200).
+
+**Próximo passo**: usuário pediu explicitamente pra eu perguntar antes de começar a Fase 2 (termos
+de uso, regulamento do evento, status único do evento, resumo diário condicionado a inscrições
+abertas) — aguardando resposta.
+
+## Última atualização (2026-08-25, item anterior — Fase 1 de um pedido grande de 2 fases: exportação/relatório/kits/QR code, commits LOCAIS, aguardando autorização de deploy)
 
 Usuário mandou um prompt grande (estilo spec formal) dividido em Fase 1 (10 itens, esta) e Fase 2
 (termos de uso, regulamento, status de evento, resumo diário — aguardando autorização explícita
