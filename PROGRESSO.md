@@ -25,7 +25,10 @@ tela/impressão quanto no export.
 Suíte completa verde (260 arquivos / 1941 testes), `tsc --noEmit` limpo, `npm run build` limpo. Sem
 migration de schema (idade sempre calculada on-the-fly, nunca armazenada).
 
-**Push/deploy**: usuário pediu deploy assim que essa tarefa terminasse — em andamento agora.
+**Push/deploy**: `git push origin main` (`a9fa266..d5fb432`) → `deploy.sh` na VPS confirmado —
+container `corridas-app` de pé com a imagem nova, logs limpos (`Ready` sem erro), smoke test ok (`/`
+200, `/admin/campanhas` 307, `/eventos` 200). Usuário já autorizou de antemão iniciar a Fase 2 assim
+que este deploy fosse confirmado — iniciando agora.
 
 ## Última atualização (2026-08-25, item anterior — Fase 1 DEPLOYADA; aguardando autorização pra Fase 2)
 
