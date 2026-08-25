@@ -1,6 +1,41 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-24, mais recente — layout/filtro por evento/variáveis novas/preview na criação de campanhas, 8 tasks concluídas + fix wave da revisão final, commits LOCAIS)
+## Última atualização (2026-08-25, mais recente — cancelar inscrição confirmada + 2ª rodada de fixes de campanhas, DEPLOYADO)
+
+**Feature nova**: botão "Cancelar inscrição" pras inscrições CONFIRMED, admin e organizador (telas
+de inscritos). Fluxo: justificativa obrigatória → código de confirmação por e-mail/WhatsApp (mesmo
+mecanismo já usado em outras ações sensíveis do sistema — usuário confirmou preferir isso a senha de
+login, que não existe como mecanismo em nenhum outro lugar do app) → cancela a inscrição, libera a
+vaga do lote, tenta estornar automaticamente (ou marca `REFUND_PENDING` pra resolução manual,
+reaproveitando `attemptAutoRefund` já existente) e avisa o atleta por e-mail/WhatsApp com o motivo
+(alerta novo `REGISTRATION_CANCELLED_BY_STAFF`). Novo serviço `cancelConfirmedRegistrationDirectly`
+(distinto de `decideRegistrationCancellation`, que só decide sobre um pedido do próprio atleta já em
+`CANCELLATION_REQUESTED`); 4 rotas novas (organizer/admin × request-code/confirmar); permissões novas
+`registrations.cancel-confirmed(-any)`.
+
+**2ª rodada de fixes de campanhas** (usuário reportou de novo, com screenshots, que os botões ainda
+"estouravam" o card): causa raiz real — a correção anterior só tinha `flex-wrap` no container dos
+botões, não na linha externa que envolve título+botões, então a linha inteira transbordava em vez de
+quebrar. Usuário pediu ainda mais: botões **embaixo** da mensagem (não do lado) — layout do card
+virou empilhado (título/descrição/mensagem em cima, botões numa linha própria embaixo). Mais 4 itens
+nessa rodada: (1) `redes_sociais` em campanhas agora ignora a cota por destinatário
+(`getSocialPromoText({bypassQuota:true})`, só pra campanhas — alertas transacionais continuam
+respeitando a cota); (2) resumo diário por evento (`sendEventDailySummaries`) para de disparar depois
+que o evento encerra (`startAt` num dia antes do dia resumido, ou `status: CANCELLED`); (3) nova rota
+`recipients/failures` + link "(ver motivos)" no resumo da campanha, mostrando telefone/motivo/
+tentativas de cada destinatário que falhou (dado já existia no banco, nunca tinha UI); (4) confirmado
+que telefone tem tratamento básico (completa DDI, valida 10/11 dígitos) mas **não** corrige número
+sem o 9º dígito nem valida DDD real — ficou registrado, não implementado (usuário não pediu ainda).
+
+Suíte completa verde em cada etapa (256 arquivos / 1904 testes ao final), `tsc --noEmit` limpo.
+
+**Push + deploy confirmados** (2 levas): `git push origin main` (`535dc83..bae80d0`, 2 commits) →
+`/opt/corridas/deploy.sh` na VPS. 1ª tentativa de deploy falhou por timeout de SSH (rede, não
+relacionado ao código — confirmado que o site continuava no ar via HTTPS durante o timeout); retry
+bem-sucedido pegou as 2 levas de uma vez. Sem migration nova em nenhuma das duas levas. Smoke test
+ok (`/` 200, `/admin/campanhas` 307 — redirect de login esperado), logs limpos.
+
+## Última atualização (2026-08-24, item anterior — layout/filtro por evento/variáveis novas/preview na criação de campanhas, 8 tasks concluídas + fix wave da revisão final, commits LOCAIS)
 
 Usuário reportou (com 3 screenshots) layout quebrado dos botões de ação do card de campanha, pediu
 filtro por evento na seleção manual de destinatários (com vínculo real de inscrição), variáveis
