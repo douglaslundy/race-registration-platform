@@ -1,6 +1,46 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-25, mais recente — cancelar inscrição confirmada + 2ª rodada de fixes de campanhas, DEPLOYADO)
+## Última atualização (2026-08-25, mais recente — Fase 1 de um pedido grande de 2 fases: exportação/relatório/kits/QR code, commits LOCAIS, aguardando autorização de deploy)
+
+Usuário mandou um prompt grande (estilo spec formal) dividido em Fase 1 (10 itens, esta) e Fase 2
+(termos de uso, regulamento, status de evento, resumo diário — aguardando autorização explícita
+separada pra começar). Investigação inicial via fork (levantamento read-only de todos os 10 itens)
+confirmou que **2 itens já estavam prontos** (edição de nome/CPF do atleta, modal de visualização de
+inscrição) — não precisaram de código novo, só verificação.
+
+**O que foi implementado:**
+1. Exportação CSV/XLSX de inscrições: só os 9 campos pedidos (antes tinha 15, incluindo dados que
+   não deveriam sair — e-mail/CPF/telefone/valor); BOM UTF-8 no CSV (Excel abria acentos
+   corrompidos); nova exportação Excel (`exceljs`, não havia lib de planilha no projeto); **bug real
+   corrigido**: o botão de exportar nunca respeitava filtro nenhum da tela (sempre baixava o evento
+   inteiro) — agora usa `buildRegistrationWhere`, a mesma fonte de verdade da tela de inscritos.
+2. Relatório Geral (organizador + admin) ganhou dashboard de KPIs (inscrições por percurso,
+   camisetas por tamanho, valor pago agrupado por valor efetivo — só pagamentos `PAID`), filtros
+   (busca/percurso/categoria) e ordenação (alfabética, por percurso, priorizando quem tem contato de
+   emergência ou alergia preenchidos), colunas de Data de Nascimento/Idade.
+3. **Causa raiz do 404 confirmada e corrigida**: a consulta do evento comparava
+   `organizer.userId === session.user.id` diretamente — nunca verdadeiro pra um ADMIN ou um
+   ASSISTENTE de organizador (ambos passam por `requireOrganizer`). Corrigido com
+   `resolveActingScope`, mesmo padrão já usado noutras rotas. Mesmo bug encontrado (bônus, não
+   pedido) e corrigido na própria página de Inscritos do organizador.
+4. Observações da inscrição (`Registration.notes`) agora aparecem em destaque na tela de Entrega de
+   Kits (dado já existia no banco, só não tinha UI ali).
+5. Novo download de QR code da inscrição (PNG/PDF) a partir do modal "Ver dados do atleta" — reusa
+   `generateKitQrCodePng` (mesmo token de sempre) e `@react-pdf/renderer` (já usado no relatório de
+   anúncios, sem nova lib de PDF).
+
+**Não implementado (fora de escopo desta fase, ou já resolvido antes)**: edição de nome/CPF (já
+existia, com autorização correta no backend — `app/api/organizer/registrations/[id]/athlete` e
+`app/api/admin/users/[id]`); modal de visualização de inscrição (já existia,
+`AthleteDetailsModal.tsx`, já ligado nas duas telas via `RegistrationsTable`).
+
+Suíte completa verde em cada etapa (260 arquivos / 1940 testes ao final), `tsc --noEmit` limpo,
+`npm run build` (produção) limpo. Sem migration de schema nesta fase. Nova dependência: `exceljs`.
+
+**Push/deploy**: aguardando a pergunta obrigatória de fim de Fase 1 (usuário pediu explicitamente
+pra eu parar e perguntar antes de qualquer deploy, e antes de começar a Fase 2).
+
+## Última atualização (2026-08-25, item anterior — cancelar inscrição confirmada + 2ª rodada de fixes de campanhas, DEPLOYADO)
 
 **Feature nova**: botão "Cancelar inscrição" pras inscrições CONFIRMED, admin e organizador (telas
 de inscritos). Fluxo: justificativa obrigatória → código de confirmação por e-mail/WhatsApp (mesmo
