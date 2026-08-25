@@ -1,8 +1,8 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import ExportCsvButton from "@/components/organizer/ExportCsvButton";
+import RegistrationsExportButtons from "@/components/registrations/RegistrationsExportButtons";
 import type { Metadata } from "next";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
 import { formatCurrency } from "@/lib/format";
@@ -103,17 +103,22 @@ export default async function InscritosPage({
   const requestedPage = Number.parseInt(sp.page ?? "1", 10);
   const printMode = sp.print === "1";
 
-  const event = await db.event.findFirst({
-    where: { id, organizer: { userId: session.user.id } },
-    select: {
-      id: true,
-      title: true,
-      categories: { select: { id: true, name: true }, orderBy: { name: "asc" } },
-      routes: { select: { id: true, name: true }, orderBy: { name: "asc" } },
-      ticketBatches: { select: { id: true, name: true }, orderBy: { startAt: "asc" } },
-      coupons: { select: { id: true, code: true }, orderBy: { code: "asc" } },
-    },
-  });
+  // resolveActingScope (não mais organizer.userId === session.user.id direto): sem isso, um ADMIN
+  // ou um ASSISTENTE de organizador (ambos passam por requireOrganizer acima) recebiam 404 aqui,
+  // porque a comparação antiga nunca é verdadeira pra esses dois casos — mesmo bug corrigido no
+  // Relatório Geral.
+  const scope = await resolveActingScope(session);
+  const eventSelect = {
+    id: true,
+    title: true,
+    categories: { select: { id: true, name: true }, orderBy: { name: "asc" as const } },
+    routes: { select: { id: true, name: true }, orderBy: { name: "asc" as const } },
+    ticketBatches: { select: { id: true, name: true }, orderBy: { startAt: "asc" as const } },
+    coupons: { select: { id: true, code: true }, orderBy: { code: "asc" as const } },
+  };
+  const event = scope.actingAsAdmin
+    ? await db.event.findUnique({ where: { id }, select: eventSelect })
+    : await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" }, select: eventSelect });
   if (!event) notFound();
 
   const where = buildRegistrationWhere(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo });
@@ -209,7 +214,10 @@ export default async function InscritosPage({
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <ExportCsvButton eventId={id} />
+          <RegistrationsExportButtons
+            eventId={id}
+            filters={{ status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo }}
+          />
           <a href={printUrl} target="_blank" rel="noopener" className="btn-secondary text-sm">Imprimir PDF</a>
         </div>
       </div>

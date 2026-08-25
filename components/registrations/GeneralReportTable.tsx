@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate } from "@/lib/format";
+import { calculateAge, formatCurrency, formatDate } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL } from "./RegistrationsTable";
 
 export interface GeneralReportRow {
@@ -10,7 +10,7 @@ export interface GeneralReportRow {
   athlete: {
     name: string;
     email: string;
-    athleteProfile: { cpf: string | null; phone: string | null } | null;
+    athleteProfile: { cpf: string | null; phone: string | null; birthDate: Date | null } | null;
   };
   route: { name: string } | null;
   category: { name: string } | null;
@@ -26,6 +26,8 @@ export default function GeneralReportTable({ registrations }: { registrations: G
         <thead>
           <tr className="text-left text-gray-500 border-b dark:border-gray-700">
             <th className="pb-2 pr-3">Atleta</th>
+            <th className="pb-2 pr-3">Data de Nascimento</th>
+            <th className="pb-2 pr-3">Idade</th>
             <th className="pb-2 pr-3">CPF</th>
             <th className="pb-2 pr-3">Telefone</th>
             <th className="pb-2 pr-3">Percurso / Categoria / Lote</th>
@@ -43,6 +45,12 @@ export default function GeneralReportTable({ registrations }: { registrations: G
               <td className="py-2 pr-3">
                 <p className="font-medium">{r.athlete.name}</p>
                 <p className="text-gray-500">{r.athlete.email}</p>
+              </td>
+              <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
+                {r.athlete.athleteProfile?.birthDate ? formatDate(r.athlete.athleteProfile.birthDate) : "—"}
+              </td>
+              <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
+                {r.athlete.athleteProfile?.birthDate ? calculateAge(r.athlete.athleteProfile.birthDate) : "—"}
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.athlete.athleteProfile?.cpf ?? "—"}</td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.athlete.athleteProfile?.phone ?? "—"}</td>

@@ -30,6 +30,7 @@
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "exceljs": "^4.4.0",
     "mercadopago": "^2.12.1",
     "next": "^16.2.6",
     "next-auth": "^5.0.0-beta.25",

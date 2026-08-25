@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import ExcelJS from "exceljs";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
@@ -9,11 +10,24 @@ import { GET } from "@/app/api/events/[id]/registrations/route";
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
 
-function makeRequest() {
-  return new Request("http://localhost/api/events/event-1/registrations?format=csv") as any;
+function makeRequest(query = "format=csv") {
+  return new Request(`http://localhost/api/events/event-1/registrations?${query}`) as any;
 }
 
-describe("GET /api/events/[id]/registrations?format=csv", () => {
+const fullRegistration = {
+  athlete: {
+    name: "Ana Silva",
+    athleteProfile: { birthDate: new Date("1990-03-15T12:00:00.000Z"), gender: "Feminino", city: "São Paulo" },
+  },
+  route: { name: "10km" },
+  category: { name: "Adulto" },
+  teamName: "Equipe Exemplo",
+  emergencyContactName: "Carlos Silva",
+  emergencyContactPhone: "11988887777",
+  medicalNotes: "Alérgica a dipirona",
+};
+
+describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
@@ -21,60 +35,59 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
   });
 
-  it("inclui a coluna CPF, Telefone e Valor Pago no cabeçalho e os valores nas linhas", async () => {
-    dbMock.registration.findMany.mockResolvedValueOnce([
-      {
-        athlete: {
-          name: "Ana Silva",
-          email: "ana@example.com",
-          athleteProfile: { cpf: "11144477735", phone: "11988887777" },
-        },
-        route: { name: "10km" },
-        category: null,
-        ticketBatch: { name: "Lote 1" },
-        order: { totalAmount: 5500 },
-        shirtSize: "M",
-        teamName: null,
-        emergencyContactName: null,
-        emergencyContactPhone: null,
-        notes: "Chegarei atrasado",
-        status: "CONFIRMED",
-        createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      },
-    ]);
+  it("CSV: inclui só as 9 colunas pedidas, na ordem certa, com BOM UTF-8", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([fullRegistration]);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
+    const bytes = new Uint8Array(await res.clone().arrayBuffer());
+    // BOM UTF-8 em bytes crus (EF BB BF) — a checagem tem que ser nos bytes da resposta, não no
+    // texto decodificado por res.text()/TextDecoder, que já remove o BOM ao decodificar (é assim
+    // que o próprio navegador/Excel reconhece "isto é UTF-8" e não deve reaparecer como caractere).
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
     const csv = await res.text();
 
-    expect(csv.split("\n")[0]).toBe(
-      "Nome,Email,CPF,Telefone,Percurso,Categoria,Lote,Camisa,Equipe,Contato de Emergência,Telefone de Emergência,Observação,Valor do Pedido,Status,Data",
+    expect(csv.split("\r\n")[0]).toBe(
+      '"Nome","Data de Nascimento","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias"',
     );
-    expect(csv).toContain('"Ana Silva","ana@example.com","11144477735","11988887777",');
-    expect(csv).toContain('"Chegarei atrasado","R$ 55,00","CONFIRMED"');
+    expect(csv).toContain('"Ana Silva","15/03/1990","Feminino","Equipe Exemplo","Adulto","São Paulo","10km","Carlos Silva — 11988887777","Alérgica a dipirona"');
+    expect(csv).not.toContain("Email");
+    expect(csv).not.toContain("CPF");
   });
 
-  it("usa string vazia quando o atleta ainda não tem CPF cadastrado", async () => {
+  it("CSV: usa string vazia quando o atleta não tem perfil/rota/categoria", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
-        athlete: { name: "Bruno Costa", email: "bruno@example.com", athleteProfile: null },
+        athlete: { name: "Bruno Costa", athleteProfile: null },
         route: null,
         category: null,
-        ticketBatch: { name: "Lote 1" },
-        order: { totalAmount: 5000 },
-        shirtSize: null,
         teamName: null,
         emergencyContactName: null,
         emergencyContactPhone: null,
-        notes: null,
-        status: "PENDING_PAYMENT",
-        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        medicalNotes: null,
       },
     ]);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
     const csv = await res.text();
 
-    expect(csv).toContain('"Bruno Costa","bruno@example.com","","",');
+    expect(csv).toContain('"Bruno Costa","","","","","","","",""');
+  });
+
+  it("XLSX: gera um workbook válido com as mesmas 9 colunas e o content-type correto", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([fullRegistration]);
+
+    const res = await GET(makeRequest("format=xlsx"), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(res.headers.get("Content-Type")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+    const sheet = workbook.getWorksheet("Inscritos")!;
+    expect(sheet.getRow(1).getCell(1).value).toBe("Nome");
+    expect(sheet.getRow(2).getCell(1).value).toBe("Ana Silva");
+    expect(sheet.getRow(2).getCell(6).value).toBe("São Paulo");
   });
 
   it("retorna 403 sem a permissão", async () => {
@@ -125,10 +138,7 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
   it("filtra por status quando o parâmetro status é passado", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([]);
 
-    await GET(
-      new Request("http://localhost/api/events/event-1/registrations?format=csv&status=CONFIRMED") as any,
-      { params: Promise.resolve({ id: "event-1" }) },
-    );
+    await GET(makeRequest("format=csv&status=CONFIRMED"), { params: Promise.resolve({ id: "event-1" }) });
 
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { eventId: "event-1", status: "CONFIRMED" } }),
@@ -138,13 +148,40 @@ describe("GET /api/events/[id]/registrations?format=csv", () => {
   it("ignora um valor de status desconhecido (sem filtrar)", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([]);
 
+    await GET(makeRequest("format=csv&status=NAO_EXISTE"), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { eventId: "event-1" } }),
+    );
+  });
+
+  it("respeita percurso + categoria + busca combinados — mesma fonte de verdade da tela de inscritos", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
     await GET(
-      new Request("http://localhost/api/events/event-1/registrations?format=csv&status=NAO_EXISTE") as any,
+      makeRequest("format=csv&routeId=route-1&categoryId=cat-1&q=maria"),
       { params: Promise.resolve({ id: "event-1" }) },
     );
 
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { eventId: "event-1" } }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eventId: "event-1",
+          routeId: "route-1",
+          categoryId: "cat-1",
+          OR: expect.any(Array),
+        }),
+      }),
+    );
+  });
+
+  it("XLSX também respeita os mesmos filtros que o CSV", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    await GET(makeRequest("format=xlsx&ticketBatchId=batch-1"), { params: Promise.resolve({ id: "event-1" }) });
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ eventId: "event-1", ticketBatchId: "batch-1" }) }),
     );
   });
 });

@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import ExportCsvButton from "@/components/organizer/ExportCsvButton";
+import RegistrationsExportButtons from "@/components/registrations/RegistrationsExportButtons";
 import type { Metadata } from "next";
 import AutoPrint from "@/components/ui/AutoPrint";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
@@ -205,7 +205,10 @@ export default async function AdminInscritosPage({
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <ExportCsvButton eventId={id} />
+          <RegistrationsExportButtons
+            eventId={id}
+            filters={{ status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo }}
+          />
           <a href={printUrl} target="_blank" rel="noopener" className="btn-secondary text-sm">Imprimir PDF</a>
         </div>
       </div>

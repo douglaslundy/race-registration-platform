@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, slugify, calculatePlatformFee } from "@/lib/format";
+import { formatCurrency, slugify, calculatePlatformFee, calculateAge } from "@/lib/format";
+
+describe("calculateAge", () => {
+  it("calcula idade quando o aniversário já passou no ano de referência", () => {
+    expect(calculateAge(new Date("1990-03-15"), new Date("2026-08-20"))).toBe(36);
+  });
+
+  it("calcula idade quando o aniversário ainda não chegou no ano de referência (não é só diferença de anos)", () => {
+    expect(calculateAge(new Date("1990-12-15"), new Date("2026-08-20"))).toBe(35);
+  });
+
+  it("calcula idade no dia exato do aniversário", () => {
+    expect(calculateAge(new Date("1990-08-20"), new Date("2026-08-20"))).toBe(36);
+  });
+
+  it("calcula idade um dia antes do aniversário (mesmo mês)", () => {
+    expect(calculateAge(new Date("1990-08-21"), new Date("2026-08-20"))).toBe(35);
+  });
+});
 
 describe("formatCurrency", () => {
   it("formats BRL centavos correctly", () => {
