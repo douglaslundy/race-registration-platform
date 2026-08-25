@@ -7,6 +7,7 @@ vi.mock("@/lib/campaigns/recipients", () => ({ prepareCampaignRecipients: vi.fn(
 
 import { POST } from "@/app/api/events/[id]/campaigns/[campaignId]/prepare-recipients/route";
 import { GET } from "@/app/api/events/[id]/campaigns/[campaignId]/recipients/summary/route";
+import { GET as FAILURES } from "@/app/api/events/[id]/campaigns/[campaignId]/recipients/failures/route";
 import { prepareCampaignRecipients } from "@/lib/campaigns/recipients";
 
 const authMock = vi.mocked(auth);
@@ -89,5 +90,33 @@ describe("GET /api/events/[id]/campaigns/[campaignId]/recipients/summary", () =>
 
     expect(res.status).toBe(200);
     expect(data.summary).toEqual({ PENDING: 8, OPTED_OUT: 1 });
+  });
+});
+
+describe("GET /api/events/[id]/campaigns/[campaignId]/recipients/failures", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+    dbMock.organizerProfile.findUnique.mockResolvedValue({ id: "organizer-profile-1", campaignsEnabled: true });
+    dbMock.campaign.findFirst.mockResolvedValue({ ...draftCampaign });
+  });
+
+  it("retorna telefone/motivo/tentativas de cada destinatário que falhou", async () => {
+    dbMock.campaignRecipient.findMany.mockResolvedValueOnce([
+      { normalizedPhone: "5511999999999", failureReason: "Número inválido", attempts: 3 },
+    ]);
+
+    const res = await FAILURES(
+      new Request("http://localhost", { method: "GET" }) as any,
+      { params: Promise.resolve({ id: "event-1", campaignId: "campaign-1" }) },
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaignRecipient.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { campaignId: "campaign-1", status: "FAILED" } }),
+    );
+    expect(data.rows).toEqual([{ normalizedPhone: "5511999999999", failureReason: "Número inválido", attempts: 3 }]);
   });
 });

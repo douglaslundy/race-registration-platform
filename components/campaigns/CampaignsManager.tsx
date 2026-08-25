@@ -121,6 +121,9 @@ export default function CampaignsManager({
   const [scheduledAtInput, setScheduledAtInput] = useState("");
   const [dispatchingConfirmId, setDispatchingConfirmId] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState(false);
+  const [failuresCampaignId, setFailuresCampaignId] = useState<string | null>(null);
+  const [failuresRows, setFailuresRows] = useState<{ normalizedPhone: string; failureReason: string | null; attempts: number }[]>([]);
+  const [failuresLoading, setFailuresLoading] = useState(false);
   const createBodyRef = useRef<HTMLTextAreaElement>(null);
   const editBodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -554,6 +557,17 @@ export default function CampaignsManager({
     await reload();
   }
 
+  async function openFailures(campaignId: string) {
+    setFailuresCampaignId(campaignId);
+    setFailuresRows([]);
+    setFailuresLoading(true);
+    const res = await fetch(`${apiBase}/${campaignId}/recipients/failures`);
+    setFailuresLoading(false);
+    if (!res.ok) return;
+    const data = await res.json().catch(() => ({}));
+    setFailuresRows(data.rows ?? []);
+  }
+
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
 
   return (
@@ -639,6 +653,39 @@ export default function CampaignsManager({
         onConfirm={doDispatchNow}
         onCancel={() => setDispatchingConfirmId(null)}
       />
+
+      {failuresCampaignId && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setFailuresCampaignId(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg mx-4 space-y-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Motivos das falhas</h2>
+            {failuresLoading ? (
+              <p className="text-sm text-gray-500">Carregando...</p>
+            ) : failuresRows.length === 0 ? (
+              <p className="text-sm text-gray-500">Nenhum destinatário com falha encontrado.</p>
+            ) : (
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
+                {failuresRows.map((row, i) => (
+                  <div key={i} className="p-2 text-sm">
+                    <p className="font-medium">{row.normalizedPhone} <span className="text-xs text-gray-400">({row.attempts} tentativa{row.attempts === 1 ? "" : "s"})</span></p>
+                    <p className="text-gray-500">{row.failureReason ?? "Motivo não registrado"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setFailuresCampaignId(null)} className="btn-secondary text-sm px-4">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {previewResult !== null && (
         <div
@@ -1060,17 +1107,16 @@ export default function CampaignsManager({
         <div className="space-y-2">
           {campaigns.map((campaign) => (
             <div key={campaign.id} className="card space-y-2">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium">
-                    {campaign.name}{" "}
-                    <span className="text-xs text-gray-400">({STATUS_LABEL[campaign.status] ?? campaign.status})</span>
-                  </p>
-                  {campaign.description && <p className="text-sm text-gray-500">{campaign.description}</p>}
-                  <p className="text-sm text-gray-400 truncate max-w-md">{campaign.messageBody}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 shrink-0 justify-end">
-                  {campaign.status === "DRAFT" && (
+              <div>
+                <p className="font-medium">
+                  {campaign.name}{" "}
+                  <span className="text-xs text-gray-400">({STATUS_LABEL[campaign.status] ?? campaign.status})</span>
+                </p>
+                {campaign.description && <p className="text-sm text-gray-500">{campaign.description}</p>}
+                <p className="text-sm text-gray-400 truncate max-w-md">{campaign.messageBody}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800 pt-2">
+                {campaign.status === "DRAFT" && (
                     <>
                       <button onClick={() => openEdit(campaign)} className="text-xs px-2 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors">
                         Editar
@@ -1124,7 +1170,6 @@ export default function CampaignsManager({
                       Excluir
                     </button>
                   )}
-                </div>
               </div>
               {recipientSummaries[campaign.id] && (
                 <p className="text-xs text-gray-500 border-t border-gray-100 dark:border-gray-800 pt-2">
@@ -1137,6 +1182,18 @@ export default function CampaignsManager({
                   {recipientSummaries[campaign.id].delivered ?? 0} · Lidos:{" "}
                   {recipientSummaries[campaign.id].read ?? 0} · Falhou:{" "}
                   {recipientSummaries[campaign.id].failed ?? 0}
+                  {(recipientSummaries[campaign.id].failed ?? 0) > 0 && (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={() => void openFailures(campaign.id)}
+                        className="text-primary-600 hover:underline"
+                      >
+                        (ver motivos)
+                      </button>
+                    </>
+                  )}
                 </p>
               )}
               {recipientSummaries[campaign.id] && campaign.messageBody.includes("{{qrcode_inscricao}}") && (

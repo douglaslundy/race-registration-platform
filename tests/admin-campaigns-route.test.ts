@@ -15,6 +15,7 @@ import { POST as CANCEL } from "@/app/api/admin/campaigns/[campaignId]/cancel/ro
 import { POST as DUPLICATE } from "@/app/api/admin/campaigns/[campaignId]/duplicate/route";
 import { POST as PREPARE } from "@/app/api/admin/campaigns/[campaignId]/prepare-recipients/route";
 import { GET as SUMMARY } from "@/app/api/admin/campaigns/[campaignId]/recipients/summary/route";
+import { GET as FAILURES } from "@/app/api/admin/campaigns/[campaignId]/recipients/failures/route";
 import { POST as PAUSE } from "@/app/api/admin/campaigns/[campaignId]/pause/route";
 import { POST as RESUME } from "@/app/api/admin/campaigns/[campaignId]/resume/route";
 import { prepareCampaignRecipients } from "@/lib/campaigns/recipients";
@@ -339,6 +340,29 @@ describe("GET /api/admin/campaigns/[campaignId]/recipients/summary", () => {
 
     expect(res.status).toBe(200);
     expect(data.summary).toEqual({ PENDING: 950 });
+  });
+});
+
+describe("GET /api/admin/campaigns/[campaignId]/recipients/failures", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.campaign.findFirst.mockResolvedValue({ ...platformDraftCampaign });
+  });
+
+  it("retorna telefone/motivo/tentativas de cada destinatário que falhou", async () => {
+    dbMock.campaignRecipient.findMany.mockResolvedValueOnce([
+      { normalizedPhone: "5511999999999", failureReason: "Número inválido", attempts: 3 },
+    ]);
+
+    const res = await FAILURES(makeRequest("GET"), { params: Promise.resolve({ campaignId: "campaign-1" }) });
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(dbMock.campaignRecipient.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { campaignId: "campaign-1", status: "FAILED" } }),
+    );
+    expect(data.rows).toEqual([{ normalizedPhone: "5511999999999", failureReason: "Número inválido", attempts: 3 }]);
   });
 });
 
