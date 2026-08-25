@@ -12,6 +12,7 @@ export interface KitDeliverySearchResult {
   deliveredAt: Date | null;
   deliveredByName: string | null;
   receivedByName: string | null;
+  notes: string | null;
 }
 
 export interface KitDeliveryProgress {
@@ -73,6 +74,7 @@ export async function findRegistrationForKitDelivery(
     deliveredAt: r.kitDelivery?.deliveredAt ?? null,
     deliveredByName: r.kitDelivery?.deliveredBy.name ?? null,
     receivedByName: r.kitDelivery?.receivedByName ?? null,
+    notes: r.notes,
   }));
 }
 

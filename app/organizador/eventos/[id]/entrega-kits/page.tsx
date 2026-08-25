@@ -18,6 +18,7 @@ interface SearchResult {
   deliveredAt: string | null;
   deliveredByName: string | null;
   receivedByName: string | null;
+  notes: string | null;
 }
 
 interface ReportData {
@@ -166,6 +167,13 @@ export default function EntregaKitsPage() {
                 {r.bibNumber ?? "—"}
               </p>
             </div>
+
+            {r.notes && (
+              <div className="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Observações</p>
+                <p className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap">{r.notes}</p>
+              </div>
+            )}
 
             {r.delivered ? (
               <p className="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded px-3 py-2">

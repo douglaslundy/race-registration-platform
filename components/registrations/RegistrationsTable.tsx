@@ -101,6 +101,7 @@ export default function RegistrationsTable({
                     athleteEmail={r.athlete.email}
                     profile={r.athlete.athleteProfile}
                     editEndpoint={editEndpoint?.(r)}
+                    registrationId={r.id}
                     registrationContext={{
                       status: r.status,
                       createdAt: r.createdAt,

@@ -49,6 +49,9 @@ interface AthleteDetailsModalProps {
   profile: AthleteProfileData | null;
   registrationContext?: RegistrationContextData;
   editEndpoint?: string;
+  /** Presente sempre que o modal é aberto a partir de uma inscrição real (não usado em telas que
+   * só mostram o perfil do atleta sem contexto de inscrição) — habilita o download do QR code. */
+  registrationId?: string;
 }
 
 interface EditFormState {
@@ -76,6 +79,7 @@ export default function AthleteDetailsModal({
   profile,
   registrationContext,
   editEndpoint,
+  registrationId,
 }: AthleteDetailsModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -282,6 +286,23 @@ export default function AthleteDetailsModal({
                         <dd className="text-gray-800 dark:text-gray-200">{registrationContext.notes ?? "—"}</dd>
                       </div>
                     </dl>
+                  </div>
+                )}
+
+                {registrationId && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      href={`/api/registrations/${registrationId}/qrcode?format=png`}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      Baixar QR Code — PNG
+                    </a>
+                    <a
+                      href={`/api/registrations/${registrationId}/qrcode?format=pdf`}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      Baixar QR Code — PDF
+                    </a>
                   </div>
                 )}
 

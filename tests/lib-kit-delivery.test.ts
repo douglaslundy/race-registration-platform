@@ -58,6 +58,7 @@ describe("findRegistrationForKitDelivery", () => {
         athlete: { name: "João Silva" },
         category: { name: "Geral" },
         kitDelivery: null,
+        notes: null,
       },
     ]);
 
@@ -75,8 +76,29 @@ describe("findRegistrationForKitDelivery", () => {
         deliveredAt: null,
         deliveredByName: null,
         receivedByName: null,
+        notes: null,
       },
     ]);
+  });
+
+  it("inclui a observação da inscrição quando presente", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      {
+        id: "reg-3",
+        proxyAthleteDisplayName: null,
+        bibNumber: "10",
+        shirtSize: "G",
+        status: "CONFIRMED",
+        athlete: { name: "Carla Souza" },
+        category: null,
+        kitDelivery: null,
+        notes: "Atleta solicitou retirada por terceiro. Verificar documento.",
+      },
+    ]);
+
+    const result = await findRegistrationForKitDelivery("event-1", "Carla");
+
+    expect(result[0].notes).toBe("Atleta solicitou retirada por terceiro. Verificar documento.");
   });
 
   it("mapeia inscrição já entregue, usando proxyAthleteDisplayName quando presente", async () => {
@@ -95,6 +117,7 @@ describe("findRegistrationForKitDelivery", () => {
           receivedByName: "Pedro (amigo)",
           deliveredBy: { name: "Organizador Um" },
         },
+        notes: null,
       },
     ]);
 
