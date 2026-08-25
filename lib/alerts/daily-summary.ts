@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/format";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
 import { renderTemplate } from "@/lib/templates/render";
 import { claimAlert, unclaimAlert } from "./dedupe";
+import { getEventDisplayStatus } from "@/lib/batch-status";
 import {
   getAdminDailySummary,
   getOrganizerDailySummary,
@@ -333,7 +334,15 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
     const eventIds = [...new Set(recipients.map((r) => r.eventId as string))];
     const events = await db.event.findMany({
       where: { id: { in: eventIds } },
-      select: { id: true, title: true, status: true, startAt: true },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        startAt: true,
+        ticketBatches: {
+          select: { id: true, soldCount: true, capacity: true, startAt: true, endAt: true, active: true, activationMode: true },
+        },
+      },
     });
     const eventTitleMap = new Map(events.map((e) => [e.id, e.title]));
     // Um evento "encerrado" (a corrida já aconteceu — startAt cai num dia ANTES do dia sendo
@@ -341,8 +350,21 @@ export async function sendEventDailySummaries(dayStart: Date, dayEnd: Date): Pro
     // continua recebendo mensagem todo dia pra sempre, mesmo anos depois do evento, até alguém lembrar
     // de remover o contato manualmente na tela de configuração. O dia do próprio evento (startAt cai
     // dentro de [dayStart, dayEnd)) ainda gera o resumo final — só os dias DEPOIS do evento param.
+    //
+    // Também para enquanto as inscrições estiverem encerradas/esgotadas (status EFETIVO, via
+    // getEventDisplayStatus — a mesma reconciliação já usada no badge do card de evento, porque
+    // Event.status persistido não é recalculado sozinho quando os lotes esgotam) — reversível: se o
+    // organizador reabrir inscrições (novo lote), o resumo volta a disparar sozinho no próximo dia,
+    // sem precisar remover/recadastrar o contato.
     const activeEventIds = new Set(
-      events.filter((e) => e.status !== "CANCELLED" && e.startAt >= dayStart).map((e) => e.id),
+      events
+        .filter((e) => {
+          if (e.status === "CANCELLED") return false;
+          if (e.startAt < dayStart) return false;
+          const effectiveStatus = getEventDisplayStatus(e.status, e.ticketBatches);
+          return effectiveStatus !== "REGISTRATIONS_CLOSED" && effectiveStatus !== "SOLD_OUT";
+        })
+        .map((e) => e.id),
     );
 
     const cfg = await getSmtpConfig();
