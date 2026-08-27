@@ -32,7 +32,7 @@ export default async function ConfiguracoesPage() {
   const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting, socialLinkValuesArray] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
-      select: { id: true, title: true, platformFeePercent: true, status: true },
+      select: { id: true, title: true, platformFeePercent: true, pixServiceFeeDiscountPercent: true, status: true },
       orderBy: { title: "asc" },
     }),
     getAppName(),
@@ -99,9 +99,11 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
-        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa da plataforma por evento</h2>
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxas por evento</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Taxa percentual adicionada ao valor da inscrição e paga pelo inscrito. Configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
+          <strong>Taxa da plataforma</strong>: percentual pago pelo inscrito, em pontos base (1100 = 11%).{" "}
+          <strong>Desconto PIX na Taxa de Serviço</strong>: reduz apenas a Taxa de Serviço quando o pagamento é via PIX —
+          nunca afeta a Taxa da Plataforma nem o valor da inscrição. Deixe vazio para usar o padrão global. Alterações valem só para novos pedidos.
         </p>
         {events.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum evento ativo.</p>
