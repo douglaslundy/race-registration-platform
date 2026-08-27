@@ -431,12 +431,21 @@ export default function CheckoutForm({
                       pixDiscountPercent: pixServiceFeeDiscountPercent,
                       isPix: false,
                     });
+                    const pix = computeOrderAmounts({
+                      subtotal: b.priceAmount,
+                      platformFeePercent,
+                      defaultPlatformFee,
+                      serviceFeePercent,
+                      serviceFeeMin,
+                      pixDiscountPercent: pixServiceFeeDiscountPercent,
+                      isPix: true,
+                    });
                     return (
                       <span>
                         +{formatCurrency(a.platformFee)} taxa da plataforma
                         {a.serviceFeeOriginal > 0 && <> · +{formatCurrency(a.serviceFeeOriginal)} taxa de serviço</>}
-                        {pixServiceFeeDiscountPercent > 0 && a.serviceFeeOriginal > 0 && (
-                          <> · {pixServiceFeeDiscountPercent}% off na taxa de serviço via PIX</>
+                        {pix.pixDiscountAmount > 0 && (
+                          <> · {pix.pixDiscountPercent}% off na taxa de serviço via PIX</>
                         )}
                       </span>
                     );

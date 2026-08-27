@@ -65,6 +65,26 @@ describe("admin settings api", () => {
     expect(dbMock.platformSetting.upsert).toHaveBeenCalled();
   });
 
+  it("persiste o inteiro normalizado de pix_service_fee_discount_percent (ex.: '1e2' -> '100')", async () => {
+    dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
+    dbMock.platformSetting.upsert.mockResolvedValueOnce({ key: "pix_service_fee_discount_percent", value: "100" });
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "pix_service_fee_discount_percent", value: "1e2" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.platformSetting.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: { key: "pix_service_fee_discount_percent", value: "100" },
+        update: { value: "100" },
+      }),
+    );
+  });
+
   it("rejeita pix_service_fee_discount_percent negativo", async () => {
     const res = await POST(
       new Request("http://localhost/api/admin/settings", {

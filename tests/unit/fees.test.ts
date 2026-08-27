@@ -49,6 +49,7 @@ describe("computeOrderAmounts", () => {
     expect(r.serviceFeeOriginal).toBe(1000);
     expect(r.serviceFeeFinal).toBe(900); // max(1000 - 200, 900)
     expect(r.pixDiscountAmount).toBe(100); // desconto EFETIVO, não 200
+    expect(r.total).toBe(11400); // subtotal 10000 + platformFee 500 + serviceFeeFinal 900
   });
 
   it("sem taxa de serviço configurada: desconto é zero mesmo via PIX", () => {

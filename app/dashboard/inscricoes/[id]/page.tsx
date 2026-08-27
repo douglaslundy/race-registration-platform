@@ -205,7 +205,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
                 <span>Taxa de serviço original</span>
                 <span>+ {formatCurrency(registration.order.serviceFeeOriginalAmount)}</span>
               </div>
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Desconto PIX na taxa de serviço</span>
                 <span>- {formatCurrency(registration.order.pixDiscountAmount)}</span>
               </div>

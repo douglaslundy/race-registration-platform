@@ -165,7 +165,7 @@ export default async function AdminPaymentDetailPage({
                   <span>Taxa de serviço (original)</span>
                   <span>{formatCurrency(order.serviceFeeOriginalAmount)}</span>
                 </div>
-                <div className="flex justify-between text-xs text-green-600">
+                <div className="flex justify-between text-xs text-green-600 dark:text-green-400">
                   <span>Desconto PIX ({order.pixDiscountPercent}%)</span>
                   <span>-{formatCurrency(order.pixDiscountAmount)}</span>
                 </div>

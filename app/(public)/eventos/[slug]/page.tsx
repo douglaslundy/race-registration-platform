@@ -260,7 +260,7 @@ export default async function EventoPage({ params }: Props) {
                       {serviceFeePercent > 0 ? ` ${(serviceFeePercent / 100).toFixed(1)}%` : ""}
                       {serviceFeeMin > 0 && ` (mín. ${formatCurrency(serviceFeeMin)})`}
                     </p>
-                    {pixServiceFeeDiscount > 0 && (
+                    {pixServiceFeeDiscount > 0 && serviceFeePercent > 0 && (
                       <p className="text-green-600 dark:text-green-400">
                         {pixServiceFeeDiscount}% de desconto na Taxa de Serviço para pagamento via PIX
                       </p>

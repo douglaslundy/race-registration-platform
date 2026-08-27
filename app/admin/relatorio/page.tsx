@@ -173,7 +173,7 @@ export default async function AdminRelatorioPage({
             <span className="text-gray-600 dark:text-gray-400">Taxa de serviço (original)</span>
             <span className="font-medium">{formatCurrency(serviceFeeOriginalTotal)}</span>
           </div>
-          <div className="flex justify-between text-sm text-green-600">
+          <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
             <span>− Desconto PIX concedido</span>
             <span>-{formatCurrency(pixDiscountTotal)}</span>
           </div>

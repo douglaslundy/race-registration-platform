@@ -98,6 +98,7 @@ function toEventRow(row: Row): Prisma.EventCreateManyInput {
     organizerContact: sn(row.organizerContact),
     maxParticipants: ni(row.maxParticipants),
     platformFeePercent: n(row.platformFeePercent) || 1100,
+    pixServiceFeeDiscountPercent: ni(row.pixServiceFeeDiscountPercent),
     publishedAt: dn(row.publishedAt),
     cancellationDeadline: dn(row.cancellationDeadline),
     cancellationRequiresApproval: b(row.cancellationRequiresApproval),
@@ -185,6 +186,10 @@ function toOrderRow(row: Row): Prisma.OrderCreateManyInput {
     subtotalAmount: n(row.subtotalAmount),
     platformFeeAmount: n(row.platformFeeAmount),
     paymentFeeAmount: n(row.paymentFeeAmount),
+    serviceFeeOriginalAmount:
+      row.serviceFeeOriginalAmount != null ? n(row.serviceFeeOriginalAmount) : n(row.paymentFeeAmount),
+    pixDiscountPercent: n(row.pixDiscountPercent),
+    pixDiscountAmount: n(row.pixDiscountAmount),
     totalAmount: n(row.totalAmount),
     currency: s(row.currency) || "BRL",
     couponId: sn(row.couponId),

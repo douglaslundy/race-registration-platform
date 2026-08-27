@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    parsed.data.value = String(n); // persiste normalizado (getPixServiceFeeDiscountPercent lê com parseInt)
   }
 
   try {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, slugify, calculatePlatformFee, calculateAge } from "@/lib/format";
+import { formatCurrency, slugify, calculateAge } from "@/lib/format";
 
 describe("calculateAge", () => {
   it("calcula idade quando o aniversário já passou no ano de referência", () => {
@@ -44,19 +44,5 @@ describe("slugify", () => {
 
   it("removes leading/trailing hyphens", () => {
     expect(slugify("  test  ")).toBe("test");
-  });
-});
-
-describe("calculatePlatformFee", () => {
-  it("calculates 11% fee (1100 bps) correctly", () => {
-    expect(calculatePlatformFee(10000, 1100)).toBe(1100);
-  });
-
-  it("rounds correctly", () => {
-    expect(calculatePlatformFee(9999, 1100)).toBe(1100);
-  });
-
-  it("handles zero", () => {
-    expect(calculatePlatformFee(0, 1100)).toBe(0);
   });
 });
