@@ -52,6 +52,39 @@ describe("computeOrderAmounts", () => {
     expect(r.total).toBe(11400); // subtotal 10000 + platformFee 500 + serviceFeeFinal 900
   });
 
+  it("percentual com arredondamento não-trivial: desconto = round(original × pct / 100)", () => {
+    // subtotal 3333, serviço 10% -> round(333.3) = 333; desconto 33% -> round(109.89) = 110
+    const r = computeOrderAmounts({
+      ...base,
+      subtotal: 3333,
+      pixDiscountPercent: 33,
+      isPix: true,
+    });
+    expect(r.platformFee).toBe(167); // round(3333 * 500 / 10000) = round(166.65)
+    expect(r.serviceFeeOriginal).toBe(333);
+    expect(r.pixDiscountAmount).toBe(110);
+    expect(r.serviceFeeFinal).toBe(223);
+    expect(r.total).toBe(3723); // 3333 + 167 + 223
+    // invariante estrutural: original - desconto == líquida
+    expect(r.serviceFeeOriginal - r.pixDiscountAmount).toBe(r.serviceFeeFinal);
+  });
+
+  it("taxa de serviço puramente por piso (percent 0): PIX não gera desconto efetivo", () => {
+    // serviceFeePercent 0 + serviceFeeMin 300 -> original = 300 (só o piso);
+    // desconto 20% -> raw 60, mas serviceFeeFinal = max(300-60, 300) = 300 -> desconto efetivo 0
+    const r = computeOrderAmounts({
+      ...base,
+      serviceFeePercent: 0,
+      serviceFeeMin: 300,
+      pixDiscountPercent: 20,
+      isPix: true,
+    });
+    expect(r.serviceFeeOriginal).toBe(300);
+    expect(r.serviceFeeFinal).toBe(300);
+    expect(r.pixDiscountAmount).toBe(0);
+    expect(r.pixDiscountPercent).toBe(0);
+  });
+
   it("sem taxa de serviço configurada: desconto é zero mesmo via PIX", () => {
     const r = computeOrderAmounts({
       ...base,

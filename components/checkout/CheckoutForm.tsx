@@ -686,12 +686,12 @@ export default function CheckoutForm({
                 </div>
               )}
               {a.pixDiscountAmount > 0 && (
-                <div className="flex flex-col text-green-600">
+                <div className="flex flex-col text-green-600 dark:text-green-400 pl-3 border-l-2 border-green-200 dark:border-green-800">
                   <div className="flex justify-between">
                     <span>Desconto PIX na taxa de serviço</span>
                     <span>-{formatCurrency(a.pixDiscountAmount)}</span>
                   </div>
-                  <span className="text-xs text-green-600/80">{a.pixDiscountPercent}% de desconto via PIX</span>
+                  <span className="text-xs opacity-80">{a.pixDiscountPercent}% de desconto via PIX</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-lg font-bold border-t dark:border-gray-700 pt-2 mt-1">

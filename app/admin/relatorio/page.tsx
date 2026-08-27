@@ -179,7 +179,8 @@ export default async function AdminRelatorioPage({
           </div>
           <div className="flex justify-between text-sm border-t dark:border-gray-700 pt-2">
             <span className="font-semibold">= Taxa de serviço (líquida)</span>
-            <span className="font-bold">{formatCurrency(serviceFeeOriginalTotal - pixDiscountTotal)}</span>
+            {/* mesma fonte do CSV e do RevenueBreakdownCard: Σ Order.paymentFeeAmount */}
+            <span className="font-bold">{formatCurrency(revenueBreakdown.serviceFeeAmount)}</span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-700 pt-2 mt-1">
             O desconto PIX incide apenas sobre a Taxa de Serviço. A Taxa da Plataforma não é afetada.

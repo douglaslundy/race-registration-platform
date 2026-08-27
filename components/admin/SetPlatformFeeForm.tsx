@@ -15,6 +15,7 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
   const [value, setValue] = useState(event.platformFeePercent);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [feeError, setFeeError] = useState<string | null>(null);
 
   // "" = herdar a global; senão, percentual inteiro 0–100
   const [pixDiscount, setPixDiscount] = useState(
@@ -25,14 +26,20 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
   const [pixError, setPixError] = useState<string | null>(null);
 
   async function handleSave() {
+    if (!Number.isInteger(value) || value < 0 || value > 5000) {
+      setFeeError("Percentual inválido (0 a 5000 pontos base)");
+      return;
+    }
     setSaving(true);
     setSaved(false);
+    setFeeError(null);
     const res = await fetch(`/api/admin/events/${event.id}/fee`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ platformFeePercent: value }),
     });
     if (res.ok) setSaved(true);
+    else setFeeError("Erro ao salvar");
     setSaving(false);
   }
 
@@ -76,6 +83,7 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
           <button onClick={handleSave} disabled={saving} className="btn-primary py-1 px-3 text-sm disabled:opacity-50">
             {saving ? "Salvando…" : saved ? "Salvo!" : "Salvar"}
           </button>
+          {feeError && <span className="text-xs text-red-600">{feeError}</span>}
         </div>
       </div>
       <div className="flex items-center gap-2">

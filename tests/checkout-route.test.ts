@@ -383,4 +383,51 @@ describe("checkout api", () => {
     expect(res.status).toBe(400);
     expect(createCheckout).not.toHaveBeenCalled();
   });
+
+  it("pedido PIX com desconto: gateway e Payment recebem exatamente o Order.totalAmount", async () => {
+    enabledMethodsMock.mockResolvedValue(["PIX"]);
+    // createCheckout já aplicou o desconto: total líquido = 11300 (subtotal 10000 + plataforma 500 + serviço 800)
+    vi.mocked(createCheckout).mockResolvedValueOnce({
+      orderId: "order-1",
+      registrationId: "reg-1",
+      subtotalAmount: 10000,
+      totalAmount: 11300,
+      discountAmount: 0,
+      platformFeeAmount: 500,
+      serviceFeeOriginalAmount: 1000,
+      paymentFeeAmount: 800,
+      pixDiscountAmount: 200,
+      pixDiscountPercent: 20,
+    });
+    dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
+    dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
+    const createPaymentMock = vi.fn().mockResolvedValueOnce({ providerPaymentId: "pay-1", status: "PENDING" });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ createPayment: createPaymentMock } as any);
+    dbMock.payment.create.mockResolvedValueOnce({ id: "payment-1" });
+
+    const res = await POST(
+      new Request("http://localhost/api/checkout", {
+        method: "POST",
+        body: JSON.stringify({ eventId: "event-1", ticketBatchId: "batch-1", paymentMethod: "PIX" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(createCheckout).toHaveBeenCalledWith(expect.objectContaining({ isPix: true }));
+    // total_backend == total_gateway
+    expect(createPaymentMock).toHaveBeenCalledWith(expect.objectContaining({ amount: 11300, method: "PIX" }));
+    // total_backend == total_persistido (Payment.amount)
+    expect(dbMock.payment.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ amount: 11300 }) }),
+    );
+    // auditoria registra o desconto concedido
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CHECKOUT_INITIATED",
+          metadata: expect.objectContaining({ pixDiscountAmount: 200, totalAmount: 11300 }),
+        }),
+      }),
+    );
+  });
 });

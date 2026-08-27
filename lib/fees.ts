@@ -89,7 +89,10 @@ export function computeOrderAmounts(i: OrderAmountsInput): OrderAmounts {
     subtotal: i.subtotal,
     platformFee,
     serviceFeeOriginal,
-    pixDiscountPercent: applyDiscount ? pct : 0,
+    // Só reporta um percentual quando um desconto foi efetivamente concedido — se o piso
+    // `serviceFeeMin` (ou o arredondamento) zera o desconto, `pixDiscountPercent` também é 0,
+    // mantendo o snapshot coerente (`pixDiscountAmount > 0` ⟺ `pixDiscountPercent > 0`).
+    pixDiscountPercent: pixDiscountAmount > 0 ? pct : 0,
     pixDiscountAmount,
     serviceFeeFinal,
     total: i.subtotal + platformFee + serviceFeeFinal,
