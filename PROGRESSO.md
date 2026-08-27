@@ -1,6 +1,15 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-27, mais recente — Desconto PIX sobre a Taxa de Serviço: spec escrita, aguardando revisão do usuário)
+## Última atualização (2026-08-27 — Task 5 [Desconto PIX / UI global] concluída)
+
+`ServiceFeeForm.tsx` ganhou o 3º bloco "Desconto PIX sobre a Taxa de Serviço (%)" (prop
+`currentPixDiscount`, salva via `POST /api/admin/settings` key `pix_service_fee_discount_percent`,
+validação inline inteiro 0–100). `app/admin/configuracoes/page.tsx` importa e busca
+`getPixServiceFeeDiscountPercent()` no `Promise.all` e passa `currentPixDiscount`. Mudanças da
+Task 4 preservadas. `npx tsc --noEmit` e `npm run build` limpos. Commit na branch
+`feat/desconto-pix-taxa-servico`.
+
+## Última atualização (2026-08-27 — Desconto PIX sobre a Taxa de Serviço: spec escrita, aguardando revisão do usuário)
 
 Pedido novo (spec formal): desconto percentual para pagamentos via PIX incidindo **exclusivamente
 sobre a Taxa de Serviço**, nunca sobre a Taxa da Plataforma nem sobre o valor da inscrição.

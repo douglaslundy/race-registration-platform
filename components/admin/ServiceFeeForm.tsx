@@ -6,9 +6,11 @@ import { formatCurrency } from "@/lib/format";
 export default function ServiceFeeForm({
   currentPercent,
   currentMin,
+  currentPixDiscount,
 }: {
   currentPercent: number;
   currentMin: number;
+  currentPixDiscount: number;
 }) {
   const [percent, setPercent] = useState(currentPercent);
   const [savingPercent, setSavingPercent] = useState(false);
@@ -17,6 +19,10 @@ export default function ServiceFeeForm({
   const [minValue, setMinValue] = useState((currentMin / 100).toFixed(2));
   const [savingMin, setSavingMin] = useState(false);
   const [savedMin, setSavedMin] = useState(false);
+
+  const [pixDiscount, setPixDiscount] = useState(currentPixDiscount);
+  const [savingPix, setSavingPix] = useState(false);
+  const [savedPix, setSavedPix] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +49,21 @@ export default function ServiceFeeForm({
     });
     if (res.ok) setSavedMin(true); else setError("Erro ao salvar");
     setSavingMin(false);
+  }
+
+  async function handleSavePixDiscount() {
+    if (!Number.isInteger(pixDiscount) || pixDiscount < 0 || pixDiscount > 100) {
+      setError("Desconto PIX deve ser um inteiro entre 0 e 100");
+      return;
+    }
+    setSavingPix(true); setSavedPix(false); setError(null);
+    const res = await fetch("/api/admin/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "pix_service_fee_discount_percent", value: String(pixDiscount) }),
+    });
+    if (res.ok) setSavedPix(true); else setError("Erro ao salvar");
+    setSavingPix(false);
   }
 
   const minCents = Math.round(parseFloat(minValue) * 100);
@@ -98,6 +119,33 @@ export default function ServiceFeeForm({
             className="btn-primary py-1 px-3 text-sm disabled:opacity-50"
           >
             {savingMin ? "Salvando…" : savedMin ? "Salvo!" : "Salvar"}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Desconto PIX sobre a Taxa de Serviço (%)
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          Reduz apenas a Taxa de Serviço quando o pagamento é via PIX. Não afeta a Taxa da Plataforma
+          nem o valor da inscrição. 0 = sem desconto.
+        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={pixDiscount}
+              onChange={(e) => { setPixDiscount(Number(e.target.value)); setSavedPix(false); }}
+              min={0}
+              max={100}
+              step={1}
+              className="input-field w-24 text-sm py-1"
+            />
+            <span className="text-xs text-gray-500 dark:text-gray-400">%</span>
+          </div>
+          <button onClick={handleSavePixDiscount} disabled={savingPix} className="btn-primary py-1 px-3 text-sm disabled:opacity-50">
+            {savingPix ? "Salvando…" : savedPix ? "Salvo!" : "Salvar"}
           </button>
         </div>
       </div>
