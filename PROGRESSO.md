@@ -58,15 +58,34 @@ só nos mocks de teste, seguindo o padrão do repo). Revisão adversarial (grep)
 desconto nunca lê/escreve `platformFeeAmount`; a fórmula da Taxa da Plataforma existe só em
 `lib/fees.ts`; migração segura.
 
-**PRÓXIMA TAREFA:** `git push origin feat/desconto-pix-taxa-servico` (ou merge em `main` conforme o
-usuário decidir) e rodar `/opt/corridas/deploy.sh` na VPS **com `prisma migrate deploy`** — HÁ
-migração de schema nova (`20260827000000_add_pix_service_fee_discount`). **Aguardando autorização
-explícita do usuário** para push + deploy.
+**DEPLOY CONFIRMADO EM PRODUÇÃO (2026-08-27):** merge em `main` (`0ee2579`), `git push`. Na VPS:
+`git pull` → `docker build` (imagem `0dc1b63f28f3`) → `db push --skip-generate` (cria as 3 colunas do
+`Order` + a do `Event`) → **backfill manual** `UPDATE "orders" SET "serviceFeeOriginalAmount" =
+"paymentFeeAmount" WHERE "serviceFeeOriginalAmount" = 0 AND "paymentFeeAmount" > 0` → `UPDATE 385`,
+verificado 0 linhas pendentes depois → restart `docker compose up -d --no-deps app`. `prisma migrate
+deploy` **NÃO** foi usado: `_prisma_migrations` da produção está congelada em 2026-07-08 (tudo desde
+então via `db push`), então `migrate deploy` tentaria reaplicar ~35 migrações e falharia. Smoke ok
+(`/` 200, `/eventos` 200, evento 200, `/admin/configuracoes` 307), logs limpos, sem `P20xx`.
 
-**Contexto necessário** (só isto para retomar):
-- `docs/superpowers/specs/2026-08-27-desconto-pix-taxa-servico-design.md` (spec, critérios de aceite marcados)
-- `PROGRESSO.md` (esta seção)
-- Processo de deploy: ver memória `deploy_vps_process` / `cron_jobs_vps` (plink/pscp, `db push`/`migrate deploy` manual)
+**PRÓXIMAS TAREFAS (pedido do usuário 2026-08-27, nesta ordem):**
+1. Resolver todos os minors adiados (ver abaixo) — branch própria, code-only (sem schema).
+2. Adicionar o desconto PIX ao **resumo diário do ADMINISTRADOR** (não o do organizador — o
+   organizador só vê valores de inscrição na área dele). Fonte: `lib/alerts/daily-summary-metrics.ts`
+   (`getAdminDailySummary` já soma `pixDiscountAmount`? não — adicionar), `lib/alerts/daily-summary.ts`,
+   variável de template `taxa_servico` / possível nova var de desconto.
+
+**Minors adiados (do PROGRESSO + revisão final):**
+- `npx prisma format` no schema inteiro (só o bloco do `Order` foi reformatado; ~20 models fora do padrão — pré-existente).
+- Teste end-to-end `Payment.amount === Order.totalAmount` num pedido PIX com desconto (rota mocka `createCheckout`).
+- Teste de arredondamento com percentual não-trivial (ex.: 33%).
+- CSV do relatório financeiro admin emite sempre a linha "Desconto PIX concedido" (`−R$ 0,00` em instalação sem desconto) — decidir se condiciona.
+- `handleSave` (platform fee) em `SetPlatformFeeForm` sem feedback de erro em `!res.ok` (pré-existente).
+
+**Contexto necessário:**
+- `docs/superpowers/specs/2026-08-27-desconto-pix-taxa-servico-design.md`
+- `lib/alerts/daily-summary-metrics.ts`, `lib/alerts/daily-summary.ts`, `lib/templates/variables.ts`
+- `lib/fees.ts` (motor), `lib/revenue-breakdown.ts` (referência de "só admin vê margem")
+- Processo de deploy: memória `deploy_vps_process` (SSH `id_ed25519` passwordless; `db push` + backfill manual, NÃO `migrate deploy`)
 
 ## Última atualização (2026-08-25, item anterior — coluna Idade no export CSV/XLSX + referência de data corrigida, deploy em andamento)
 
