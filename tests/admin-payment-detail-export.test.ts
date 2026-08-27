@@ -36,6 +36,10 @@ describe("admin payment detail export", () => {
         subtotalAmount: 15000,
         discountAmount: 0,
         platformFeeAmount: 1650,
+        serviceFeeOriginalAmount: 1000,
+        pixDiscountPercent: 20,
+        pixDiscountAmount: 200,
+        paymentFeeAmount: 800,
       },
       refunds: [
         {
@@ -57,6 +61,13 @@ describe("admin payment detail export", () => {
     expect(csv).toContain('"pay-1"');
     expect(csv).toContain('"Corrida das Pedras"');
     expect(csv).toContain("Cancelamento");
+    expect(csv).toContain("Taxa de serviço (original)");
+    expect(csv).toMatch(/R\$\s?10,00/);
+    expect(csv).toContain("Desconto PIX na Taxa de Serviço");
+    expect(csv).toContain("Desconto PIX (%)");
+    expect(csv).toContain("20%");
+    expect(csv).toContain("Taxa de serviço (líquida)");
+    expect(csv).toMatch(/R\$\s?8,00/);
   });
 
   it("retorna 403 pra organizador titular (não é admin)", async () => {

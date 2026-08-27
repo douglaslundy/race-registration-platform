@@ -159,10 +159,27 @@ export default async function AdminPaymentDetailPage({
               <span>Taxa plataforma</span>
               <span>{formatCurrency(order.platformFeeAmount)}</span>
             </div>
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>Taxa de serviço</span>
-              <span>{formatCurrency(order.paymentFeeAmount)}</span>
-            </div>
+            {order.pixDiscountAmount > 0 ? (
+              <>
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Taxa de serviço (original)</span>
+                  <span>{formatCurrency(order.serviceFeeOriginalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-green-600">
+                  <span>Desconto PIX ({order.pixDiscountPercent}%)</span>
+                  <span>-{formatCurrency(order.pixDiscountAmount)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>Taxa de serviço (líquida)</span>
+                  <span>{formatCurrency(order.paymentFeeAmount)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Taxa de serviço</span>
+                <span>{formatCurrency(order.paymentFeeAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold">
               <span>Total</span>
               <span>{formatCurrency(order.totalAmount)}</span>

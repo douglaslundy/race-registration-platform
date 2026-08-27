@@ -52,7 +52,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ["Subtotal", formatCurrency(payment.order.subtotalAmount)],
     ["Desconto", formatCurrency(payment.order.discountAmount)],
     ["Taxa plataforma", formatCurrency(payment.order.platformFeeAmount)],
-    ["Taxa de serviço", formatCurrency(payment.order.paymentFeeAmount)],
+    ...(payment.order.pixDiscountAmount > 0
+      ? ([
+          ["Taxa de serviço (original)", formatCurrency(payment.order.serviceFeeOriginalAmount)],
+          ["Desconto PIX na Taxa de Serviço", `-${formatCurrency(payment.order.pixDiscountAmount)}`],
+          ["Desconto PIX (%)", `${payment.order.pixDiscountPercent}%`],
+          ["Taxa de serviço (líquida)", formatCurrency(payment.order.paymentFeeAmount)],
+        ] as Array<[string, string]>)
+      : ([["Taxa de serviço", formatCurrency(payment.order.paymentFeeAmount)]] as Array<[string, string]>)),
     ["Comissão do gateway", payment.gatewayFeeAmount != null ? formatCurrency(payment.gatewayFeeAmount) : ""],
   ];
 
