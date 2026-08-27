@@ -52,6 +52,8 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           discountAmount: true,
           platformFeeAmount: true,
           paymentFeeAmount: true,
+          serviceFeeOriginalAmount: true,
+          pixDiscountAmount: true,
           buyerUserId: true,
         },
       },
@@ -197,11 +199,28 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
               <span>+ {formatCurrency(registration.order.platformFeeAmount)}</span>
             </div>
           )}
-          {registration.order.paymentFeeAmount > 0 && (
-            <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>Taxa de serviço de ingresso</span>
-              <span>+ {formatCurrency(registration.order.paymentFeeAmount)}</span>
-            </div>
+          {registration.order.pixDiscountAmount > 0 ? (
+            <>
+              <div className="flex justify-between">
+                <span>Taxa de serviço original</span>
+                <span>+ {formatCurrency(registration.order.serviceFeeOriginalAmount)}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>Desconto PIX na taxa de serviço</span>
+                <span>- {formatCurrency(registration.order.pixDiscountAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Taxa de serviço de ingresso</span>
+                <span>+ {formatCurrency(registration.order.paymentFeeAmount)}</span>
+              </div>
+            </>
+          ) : (
+            registration.order.paymentFeeAmount > 0 && (
+              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>Taxa de serviço de ingresso</span>
+                <span>+ {formatCurrency(registration.order.paymentFeeAmount)}</span>
+              </div>
+            )
           )}
           <div className="flex justify-between font-bold text-gray-900 dark:text-gray-100 pt-2 border-t dark:border-gray-700">
             <span>Total pago</span>
