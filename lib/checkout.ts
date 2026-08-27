@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { calculatePlatformFee } from "./format";
+import { computeOrderAmounts, resolveEffectivePixDiscountPercent } from "./fees";
 import { getSetting } from "./settings";
 import { isBatchAvailable } from "./batch-status";
 import { normalizeCpf } from "./cpf";
@@ -21,6 +21,7 @@ export interface CheckoutInput {
   medicalNotes?: string;
   notes?: string;
   couponCode?: string;
+  isPix?: boolean;
   proxyAthlete?: {
     name: string;
     birthDate: string;
@@ -37,6 +38,10 @@ export interface CheckoutResult {
   totalAmount: number;
   discountAmount: number;
   platformFeeAmount: number;
+  serviceFeeOriginalAmount: number;
+  paymentFeeAmount: number;
+  pixDiscountAmount: number;
+  pixDiscountPercent: number;
   proxyAthleteInvite?: { userId: string; name: string; email: string };
 }
 
@@ -47,6 +52,8 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
   const serviceFeePercent = serviceFeePercentStr ? parseInt(serviceFeePercentStr, 10) : 0;
   const serviceFeeMinStr = await getSetting("service_fee_min");
   const serviceFeeMin = serviceFeeMinStr ? parseInt(serviceFeeMinStr, 10) : 0;
+  const pixDiscountStr = await getSetting("pix_service_fee_discount_percent");
+  const globalPixDiscount = pixDiscountStr ? parseInt(pixDiscountStr, 10) : 0;
 
   return db.$transaction(async (tx) => {
     const [batch, allBatches] = await Promise.all([
@@ -168,22 +175,31 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     }
 
     const subtotal = batch.priceAmount - discountAmount;
-    const percentFee = calculatePlatformFee(subtotal, event.platformFeePercent);
-    const platformFee = Math.max(percentFee, defaultPlatformFee);
-    const rawServiceFee = Math.round((subtotal * serviceFeePercent) / 10000);
-    const paymentFee = (serviceFeePercent > 0 || serviceFeeMin > 0)
-      ? Math.max(rawServiceFee, serviceFeeMin)
-      : 0;
-    const total = subtotal + platformFee + paymentFee;
+    const effectivePixDiscount = resolveEffectivePixDiscountPercent(
+      event.pixServiceFeeDiscountPercent,
+      globalPixDiscount,
+    );
+    const amounts = computeOrderAmounts({
+      subtotal,
+      platformFeePercent: event.platformFeePercent,
+      defaultPlatformFee,
+      serviceFeePercent,
+      serviceFeeMin,
+      pixDiscountPercent: effectivePixDiscount,
+      isPix: input.isPix ?? false,
+    });
 
     const order = await tx.order.create({
       data: {
         buyerUserId: input.buyerUserId,
         eventId: input.eventId,
         subtotalAmount: subtotal,
-        platformFeeAmount: platformFee,
-        paymentFeeAmount: paymentFee,
-        totalAmount: total,
+        platformFeeAmount: amounts.platformFee,
+        paymentFeeAmount: amounts.serviceFeeFinal,
+        serviceFeeOriginalAmount: amounts.serviceFeeOriginal,
+        pixDiscountPercent: amounts.pixDiscountPercent,
+        pixDiscountAmount: amounts.pixDiscountAmount,
+        totalAmount: amounts.total,
         discountAmount,
         couponId,
         expiresAt: new Date(Date.now() + 30 * 60 * 1000),
@@ -218,9 +234,13 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       orderId: order.id,
       registrationId: registration.id,
       subtotalAmount: subtotal,
-      totalAmount: total,
+      totalAmount: amounts.total,
       discountAmount,
-      platformFeeAmount: platformFee,
+      platformFeeAmount: amounts.platformFee,
+      serviceFeeOriginalAmount: amounts.serviceFeeOriginal,
+      paymentFeeAmount: amounts.serviceFeeFinal,
+      pixDiscountAmount: amounts.pixDiscountAmount,
+      pixDiscountPercent: amounts.pixDiscountPercent,
       proxyAthleteInvite,
     };
   });

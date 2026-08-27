@@ -49,4 +49,55 @@ describe("admin settings api", () => {
       }),
     );
   });
+
+  it("aceita pix_service_fee_discount_percent inteiro entre 0 e 100", async () => {
+    dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
+    dbMock.platformSetting.upsert.mockResolvedValueOnce({ key: "pix_service_fee_discount_percent", value: "20" });
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "pix_service_fee_discount_percent", value: "20" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.platformSetting.upsert).toHaveBeenCalled();
+  });
+
+  it("rejeita pix_service_fee_discount_percent negativo", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "pix_service_fee_discount_percent", value: "-5" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejeita pix_service_fee_discount_percent acima de 100", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "pix_service_fee_discount_percent", value: "150" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejeita pix_service_fee_discount_percent não inteiro", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "pix_service_fee_discount_percent", value: "12.5" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
 });

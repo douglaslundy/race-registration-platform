@@ -100,6 +100,10 @@ describe("checkout api", () => {
       totalAmount: 10000,
       discountAmount: 0,
       platformFeeAmount: 0,
+      serviceFeeOriginalAmount: 0,
+      paymentFeeAmount: 0,
+      pixDiscountAmount: 0,
+      pixDiscountPercent: 0,
     });
     dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
@@ -133,6 +137,10 @@ describe("checkout api", () => {
       totalAmount: 10000,
       discountAmount: 0,
       platformFeeAmount: 0,
+      serviceFeeOriginalAmount: 0,
+      paymentFeeAmount: 0,
+      pixDiscountAmount: 0,
+      pixDiscountPercent: 0,
     });
     dbMock.user.findUnique.mockResolvedValueOnce({ name: "Organizador", email: "org@example.com" });
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
@@ -184,6 +192,10 @@ describe("checkout api", () => {
       totalAmount: 10000,
       discountAmount: 0,
       platformFeeAmount: 0,
+      serviceFeeOriginalAmount: 0,
+      paymentFeeAmount: 0,
+      pixDiscountAmount: 0,
+      pixDiscountPercent: 0,
     });
     dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
@@ -217,6 +229,10 @@ describe("checkout api", () => {
       totalAmount: 10000,
       discountAmount: 0,
       platformFeeAmount: 0,
+      serviceFeeOriginalAmount: 0,
+      paymentFeeAmount: 0,
+      pixDiscountAmount: 0,
+      pixDiscountPercent: 0,
     });
     dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
@@ -273,6 +289,10 @@ describe("checkout api", () => {
       totalAmount: 10000,
       discountAmount: 0,
       platformFeeAmount: 0,
+      serviceFeeOriginalAmount: 0,
+      paymentFeeAmount: 0,
+      pixDiscountAmount: 0,
+      pixDiscountPercent: 0,
       proxyAthleteInvite: { userId: "new-athlete-1", name: "Maria Atleta", email: "maria@example.com" },
     });
     dbMock.user.findUnique.mockResolvedValueOnce({ name: "Comprador", email: "comprador@example.com" });
@@ -317,6 +337,10 @@ describe("checkout api", () => {
       totalAmount: 10000,
       discountAmount: 0,
       platformFeeAmount: 0,
+      serviceFeeOriginalAmount: 0,
+      paymentFeeAmount: 0,
+      pixDiscountAmount: 0,
+      pixDiscountPercent: 0,
     });
     dbMock.user.findUnique.mockResolvedValueOnce({ name: "Atleta", email: "atleta@example.com" });
     dbMock.athleteProfile.findUnique.mockResolvedValueOnce({ cpf: null });
