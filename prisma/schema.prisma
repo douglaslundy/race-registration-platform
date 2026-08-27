@@ -283,6 +283,7 @@ model Event {
   organizerContact   String?
   maxParticipants    Int?
   platformFeePercent Int           @default(1100) // basis points
+  pixServiceFeeDiscountPercent Int? // percentual inteiro 0–100. null = herda config global; 0 = evento sem desconto PIX
   publishedAt        DateTime?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
@@ -419,6 +420,9 @@ model Order {
   subtotalAmount    Int         // centavos
   platformFeeAmount Int         // centavos
   paymentFeeAmount  Int         // centavos
+  serviceFeeOriginalAmount Int      @default(0) // centavos — Taxa de Serviço antes do desconto PIX (paymentFeeAmount é a líquida)
+  pixDiscountPercent       Int      @default(0) // percentual efetivo aplicado (0 se não-PIX)
+  pixDiscountAmount         Int      @default(0) // centavos — desconto PIX efetivo concedido
   totalAmount       Int         // centavos
   currency          String      @default("BRL")
   couponId          String?
