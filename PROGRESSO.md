@@ -3,8 +3,9 @@
 ## Última atualização (2026-08-27 — Desconto PIX sobre a Taxa de Serviço: implementação concluída)
 
 Feature completa na branch `feat/desconto-pix-taxa-servico` (commits `3722616` spec → `4a87fc8`
-plano → `4e6db30`..`eac1c00` implementação Tasks 1–10 → commit de verificação da Task 11).
-**Ainda não deployada.**
+plano → `4e6db30`..`eac1c00` Tasks 1–10 → `cea9a3d` verificação Task 11 → `6394113` fix wave da
+revisão final). Execução via subagent-driven-development: 11 tasks, cada uma revisada; revisão
+whole-branch final + 1 fix wave. **Ainda não deployada.**
 
 **O que foi feito:** desconto percentual em pagamentos PIX que incide EXCLUSIVAMENTE sobre a Taxa
 de Serviço (`Order.paymentFeeAmount` = líquida), nunca sobre a Taxa da Plataforma
@@ -38,6 +39,17 @@ pagamento e comprovante do atleta.
 **Fora de escopo (NÃO tocados, confirmado):** `lib/payment/refund-service.ts` (estorno usa
 `payment.amount`), `lib/revenue-breakdown.ts`, `components/ui/RevenueBreakdownCard.tsx`,
 `lib/alerts/daily-summary*`, `app/organizador/relatorio/*`, `lib/admin/generate-payout.ts`.
+
+**Revisão final (whole-branch, Opus) + fix wave (commit `6394113`):** SEM Critical. 3 achados Important
+corrigidos: (1) `app/api/admin/backup/import/route.ts` não mapeava os campos novos — restore zerava o
+snapshot e resetava `pixServiceFeeDiscountPercent` de `0`→`null` (reativava desconto desligado); agora
+`toOrderRow`/`toEventRow` mapeiam os 4 campos (`ni` preserva `null` vs `0`). (2) mensagem "X% de
+desconto via PIX" no checkout + página pública era exibida mesmo quando `service_fee_min` zera o
+desconto efetivo; agora condicionada ao desconto efetivo (`pixDiscountAmount > 0` / `serviceFeePercent > 0`).
+(3) backfill da migração agora idempotente (`WHERE serviceFeeOriginalAmount = 0 AND paymentFeeAmount > 0`).
+Minors: `calculatePlatformFee` morto removido de `lib/format.ts`; `/api/admin/settings` persiste o
+inteiro normalizado; `dark:text-green-400` nas linhas de desconto; `prisma format` no bloco do `Order`.
+Re-review do fix wave: todos os 8 achados ADDRESSED, sem breakage novo. Suíte 1965/1965, tsc + build limpos.
 
 **Verificação (Task 11):** `npx vitest run` → 262 arquivos / 1965 testes, todos verdes.
 `npx tsc --noEmit` → limpo. `npm run build` → limpo. `npm run lint` (`eslint .`) → 0 erros novos
