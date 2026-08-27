@@ -345,23 +345,23 @@ de teste. Nenhum teste desabilitado, nenhum `@ts-ignore`/catch vazio novo.
 
 ## 9. Critérios de aceite
 
-- [ ] Taxa da Plataforma e Taxa de Serviço permanecem conceitos independentes em todas as camadas.
-- [ ] O desconto PIX incide somente sobre `serviceFeeOriginalAmount`.
-- [ ] O desconto PIX nunca incide sobre `platformFeeAmount` nem sobre a soma das taxas.
-- [ ] `platformFeeAmount` idêntico em cartão e PIX (teste automatizado prova).
-- [ ] Valor da inscrição (`subtotalAmount`) não sofre o desconto.
-- [ ] Checkout exibe inscrição, Taxa da Plataforma, Taxa de Serviço e (se PIX) desconto separados.
-- [ ] Desconto visualmente subordinado à linha da Taxa de Serviço, no checkout e na página pública.
-- [ ] Mensagem de desconto na página pública só quando `efetivo > 0`.
-- [ ] Config global e por evento com validação `0–100`, sem negativo, sem `> 100`.
-- [ ] Evento `null` herda global; evento `0` = sem desconto mesmo com global `> 0`.
-- [ ] Instalações e eventos existentes: comportamento financeiro idêntico ao atual (default `0`).
-- [ ] `Order` preserva original, percentual, desconto e líquida separadamente.
-- [ ] `total_backend == total_persistido == total_gateway == total_checkout`.
-- [ ] Relatório financeiro admin, export de pagamento e comprovante do atleta mostram
+- [x] Taxa da Plataforma e Taxa de Serviço permanecem conceitos independentes em todas as camadas.
+- [x] O desconto PIX incide somente sobre `serviceFeeOriginalAmount`.
+- [x] O desconto PIX nunca incide sobre `platformFeeAmount` nem sobre a soma das taxas.
+- [x] `platformFeeAmount` idêntico em cartão e PIX (teste automatizado prova).
+- [x] Valor da inscrição (`subtotalAmount`) não sofre o desconto.
+- [x] Checkout exibe inscrição, Taxa da Plataforma, Taxa de Serviço e (se PIX) desconto separados.
+- [x] Desconto visualmente subordinado à linha da Taxa de Serviço, no checkout e na página pública.
+- [x] Mensagem de desconto na página pública só quando `efetivo > 0`.
+- [x] Config global e por evento com validação `0–100`, sem negativo, sem `> 100`.
+- [x] Evento `null` herda global; evento `0` = sem desconto mesmo com global `> 0`.
+- [x] Instalações e eventos existentes: comportamento financeiro idêntico ao atual (default `0`).
+- [x] `Order` preserva original, percentual, desconto e líquida separadamente.
+- [x] `total_backend == total_persistido == total_gateway == total_checkout`.
+- [x] Relatório financeiro admin, export de pagamento e comprovante do atleta mostram
       original / desconto PIX / líquida.
-- [ ] Repasse do organizador inalterado (recebe subtotal integral).
-- [ ] Estorno histórico usa os valores congelados no `Order`, nunca recalcula com a config atual.
+- [x] Repasse do organizador inalterado (recebe subtotal integral).
+- [x] Estorno histórico usa os valores congelados no `Order`, nunca recalcula com a config atual.
 
 ## 10. Entrega técnica final — Separação entre Taxa da Plataforma e Taxa de Serviço
 
