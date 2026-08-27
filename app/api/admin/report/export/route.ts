@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       }),
       db.order.aggregate({
         _count: { id: true },
-        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
+        _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true, serviceFeeOriginalAmount: true, pixDiscountAmount: true },
         where: buildReportOrderFeeWhere(filter),
       }),
       db.payment.aggregate({
@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
   const refunds = refundsAgg._sum.amount ?? 0;
   const platformFeeActual = platformFeeAgg._sum.platformFeeAmount ?? 0;
   const serviceFeeActual = platformFeeAgg._sum.paymentFeeAmount ?? 0;
+  const serviceFeeOriginal = platformFeeAgg._sum.serviceFeeOriginalAmount ?? 0;
+  const pixDiscountTotal = platformFeeAgg._sum.pixDiscountAmount ?? 0;
   const eventRevenue = platformFeeAgg._sum.subtotalAmount ?? 0;
   const gatewayFeeActual = paymentsAgg._sum.gatewayFeeAmount ?? 0;
 
@@ -57,7 +59,9 @@ export async function GET(req: NextRequest) {
     ["Período", `${from.toISOString()} - ${to.toISOString()}`],
     ["Receita do evento", formatCurrency(eventRevenue)],
     ["Taxa da plataforma", formatCurrency(platformFeeActual)],
-    ["Taxa de serviço", formatCurrency(serviceFeeActual)],
+    ["Taxa de serviço (original)", formatCurrency(serviceFeeOriginal)],
+    ["Desconto PIX concedido", `-${formatCurrency(pixDiscountTotal)}`],
+    ["Taxa de serviço (líquida)", formatCurrency(serviceFeeActual)],
     ["Comissão do gateway", formatCurrency(gatewayFeeActual)],
     ["Receita bruta", formatCurrency(grossRevenue)],
     ["Pagamentos cancelados", formatCurrency(cancelledAmount)],
