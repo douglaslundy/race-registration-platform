@@ -16,7 +16,9 @@ describe("getAdminDailySummary", () => {
     dbMock.registration.count.mockResolvedValue(0);
     dbMock.payment.aggregate.mockResolvedValue({ _sum: { amount: null } });
     dbMock.payment.count.mockResolvedValue(0);
-    dbMock.order.aggregate.mockResolvedValue({ _sum: { platformFeeAmount: null, paymentFeeAmount: null } });
+    dbMock.order.aggregate.mockResolvedValue({
+      _sum: { platformFeeAmount: null, paymentFeeAmount: null, serviceFeeOriginalAmount: null, pixDiscountAmount: null },
+    });
     dbMock.transferPayout.aggregate.mockResolvedValue({ _count: 0, _sum: { grossAmount: null } });
   });
 
@@ -31,17 +33,21 @@ describe("getAdminDailySummary", () => {
     expect(result.newOrganizersCount).toBe(2);
   });
 
-  it("retorna a taxa de plataforma e a taxa de pagamento separadamente (não somadas)", async () => {
-    dbMock.order.aggregate.mockResolvedValueOnce({ _sum: { platformFeeAmount: 1000, paymentFeeAmount: 250 } });
+  it("retorna a taxa de plataforma e a taxa de serviço (bruta, desconto PIX e líquida) separadamente", async () => {
+    dbMock.order.aggregate.mockResolvedValueOnce({
+      _sum: { platformFeeAmount: 1000, paymentFeeAmount: 200, serviceFeeOriginalAmount: 250, pixDiscountAmount: 50 },
+    });
 
     const result = await getAdminDailySummary(dayStart, dayEnd);
 
     expect(dbMock.order.aggregate).toHaveBeenCalledWith({
-      _sum: { platformFeeAmount: true, paymentFeeAmount: true },
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true, serviceFeeOriginalAmount: true, pixDiscountAmount: true },
       where: { status: "PAID", createdAt: { gte: dayStart, lt: dayEnd } },
     });
-    expect(result.platformFeeAmount).toBe(1000);
-    expect(result.serviceFeeAmount).toBe(250);
+    expect(result.platformFeeAmount).toBe(1000); // Taxa da Plataforma NÃO é afetada pelo desconto PIX
+    expect(result.serviceFeeOriginalAmount).toBe(250);
+    expect(result.pixDiscountAmount).toBe(50);
+    expect(result.serviceFeeAmount).toBe(200); // líquida
   });
 
   it("usa 0 como padrão quando as agregações retornam null (dia sem atividade)", async () => {
@@ -51,6 +57,8 @@ describe("getAdminDailySummary", () => {
     expect(result.payoutsGeneratedAmount).toBe(0);
     expect(result.platformFeeAmount).toBe(0);
     expect(result.serviceFeeAmount).toBe(0);
+    expect(result.serviceFeeOriginalAmount).toBe(0);
+    expect(result.pixDiscountAmount).toBe(0);
     expect(result.payoutsGeneratedCount).toBe(0);
   });
 

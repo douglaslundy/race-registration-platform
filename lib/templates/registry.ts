@@ -181,6 +181,7 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
       "data_resumo", "papel_destinatario", "total_inscricoes_pagas", "receita_periodo",
       "novos_usuarios", "eventos_criados", "cupons_usados", "link_plataforma",
       "novos_organizadores", "taxa_plataforma", "taxa_servico",
+      "taxa_servico_bruta", "desconto_pix",
       "repasses_gerados", "valor_repasses", "cancelamentos_estornos",
       "cancelamentos_solicitados", "lotes_esgotados",
     ],
@@ -216,7 +217,9 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
             `    <tr><td>Inscrições pagas</td><td><strong>{{total_inscricoes_pagas}}</strong></td></tr>\n` +
             `    <tr><td>Receita bruta</td><td><strong>{{receita_periodo}}</strong></td></tr>\n` +
             `    <tr><td>Taxa da plataforma</td><td><strong>{{taxa_plataforma}}</strong></td></tr>\n` +
-            `    <tr><td>Taxa de serviço</td><td><strong>{{taxa_servico}}</strong></td></tr>\n` +
+            `    <tr><td>Taxa de serviço (bruta)</td><td><strong>{{taxa_servico_bruta}}</strong></td></tr>\n` +
+            `    <tr><td>Descontos PIX concedidos</td><td><strong>{{desconto_pix}}</strong></td></tr>\n` +
+            `    <tr><td>Taxa de serviço (líquida)</td><td><strong>{{taxa_servico}}</strong></td></tr>\n` +
             `    <tr><td>Repasses gerados</td><td><strong>{{repasses_gerados}} ({{valor_repasses}})</strong></td></tr>\n` +
             `    <tr><td>Cancelamentos/estornos</td><td><strong>{{cancelamentos_estornos}}</strong></td></tr>\n` +
             `  </tbody>\n` +
@@ -243,7 +246,9 @@ export const ALERT_REGISTRY: Record<AlertKey, AlertTemplateDefinition> = {
               `Inscrições pagas: {{total_inscricoes_pagas}}\n` +
               `Receita bruta: {{receita_periodo}}\n` +
               `Taxa da plataforma: {{taxa_plataforma}}\n` +
-              `Taxa de serviço: {{taxa_servico}}\n` +
+              `Taxa de serviço (bruta): {{taxa_servico_bruta}}\n` +
+              `Descontos PIX concedidos: {{desconto_pix}}\n` +
+              `Taxa de serviço (líquida): {{taxa_servico}}\n` +
               `Repasses gerados: {{repasses_gerados}} ({{valor_repasses}})\n` +
               `Cancelamentos/estornos: {{cancelamentos_estornos}}\n` +
               `Veja mais em {{link_plataforma}}/admin.`,

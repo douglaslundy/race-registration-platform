@@ -52,6 +52,8 @@ function buildAdminMetricsValues(m: AdminDailySummary, baseUrl: string): Record<
     eventos_criados: String(m.eventsCreatedCount),
     taxa_plataforma: formatCurrency(m.platformFeeAmount),
     taxa_servico: formatCurrency(m.serviceFeeAmount),
+    taxa_servico_bruta: formatCurrency(m.serviceFeeOriginalAmount),
+    desconto_pix: m.pixDiscountAmount > 0 ? `-${formatCurrency(m.pixDiscountAmount)}` : formatCurrency(0),
     repasses_gerados: String(m.payoutsGeneratedCount),
     valor_repasses: formatCurrency(m.payoutsGeneratedAmount),
     cancelamentos_estornos: String(m.cancelledOrRefundedCount),

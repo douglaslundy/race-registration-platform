@@ -7,7 +7,12 @@ export interface AdminDailySummary {
   paidRegistrationsCount: number;
   grossRevenue: number;
   platformFeeAmount: number;
+  /** Taxa de Serviço efetivamente cobrada (líquida, já com o desconto PIX). */
   serviceFeeAmount: number;
+  /** Taxa de Serviço antes do desconto PIX (bruta). */
+  serviceFeeOriginalAmount: number;
+  /** Total de desconto PIX concedido no período (só a plataforma absorve). */
+  pixDiscountAmount: number;
   payoutsGeneratedCount: number;
   payoutsGeneratedAmount: number;
   cancelledOrRefundedCount: number;
@@ -49,7 +54,7 @@ export async function getAdminDailySummary(dayStart: Date, dayEnd: Date): Promis
     db.registration.count({ where: { status: "CONFIRMED", createdAt: period } }),
     db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", createdAt: period } }),
     db.order.aggregate({
-      _sum: { platformFeeAmount: true, paymentFeeAmount: true },
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true, serviceFeeOriginalAmount: true, pixDiscountAmount: true },
       where: { status: "PAID", createdAt: period },
     }),
     db.transferPayout.aggregate({ _count: true, _sum: { grossAmount: true }, where: { createdAt: period } }),
@@ -65,6 +70,8 @@ export async function getAdminDailySummary(dayStart: Date, dayEnd: Date): Promis
     grossRevenue: grossRevenueAgg._sum.amount ?? 0,
     platformFeeAmount: feeAgg._sum.platformFeeAmount ?? 0,
     serviceFeeAmount: feeAgg._sum.paymentFeeAmount ?? 0,
+    serviceFeeOriginalAmount: feeAgg._sum.serviceFeeOriginalAmount ?? 0,
+    pixDiscountAmount: feeAgg._sum.pixDiscountAmount ?? 0,
     payoutsGeneratedCount: payoutAgg._count,
     payoutsGeneratedAmount: payoutAgg._sum.grossAmount ?? 0,
     cancelledOrRefundedCount: cancelledRegistrationsCount + refundedPaymentsCount,

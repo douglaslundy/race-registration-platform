@@ -48,6 +48,8 @@ const adminMetricsFixture = {
   grossRevenue: 100000,
   platformFeeAmount: 3000,
   serviceFeeAmount: 2000,
+  serviceFeeOriginalAmount: 2500,
+  pixDiscountAmount: 500,
   payoutsGeneratedCount: 1,
   payoutsGeneratedAmount: 90000,
   cancelledOrRefundedCount: 3,
@@ -272,7 +274,9 @@ describe("sendAdminDailySummaries", () => {
         `Inscrições pagas: 10\n` +
         `Receita bruta: ${formatCurrency(100000)}\n` +
         `Taxa da plataforma: ${formatCurrency(3000)}\n` +
-        `Taxa de serviço: ${formatCurrency(2000)}\n` +
+        `Taxa de serviço (bruta): ${formatCurrency(2500)}\n` +
+        `Descontos PIX concedidos: -${formatCurrency(500)}\n` +
+        `Taxa de serviço (líquida): ${formatCurrency(2000)}\n` +
         `Repasses gerados: 1 (${formatCurrency(90000)})\n` +
         `Cancelamentos/estornos: 3\n` +
         `Veja mais em /admin.`,

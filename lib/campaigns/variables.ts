@@ -28,6 +28,8 @@ const EXCLUDED_NAMES = new Set([
   "novos_organizadores",
   "taxa_plataforma",
   "taxa_servico",
+  "taxa_servico_bruta",
+  "desconto_pix",
   "repasses_gerados",
   "valor_repasses",
   "cancelamentos_estornos",
