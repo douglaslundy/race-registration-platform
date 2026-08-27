@@ -1,5 +1,37 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-27 — Desconto PIX: feature + minors + resumo diário do admin, TUDO deployado)
+
+Os 3 pedidos do usuário concluídos e deployados, nesta ordem:
+
+1. **Deploy da feature** (`main` `0ee2579`): ver a seção "implementação concluída" abaixo. VPS via
+   `git pull` → `docker build` → `db push` → backfill manual `UPDATE 385` → restart. Smoke ok.
+
+2. **Minors** (`main` `eb3e33f` prisma format whitespace-only + `7b96bba`): `lib/fees.ts` agora zera
+   `pixDiscountPercent` quando o desconto efetivo é 0 (piso/arredondamento) — snapshot coerente;
+   `CheckoutForm` linha de desconto com indent/borda; `app/admin/relatorio` card usa Σ
+   `paymentFeeAmount` (mesma fonte do CSV); `SetPlatformFeeForm.handleSave` valida + mostra erro;
+   +3 testes (`fees.test.ts` arredondamento 33% e taxa só-por-piso; `checkout-route.test.ts` E2E
+   `Payment.amount == Order.totalAmount`). Deployado (VPS `7b96bba`, code-only, `db push` idempotente).
+
+3. **Desconto PIX no resumo diário do ADMIN** (`main` `783c6f0`): o resumo diário do admin
+   (e-mail + WhatsApp) separa a Taxa de Serviço em bruta / desconto PIX / líquida. Resumo do
+   organizador e por evento **NÃO** mudam (organizador só vê valores de inscrição). Só
+   `getAdminDailySummary` tocada; 2 variáveis novas `taxa_servico_bruta` / `desconto_pix`
+   (catálogo + registry + `EXCLUDED_NAMES` de campanhas). `taxa_servico` continua = líquida.
+   Deploy em andamento (VPS, code-only).
+
+Suíte 1968/1968, tsc + build limpos em cada leva.
+
+**PRÓXIMA TAREFA:** nenhuma pendente. Confirmar no navegador da produção: (a) `/admin/configuracoes`
+tem os campos de desconto PIX (global no card "Taxa de serviço de ingresso", por evento no card
+"Taxas por evento"); (b) um checkout PIX real com desconto configurado mostra a linha e o total
+certos; (c) se o template DAILY_SUMMARY estiver **customizado** no banco de produção, o admin
+precisa adicionar `{{taxa_servico_bruta}}` / `{{desconto_pix}}` manualmente na tela de templates
+(o factory default já tem — só afeta quem não customizou).
+
+---
+
 ## Última atualização (2026-08-27 — Desconto PIX sobre a Taxa de Serviço: implementação concluída)
 
 Feature completa na branch `feat/desconto-pix-taxa-servico` (commits `3722616` spec → `4a87fc8`
