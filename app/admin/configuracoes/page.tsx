@@ -19,7 +19,7 @@ import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getStorageConfig } from "@/lib/storage-settings";
 import { getSmtpConfig } from "@/lib/smtp-settings";
-import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getBannerInterval, getCancellationPolicyEnabled } from "@/lib/settings";
+import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getPixServiceFeeDiscountPercent, getBannerInterval, getCancellationPolicyEnabled } from "@/lib/settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -29,10 +29,10 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting, socialLinkValuesArray] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, pixServiceFeeDiscount, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting, socialLinkValuesArray] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
-      select: { id: true, title: true, platformFeePercent: true, status: true },
+      select: { id: true, title: true, platformFeePercent: true, pixServiceFeeDiscountPercent: true, status: true },
       orderBy: { title: "asc" },
     }),
     getAppName(),
@@ -59,6 +59,7 @@ export default async function ConfiguracoesPage() {
     getDefaultPlatformFee(),
     getServiceFeePercent(),
     getServiceFeeMin(),
+    getPixServiceFeeDiscountPercent(),
     getBannerInterval(),
     getSmtpConfig(),
     getCancellationPolicyEnabled(),
@@ -99,9 +100,11 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
-        <h2 className="font-semibold text-lg dark:text-gray-100">Taxa da plataforma por evento</h2>
+        <h2 className="font-semibold text-lg dark:text-gray-100">Taxas por evento</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Taxa percentual adicionada ao valor da inscrição e paga pelo inscrito. Configurada por evento em pontos base (1100 = 11%). Alterar aqui afeta somente novos pedidos.
+          <strong>Taxa da plataforma</strong>: percentual pago pelo inscrito, em pontos base (1100 = 11%).{" "}
+          <strong>Desconto PIX na Taxa de Serviço</strong>: reduz apenas a Taxa de Serviço quando o pagamento é via PIX —
+          nunca afeta a Taxa da Plataforma nem o valor da inscrição. Deixe vazio para usar o padrão global. Alterações valem só para novos pedidos.
         </p>
         {events.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum evento ativo.</p>
@@ -127,7 +130,7 @@ export default async function ConfiguracoesPage() {
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Taxa percentual global adicionada ao valor da inscrição como taxa de serviço. O valor mínimo é aplicado quando o percentual resultar em valor inferior. Use 0 para não cobrar.
         </p>
-        <ServiceFeeForm currentPercent={serviceFeePercent} currentMin={serviceFeeMin} />
+        <ServiceFeeForm currentPercent={serviceFeePercent} currentMin={serviceFeeMin} currentPixDiscount={pixServiceFeeDiscount} />
       </div>
 
       <div className="card space-y-4">

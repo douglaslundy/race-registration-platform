@@ -56,6 +56,13 @@ export const getServiceFeeMin = cache(async (): Promise<number> => {
   return val ? parseInt(val, 10) : 0; // centavos, e.g. 97 = R$0,97
 });
 
+export const getPixServiceFeeDiscountPercent = cache(async (): Promise<number> => {
+  const val = await getSetting("pix_service_fee_discount_percent");
+  const n = val ? parseInt(val, 10) : 0; // percentual inteiro 0–100
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return n >= 100 ? 100 : n;
+});
+
 export const getCancellationPolicyEnabled = cache(async (): Promise<boolean> => {
   const val = await getSetting("cancellation_policy_enabled");
   return val === "true";

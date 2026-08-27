@@ -64,7 +64,7 @@ export default async function AdminRelatorioPage({
       where: buildReportOrderFeeWhere(filter),
     }),
     db.order.aggregate({
-      _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true },
+      _sum: { platformFeeAmount: true, paymentFeeAmount: true, subtotalAmount: true, serviceFeeOriginalAmount: true, pixDiscountAmount: true },
       where: buildReportOrderFeeWhere(filter),
     }),
     db.payment.aggregate({
@@ -118,6 +118,8 @@ export default async function AdminRelatorioPage({
     serviceFeeAmount: platformFeeAgg._sum.paymentFeeAmount,
     gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,
   });
+  const serviceFeeOriginalTotal = platformFeeAgg._sum.serviceFeeOriginalAmount ?? 0;
+  const pixDiscountTotal = platformFeeAgg._sum.pixDiscountAmount ?? 0;
 
   const METHOD_LABEL: Record<string, string> = {
     PIX: "Pix", CREDIT_CARD: "Cartão de Crédito", DEBIT_CARD: "Débito", BOLETO: "Boleto",
@@ -163,6 +165,27 @@ export default async function AdminRelatorioPage({
       </div>
 
       <RevenueBreakdownCard breakdown={revenueBreakdown} variant="admin" />
+
+      {pixDiscountTotal > 0 && (
+        <div className="card space-y-2">
+          <h2 className="font-semibold mb-1">Taxa de Serviço — detalhe do desconto PIX</h2>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Taxa de serviço (original)</span>
+            <span className="font-medium">{formatCurrency(serviceFeeOriginalTotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+            <span>− Desconto PIX concedido</span>
+            <span>-{formatCurrency(pixDiscountTotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm border-t dark:border-gray-700 pt-2">
+            <span className="font-semibold">= Taxa de serviço (líquida)</span>
+            <span className="font-bold">{formatCurrency(serviceFeeOriginalTotal - pixDiscountTotal)}</span>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-700 pt-2 mt-1">
+            O desconto PIX incide apenas sobre a Taxa de Serviço. A Taxa da Plataforma não é afetada.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="card text-center">

@@ -1,6 +1,74 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-25, mais recente — coluna Idade no export CSV/XLSX + referência de data corrigida, deploy em andamento)
+## Última atualização (2026-08-27 — Desconto PIX sobre a Taxa de Serviço: implementação concluída)
+
+Feature completa na branch `feat/desconto-pix-taxa-servico` (commits `3722616` spec → `4a87fc8`
+plano → `4e6db30`..`eac1c00` Tasks 1–10 → `cea9a3d` verificação Task 11 → `6394113` fix wave da
+revisão final). Execução via subagent-driven-development: 11 tasks, cada uma revisada; revisão
+whole-branch final + 1 fix wave. **Ainda não deployada.**
+
+**O que foi feito:** desconto percentual em pagamentos PIX que incide EXCLUSIVAMENTE sobre a Taxa
+de Serviço (`Order.paymentFeeAmount` = líquida), nunca sobre a Taxa da Plataforma
+(`Order.platformFeeAmount`, intocada). Piso `service_fee_min` continua sendo piso após o desconto.
+Config global `platform_settings["pix_service_fee_discount_percent"]` (0–100) + por evento
+`Event.pixServiceFeeDiscountPercent Int?` (null=herda global / 0=sem desconto), admin-only.
+Snapshot congelado no `Order`: `serviceFeeOriginalAmount`, `pixDiscountPercent`, `pixDiscountAmount`.
+Breakdown original/desconto/líquida só em: relatório financeiro admin, export de detalhe de
+pagamento e comprovante do atleta.
+
+**Arquivos principais:**
+- `lib/fees.ts` (NOVO) — motor puro `computeOrderAmounts` + `resolveEffectivePixDiscountPercent`;
+  fonte única da fórmula das duas taxas (backend + frontend).
+- `lib/checkout.ts` — `createCheckout` recebe `isPix`, resolve o % efetivo e persiste o snapshot;
+  `serviceFeeOriginalAmount = amounts.serviceFeeOriginal`, `paymentFeeAmount = amounts.serviceFeeFinal`.
+- `app/api/checkout/route.ts` — passa `isPix: paymentMethod === "PIX"`.
+- `components/checkout/CheckoutForm.tsx` — fórmulas locais removidas, usa `computeOrderAmounts`;
+  alternância de método recalcula do zero (sem `useState` derivado).
+- `app/(public)/eventos/[slug]/page.tsx`, `app/(public)/inscricao/[slug]/page.tsx` — usam
+  `resolveEffectivePixDiscountPercent`.
+- `components/admin/ServiceFeeForm.tsx` (config global), `SetPlatformFeeForm.tsx` +
+  `app/api/admin/events/[id]/fee/route.ts` (config por evento), `app/api/events/[id]/duplicate/route.ts`
+  (copia o campo).
+- `app/admin/relatorio/page.tsx` + `app/api/admin/report/export/route.ts`,
+  `app/admin/pagamentos/[id]/page.tsx` + `app/api/admin/payments/[id]/export/route.ts`,
+  `app/dashboard/inscricoes/[id]/page.tsx` — linhas de breakdown.
+- `lib/settings.ts`, `app/api/admin/settings/route.ts`, `lib/templates/variables.ts`.
+- `prisma/schema.prisma` + `prisma/migrations/20260827000000_add_pix_service_fee_discount/migration.sql`
+  (colunas `NOT NULL DEFAULT 0` + backfill `serviceFeeOriginalAmount = paymentFeeAmount` na MESMA migração).
+
+**Fora de escopo (NÃO tocados, confirmado):** `lib/payment/refund-service.ts` (estorno usa
+`payment.amount`), `lib/revenue-breakdown.ts`, `components/ui/RevenueBreakdownCard.tsx`,
+`lib/alerts/daily-summary*`, `app/organizador/relatorio/*`, `lib/admin/generate-payout.ts`.
+
+**Revisão final (whole-branch, Opus) + fix wave (commit `6394113`):** SEM Critical. 3 achados Important
+corrigidos: (1) `app/api/admin/backup/import/route.ts` não mapeava os campos novos — restore zerava o
+snapshot e resetava `pixServiceFeeDiscountPercent` de `0`→`null` (reativava desconto desligado); agora
+`toOrderRow`/`toEventRow` mapeiam os 4 campos (`ni` preserva `null` vs `0`). (2) mensagem "X% de
+desconto via PIX" no checkout + página pública era exibida mesmo quando `service_fee_min` zera o
+desconto efetivo; agora condicionada ao desconto efetivo (`pixDiscountAmount > 0` / `serviceFeePercent > 0`).
+(3) backfill da migração agora idempotente (`WHERE serviceFeeOriginalAmount = 0 AND paymentFeeAmount > 0`).
+Minors: `calculatePlatformFee` morto removido de `lib/format.ts`; `/api/admin/settings` persiste o
+inteiro normalizado; `dark:text-green-400` nas linhas de desconto; `prisma format` no bloco do `Order`.
+Re-review do fix wave: todos os 8 achados ADDRESSED, sem breakage novo. Suíte 1965/1965, tsc + build limpos.
+
+**Verificação (Task 11):** `npx vitest run` → 262 arquivos / 1965 testes, todos verdes.
+`npx tsc --noEmit` → limpo. `npm run build` → limpo. `npm run lint` (`eslint .`) → 0 erros novos
+nos arquivos da branch (24 erros pré-existentes em arquivos não tocados; warnings `no-explicit-any`
+só nos mocks de teste, seguindo o padrão do repo). Revisão adversarial (grep) sem achados: o
+desconto nunca lê/escreve `platformFeeAmount`; a fórmula da Taxa da Plataforma existe só em
+`lib/fees.ts`; migração segura.
+
+**PRÓXIMA TAREFA:** `git push origin feat/desconto-pix-taxa-servico` (ou merge em `main` conforme o
+usuário decidir) e rodar `/opt/corridas/deploy.sh` na VPS **com `prisma migrate deploy`** — HÁ
+migração de schema nova (`20260827000000_add_pix_service_fee_discount`). **Aguardando autorização
+explícita do usuário** para push + deploy.
+
+**Contexto necessário** (só isto para retomar):
+- `docs/superpowers/specs/2026-08-27-desconto-pix-taxa-servico-design.md` (spec, critérios de aceite marcados)
+- `PROGRESSO.md` (esta seção)
+- Processo de deploy: ver memória `deploy_vps_process` / `cron_jobs_vps` (plink/pscp, `db push`/`migrate deploy` manual)
+
+## Última atualização (2026-08-25, item anterior — coluna Idade no export CSV/XLSX + referência de data corrigida, deploy em andamento)
 
 Pedido do usuário antes de iniciar a Fase 2: adicionar coluna "Idade" na exportação CSV/XLSX de
 inscrições (Relatório Geral já tinha a coluna na tela, mas o export não) e corrigir a referência da

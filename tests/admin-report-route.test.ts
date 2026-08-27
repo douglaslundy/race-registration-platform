@@ -21,7 +21,16 @@ describe("admin report export", () => {
       .mockResolvedValueOnce({ _sum: { amount: 20000 }, _count: { id: 2 } }) // gross (order PAID)
       .mockResolvedValueOnce({ _sum: { amount: 3000 }, _count: { id: 1 } }) // cancelled (order CANCELLED)
       .mockResolvedValueOnce({ _sum: { amount: 5000 }, _count: { id: 1 } }); // refunds (payment status REFUNDED/CHARGEBACK)
-    dbMock.order.aggregate.mockResolvedValueOnce({ _count: { id: 2 }, _sum: { platformFeeAmount: 2200 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({
+      _count: { id: 2 },
+      _sum: {
+        platformFeeAmount: 2200,
+        paymentFeeAmount: 800,
+        subtotalAmount: 18000,
+        serviceFeeOriginalAmount: 1000,
+        pixDiscountAmount: 200,
+      },
+    });
     dbMock.event.count.mockResolvedValueOnce(3);
     dbMock.registration.count.mockResolvedValueOnce(4);
 
@@ -41,6 +50,12 @@ describe("admin report export", () => {
     expect(csv).toMatch(/R\$\s?50,00/);
     expect(csv).toContain('"Taxa da plataforma"');
     expect(csv).toMatch(/R\$\s?22,00/);
+    expect(csv).toContain('"Taxa de serviço (original)"');
+    expect(csv).toMatch(/R\$\s?10,00/);
+    expect(csv).toContain('"Desconto PIX concedido"');
+    expect(csv).toMatch(/-R\$\s?2,00/);
+    expect(csv).toContain('"Taxa de serviço (líquida)"');
+    expect(csv).toMatch(/R\$\s?8,00/);
     expect(csv).toContain('"Eventos criados"');
     expect(csv).toContain('"3"');
   });
@@ -50,7 +65,10 @@ describe("admin report export", () => {
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } });
-    dbMock.order.aggregate.mockResolvedValueOnce({ _count: { id: 0 }, _sum: { platformFeeAmount: 0 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({
+      _count: { id: 0 },
+      _sum: { platformFeeAmount: 0, paymentFeeAmount: 0, subtotalAmount: 0, serviceFeeOriginalAmount: 0, pixDiscountAmount: 0 },
+    });
     dbMock.event.count.mockResolvedValueOnce(0);
     dbMock.registration.count.mockResolvedValueOnce(0);
 
@@ -88,7 +106,10 @@ describe("admin report export", () => {
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } })
       .mockResolvedValueOnce({ _sum: { amount: 0 }, _count: { id: 0 } });
-    dbMock.order.aggregate.mockResolvedValueOnce({ _count: { id: 0 }, _sum: { platformFeeAmount: 0 } });
+    dbMock.order.aggregate.mockResolvedValueOnce({
+      _count: { id: 0 },
+      _sum: { platformFeeAmount: 0, paymentFeeAmount: 0, subtotalAmount: 0, serviceFeeOriginalAmount: 0, pixDiscountAmount: 0 },
+    });
     dbMock.event.count.mockResolvedValueOnce(0);
     dbMock.registration.count.mockResolvedValueOnce(0);
 

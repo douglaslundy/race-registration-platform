@@ -32,7 +32,3 @@ export function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
-
-export function calculatePlatformFee(amountCents: number, feeBps: number): number {
-  return Math.round((amountCents * feeBps) / 10000);
-}

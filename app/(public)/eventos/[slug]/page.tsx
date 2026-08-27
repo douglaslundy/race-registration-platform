@@ -15,7 +15,9 @@ import {
   getDefaultPlatformFee,
   getServiceFeePercent,
   getServiceFeeMin,
+  getPixServiceFeeDiscountPercent,
 } from "@/lib/settings";
+import { resolveEffectivePixDiscountPercent } from "@/lib/fees";
 import { MODALITY_LABEL } from "@/lib/admin/labels";
 import { getBatchStatus, getEventDisplayStatus } from "@/lib/batch-status";
 import JsonLd from "@/components/seo/JsonLd";
@@ -60,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventoPage({ params }: Props) {
   const { slug } = await params;
-  const [event, session, appName, defaultPlatformFee, serviceFeePercent, serviceFeeMin] =
+  const [event, session, appName, defaultPlatformFee, serviceFeePercent, serviceFeeMin, globalPixDiscount] =
     await Promise.all([
       getEventBySlug(slug),
       auth(),
@@ -68,8 +70,14 @@ export default async function EventoPage({ params }: Props) {
       getDefaultPlatformFee(),
       getServiceFeePercent(),
       getServiceFeeMin(),
+      getPixServiceFeeDiscountPercent(),
     ]);
   if (!event) notFound();
+
+  const pixServiceFeeDiscount = resolveEffectivePixDiscountPercent(
+    event.pixServiceFeeDiscountPercent,
+    globalPixDiscount,
+  );
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const eventUrl = `${baseUrl}/eventos/${slug}`;
@@ -246,11 +254,18 @@ export default async function EventoPage({ params }: Props) {
                   {defaultPlatformFee > 0 && ` (mín. ${formatCurrency(defaultPlatformFee)})`}
                 </p>
                 {(serviceFeePercent > 0 || serviceFeeMin > 0) && (
-                  <p>
-                    Taxa de serviço:
-                    {serviceFeePercent > 0 ? ` ${(serviceFeePercent / 100).toFixed(1)}%` : ""}
-                    {serviceFeeMin > 0 && ` (mín. ${formatCurrency(serviceFeeMin)})`}
-                  </p>
+                  <>
+                    <p>
+                      Taxa de serviço:
+                      {serviceFeePercent > 0 ? ` ${(serviceFeePercent / 100).toFixed(1)}%` : ""}
+                      {serviceFeeMin > 0 && ` (mín. ${formatCurrency(serviceFeeMin)})`}
+                    </p>
+                    {pixServiceFeeDiscount > 0 && serviceFeePercent > 0 && (
+                      <p className="text-green-600 dark:text-green-400">
+                        {pixServiceFeeDiscount}% de desconto na Taxa de Serviço para pagamento via PIX
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
 

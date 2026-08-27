@@ -283,6 +283,7 @@ model Event {
   organizerContact   String?
   maxParticipants    Int?
   platformFeePercent Int           @default(1100) // basis points
+  pixServiceFeeDiscountPercent Int? // percentual inteiro 0–100. null = herda config global; 0 = evento sem desconto PIX
   publishedAt        DateTime?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
@@ -413,22 +414,25 @@ model Registration {
 // ─── Orders & Payments ────────────────────────────────────────────────────────
 
 model Order {
-  id                String      @id @default(cuid())
-  buyerUserId       String
-  eventId           String
-  subtotalAmount    Int         // centavos
-  platformFeeAmount Int         // centavos
-  paymentFeeAmount  Int         // centavos
-  totalAmount       Int         // centavos
-  currency          String      @default("BRL")
-  couponId          String?
-  payoutId          String?
-  discountAmount    Int         @default(0)
-  status            OrderStatus @default(PENDING)
-  expiresAt         DateTime?
-  confirmationEmailSentAt DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                       String      @id @default(cuid())
+  buyerUserId              String
+  eventId                  String
+  subtotalAmount           Int // centavos
+  platformFeeAmount        Int // centavos
+  paymentFeeAmount         Int // centavos
+  serviceFeeOriginalAmount Int         @default(0) // centavos — Taxa de Serviço antes do desconto PIX (paymentFeeAmount é a líquida)
+  pixDiscountPercent       Int         @default(0) // percentual efetivo aplicado (0 se não-PIX)
+  pixDiscountAmount        Int         @default(0) // centavos — desconto PIX efetivo concedido
+  totalAmount              Int // centavos
+  currency                 String      @default("BRL")
+  couponId                 String?
+  payoutId                 String?
+  discountAmount           Int         @default(0)
+  status                   OrderStatus @default(PENDING)
+  expiresAt                DateTime?
+  confirmationEmailSentAt  DateTime?
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
 
   buyer         User            @relation(fields: [buyerUserId], references: [id])
   event         Event           @relation(fields: [eventId], references: [id])

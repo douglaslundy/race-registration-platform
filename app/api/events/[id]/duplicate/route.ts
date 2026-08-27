@@ -51,6 +51,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         organizerContact: event.organizerContact,
         maxParticipants: event.maxParticipants,
         platformFeePercent: event.platformFeePercent,
+        pixServiceFeeDiscountPercent: event.pixServiceFeeDiscountPercent,
       },
     });
 

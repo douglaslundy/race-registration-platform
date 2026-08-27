@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       shirtSize: checkoutData.shirtSize as ShirtSize | undefined,
       buyerUserId: session.user.id,
       athleteUserId: session.user.id,
+      isPix: paymentMethod === "PIX",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao processar inscrição";
@@ -230,7 +231,7 @@ export async function POST(req: NextRequest) {
       action: "CHECKOUT_INITIATED",
       entityType: "Order",
       entityId: checkout.orderId,
-      metadata: { paymentMethod, totalAmount: checkout.totalAmount },
+      metadata: { paymentMethod, totalAmount: checkout.totalAmount, pixDiscountAmount: checkout.pixDiscountAmount },
     },
   });
 

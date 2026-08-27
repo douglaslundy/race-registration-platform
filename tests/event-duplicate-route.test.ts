@@ -32,23 +32,25 @@ const baseEvent = {
   organizerContact: null,
   maxParticipants: null,
   platformFeePercent: 500,
+  pixServiceFeeDiscountPercent: 15,
   routes: [],
   categories: [],
   ticketBatches: [],
 };
 
 describe("event duplicate api", () => {
+  let txMock: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
     dbMock.event.findUnique.mockResolvedValue(null); // slug uniqueness check
-    dbMock.$transaction.mockImplementation(async (fn: any) =>
-      fn({
-        event: { create: vi.fn().mockResolvedValue({ id: "event-2" }) },
-        eventRoute: { createMany: vi.fn() },
-        eventCategory: { createMany: vi.fn() },
-        ticketBatch: { createMany: vi.fn() },
-      }),
-    );
+    txMock = {
+      event: { create: vi.fn().mockResolvedValue({ id: "event-2" }) },
+      eventRoute: { createMany: vi.fn() },
+      eventCategory: { createMany: vi.fn() },
+      ticketBatch: { createMany: vi.fn() },
+    };
+    dbMock.$transaction.mockImplementation(async (fn: any) => fn(txMock));
   });
 
   it("ORGANIZER titular duplica o próprio evento", async () => {
@@ -62,6 +64,11 @@ describe("event duplicate api", () => {
       expect.objectContaining({ where: { id: "event-1", organizerId: "org-1" } }),
     );
     expect(res.status).toBe(201);
+    expect(txMock.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ pixServiceFeeDiscountPercent: 15 }),
+      }),
+    );
   });
 
   it("retorna 401 sem sessão", async () => {

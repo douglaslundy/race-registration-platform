@@ -142,6 +142,82 @@ describe("admin backup import api", () => {
     );
   });
 
+  it("restores the PIX service fee discount fields faithfully from a new-format backup", async () => {
+    const res = await POST(
+      makeRequest({
+        events: [
+          {
+            id: "e1", organizerId: "org-1", title: "T", slug: "t", modality: "RUNNING", status: "DRAFT",
+            startAt: "2026-01-01T00:00:00.000Z", city: "X", state: "SP", createdAt: "2026-01-01T00:00:00.000Z",
+            pixServiceFeeDiscountPercent: 0,
+          },
+        ],
+        orders: [
+          {
+            id: "o1", buyerUserId: "u1", eventId: "e1", subtotalAmount: 10000, platformFeeAmount: 500,
+            paymentFeeAmount: 800, serviceFeeOriginalAmount: 1000, pixDiscountPercent: 20, pixDiscountAmount: 200,
+            totalAmount: 11300, status: "PAID", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(tx.event.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([expect.objectContaining({ pixServiceFeeDiscountPercent: 0 })]),
+      }),
+    );
+    expect(tx.order.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            serviceFeeOriginalAmount: 1000,
+            pixDiscountPercent: 20,
+            pixDiscountAmount: 200,
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("falls back to paymentFeeAmount / null for pre-feature backups missing the PIX discount fields", async () => {
+    const res = await POST(
+      makeRequest({
+        events: [
+          {
+            id: "e1", organizerId: "org-1", title: "T", slug: "t", modality: "RUNNING", status: "DRAFT",
+            startAt: "2026-01-01T00:00:00.000Z", city: "X", state: "SP", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        orders: [
+          {
+            id: "o1", buyerUserId: "u1", eventId: "e1", subtotalAmount: 10000, platformFeeAmount: 500,
+            paymentFeeAmount: 900, totalAmount: 11400, status: "PAID", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(tx.event.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([expect.objectContaining({ pixServiceFeeDiscountPercent: null })]),
+      }),
+    );
+    expect(tx.order.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            serviceFeeOriginalAmount: 900,
+            pixDiscountPercent: 0,
+            pixDiscountAmount: 0,
+          }),
+        ]),
+      }),
+    );
+  });
+
   it("preserves the athlete's address fields on restore", async () => {
     const res = await POST(
       makeRequest({

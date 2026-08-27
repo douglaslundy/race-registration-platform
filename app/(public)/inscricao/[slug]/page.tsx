@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { getEventBySlug } from "@/lib/events";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import { isBatchAvailable } from "@/lib/batch-status";
-import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getAppName } from "@/lib/settings";
+import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getPixServiceFeeDiscountPercent, getAppName } from "@/lib/settings";
+import { resolveEffectivePixDiscountPercent } from "@/lib/fees";
 import { getMissingAthleteProfileFields } from "@/lib/auth/profile-completion";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
@@ -71,7 +72,7 @@ export default async function InscricaoPage({ params }: Props) {
     );
   }
 
-  const [athleteProfile, paymentMethods, defaultPlatformFee, serviceFeePercent, serviceFeeMin, appName] = await Promise.all([
+  const [athleteProfile, paymentMethods, defaultPlatformFee, serviceFeePercent, serviceFeeMin, globalPixDiscount, appName] = await Promise.all([
     db.athleteProfile.findUnique({
       where: { userId: session.user.id },
       select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true, cpf: true },
@@ -80,8 +81,14 @@ export default async function InscricaoPage({ params }: Props) {
     getDefaultPlatformFee(),
     getServiceFeePercent(),
     getServiceFeeMin(),
+    getPixServiceFeeDiscountPercent(),
     getAppName(),
   ]);
+
+  const pixServiceFeeDiscountPercent = resolveEffectivePixDiscountPercent(
+    event.pixServiceFeeDiscountPercent,
+    globalPixDiscount,
+  );
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
@@ -97,6 +104,7 @@ export default async function InscricaoPage({ params }: Props) {
         defaultPlatformFee={defaultPlatformFee}
         serviceFeePercent={serviceFeePercent}
         serviceFeeMin={serviceFeeMin}
+        pixServiceFeeDiscountPercent={pixServiceFeeDiscountPercent}
         appName={appName}
         allowProxyRegistration={event.allowProxyRegistration}
       />

@@ -20,6 +20,17 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
+  if (parsed.data.key === "pix_service_fee_discount_percent") {
+    const n = Number(parsed.data.value);
+    if (!Number.isInteger(n) || n < 0 || n > 100) {
+      return NextResponse.json(
+        { error: "Desconto PIX deve ser um inteiro entre 0 e 100" },
+        { status: 400 },
+      );
+    }
+    parsed.data.value = String(n); // persiste normalizado (getPixServiceFeeDiscountPercent lê com parseInt)
+  }
+
   try {
     const previous = await db.platformSetting.findUnique({ where: { key: parsed.data.key } });
     await upsertSetting(parsed.data.key, parsed.data.value);

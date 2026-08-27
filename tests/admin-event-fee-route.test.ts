@@ -86,4 +86,57 @@ describe("admin event fee api", () => {
     expect(res.status).toBe(403);
     expect(dbMock.event.update).not.toHaveBeenCalled();
   });
+
+  it("atualiza o desconto PIX por evento (valor explícito)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await PATCH(makeRequest({ pixServiceFeeDiscountPercent: 25 }), {
+      params: Promise.resolve({ id: "event-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.update).toHaveBeenCalledWith({
+      where: { id: "event-1" },
+      data: { pixServiceFeeDiscountPercent: 25 },
+    });
+  });
+
+  it("aceita pixServiceFeeDiscountPercent = null (herda a global)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await PATCH(makeRequest({ pixServiceFeeDiscountPercent: null }), {
+      params: Promise.resolve({ id: "event-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.update).toHaveBeenCalledWith({
+      where: { id: "event-1" },
+      data: { pixServiceFeeDiscountPercent: null },
+    });
+  });
+
+  it("rejeita desconto PIX > 100", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await PATCH(makeRequest({ pixServiceFeeDiscountPercent: 150 }), {
+      params: Promise.resolve({ id: "event-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.event.update).not.toHaveBeenCalled();
+  });
+
+  it("atualiza só a taxa da plataforma sem tocar no desconto PIX", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await PATCH(makeRequest({ platformFeePercent: 800 }), {
+      params: Promise.resolve({ id: "event-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.update).toHaveBeenCalledWith({
+      where: { id: "event-1" },
+      data: { platformFeePercent: 800 },
+    });
+  });
 });
