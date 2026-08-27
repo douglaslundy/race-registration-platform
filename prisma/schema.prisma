@@ -127,44 +127,44 @@ enum CampaignRecipientStatus {
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified DateTime?
-  passwordHash  String?
-  name          String
-  phone         String?
-  cpf           String?
-  role          UserRole  @default(ATHLETE)
-  active        Boolean   @default(true)
+  id                          String    @id @default(cuid())
+  email                       String    @unique
+  emailVerified               DateTime?
+  passwordHash                String?
+  name                        String
+  phone                       String?
+  cpf                         String?
+  role                        UserRole  @default(ATHLETE)
+  active                      Boolean   @default(true)
   dailySummaryEmailEnabled    Boolean   @default(true)
   dailySummaryWhatsappEnabled Boolean   @default(true)
   receivePromotionalMessages  Boolean   @default(true)
   receiveEventMessages        Boolean   @default(true)
-  uiDensity     String    @default("comfortable")
-  lastLoginAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  uiDensity                   String    @default("comfortable")
+  lastLoginAt                 DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 
-  athleteProfile   AthleteProfile?
-  organizerProfile OrganizerProfile?
-  advertiserProfile AdvertiserProfile?
-  orders           Order[]
-  registrations    Registration[]
-  auditLogs        AuditLog[]
-  sessions         Session[]
-  accounts         Account[]
-  createdCoupons   Coupon[]          @relation("CouponCreator")
-  campaigns        Campaign[]
-  campaignRecipients CampaignRecipient[]
-  refundsInitiated Refund[]
-  dailySummaryRecipients DailySummaryRecipient[]
-  createdByUserId String?
-  createdBy         User?   @relation("AssistantCreator", fields: [createdByUserId], references: [id])
-  createdAssistants User[]  @relation("AssistantCreator")
-  assistantPermissions AssistantPermission[]
-  messageLogs MessageLog[]
+  athleteProfile          AthleteProfile?
+  organizerProfile        OrganizerProfile?
+  advertiserProfile       AdvertiserProfile?
+  orders                  Order[]
+  registrations           Registration[]
+  auditLogs               AuditLog[]
+  sessions                Session[]
+  accounts                Account[]
+  createdCoupons          Coupon[]                @relation("CouponCreator")
+  campaigns               Campaign[]
+  campaignRecipients      CampaignRecipient[]
+  refundsInitiated        Refund[]
+  dailySummaryRecipients  DailySummaryRecipient[]
+  createdByUserId         String?
+  createdBy               User?                   @relation("AssistantCreator", fields: [createdByUserId], references: [id])
+  createdAssistants       User[]                  @relation("AssistantCreator")
+  assistantPermissions    AssistantPermission[]
+  messageLogs             MessageLog[]
   updatedMessageTemplates MessageTemplate[]
-  kitDeliveriesPerformed KitDelivery[]
+  kitDeliveriesPerformed  KitDelivery[]
 
   @@index([createdAt])
   @@map("users")
@@ -209,9 +209,9 @@ model VerificationToken {
 }
 
 model AthleteProfile {
-  id                 String    @id @default(cuid())
-  userId             String    @unique
-  cpf                String?   @unique
+  id                 String     @id @default(cuid())
+  userId             String     @unique
+  cpf                String?    @unique
   birthDate          DateTime?
   phone              String?
   postalCode         String?
@@ -227,8 +227,8 @@ model AthleteProfile {
   medicalNotes       String?
   preferredShirtSize ShirtSize?
   teamName           String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -236,17 +236,17 @@ model AthleteProfile {
 }
 
 model OrganizerProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  companyName String?
-  cnpj        String?
-  phone       String?
-  website     String?
-  bio         String?
-  verified    Boolean  @default(false)
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  companyName      String?
+  cnpj             String?
+  phone            String?
+  website          String?
+  bio              String?
+  verified         Boolean  @default(false)
   campaignsEnabled Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   events  Event[]
@@ -258,63 +258,63 @@ model OrganizerProfile {
 // ─── Events ───────────────────────────────────────────────────────────────────
 
 model Event {
-  id                 String        @id @default(cuid())
-  organizerId        String
-  title              String
-  slug               String        @unique
-  description        String?       @db.Text
-  modality           EventModality
-  status             EventStatus   @default(DRAFT)
-  startAt            DateTime
-  kitPickupAt        DateTime?
-  venueName          String?
-  addressLine        String?
-  city               String
-  state              String
-  country            String        @default("BR")
-  latitude           Float?
-  longitude          Float?
-  bannerUrl          String?
-  listBannerUrl      String?
-  regulationUrl      String?
-  regulationText     String?       @db.Text
-  metaTitle          String?       @db.VarChar(70)
-  metaDescription    String?       @db.VarChar(160)
-  organizerContact   String?
-  maxParticipants    Int?
-  platformFeePercent Int           @default(1100) // basis points
+  id                           String        @id @default(cuid())
+  organizerId                  String
+  title                        String
+  slug                         String        @unique
+  description                  String?       @db.Text
+  modality                     EventModality
+  status                       EventStatus   @default(DRAFT)
+  startAt                      DateTime
+  kitPickupAt                  DateTime?
+  venueName                    String?
+  addressLine                  String?
+  city                         String
+  state                        String
+  country                      String        @default("BR")
+  latitude                     Float?
+  longitude                    Float?
+  bannerUrl                    String?
+  listBannerUrl                String?
+  regulationUrl                String?
+  regulationText               String?       @db.Text
+  metaTitle                    String?       @db.VarChar(70)
+  metaDescription              String?       @db.VarChar(160)
+  organizerContact             String?
+  maxParticipants              Int?
+  platformFeePercent           Int           @default(1100) // basis points
   pixServiceFeeDiscountPercent Int? // percentual inteiro 0–100. null = herda config global; 0 = evento sem desconto PIX
-  publishedAt        DateTime?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  publishedAt                  DateTime?
+  createdAt                    DateTime      @default(now())
+  updatedAt                    DateTime      @updatedAt
 
   cancellationDeadline         DateTime?
-  cancellationRequiresApproval Boolean   @default(false)
+  cancellationRequiresApproval Boolean     @default(false)
   cancellationContactPhone     String?
   cancellationContactEmail     String?
-  allowProxyRegistration       Boolean   @default(false)
+  allowProxyRegistration       Boolean     @default(false)
   shirtSizeRestrictionDate     DateTime?
   shirtSizeRestrictionSizes    ShirtSize[]
 
   organizerNameOverride        String?
-  organizerDescriptionOverride String?   @db.Text
+  organizerDescriptionOverride String? @db.Text
   organizerEmailOverride       String?
   organizerPhoneOverride       String?
 
-  organizer     OrganizerProfile @relation(fields: [organizerId], references: [id])
-  routes        EventRoute[]
-  categories    EventCategory[]
-  ticketBatches TicketBatch[]
-  registrations Registration[]
-  orders        Order[]
-  coupons       Coupon[]
-  socialLinks   EventSocialLink[]
-  sponsors      EventSponsor[]
-  campaigns     Campaign[]
-  resultImports ResultImport[]
-  fileAssets    FileAsset[]
-  payouts       TransferPayout[]
-  messageTemplates MessageTemplate[]
+  organizer              OrganizerProfile        @relation(fields: [organizerId], references: [id])
+  routes                 EventRoute[]
+  categories             EventCategory[]
+  ticketBatches          TicketBatch[]
+  registrations          Registration[]
+  orders                 Order[]
+  coupons                Coupon[]
+  socialLinks            EventSocialLink[]
+  sponsors               EventSponsor[]
+  campaigns              Campaign[]
+  resultImports          ResultImport[]
+  fileAssets             FileAsset[]
+  payouts                TransferPayout[]
+  messageTemplates       MessageTemplate[]
   dailySummaryRecipients DailySummaryRecipient[]
 
   @@index([status, startAt])
@@ -323,7 +323,7 @@ model Event {
 }
 
 model EventRoute {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   eventId     String
   name        String
   distanceKm  Float
@@ -351,15 +351,15 @@ model EventCategory {
 }
 
 model TicketBatch {
-  id          String   @id @default(cuid())
-  eventId     String
-  name        String
-  description String?
-  priceAmount Int      // centavos
-  capacity    Int
-  soldCount   Int      @default(0)
-  startAt     DateTime
-  endAt       DateTime
+  id             String   @id @default(cuid())
+  eventId        String
+  name           String
+  description    String?
+  priceAmount    Int // centavos
+  capacity       Int
+  soldCount      Int      @default(0)
+  startAt        DateTime
+  endAt          DateTime
   active         Boolean  @default(true)
   activationMode String   @default("MANUAL") // MANUAL | DATE | AFTER_PREVIOUS
   createdAt      DateTime @default(now())
@@ -373,35 +373,35 @@ model TicketBatch {
 // ─── Registrations ────────────────────────────────────────────────────────────
 
 model Registration {
-  id                   String             @id @default(cuid())
-  eventId              String
-  athleteUserId        String
-  routeId              String?
-  categoryId           String?
-  ticketBatchId        String
-  orderId              String
-  bibNumber            String?
-  shirtSize            ShirtSize?
-  teamName             String?
-  emergencyContactName String?
-  emergencyContactPhone String?
-  medicalNotes         String?
-  notes                String?
+  id                      String             @id @default(cuid())
+  eventId                 String
+  athleteUserId           String
+  routeId                 String?
+  categoryId              String?
+  ticketBatchId           String
+  orderId                 String
+  bibNumber               String?
+  shirtSize               ShirtSize?
+  teamName                String?
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+  medicalNotes            String?
+  notes                   String?
   proxyAthleteDisplayName String?
-  status               RegistrationStatus @default(PENDING_PAYMENT)
-  acceptedTermsAt      DateTime?
+  status                  RegistrationStatus @default(PENDING_PAYMENT)
+  acceptedTermsAt         DateTime?
   cancellationReason      String?
   cancellationRequestedAt DateTime?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
-  event        Event          @relation(fields: [eventId], references: [id])
-  athlete      User           @relation(fields: [athleteUserId], references: [id])
-  route        EventRoute?    @relation(fields: [routeId], references: [id])
-  category     EventCategory? @relation(fields: [categoryId], references: [id])
-  ticketBatch  TicketBatch    @relation(fields: [ticketBatchId], references: [id])
-  order        Order          @relation(fields: [orderId], references: [id])
-  kitDelivery  KitDelivery?
+  event              Event               @relation(fields: [eventId], references: [id])
+  athlete            User                @relation(fields: [athleteUserId], references: [id])
+  route              EventRoute?         @relation(fields: [routeId], references: [id])
+  category           EventCategory?      @relation(fields: [categoryId], references: [id])
+  ticketBatch        TicketBatch         @relation(fields: [ticketBatchId], references: [id])
+  order              Order               @relation(fields: [orderId], references: [id])
+  kitDelivery        KitDelivery?
   campaignRecipients CampaignRecipient[]
 
   @@index([eventId, status])
@@ -456,13 +456,13 @@ model Payment {
   providerPaymentId String?       @unique
   method            PaymentMethod
   status            PaymentStatus @default(PENDING)
-  amount            Int           // centavos
+  amount            Int // centavos
   pixQrCodeText     String?       @db.Text
   boletoUrl         String?
   expiresAt         DateTime?
   paidAt            DateTime?
   refundedAt        DateTime?
-  gatewayFeeAmount  Int?          // centavos - comissao cobrada pelo gateway (ex: Mercado Pago)
+  gatewayFeeAmount  Int? // centavos - comissao cobrada pelo gateway (ex: Mercado Pago)
   rawPayload        Json?
   idempotencyKey    String        @unique
   createdAt         DateTime      @default(now())
@@ -486,7 +486,7 @@ enum RefundStatus {
 model Refund {
   id                String       @id @default(cuid())
   paymentId         String
-  amount            Int       // centavos
+  amount            Int // centavos
   reason            String?
   status            RefundStatus
   failureReason     String?
@@ -505,17 +505,17 @@ model Refund {
 // ─── Coupons ──────────────────────────────────────────────────────────────────
 
 model Coupon {
-  id             String   @id @default(cuid())
-  eventId        String?                       // null = cupom global (vale para todos os eventos)
-  code           String
-  discountType   String   @default("PERCENT") // PERCENT | FIXED
-  discountValue  Int                          // percent: integer (10 = 10%), fixed: centavos
-  maxUses        Int?
-  usedCount      Int      @default(0)
-  expiresAt      DateTime?
-  active         Boolean  @default(true)
-  createdById    String?                       // quem criou o cupom (admin/organizador)
-  createdAt      DateTime @default(now())
+  id            String    @id @default(cuid())
+  eventId       String? // null = cupom global (vale para todos os eventos)
+  code          String
+  discountType  String    @default("PERCENT") // PERCENT | FIXED
+  discountValue Int // percent: integer (10 = 10%), fixed: centavos
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  active        Boolean   @default(true)
+  createdById   String? // quem criou o cupom (admin/organizador)
+  createdAt     DateTime  @default(now())
 
   event     Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   createdBy User?   @relation("CouponCreator", fields: [createdById], references: [id])
@@ -531,7 +531,7 @@ model Coupon {
 model EventSocialLink {
   id        String   @id @default(cuid())
   eventId   String
-  platform  String                          // texto livre digitado pelo organizador (ex.: "Instagram", "Strava")
+  platform  String // texto livre digitado pelo organizador (ex.: "Instagram", "Strava")
   url       String
   message   String   @db.Text
   active    Boolean  @default(true)
@@ -562,7 +562,7 @@ model SocialLinkSend {
 model EventSponsor {
   id        String   @id @default(cuid())
   eventId   String
-  name      String                          // nome do patrocinador
+  name      String // nome do patrocinador
   url       String
   message   String   @db.Text
   active    Boolean  @default(true)
@@ -595,17 +595,17 @@ model KitDelivery {
 // ─── Payouts ──────────────────────────────────────────────────────────────────
 
 model TransferPayout {
-  id           String       @id @default(cuid())
-  eventId      String
-  organizerId  String
-  grossAmount  Int          // centavos
-  platformFee  Int          // centavos
-  netAmount    Int          // centavos
-  status       PayoutStatus @default(PENDING)
-  processedAt  DateTime?
-  notes        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id          String       @id @default(cuid())
+  eventId     String
+  organizerId String
+  grossAmount Int // centavos
+  platformFee Int // centavos
+  netAmount   Int // centavos
+  status      PayoutStatus @default(PENDING)
+  processedAt DateTime?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   event     Event            @relation(fields: [eventId], references: [id])
   organizer OrganizerProfile @relation(fields: [organizerId], references: [id])
@@ -617,15 +617,15 @@ model TransferPayout {
 // ─── Results ──────────────────────────────────────────────────────────────────
 
 model ResultImport {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   eventId     String
   importedBy  String
   fileName    String
   rowCount    Int
-  errorCount  Int      @default(0)
-  published   Boolean  @default(false)
+  errorCount  Int       @default(0)
+  published   Boolean   @default(false)
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   event   Event        @relation(fields: [eventId], references: [id])
   results RaceResult[]
@@ -634,19 +634,19 @@ model ResultImport {
 }
 
 model RaceResult {
-  id                  String @id @default(cuid())
-  importId            String
-  eventId             String
-  bibNumber           String
-  athleteName         String
-  route               String?
-  category            String?
-  gender              String?
-  grossTime           String?
-  netTime             String?
-  placementGeneral    Int?
-  placementCategory   Int?
-  placementGender     Int?
+  id                String  @id @default(cuid())
+  importId          String
+  eventId           String
+  bibNumber         String
+  athleteName       String
+  route             String?
+  category          String?
+  gender            String?
+  grossTime         String?
+  netTime           String?
+  placementGeneral  Int?
+  placementCategory Int?
+  placementGender   Int?
 
   import ResultImport @relation(fields: [importId], references: [id], onDelete: Cascade)
 
@@ -676,16 +676,16 @@ model AuditLog {
 }
 
 model FileAsset {
-  id          String   @id @default(cuid())
-  eventId     String?
-  uploadedBy  String
-  fileName    String
-  fileKey     String   @unique
-  fileUrl     String
-  mimeType    String
-  sizeBytes   Int
-  purpose     String   // "banner", "regulation", "kit_info"
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  eventId    String?
+  uploadedBy String
+  fileName   String
+  fileKey    String   @unique
+  fileUrl    String
+  mimeType   String
+  sizeBytes  Int
+  purpose    String // "banner", "regulation", "kit_info"
+  createdAt  DateTime @default(now())
 
   event Event? @relation(fields: [eventId], references: [id])
 
@@ -753,8 +753,8 @@ model MessageTemplate {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  event     Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  updatedBy User?   @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  event     Event?                   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  updatedBy User?                    @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
   versions  MessageTemplateVersion[]
 
   @@unique([alertKey, channel, recipientRole, scope, eventId])
@@ -780,18 +780,18 @@ model MessageTemplateVersion {
 }
 
 model AdSlot {
-  id             String   @id @default(cuid())
-  key            String   @unique
-  label          String
-  width          Int
-  height         Int
-  enabled        Boolean  @default(false)
-  source         String?
-  googleAdUnitId String?
+  id               String   @id @default(cuid())
+  key              String   @unique
+  label            String
+  width            Int
+  height           Int
+  enabled          Boolean  @default(false)
+  source           String?
+  googleAdUnitId   String?
   houseAdImageUrl  String?
   houseAdTargetUrl String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   metrics    AdMetricsSnapshot[]
   privateAds PrivateAd[]
@@ -851,15 +851,15 @@ model AdPlan {
 }
 
 model AdPurchase {
-  id           String    @id @default(cuid())
-  advertiserId String
-  adPlanId     String
-  status       String
+  id              String    @id @default(cuid())
+  advertiserId    String
+  adPlanId        String
+  status          String
   rejectionReason String?
-  startAt      DateTime?
-  endAt        DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  startAt         DateTime?
+  endAt           DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   advertiser AdvertiserProfile @relation(fields: [advertiserId], references: [id])
   adPlan     AdPlan            @relation(fields: [adPlanId], references: [id])
@@ -899,13 +899,13 @@ model AssistantPermission {
 }
 
 model DailySummaryRecipient {
-  id        String                     @id @default(cuid())
+  id        String                    @id @default(cuid())
   userId    String
   name      String
   type      DailySummaryRecipientType
   value     String
   eventId   String?
-  createdAt DateTime                   @default(now())
+  createdAt DateTime                  @default(now())
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -944,8 +944,8 @@ model Campaign {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  event         Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdByUser User  @relation(fields: [createdByUserId], references: [id])
+  event         Event?              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdByUser User                @relation(fields: [createdByUserId], references: [id])
   recipients    CampaignRecipient[]
 
   @@index([eventId, status])
@@ -953,19 +953,19 @@ model Campaign {
 }
 
 model CampaignRecipient {
-  id              String                  @id @default(cuid())
-  campaignId      String
-  athleteUserId   String
-  registrationId  String?
-  normalizedPhone String
-  status          CampaignRecipientStatus @default(PENDING)
-  failureReason   String?
-  attempts        Int                     @default(0)
+  id                String                  @id @default(cuid())
+  campaignId        String
+  athleteUserId     String
+  registrationId    String?
+  normalizedPhone   String
+  status            CampaignRecipientStatus @default(PENDING)
+  failureReason     String?
+  attempts          Int                     @default(0)
   providerMessageId String?
-  sentAt          DateTime?
-  redesSociaisText String?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  sentAt            DateTime?
+  redesSociaisText  String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
 
   campaign     Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   athlete      User          @relation(fields: [athleteUserId], references: [id])
