@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
+import { computeOrderAmounts } from "@/lib/fees";
 import { emptyStringToUndefined, extractApiErrorMessage, optionalEnumField, opaqueIdField, optionalOpaqueIdField } from "@/lib/checkout-validation";
 import { PAYMENT_METHOD_LABELS, type CheckoutPaymentMethod } from "@/lib/payment-methods";
 import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
@@ -73,17 +74,6 @@ interface CouponPreview {
   subtotalAmount: number;
 }
 
-function calcPlatformFee(subtotal: number, feePercent: number, minFee: number): number {
-  const percentFee = Math.round((subtotal * feePercent) / 10000);
-  return Math.max(percentFee, minFee);
-}
-
-function calcServiceFee(subtotal: number, feePercent: number, minFee: number): number {
-  if (feePercent === 0 && minFee === 0) return 0;
-  const percentFee = Math.round((subtotal * feePercent) / 10000);
-  return Math.max(percentFee, minFee);
-}
-
 export default function CheckoutForm({
   event,
   batches,
@@ -94,6 +84,7 @@ export default function CheckoutForm({
   defaultPlatformFee,
   serviceFeePercent = 0,
   serviceFeeMin = 0,
+  pixServiceFeeDiscountPercent = 0,
   appName,
   allowProxyRegistration,
 }: {
@@ -106,6 +97,7 @@ export default function CheckoutForm({
   defaultPlatformFee: number;
   serviceFeePercent?: number;
   serviceFeeMin?: number;
+  pixServiceFeeDiscountPercent?: number;
   appName?: string;
   allowProxyRegistration?: boolean;
 }) {
@@ -430,12 +422,22 @@ export default function CheckoutForm({
                 </div>
                 <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   {(() => {
-                    const fee = calcPlatformFee(b.priceAmount, platformFeePercent, defaultPlatformFee);
-                    const sfee = calcServiceFee(b.priceAmount, serviceFeePercent, serviceFeeMin);
+                    const a = computeOrderAmounts({
+                      subtotal: b.priceAmount,
+                      platformFeePercent,
+                      defaultPlatformFee,
+                      serviceFeePercent,
+                      serviceFeeMin,
+                      pixDiscountPercent: pixServiceFeeDiscountPercent,
+                      isPix: false,
+                    });
                     return (
                       <span>
-                        +{formatCurrency(fee)} taxa da plataforma
-                        {sfee > 0 && <> · +{formatCurrency(sfee)} taxa de serviço</>}
+                        +{formatCurrency(a.platformFee)} taxa da plataforma
+                        {a.serviceFeeOriginal > 0 && <> · +{formatCurrency(a.serviceFeeOriginal)} taxa de serviço</>}
+                        {pixServiceFeeDiscountPercent > 0 && a.serviceFeeOriginal > 0 && (
+                          <> · {pixServiceFeeDiscountPercent}% off na taxa de serviço via PIX</>
+                        )}
                       </span>
                     );
                   })()}
@@ -587,7 +589,15 @@ export default function CheckoutForm({
                 <MPCardForm ref={mpCardRef} publicKey={cardConfig.publicKey} amount={
                   (() => {
                     const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + calcServiceFee(sub, serviceFeePercent, serviceFeeMin);
+                    return computeOrderAmounts({
+                      subtotal: sub,
+                      platformFeePercent,
+                      defaultPlatformFee,
+                      serviceFeePercent,
+                      serviceFeeMin,
+                      pixDiscountPercent: pixServiceFeeDiscountPercent,
+                      isPix: false, // cartão nunca tem desconto PIX
+                    }).total;
                   })()
                 } />
               )}
@@ -595,7 +605,15 @@ export default function CheckoutForm({
                 <PagarMeCardForm ref={pagarmeCardRef} publicKey={cardConfig.publicKey} amount={
                   (() => {
                     const sub = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-                    return sub + calcPlatformFee(sub, platformFeePercent, defaultPlatformFee) + calcServiceFee(sub, serviceFeePercent, serviceFeeMin);
+                    return computeOrderAmounts({
+                      subtotal: sub,
+                      platformFeePercent,
+                      defaultPlatformFee,
+                      serviceFeePercent,
+                      serviceFeeMin,
+                      pixDiscountPercent: pixServiceFeeDiscountPercent,
+                      isPix: false, // cartão nunca tem desconto PIX
+                    }).total;
                   })()
                 } />
               )}
@@ -627,9 +645,15 @@ export default function CheckoutForm({
       <div className="card">
         {(() => {
           const effectiveSubtotal = couponPreview?.subtotalAmount ?? (selectedBatch?.priceAmount ?? 0);
-          const fee = calcPlatformFee(effectiveSubtotal, platformFeePercent, defaultPlatformFee);
-          const sfee = calcServiceFee(effectiveSubtotal, serviceFeePercent, serviceFeeMin);
-          const effectiveTotal = effectiveSubtotal + fee + sfee;
+          const a = computeOrderAmounts({
+            subtotal: effectiveSubtotal,
+            platformFeePercent,
+            defaultPlatformFee,
+            serviceFeePercent,
+            serviceFeeMin,
+            pixDiscountPercent: pixServiceFeeDiscountPercent,
+            isPix: selectedPaymentMethod === "PIX",
+          });
           return (
             <div className="space-y-1 text-sm mb-4">
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
@@ -644,17 +668,26 @@ export default function CheckoutForm({
               )}
               <div className="flex justify-between text-gray-600 dark:text-gray-400">
                 <span>+Taxa da plataforma</span>
-                <span>{formatCurrency(fee)}</span>
+                <span>{formatCurrency(a.platformFee)}</span>
               </div>
-              {sfee > 0 && (
+              {a.serviceFeeOriginal > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">
                   <span>+Taxa de serviço de ingresso</span>
-                  <span>{formatCurrency(sfee)}</span>
+                  <span>{formatCurrency(a.serviceFeeOriginal)}</span>
+                </div>
+              )}
+              {a.pixDiscountAmount > 0 && (
+                <div className="flex flex-col text-green-600">
+                  <div className="flex justify-between">
+                    <span>Desconto PIX na taxa de serviço</span>
+                    <span>-{formatCurrency(a.pixDiscountAmount)}</span>
+                  </div>
+                  <span className="text-xs text-green-600/80">{a.pixDiscountPercent}% de desconto via PIX</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-lg font-bold border-t dark:border-gray-700 pt-2 mt-1">
                 <span>Total</span>
-                <span className="text-primary-600">{formatCurrency(effectiveTotal)}</span>
+                <span className="text-primary-600">{formatCurrency(a.total)}</span>
               </div>
             </div>
           );
