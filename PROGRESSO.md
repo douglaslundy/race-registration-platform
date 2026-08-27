@@ -1,6 +1,46 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-25, mais recente — coluna Idade no export CSV/XLSX + referência de data corrigida, deploy em andamento)
+## Última atualização (2026-08-27, mais recente — Desconto PIX sobre a Taxa de Serviço: spec escrita, aguardando revisão do usuário)
+
+Pedido novo (spec formal): desconto percentual para pagamentos via PIX incidindo **exclusivamente
+sobre a Taxa de Serviço**, nunca sobre a Taxa da Plataforma nem sobre o valor da inscrição.
+
+**Auditoria concluída** (mapeamento em `docs/superpowers/specs/2026-08-27-desconto-pix-taxa-servico-design.md`, seções 2 e 10):
+- Taxa da Plataforma = `Order.platformFeeAmount`; config `Event.platformFeePercent` (bps) +
+  `platform_settings["default_platform_fee"]`. **Impacto da feature: NENHUM.**
+- Taxa de Serviço = `Order.paymentFeeAmount` (nome interno enganoso "payment fee"); config só global
+  `service_fee_percent` + `service_fee_min`. É o alvo do desconto.
+- `paymentMethod` já chega no request do checkout (`app/api/checkout/route.ts:68`) mas é descartado
+  antes de `createCheckout`. Não há fluxo de trocar método / repagar sobre Order existente.
+
+**Decisões do usuário (4 perguntas):**
+1. `Order.paymentFeeAmount` continua sendo a Taxa de Serviço LÍQUIDA (cobrada); adicionar campos
+   novos `serviceFeeOriginalAmount` / `pixDiscountPercent` / `pixDiscountAmount`. Consumidores
+   atuais (repasse, revenue-breakdown, resumo diário) ficam corretos sem alteração.
+2. Piso `service_fee_min` continua sendo piso após o desconto: `final = max(original − desconto, min)`.
+3. Config por evento (`Event.pixServiceFeeDiscountPercent Int?`, null=herda / 0=sem desconto) é
+   **admin-only**, junto do platform fee por evento.
+4. Breakdown original/desconto/líquida só em: relatório financeiro admin + export de detalhe de
+   pagamento + comprovante do atleta. Demais relatórios ficam com o valor líquido.
+
+**Design aprovado pelo usuário** (5 blocos). Motor de cálculo: novo `lib/fees.ts` puro
+(`computeOrderAmounts` + `resolveEffectivePixDiscountPercent`), usado por backend
+(`createCheckout` passa a receber `isPix`) e frontend (`CheckoutForm` troca o cálculo local).
+
+**PRÓXIMA TAREFA**: usuário revisa o spec
+`docs/superpowers/specs/2026-08-27-desconto-pix-taxa-servico-design.md`. Se aprovar → invocar
+`superpowers:writing-plans` para o plano de implementação. Nenhum código ainda.
+
+**Contexto necessário** (só isto para retomar):
+- `docs/superpowers/specs/2026-08-27-desconto-pix-taxa-servico-design.md` (spec completa)
+- `lib/checkout.ts`, `app/api/checkout/route.ts`, `components/checkout/CheckoutForm.tsx`
+- `lib/settings.ts`, `lib/revenue-breakdown.ts`, `lib/admin/generate-payout.ts`
+- `prisma/schema.prisma` (models Event / Order / Payment)
+- `app/api/admin/events/[id]/fee/route.ts`, `components/admin/ServiceFeeForm.tsx` / `SetPlatformFeeForm.tsx`
+- `app/(public)/eventos/[slug]/page.tsx`, `app/(public)/inscricao/[slug]/page.tsx`
+- `app/api/admin/report/export/route.ts`, `app/api/admin/payments/[id]/export/route.ts`, `app/dashboard/inscricoes/[id]/page.tsx`
+
+## Última atualização (2026-08-25, item anterior — coluna Idade no export CSV/XLSX + referência de data corrigida, deploy em andamento)
 
 Pedido do usuário antes de iniciar a Fase 2: adicionar coluna "Idade" na exportação CSV/XLSX de
 inscrições (Relatório Geral já tinha a coluna na tela, mas o export não) e corrigir a referência da
