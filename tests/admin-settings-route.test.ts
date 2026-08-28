@@ -120,4 +120,40 @@ describe("admin settings api", () => {
     expect(res.status).toBe(400);
     expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
   });
+
+  it("mascara o valor no audit log quando a key é secreta (twilio_auth_token)", async () => {
+    dbMock.platformSetting.findUnique.mockResolvedValueOnce({ value: "old-token" });
+    dbMock.platformSetting.upsert.mockResolvedValueOnce({});
+    dbMock.auditLog.create.mockResolvedValueOnce({});
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "twilio_auth_token", value: "SUPERSECRET" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    const meta = dbMock.auditLog.create.mock.calls.at(-1)[0].data.metadata;
+    expect(meta.newValue).toBe("***");
+    expect(meta.oldValue).toBe("***");
+    expect(JSON.stringify(meta)).not.toContain("SUPERSECRET");
+  });
+
+  it("mantém o valor real no audit log para key não-secreta (whatsapp_provider)", async () => {
+    dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
+    dbMock.platformSetting.upsert.mockResolvedValueOnce({});
+    dbMock.auditLog.create.mockResolvedValueOnce({});
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "whatsapp_provider", value: "twilio" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    const meta = dbMock.auditLog.create.mock.calls.at(-1)[0].data.metadata;
+    expect(meta.newValue).toBe("twilio");
+  });
 });

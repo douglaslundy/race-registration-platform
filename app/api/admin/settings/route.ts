@@ -10,6 +10,10 @@ const schema = z.object({
   value: z.string().max(500),
 });
 
+function isSecretKey(key: string): boolean {
+  return /(_token|_key|_secret|_password)$/.test(key);
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
@@ -34,6 +38,7 @@ export async function POST(req: NextRequest) {
   try {
     const previous = await db.platformSetting.findUnique({ where: { key: parsed.data.key } });
     await upsertSetting(parsed.data.key, parsed.data.value);
+    const masked = isSecretKey(parsed.data.key);
     await db.auditLog.create({
       data: {
         userId: session.user.id,
@@ -42,8 +47,8 @@ export async function POST(req: NextRequest) {
         entityId: parsed.data.key,
         metadata: {
           key: parsed.data.key,
-          oldValue: previous?.value ?? null,
-          newValue: parsed.data.value,
+          oldValue: masked ? (previous?.value ? "***" : null) : (previous?.value ?? null),
+          newValue: masked ? "***" : parsed.data.value,
         },
       },
     });
