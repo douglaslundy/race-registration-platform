@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import AssistantManager from "@/components/assistants/AssistantManager";
+import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
+import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Assistentes — Organizador" };
+export const dynamic = "force-dynamic";
 
 const ORGANIZER_EVENT_ACTIONS = [
   { key: "events.view", label: "Ver meus eventos e exportar CSV" },
@@ -57,11 +60,21 @@ const ORGANIZER_EVENT_ACTIONS = [
   { key: "messages.view", label: "Ver caixa de mensagens (minhas mensagens)" },
 ];
 
-export default function OrganizerAssistentesPage() {
+export default async function OrganizerAssistentesPage() {
+  const session = await requireOrganizer();
+  const scope = await resolveActingScope(session);
+  const events = scope.organizerId
+    ? await db.event.findMany({
+        where: { organizerId: scope.organizerId },
+        orderBy: { startAt: "desc" },
+        select: { id: true, title: true },
+      })
+    : [];
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Usuários Assistentes</h1>
-      <AssistantManager apiBase="/api/organizer" actionOptions={ORGANIZER_EVENT_ACTIONS} />
+      <AssistantManager apiBase="/api/organizer" actionOptions={ORGANIZER_EVENT_ACTIONS} events={events} />
     </div>
   );
 }
