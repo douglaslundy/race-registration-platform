@@ -316,6 +316,7 @@ model Event {
   payouts                TransferPayout[]
   messageTemplates       MessageTemplate[]
   dailySummaryRecipients DailySummaryRecipient[]
+  assistantPermissions   AssistantPermission[]
 
   @@index([status, startAt])
   @@index([city, modality])
@@ -890,11 +891,16 @@ model AssistantPermission {
   id        String   @id @default(cuid())
   userId    String
   actionKey String
+  // null = permissão vale para TODOS os eventos do responsável (comportamento histórico).
+  // preenchido = permissão restrita àquele evento.
+  eventId   String?
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, actionKey])
+  @@unique([userId, actionKey, eventId])
+  @@index([eventId])
   @@map("assistant_permissions")
 }
 

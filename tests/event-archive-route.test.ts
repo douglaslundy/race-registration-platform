@@ -73,7 +73,7 @@ describe("event archive api", () => {
 
   it("ASSISTANT criado por organizador com events.archive consegue arquivar evento do organizerId do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
     });
@@ -87,7 +87,7 @@ describe("event archive api", () => {
 
   it("ASSISTANT sem events.archive é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 

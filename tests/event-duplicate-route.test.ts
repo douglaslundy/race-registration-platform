@@ -105,7 +105,7 @@ describe("event duplicate api", () => {
 
   it("ASSISTANT criado por organizador com events.duplicate consegue duplicar evento do organizerId do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
     });
@@ -124,7 +124,7 @@ describe("event duplicate api", () => {
   // pré-existente, não é uma correção de bug).
   it("ASSISTANT criado por admin recebe 404 (sem bypass de admin, mesmo actingAsAdmin=true)", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
@@ -137,7 +137,7 @@ describe("event duplicate api", () => {
 
   it("ASSISTANT sem events.duplicate é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 

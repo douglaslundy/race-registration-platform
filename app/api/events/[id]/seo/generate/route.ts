@@ -9,11 +9,11 @@ import { buildSeoPrompt, truncateSeoText } from "@/lib/seo/build-seo-prompt";
 const schema = z.object({ field: z.enum(["metaTitle", "metaDescription"]) });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.edit");
+  const { id } = await params;
+  const check = await checkApiPermission("events.edit", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) {

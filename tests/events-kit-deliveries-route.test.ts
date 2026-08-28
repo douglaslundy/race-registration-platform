@@ -4,15 +4,20 @@ import { auth } from "@/lib/auth";
 import { findRegistrationForKitDelivery } from "@/lib/kit-delivery";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/auth/rbac", () => ({ checkApiPermission: vi.fn(), resolveActingScope: vi.fn() }));
+vi.mock("@/lib/auth/rbac", () => ({
+  checkApiPermission: vi.fn(),
+  checkAnyApiPermission: vi.fn(),
+  resolveActingScope: vi.fn(),
+}));
 vi.mock("@/lib/kit-delivery", () => ({ findRegistrationForKitDelivery: vi.fn() }));
 
 import { GET } from "@/app/api/events/[id]/kit-deliveries/search/route";
 import { POST } from "@/app/api/events/[id]/kit-deliveries/route";
-import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { checkApiPermission, checkAnyApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 
 const authMock = vi.mocked(auth);
 const checkPermissionMock = vi.mocked(checkApiPermission);
+const checkAnyPermissionMock = vi.mocked(checkAnyApiPermission);
 const resolveScopeMock = vi.mocked(resolveActingScope);
 const dbMock = db as any;
 const findMock = vi.mocked(findRegistrationForKitDelivery);
@@ -40,8 +45,15 @@ describe("GET /api/events/[id]/kit-deliveries/search", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "organizer-1", role: "ORGANIZER" } } as any);
     checkPermissionMock.mockResolvedValue({ allowed: true, session: { user: { id: "organizer-1", role: "ORGANIZER" } } } as any);
+    checkAnyPermissionMock.mockResolvedValue({ allowed: true, session: { user: { id: "organizer-1", role: "ORGANIZER" } } } as any);
     resolveScopeMock.mockResolvedValue({ organizerId: "organizer-1", actingAsAdmin: false } as any);
     dbMock.event.findFirst.mockResolvedValue({ id: "event-1" });
+  });
+
+  it("passa { eventId } do path pra checagem de permissão", async () => {
+    findMock.mockResolvedValueOnce([]);
+    await GET(makeGetRequest("x"), { params: Promise.resolve({ id: "event-1" }) });
+    expect(checkAnyPermissionMock).toHaveBeenCalledWith(["kits.view", "kits.deliver"], { eventId: "event-1" });
   });
 
   it("busca e retorna os resultados", async () => {
@@ -111,6 +123,16 @@ describe("POST /api/events/[id]/kit-deliveries", () => {
         receivedByDocument: null,
       },
     });
+  });
+
+  it("passa { eventId } do path pra checagem kits.deliver", async () => {
+    dbMock.registration.findFirst.mockResolvedValueOnce({ id: "reg-1", eventId: "event-1", status: "CONFIRMED" });
+    dbMock.kitDelivery.create.mockResolvedValueOnce({ id: "kd-1" });
+    await POST(
+      makePostRequest({ registrationId: "reg-1", receivedByName: "João Silva" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+    expect(checkPermissionMock).toHaveBeenCalledWith("kits.deliver", { eventId: "event-1" });
   });
 
   it("rejeita corpo inválido (sem receivedByName)", async () => {

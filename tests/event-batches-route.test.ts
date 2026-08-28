@@ -78,7 +78,7 @@ describe("POST /api/events/[id]/batches", () => {
 
   it("assistente de organizador com a permissão cria lote no evento do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
     dbMock.ticketBatch.create.mockResolvedValueOnce({ id: "batch-3", ...validBody });
@@ -90,7 +90,7 @@ describe("POST /api/events/[id]/batches", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(validBody), makeContext("ev-1"));
 
@@ -101,7 +101,7 @@ describe("POST /api/events/[id]/batches", () => {
 
   it("assistente de admin com a permissão cria lote em qualquer evento (bypass também vale pra ele)", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.event.findUnique.mockResolvedValueOnce({ id: "ev-9", organizerId: "org-99" });
     dbMock.ticketBatch.create.mockResolvedValueOnce({ id: "batch-4", ...validBody });

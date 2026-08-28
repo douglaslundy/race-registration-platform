@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ErrorModal from "@/components/ui/ErrorModal";
 
+type AssistantScope = {
+  eventId: string | null;
+  eventTitle: string | null;
+  permissions: string[];
+};
+
 type Assistant = {
   id: string;
   name: string;
@@ -12,21 +18,28 @@ type Assistant = {
   createdAt: string;
   signupPending?: boolean;
   permissions: string[];
+  scopes?: AssistantScope[];
 };
 
 type ActionOption = { key: string; label: string };
+type EventOption = { id: string; title: string };
 
 export default function AssistantManager({
   apiBase,
   actionOptions,
+  events = [],
 }: {
   apiBase: string;
   actionOptions: ActionOption[];
+  /** Eventos do organizador — só usado quando apiBase === "/api/organizer" (escopo por evento). */
+  events?: EventOption[];
 }) {
+  const scopedByEvent = apiBase === "/api/organizer";
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [eventId, setEventId] = useState<string>("ALL");
   const [mode, setMode] = useState<"view" | "custom">("view");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -106,17 +119,29 @@ export default function AssistantManager({
       const res = await fetch(`${apiBase}/assistants`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), actionKeys }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          actionKeys,
+          ...(scopedByEvent ? { eventId } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(typeof data.error === "string" ? data.error : "Erro ao criar assistente.");
         return;
       }
-      if (data.inviteResent) setNotice("Este e-mail já era assistente seu — convite reenviado e permissões atualizadas.");
+      if (data.inviteResent) {
+        setNotice("Este e-mail já era assistente seu — convite reenviado e permissões atualizadas.");
+      } else if (data.isNew === false) {
+        setNotice("Usuário existente promovido a assistente. As permissões foram aplicadas — ele entra com a senha que já tem.");
+      } else {
+        setNotice("Assistente criado — convite enviado por e-mail (link válido por 72 horas).");
+      }
       await refresh();
       setName("");
       setEmail("");
+      setEventId("ALL");
       setSelectedKeys([]);
       setMode("view");
     } finally {
@@ -167,6 +192,16 @@ export default function AssistantManager({
                     "Bloqueado"
                   )}{" "}
                   — {a.permissions.length} permissões
+                  {a.scopes && a.scopes.length > 0 && (
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {a.scopes
+                        .map(
+                          (s) =>
+                            `${s.eventId === null ? "Todos os eventos" : s.eventTitle ?? "(evento removido)"}: ${s.permissions.length}`,
+                        )
+                        .join(" · ")}
+                    </span>
+                  )}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
                   {a.signupPending && (
@@ -215,6 +250,26 @@ export default function AssistantManager({
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full" required />
           </div>
         </div>
+
+        {scopedByEvent && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Evento</label>
+            <select
+              value={eventId}
+              onChange={(e) => setEventId(e.target.value)}
+              className="input-field w-full"
+              required
+            >
+              <option value="ALL">Todos os eventos</option>
+              {events.map((e) => (
+                <option key={e.id} value={e.id}>{e.title}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              As permissões abaixo valerão só para o evento escolhido (ou para todos, se &quot;Todos os eventos&quot;).
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm">

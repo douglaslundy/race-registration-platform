@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { checkAnyApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getKitDeliveryProgress } from "@/lib/kit-delivery";
 import { escapeCsvValue } from "@/lib/admin/events";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("kits.view");
+  const { id } = await params;
+  const check = await checkAnyApiPermission(["kits.view", "kits.deliver"], { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id }, select: { id: true, title: true } })

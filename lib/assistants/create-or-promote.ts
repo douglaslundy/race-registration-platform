@@ -9,6 +9,9 @@ export interface CreateOrPromoteAssistantParams {
   actionKeys: string[];
   createdByUserId: string;
   invitedByName?: string;
+  /** Escopo das permissões: `null` = todos os eventos do responsável (comportamento histórico);
+   * um id = as permissões valem só pra aquele evento. Default `null` (chamadas antigas / admin). */
+  eventId?: string | null;
 }
 
 export type CreateOrPromoteAssistantResult =
@@ -102,10 +105,11 @@ export async function createOrPromoteAssistant(
     };
   }
 
+  const eventId = params.eventId ?? null;
   await db.assistantPermission.deleteMany({ where: { userId } });
   if (params.actionKeys.length > 0) {
     await db.assistantPermission.createMany({
-      data: params.actionKeys.map((actionKey) => ({ userId, actionKey })),
+      data: params.actionKeys.map((actionKey) => ({ userId, actionKey, eventId })),
     });
   }
 

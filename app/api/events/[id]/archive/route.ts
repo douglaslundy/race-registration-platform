@@ -3,11 +3,11 @@ import { db } from "@/lib/db";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.archive");
+  const { id } = await params;
+  const check = await checkApiPermission("events.archive", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
 
   const event = await db.event.findFirst({

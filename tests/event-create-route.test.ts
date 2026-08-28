@@ -71,7 +71,7 @@ describe("event create api", () => {
 
   it("ASSISTANT criado por organizador com events.create consegue criar, escopado ao organizerId do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-9" } },
     });
@@ -99,7 +99,7 @@ describe("event create api", () => {
 
   it("ASSISTANT sem events.create é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(
       new Request("http://localhost/api/events", {

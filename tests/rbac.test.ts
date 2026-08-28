@@ -83,29 +83,62 @@ describe("checkApiPermission", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     const result = await checkApiPermission("events.approve");
     expect(result.allowed).toBe(true);
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
   it("ORGANIZER sempre permitido, sem consultar AssistantPermission", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
     const result = await checkApiPermission("events.edit");
     expect(result.allowed).toBe(true);
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
-  it("ASSISTANT com a permissão concedida é permitido", async () => {
+  it("ASSISTANT com a permissão concedida (global) é permitido", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     const result = await checkApiPermission("events.approve");
-    expect(dbMock.assistantPermission.findUnique).toHaveBeenCalledWith({
-      where: { userId_actionKey: { userId: "assistant-1", actionKey: "events.approve" } },
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: { in: ["events.approve"] }, eventId: null },
     });
     expect(result.allowed).toBe(true);
   });
 
+  it("ASSISTANT com { eventId }: consulta linhas globais OU do evento", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-e1" });
+    const result = await checkApiPermission("kits.deliver", { eventId: "e1" });
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "assistant-1",
+        actionKey: { in: ["kits.deliver"] },
+        OR: [{ eventId: null }, { eventId: "e1" }],
+      },
+    });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("ASSISTANT restrito a e1 é negado em e2 e negado sem opts", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    // e2: só existe linha de e1 → findFirst com OR [null, e2] não acha
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
+    const inOther = await checkApiPermission("kits.deliver", { eventId: "e2" });
+    expect(inOther.allowed).toBe(false);
+    // sem opts: filtro eventId:null → linha restrita não conta
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
+    const noOpts = await checkApiPermission("kits.deliver");
+    expect(noOpts.allowed).toBe(false);
+  });
+
+  it("ADMIN/ORGANIZER passam mesmo com { eventId }, sem consultar", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
+    const result = await checkApiPermission("kits.deliver", { eventId: "e1" });
+    expect(result.allowed).toBe(true);
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
+  });
+
   it("ASSISTANT sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
     const result = await checkApiPermission("events.approve");
     expect(result.allowed).toBe(false);
     if (!result.allowed) expect(result.response.status).toBe(403);
@@ -115,7 +148,7 @@ describe("checkApiPermission", () => {
     authMock.mockResolvedValue({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
     const result = await checkApiPermission("events.approve");
     expect(result.allowed).toBe(false);
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 });
 
@@ -135,12 +168,12 @@ describe("checkAdminOnlyApiPermission", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     const result = await checkAdminOnlyApiPermission("events.approve");
     expect(result.allowed).toBe(true);
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
   it("ASSISTANT criado por ADMIN com a permissão concedida é permitido", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     const result = await checkAdminOnlyApiPermission("events.approve");
     expect(result.allowed).toBe(true);
@@ -148,7 +181,7 @@ describe("checkAdminOnlyApiPermission", () => {
 
   it("ASSISTANT criado por ORGANIZER com a permissão concedida (mas actingAsAdmin=false) é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
     });
@@ -274,29 +307,29 @@ describe("requirePermission", () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     const session = await requirePermission("messages.view");
     expect(session.user.id).toBe("admin-1");
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
   it("ORGANIZER passa sem consultar AssistantPermission", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
     const session = await requirePermission("messages.view");
     expect(session.user.id).toBe("org-1");
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
   it("ASSISTANT com a permissão concedida passa", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     const session = await requirePermission("messages.view");
-    expect(dbMock.assistantPermission.findUnique).toHaveBeenCalledWith({
-      where: { userId_actionKey: { userId: "assistant-1", actionKey: "messages.view" } },
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: { in: ["messages.view"] }, eventId: null },
     });
     expect(session.user.id).toBe("assistant-1");
   });
 
   it("ASSISTANT sem a permissão é redirecionado", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
     await expect(requirePermission("messages.view")).rejects.toThrow("NEXT_REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/acesso-negado");
   });
@@ -304,7 +337,7 @@ describe("requirePermission", () => {
   it("ATHLETE é redirecionado sem consultar AssistantPermission", async () => {
     authMock.mockResolvedValue({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
     await expect(requirePermission("messages.view")).rejects.toThrow("NEXT_REDIRECT");
-    expect(dbMock.assistantPermission.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
   it("sem sessão é redirecionado pro login", async () => {

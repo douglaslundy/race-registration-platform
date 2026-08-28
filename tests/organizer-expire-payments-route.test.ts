@@ -42,7 +42,7 @@ describe("POST /api/organizer/expire-payments", () => {
 
   it("assistente de organizador com a permissão roda os mecanismos escopados ao userId do criador", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-user-1" });
     vi.mocked(expirePendingPayments).mockResolvedValueOnce({ checked: 1, expired: 0 });
     vi.mocked(expireAbandonedOrders).mockResolvedValueOnce({ checked: 0, expired: 0 });
@@ -56,7 +56,7 @@ describe("POST /api/organizer/expire-payments", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST();
 

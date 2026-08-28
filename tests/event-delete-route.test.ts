@@ -72,7 +72,7 @@ describe("event delete api", () => {
 
   it("ASSISTANT criado por organizador com events.delete consegue excluir evento do organizerId do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
     });
@@ -96,7 +96,7 @@ describe("event delete api", () => {
 
   it("ASSISTANT sem events.delete é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await DELETE(
       new Request("http://localhost/api/events/event-1", { method: "DELETE" }) as any,

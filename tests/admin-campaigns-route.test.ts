@@ -95,7 +95,7 @@ describe("GET/POST /api/admin/campaigns (admin-only)", () => {
 
   it("rejeita ASSISTANT de ORGANIZER, mesmo com a permissão concedida", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValue({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValue({ id: "perm-1" });
     // checkAdminOnlyApiPermission e resolveCampaignListContext cada um chama resolveActingScope,
     // então db.user.findUnique é consultado duas vezes nesse fluxo — mockResolvedValue (não Once)
     // garante a mesma resposta nas duas chamadas.
@@ -109,7 +109,7 @@ describe("GET/POST /api/admin/campaigns (admin-only)", () => {
 
   it("permite ASSISTANT de ADMIN, com a permissão concedida", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValue({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValue({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValue({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.campaign.findMany.mockResolvedValueOnce([platformDraftCampaign]);
 

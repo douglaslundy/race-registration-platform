@@ -15,11 +15,11 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; batchId: string }> }) {
-  const check = await checkApiPermission("batches.edit");
+  const { id, batchId } = await params;
+  const check = await checkApiPermission("batches.edit", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, batchId } = await params;
   const scope = await resolveActingScope(session);
 
   const event = await db.event.findFirst({
@@ -50,11 +50,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; batchId: string }> }) {
-  const check = await checkApiPermission("batches.delete");
+  const { id, batchId } = await params;
+  const check = await checkApiPermission("batches.delete", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, batchId } = await params;
   const scope = await resolveActingScope(session);
 
   const event = await db.event.findFirst({

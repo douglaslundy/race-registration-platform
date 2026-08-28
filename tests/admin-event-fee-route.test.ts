@@ -57,20 +57,20 @@ describe("admin event fee api", () => {
 
   it("ASSISTANT criado por ADMIN com events.set-fee concedido consegue atualizar a taxa", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
 
     const res = await PATCH(makeRequest({ platformFeePercent: 500 }), { params: Promise.resolve({ id: "event-1" }) });
 
-    expect(dbMock.assistantPermission.findUnique).toHaveBeenCalledWith({
-      where: { userId_actionKey: { userId: "assistant-1", actionKey: "events.set-fee" } },
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: "events.set-fee", eventId: null },
     });
     expect(res.status).toBe(200);
   });
 
   it("ASSISTANT sem events.set-fee é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await PATCH(makeRequest({ platformFeePercent: 500 }), { params: Promise.resolve({ id: "event-1" }) });
 

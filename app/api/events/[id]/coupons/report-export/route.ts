@@ -4,11 +4,11 @@ import { db } from "@/lib/db";
 import { escapeCsvValue } from "@/lib/admin/events";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("coupons.report-export");
+  const { id } = await params;
+  const check = await checkApiPermission("coupons.report-export", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id }, select: { id: true, title: true } })

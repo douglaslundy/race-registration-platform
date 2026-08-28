@@ -107,7 +107,7 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
 
   it("assistente de admin com a permissão notifica qualquer pedido", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.order.findFirst.mockResolvedValueOnce(orderFixture);
     dbMock.auditLog.create.mockResolvedValueOnce({});
@@ -121,7 +121,7 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
 
   it("assistente de organizador com a chave concedida por engano é barrado", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await POST(makeRequest({ orderId: "order-1" }));
@@ -132,7 +132,7 @@ describe("POST /api/admin/abandoned-carts/notify", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest({ orderId: "order-1" }));
 

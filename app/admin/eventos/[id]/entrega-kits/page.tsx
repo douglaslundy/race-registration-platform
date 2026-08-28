@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { requirePermission, resolveActingScope } from "@/lib/auth/rbac";
+import { requireAnyPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getKitDeliveryProgress } from "@/lib/kit-delivery";
 import KitDeliveryReportCard from "@/components/organizer/KitDeliveryReportCard";
@@ -9,8 +9,8 @@ import KitDeliveryReportCard from "@/components/organizer/KitDeliveryReportCard"
 export const metadata: Metadata = { title: "Entrega de kits — Admin" };
 
 export default async function AdminEntregaKitsPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requirePermission("kits.view");
   const { id } = await params;
+  const session = await requireAnyPermission(["kits.view", "kits.deliver"], { eventId: id });
 
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin

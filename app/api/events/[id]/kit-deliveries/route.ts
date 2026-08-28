@@ -10,11 +10,11 @@ const confirmSchema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("kits.deliver");
+  const { id } = await params;
+  const check = await checkApiPermission("kits.deliver", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
   const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });

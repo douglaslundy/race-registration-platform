@@ -119,7 +119,7 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
 
   it("assistente de organizador com a permissão vê inscritos do evento do criador", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce(eventFixture);
     dbMock.registration.findMany.mockResolvedValueOnce([]);
@@ -131,7 +131,7 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 

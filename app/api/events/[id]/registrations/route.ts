@@ -5,11 +5,11 @@ import { buildRegistrationWhere } from "@/lib/organizer/registrations";
 import { buildRegistrationExportRows, buildRegistrationsCsv, buildRegistrationsXlsx } from "@/lib/registrations/export";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("registrations.view");
+  const { id: eventId } = await params;
+  const check = await checkApiPermission("registrations.view", { eventId });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id: eventId } = await params;
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format");
 

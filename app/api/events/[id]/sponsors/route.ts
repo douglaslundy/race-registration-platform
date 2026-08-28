@@ -11,11 +11,11 @@ const sponsorSchema = z.object({
 });
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("sponsors.view");
+  const { id } = await params;
+  const check = await checkApiPermission("sponsors.view", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id } })
@@ -27,11 +27,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("sponsors.create");
+  const { id } = await params;
+  const check = await checkApiPermission("sponsors.create", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id } })
