@@ -1,5 +1,59 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — Sub-projeto A: Twilio WhatsApp provider — implementação CONCLUÍDA, aguardando review whole-branch + deploy)
+
+Branch `feat/twilio-whatsapp-provider`. Execução subagent-driven (9 tasks + verificação). Adiciona o
+Twilio como provider oficial de WhatsApp, mantendo a Evolution API, com o admin escolhendo qual usar.
+
+**Arquitetura:** camada de transporte nova por trás da interface `WhatsAppSender` (`sendText`,
+`sendMedia`, `isConfigured`, `provider`). `getWhatsAppSender()` lê o setting `whatsapp_provider`
+(default `evolution`) e devolve `EvolutionSender` ou `TwilioSender`. `lib/whatsapp.ts` (domínio) não
+tem mais `if provider` — só chama `getWhatsAppSender()`; `recordMessageLog` continua sendo o único
+ponto de log (nunca nos senders).
+
+**Arquivos principais:**
+- `lib/whatsapp/errors.ts` (NOVO) — `WhatsAppSendError(kind, message, providerCode?)`, 7 kinds,
+  `whatsAppErrorLabel()` (pt-BR). Corpo cru do provider / token / SID nunca entram na mensagem.
+- `lib/whatsapp/sender.ts` (NOVO) — interface + `getWhatsAppSender()` (único `if provider === "twilio"`).
+- `lib/whatsapp/evolution-sender.ts` + `evolution-client.ts` — client agora lança `WhatsAppSendError`
+  normalizado (`kindFromEvolutionStatus`); `sendMediaMessage` → `{ providerMessageId: null }`.
+- `lib/whatsapp/twilio-client.ts` (NOVO) — `TwilioSender` (Content API, template utilitário único
+  `contentSid` + `contentVariables {"1": texto}`, `statusCallback` por mensagem), `classifyTwilioError`
+  (mapa de código Twilio → kind), `twilioStatusCallbackUrl()`.
+- `lib/message-logs.ts` — `updateMessageLogStatusByProviderMessageId` aceita `FAILED` (só a partir de
+  `SENT`, nunca reverte DELIVERED/READ). `lib/campaigns/delivery-status.ts` idem (+`failureReason`).
+- `app/api/webhooks/whatsapp/twilio/route.ts` (NOVO) — valida `X-Twilio-Signature` fail-closed
+  (token/URL vazios ou corpo não-form → 403), mapeia delivered/read/failed/undelivered, 200 pra SID
+  desconhecido. Webhook Evolution intocado.
+- `app/api/admin/settings/route.ts` — mascara valores de chaves secretas (`/_token|_key|_secret|_password$/`)
+  no audit log (`***`), valor real segue em `platform_settings`.
+- UI `app/admin/whatsapp/page.tsx` + `components/admin/{WhatsAppProviderSelector,TwilioCredentialsForm,WhatsAppTestSender}.tsx`
+  — seletor de provider, form Twilio (Auth Token nunca pré-preenchido), card de teste standalone,
+  card QR só Evolution, guards 400 nas rotas Evolution-only quando provider=twilio.
+- `twilio` adicionado ao `package.json`.
+
+**Verificação:** `vitest` 267 arquivos / ~2050 testes verdes (inclui 2045 pré-Task-9 + novos do webhook);
+`tsc --noEmit` limpo; `npm run build` limpo. Grep adversarial: `if provider` só em `sender.ts` +
+guards permitidos; `sendTextMessage`/`sendMediaMessage` só no evolution-client/sender; `recordMessageLog`
+só em `lib/whatsapp.ts` e `lib/email.ts`; webhook Evolution com diff vazio vs main; default = evolution.
+
+**PRÓXIMA TAREFA:**
+1. Review whole-branch (Opus) → fix wave → merge `feat/twilio-whatsapp-provider` em `main`.
+2. Deploy VPS: **code-only** (`git pull` → `docker build` → `npm ci` no build pega o `twilio` →
+   restart). **SEM `db push`** (zero mudança de schema neste sub-projeto).
+3. Setup operacional no Twilio/Meta (fora do código, com o usuário): criar 1 template "utilitário"
+   com corpo `{{1}}`, aprovar na Meta, pegar o Content SID, e configurar as 4 settings em
+   `/admin/whatsapp` (`twilio_account_sid`, `twilio_auth_token`, `twilio_from_number`,
+   `twilio_content_sid`) + configurar o webhook de status apontando pra
+   `<APP_URL>/api/webhooks/whatsapp/twilio`. Só então trocar o provider pra `twilio`.
+4. Depois: escolher sub-projeto B (múltiplas contas Mercado Pago) ou C (snapshot de inscrição).
+
+**Pendências documentadas (spec §10):** mídia via Twilio (base64) não vai anexada — precisa subir pro
+storage e passar URL; QR de kit segue no e-mail e na página da inscrição. 1 template utilitário só
+(sem mapa `messageType → contentSid`). 2FA na config de WhatsApp fora de escopo (candidato ao sub-projeto B).
+
+---
+
 ## Última atualização (2026-08-28 — Correção do assistente: acesso-negado + promoção + escopo por evento, DEPLOYADA)
 
 Pedido do usuário: assistente cadastrado pra entregar kit caía em "Acesso negado" ao entrar; organizador

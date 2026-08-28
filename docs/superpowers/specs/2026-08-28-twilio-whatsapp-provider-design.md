@@ -548,20 +548,20 @@ Vitest, `db` auto-mockado. `twilio` mockado via `vi.mock("twilio")`.
 
 ## 9. Critérios de aceite
 
-- [ ] `whatsapp_provider` default `evolution` → envio idêntico ao atual (Evolution).
-- [ ] Admin troca para `twilio` na tela de WhatsApp e passa a enviar via Twilio.
-- [ ] `sendWhatsAppMessage` / `sendWhatsAppDocument` não têm `if provider` — só `getWhatsAppSender`.
-- [ ] Alerta, campanha, código 2FA e resumo diário funcionam com os dois providers.
-- [ ] Twilio envia via template utilitário (`contentSid` + `{{1}}` = texto renderizado).
-- [ ] Auth Token / secrets do Twilio nunca voltam pro frontend; mascarados na UI e no audit log.
-- [ ] Webhook `/api/webhooks/whatsapp/twilio` valida assinatura (fail closed), atualiza
+- [x] `whatsapp_provider` default `evolution` → envio idêntico ao atual (Evolution).
+- [x] Admin troca para `twilio` na tela de WhatsApp e passa a enviar via Twilio.
+- [x] `sendWhatsAppMessage` / `sendWhatsAppDocument` não têm `if provider` — só `getWhatsAppSender`.
+- [x] Alerta, campanha, código 2FA e resumo diário funcionam com os dois providers.
+- [x] Twilio envia via template utilitário (`contentSid` + `{{1}}` = texto renderizado).
+- [x] Auth Token / secrets do Twilio nunca voltam pro frontend; mascarados na UI e no audit log.
+- [x] Webhook `/api/webhooks/whatsapp/twilio` valida assinatura (fail closed), atualiza
       `MessageLog` (delivered/read/failed) idempotentemente, 200 pra SID desconhecido.
-- [ ] Erros classificados (AUTH / INVALID_NUMBER / INVALID_TEMPLATE / RATE_LIMITED /
+- [x] Erros classificados (AUTH / INVALID_NUMBER / INVALID_TEMPLATE / RATE_LIMITED /
       PROVIDER_UNAVAILABLE / TIMEOUT / UNKNOWN); `MessageLog.errorMessage` e respostas HTTP nunca
       contêm corpo cru do provider, token ou SID.
-- [ ] Evolution: QR, status, disconnect, delete, envio — tudo inalterado.
-- [ ] Fallback do §5: e-mail obrigatório, WhatsApp best-effort — comportamento inalterado.
-- [ ] `vitest` verde, `tsc` limpo, `build` limpo.
+- [x] Evolution: QR, status, disconnect, delete, envio — tudo inalterado.
+- [x] Fallback do §5: e-mail obrigatório, WhatsApp best-effort — comportamento inalterado.
+- [x] `vitest` verde, `tsc` limpo, `build` limpo.
 
 ---
 
