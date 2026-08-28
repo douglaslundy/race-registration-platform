@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { checkAnyApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { getKitDeliveryProgress } from "@/lib/kit-delivery";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/auth/rbac", () => ({
   checkApiPermission: vi.fn(),
+  checkAnyApiPermission: vi.fn(),
   resolveActingScope: vi.fn(),
 }));
 vi.mock("@/lib/kit-delivery", () => ({ getKitDeliveryProgress: vi.fn() }));
@@ -15,7 +16,7 @@ import { GET as GET_REPORT } from "@/app/api/events/[id]/kit-deliveries/report/r
 import { GET as GET_EXPORT } from "@/app/api/events/[id]/kit-deliveries/report-export/route";
 
 const authMock = vi.mocked(auth);
-const checkApiPermissionMock = vi.mocked(checkApiPermission);
+const checkApiPermissionMock = vi.mocked(checkAnyApiPermission);
 const resolveActingScopeMock = vi.mocked(resolveActingScope);
 const dbMock = db as any;
 const progressMock = vi.mocked(getKitDeliveryProgress);

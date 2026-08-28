@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
-import { requireAnyPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { requireAnyPermission, resolveActingScope, assistantPermittedEventIds } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import KitDeliveryEventList from "@/components/kits/KitDeliveryEventList";
+
+const KIT_ACTIONS = ["kits.view", "kits.deliver"];
 
 export const metadata: Metadata = { title: "Entrega de kits" };
 export const dynamic = "force-dynamic";
 
 export default async function OrganizerKitDeliveryPage() {
-  const session = await requireAnyPermission(["kits.view", "kits.deliver"]);
+  const session = await requireAnyPermission(KIT_ACTIONS);
   const scope = await resolveActingScope(session);
+
+  // Assistente confinado a eventos específicos só enxerga esses; `null` = permissão global (todos).
+  const allowedEventIds =
+    session.user.role === "ASSISTANT" && !scope.actingAsAdmin
+      ? await assistantPermittedEventIds(session.user.id, KIT_ACTIONS)
+      : null;
 
   // Escopo do organizador (ou assistente dele): só os eventos do próprio organizerId. Assistente de
   // admin cai no branch actingAsAdmin e vê todos os eventos ativos/recentes.
@@ -21,7 +29,10 @@ export default async function OrganizerKitDeliveryPage() {
       })
     : scope.organizerId
       ? await db.event.findMany({
-          where: { organizerId: scope.organizerId },
+          where: {
+            organizerId: scope.organizerId,
+            ...(allowedEventIds ? { id: { in: allowedEventIds } } : {}),
+          },
           orderBy: { startAt: "desc" },
           select: { id: true, title: true, startAt: true, city: true, state: true, status: true },
         })

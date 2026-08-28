@@ -1,16 +1,27 @@
 import type { Metadata } from "next";
-import { requireAnyPermission } from "@/lib/auth/rbac";
+import { requireAnyPermission, resolveActingScope, assistantPermittedEventIds } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import KitDeliveryEventList from "@/components/kits/KitDeliveryEventList";
+
+const KIT_ACTIONS = ["kits.view", "kits.deliver"];
 
 export const metadata: Metadata = { title: "Entrega de kits — Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminKitDeliveryPage() {
-  await requireAnyPermission(["kits.view", "kits.deliver"]);
+  const session = await requireAnyPermission(KIT_ACTIONS);
+  const scope = await resolveActingScope(session);
+
+  const allowedEventIds =
+    session.user.role === "ASSISTANT" && !scope.actingAsAdmin
+      ? await assistantPermittedEventIds(session.user.id, KIT_ACTIONS)
+      : null;
 
   const events = await db.event.findMany({
-    where: { status: { notIn: ["CANCELLED"] } },
+    where: {
+      status: { notIn: ["CANCELLED"] },
+      ...(allowedEventIds ? { id: { in: allowedEventIds } } : {}),
+    },
     orderBy: { startAt: "desc" },
     take: 50,
     select: { id: true, title: true, startAt: true, city: true, state: true, status: true },

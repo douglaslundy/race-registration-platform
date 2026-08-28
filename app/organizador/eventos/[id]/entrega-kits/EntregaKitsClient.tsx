@@ -28,7 +28,7 @@ interface ReportData {
   pendingTotal: number;
 }
 
-export default function EntregaKitsPage() {
+export default function EntregaKitsClient() {
   const { id } = useParams<{ id: string }>();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
