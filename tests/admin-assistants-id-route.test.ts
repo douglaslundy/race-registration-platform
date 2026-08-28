@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/assistants/create-or-promote", () => ({ issueAssistantInvite: vi.fn() }));
 
 import { GET } from "@/app/api/admin/assistants/route";
-import { PATCH as PATCH_BY_ID } from "@/app/api/admin/assistants/[id]/route";
+import { PATCH as PATCH_BY_ID, DELETE as DELETE_BY_ID } from "@/app/api/admin/assistants/[id]/route";
+import { POST as RESEND } from "@/app/api/admin/assistants/[id]/resend-invite/route";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
@@ -89,5 +91,59 @@ describe("PATCH /api/admin/assistants/[id]", () => {
 
     expect(dbMock.user.update).toHaveBeenCalledWith({ where: { id: "a1" }, data: { active: false } });
     expect(body).toEqual({ ok: true });
+  });
+});
+
+describe("DELETE /api/admin/assistants/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.assistantPermission.deleteMany.mockResolvedValue({ count: 0 });
+    dbMock.verificationToken.deleteMany.mockResolvedValue({ count: 0 });
+    dbMock.user.delete.mockResolvedValue({});
+    dbMock.user.update.mockResolvedValue({});
+    dbMock.auditLog.create.mockResolvedValue({ id: "log-1" });
+  });
+
+  it("403 para quem não é admin", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ORGANIZER" } } as any);
+    const res = await DELETE_BY_ID(new Request("http://x") as any, makeContext("a1"));
+    expect(res.status).toBe(403);
+  });
+
+  it("rebaixa para ATHLETE um assistente que já concluiu o cadastro", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN", name: "Admin" } } as any);
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "a@x.com", passwordHash: "hash",
+    });
+
+    const res = await DELETE_BY_ID(new Request("http://x") as any, makeContext("a1"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ ok: true, mode: "demoted" });
+    expect(dbMock.user.update).toHaveBeenCalledWith({
+      where: { id: "a1" },
+      data: { role: "ATHLETE", createdByUserId: null },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "ASSISTANT_DELETED" }) }),
+    );
+  });
+});
+
+describe("POST /api/admin/assistants/[id]/resend-invite", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.auditLog.create.mockResolvedValue({ id: "log-1" });
+  });
+
+  it("reenvia convite para assistente pendente (admin pode qualquer um)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN", name: "Admin" } } as any);
+    dbMock.user.findUnique
+      .mockResolvedValueOnce({ id: "a1", role: "ASSISTANT", createdByUserId: "org-9", email: "p@x.com", passwordHash: null })
+      .mockResolvedValueOnce({ name: "Maria" });
+
+    const res = await RESEND(new Request("http://x") as any, makeContext("a1"));
+    expect(res.status).toBe(200);
   });
 });

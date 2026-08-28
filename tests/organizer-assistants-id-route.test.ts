@@ -4,8 +4,11 @@ import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
+vi.mock("@/lib/assistants/create-or-promote", () => ({ issueAssistantInvite: vi.fn() }));
+
 import { GET } from "@/app/api/organizer/assistants/route";
-import { PATCH as PATCH_BY_ID } from "@/app/api/organizer/assistants/[id]/route";
+import { PATCH as PATCH_BY_ID, DELETE as DELETE_BY_ID } from "@/app/api/organizer/assistants/[id]/route";
+import { POST as RESEND } from "@/app/api/organizer/assistants/[id]/resend-invite/route";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
@@ -98,5 +101,78 @@ describe("PATCH /api/organizer/assistants/[id]", () => {
 
     expect(dbMock.user.update).toHaveBeenCalledWith({ where: { id: "a1" }, data: { active: false } });
     expect(body).toEqual({ ok: true });
+  });
+});
+
+describe("DELETE /api/organizer/assistants/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.assistantPermission.deleteMany.mockResolvedValue({ count: 0 });
+    dbMock.verificationToken.deleteMany.mockResolvedValue({ count: 0 });
+    dbMock.user.delete.mockResolvedValue({});
+    dbMock.user.update.mockResolvedValue({});
+    dbMock.auditLog.create.mockResolvedValue({ id: "log-1" });
+  });
+
+  it("403 para quem não é organizador", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ATHLETE" } } as any);
+    const res = await DELETE_BY_ID(new Request("http://x") as any, makeContext("a1"));
+    expect(res.status).toBe(403);
+  });
+
+  it("exclui um assistente pendente do próprio organizador e audita", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER", name: "Org" } } as any);
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "p@x.com", passwordHash: null,
+    });
+
+    const res = await DELETE_BY_ID(new Request("http://x") as any, makeContext("a1"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ ok: true, mode: "deleted" });
+    expect(dbMock.user.delete).toHaveBeenCalledWith({ where: { id: "a1" } });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "ASSISTANT_DELETED" }) }),
+    );
+  });
+
+  it("404 ao excluir assistente de outro organizador", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER", name: "Org" } } as any);
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-2", email: "p@x.com", passwordHash: null,
+    });
+    const res = await DELETE_BY_ID(new Request("http://x") as any, makeContext("a1"));
+    expect(res.status).toBe(404);
+    expect(dbMock.user.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/organizer/assistants/[id]/resend-invite", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.auditLog.create.mockResolvedValue({ id: "log-1" });
+  });
+
+  it("reenvia convite para assistente pendente do próprio organizador", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER", name: "Org" } } as any);
+    dbMock.user.findUnique
+      .mockResolvedValueOnce({ id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "p@x.com", passwordHash: null })
+      .mockResolvedValueOnce({ name: "Maria" });
+
+    const res = await RESEND(new Request("http://x") as any, makeContext("a1"));
+    expect(res.status).toBe(200);
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "ASSISTANT_INVITE_RESENT" }) }),
+    );
+  });
+
+  it("400 se o assistente já concluiu o cadastro", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER", name: "Org" } } as any);
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "p@x.com", passwordHash: "hash",
+    });
+    const res = await RESEND(new Request("http://x") as any, makeContext("a1"));
+    expect(res.status).toBe(400);
   });
 });

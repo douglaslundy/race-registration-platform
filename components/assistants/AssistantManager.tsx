@@ -10,6 +10,7 @@ type Assistant = {
   email: string;
   active: boolean;
   createdAt: string;
+  signupPending?: boolean;
   permissions: string[];
 };
 
@@ -30,8 +31,57 @@ export default function AssistantManager({
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [confirmToggle, setConfirmToggle] = useState<{ id: string; nextActive: boolean } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  async function refresh() {
+    const r = await fetch(`${apiBase}/assistants`).then((res) => res.json());
+    setAssistants(r.assistants ?? []);
+  }
+
+  async function handleResend(id: string) {
+    setBusyId(id);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`${apiBase}/assistants/${id}/resend-invite`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Erro ao reenviar o convite.");
+        return;
+      }
+      setNotice("Convite reenviado. O link vale por 72 horas.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setBusyId(confirmDelete.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`${apiBase}/assistants/${confirmDelete.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Erro ao excluir o assistente.");
+        return;
+      }
+      setNotice(
+        data.mode === "demoted"
+          ? "Assistente rebaixado para conta comum e sem nenhum acesso administrativo."
+          : "Assistente excluído.",
+      );
+      await refresh();
+    } finally {
+      setBusyId(null);
+      setConfirmDelete(null);
+    }
+  }
 
   const viewKeys = actionOptions.filter((o) => o.key.endsWith(".view")).map((o) => o.key);
 
@@ -50,6 +100,7 @@ export default function AssistantManager({
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setNotice(null);
     const actionKeys = mode === "view" ? viewKeys : Array.from(new Set([...selectedKeys, ...viewKeys.filter((v) => selectedKeys.some((k) => k.startsWith(v.split(".")[0])))]));
     try {
       const res = await fetch(`${apiBase}/assistants`, {
@@ -57,13 +108,13 @@ export default function AssistantManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: email.trim(), actionKeys }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setError(typeof data.error === "string" ? data.error : "Erro ao criar assistente.");
         return;
       }
-      const refreshed = await fetch(`${apiBase}/assistants`).then((r) => r.json());
-      setAssistants(refreshed.assistants ?? []);
+      if (data.inviteResent) setNotice("Este e-mail já era assistente seu — convite reenviado e permissões atualizadas.");
+      await refresh();
       setName("");
       setEmail("");
       setSelectedKeys([]);
@@ -105,22 +156,51 @@ export default function AssistantManager({
         {assistants.length > 0 && (
           <ul className="space-y-2">
             {assistants.map((a) => (
-              <li key={a.id} className="flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-800 rounded px-3 py-2">
+              <li key={a.id} className="flex items-center justify-between gap-3 text-sm bg-gray-50 dark:bg-gray-800 rounded px-3 py-2">
                 <span>
-                  <strong>{a.name}</strong> — {a.email} — {a.active ? "Ativo" : "Bloqueado"} — {a.permissions.length} permissões
+                  <strong>{a.name}</strong> — {a.email} —{" "}
+                  {a.signupPending ? (
+                    <span className="text-amber-600 dark:text-amber-400">convite pendente</span>
+                  ) : a.active ? (
+                    "Ativo"
+                  ) : (
+                    "Bloqueado"
+                  )}{" "}
+                  — {a.permissions.length} permissões
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setConfirmToggle({ id: a.id, nextActive: !a.active })}
-                  disabled={togglingId === a.id}
-                  className="text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-50"
-                >
-                  {a.active ? "Bloquear" : "Reativar"}
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {a.signupPending && (
+                    <button
+                      type="button"
+                      onClick={() => handleResend(a.id)}
+                      disabled={busyId === a.id}
+                      className="text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-50"
+                    >
+                      Reenviar convite
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setConfirmToggle({ id: a.id, nextActive: !a.active })}
+                    disabled={togglingId === a.id}
+                    className="text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-50"
+                  >
+                    {a.active ? "Bloquear" : "Reativar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete({ id: a.id, name: a.name })}
+                    disabled={busyId === a.id}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-700 dark:border-red-800 dark:text-red-400 font-medium disabled:opacity-50"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
+        {notice && <p className="text-sm text-green-700 dark:text-green-400">{notice}</p>}
       </div>
 
       <form onSubmit={handleCreate} className="card space-y-4">
@@ -179,6 +259,16 @@ export default function AssistantManager({
         loading={!!togglingId}
         onConfirm={doToggle}
         onCancel={() => setConfirmToggle(null)}
+      />
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Excluir assistente"
+        message={`Remover todo o acesso administrativo de ${confirmDelete?.name ?? "este assistente"}? Se ele nunca concluiu o cadastro, a conta é apagada; caso já tenha histórico, vira uma conta comum sem nenhuma permissão. O e-mail pode ser cadastrado de novo depois.`}
+        tone="danger"
+        confirmLabel="Excluir"
+        loading={!!busyId}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
       />
       <ErrorModal message={error} onClose={() => setError(null)} />
     </div>
