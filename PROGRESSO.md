@@ -36,6 +36,15 @@ próprios:**
 **PRÓXIMA TAREFA:** usuário revisa `docs/superpowers/specs/2026-08-28-twilio-whatsapp-provider-design.md`.
 Se aprovar → `superpowers:writing-plans` → execução subagent-driven → deploy. Depois, escolher B ou C.
 
+**Execução sub-projeto A em andamento** (`.superpowers/sdd/2026-08-28-twilio-whatsapp-provider/`):
+- Task 1 (mesclada, `5b37962`): `lib/whatsapp/errors.ts` + campos twilio em `lib/whatsapp-settings.ts`.
+- Task 2 (CONCLUÍDA, 2026-08-28): `lib/whatsapp/sender.ts` (interface `WhatsAppSender` + `getWhatsAppSender()`),
+  `lib/whatsapp/evolution-sender.ts` (`EvolutionSender`), e `lib/whatsapp/evolution-client.ts` agora
+  lança `WhatsAppSendError` normalizado (helper `kindFromEvolutionStatus`) em `sendTextMessage`/`sendMediaMessage`;
+  `sendMediaMessage` retorna `{ providerMessageId: null }`. `lib/whatsapp.ts` NÃO tocado (Task 4).
+  Corpo cru do provider só vai pro `console.error`, não pra mensagem do erro.
+- Próxima: Task 3 (branch twilio no `getWhatsAppSender`).
+
 **Contexto necessário (sub-projeto A):**
 - `docs/superpowers/specs/2026-08-28-twilio-whatsapp-provider-design.md`
 - `lib/whatsapp.ts`, `lib/whatsapp/evolution-client.ts`, `lib/whatsapp-settings.ts`, `lib/message-logs.ts`

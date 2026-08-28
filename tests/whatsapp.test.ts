@@ -247,7 +247,7 @@ describe("sendWhatsAppDocument", () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(sendMediaMessage).mockResolvedValueOnce(undefined);
+    vi.mocked(sendMediaMessage).mockResolvedValueOnce({ providerMessageId: null });
 
     await sendWhatsAppDocument("5511999999999", "base64PdfContent", "relatorio.pdf", "Seu relatório");
 
@@ -272,7 +272,7 @@ describe("sendWhatsAppDocument", () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(sendMediaMessage).mockResolvedValueOnce(undefined);
+    vi.mocked(sendMediaMessage).mockResolvedValueOnce({ providerMessageId: null });
 
     await sendWhatsAppDocument("5511999999999", "base64PdfContent", "qrcode-retirada-kit.png", "Apresente este QR code na retirada do kit", {
       messageType: "ORDER_CONFIRMED",
@@ -295,7 +295,7 @@ describe("sendWhatsAppDocument", () => {
     const config = { apiUrl: "https://evo.example.com", apiKey: "key", instanceName: "corridas-app" };
     vi.mocked(getWhatsAppConfig).mockResolvedValue(config);
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(sendMediaMessage).mockResolvedValueOnce(undefined);
+    vi.mocked(sendMediaMessage).mockResolvedValueOnce({ providerMessageId: null });
 
     await sendWhatsAppDocument("5511999999999", "base64PngContent", "qrcode-retirada-kit.png", "Apresente este QR code na retirada do kit", {
       mediatype: "image",

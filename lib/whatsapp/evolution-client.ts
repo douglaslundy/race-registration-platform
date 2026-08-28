@@ -1,6 +1,19 @@
 import type { WhatsAppConfig } from "@/lib/whatsapp-settings";
+import { WhatsAppSendError, type WhatsAppErrorKind } from "./errors";
 
 export type ConnectionState = "open" | "connecting" | "close" | "not_found";
+
+function kindFromEvolutionStatus(status: number, body: unknown): WhatsAppErrorKind {
+  if (status === 401 || status === 403) return "AUTH";
+  if (status === 429) return "RATE_LIMITED";
+  if (status === 404) return "PROVIDER_UNAVAILABLE";
+  if (status >= 500) return "PROVIDER_UNAVAILABLE";
+  if (status === 400) {
+    const s = JSON.stringify(body ?? "").toLowerCase();
+    if (s.includes("number") || s.includes("jid") || s.includes("exists")) return "INVALID_NUMBER";
+  }
+  return "UNKNOWN";
+}
 
 // Diferentes versões da Evolution API colocam o QR code em campos diferentes da resposta.
 function extractQrCodeBase64(body: unknown): string | null {
@@ -104,7 +117,12 @@ export async function sendTextMessage(
   });
 
   if (status >= 400) {
-    throw new Error(`Evolution API ${status} ao enviar mensagem: ${JSON.stringify(body).slice(0, 300)}`);
+    console.error("[evolution] sendText %d: %s", status, JSON.stringify(body).slice(0, 300));
+    throw new WhatsAppSendError(
+      kindFromEvolutionStatus(status, body),
+      "falha ao enviar WhatsApp (Evolution)",
+      String(status),
+    );
   }
 
   const messageId = (body as { key?: { id?: string } } | null)?.key?.id;
@@ -118,15 +136,22 @@ export async function sendMediaMessage(
   fileName: string,
   caption: string,
   mediatype: "document" | "image" = "document",
-): Promise<void> {
+): Promise<{ providerMessageId: null }> {
   const { status, body } = await evolutionFetch(config, `/message/sendMedia/${config.instanceName}`, {
     method: "POST",
     body: { number: phone, mediatype, media: base64Media, fileName, caption },
   });
 
   if (status >= 400) {
-    throw new Error(`Evolution API ${status} ao enviar mídia: ${JSON.stringify(body).slice(0, 300)}`);
+    console.error("[evolution] sendMedia %d: %s", status, JSON.stringify(body).slice(0, 300));
+    throw new WhatsAppSendError(
+      kindFromEvolutionStatus(status, body),
+      "falha ao enviar WhatsApp (Evolution)",
+      String(status),
+    );
   }
+
+  return { providerMessageId: null };
 }
 
 export async function setWebhook(config: WhatsAppConfig, url: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { WhatsAppSendError } from "@/lib/whatsapp/errors";
 import {
   createInstance,
   getQrCode,
@@ -132,9 +133,18 @@ describe("evolution-client", () => {
       expect(result).toEqual({ providerMessageId: null });
     });
 
-    it("lança erro quando o envio falha", async () => {
+    it("lança WhatsAppSendError normalizado quando o envio falha", async () => {
       (global.fetch as any).mockResolvedValueOnce({ status: 400, json: async () => ({ error: "invalid number" }) });
-      await expect(sendTextMessage(config, "invalid", "Olá!")).rejects.toThrow("Evolution API 400");
+      const err = await sendTextMessage(config, "invalid", "Olá!").catch((e) => e);
+      expect(err).toBeInstanceOf(WhatsAppSendError);
+      expect(err).toMatchObject({ name: "WhatsAppSendError", kind: "INVALID_NUMBER", providerCode: "400" });
+    });
+
+    it("mapeia 401 para kind AUTH e 429 para RATE_LIMITED", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 401, json: async () => ({ message: "Unauthorized" }) });
+      await expect(sendTextMessage(config, "5511999999999", "Olá!")).rejects.toMatchObject({ kind: "AUTH" });
+      (global.fetch as any).mockResolvedValueOnce({ status: 429, json: async () => ({ message: "slow down" }) });
+      await expect(sendTextMessage(config, "5511999999999", "Olá!")).rejects.toMatchObject({ kind: "RATE_LIMITED" });
     });
   });
 
@@ -157,11 +167,23 @@ describe("evolution-client", () => {
       );
     });
 
-    it("lança erro quando o envio de mídia falha", async () => {
-      (global.fetch as any).mockResolvedValueOnce({ status: 400, json: async () => ({ error: "invalid media" }) });
-      await expect(
-        sendMediaMessage(config, "invalid", "base64PdfContent", "relatorio.pdf", "Seu relatório"),
-      ).rejects.toThrow("Evolution API 400");
+    it("lança WhatsAppSendError normalizado quando o envio de mídia falha", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 500, json: async () => ({ error: "boom" }) });
+      const err = await sendMediaMessage(
+        config,
+        "5511999999999",
+        "base64PdfContent",
+        "relatorio.pdf",
+        "Seu relatório",
+      ).catch((e) => e);
+      expect(err).toBeInstanceOf(WhatsAppSendError);
+      expect(err).toMatchObject({ kind: "PROVIDER_UNAVAILABLE", providerCode: "500" });
+    });
+
+    it("retorna { providerMessageId: null } quando o envio de mídia é aceito", async () => {
+      (global.fetch as any).mockResolvedValueOnce({ status: 200, json: async () => ({ key: { id: "wamid.doc" } }) });
+      const result = await sendMediaMessage(config, "5511999999999", "b64", "a.pdf", "cap");
+      expect(result).toEqual({ providerMessageId: null });
     });
 
     it("envia mediatype 'image' quando informado explicitamente, pra renderizar inline na conversa", async () => {
