@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 vi.mock("@/lib/assistants/create-or-promote", () => ({ issueAssistantInvite: vi.fn() }));
 
-import { deleteAssistant, resendAssistantInvite } from "@/lib/assistants/manage";
+import { deleteAssistant, resendAssistantInvite, updateAssistant } from "@/lib/assistants/manage";
 import { issueAssistantInvite } from "@/lib/assistants/create-or-promote";
 
 const dbMock = db as any;
@@ -68,6 +68,102 @@ describe("deleteAssistant", () => {
       data: { role: "ATHLETE", createdByUserId: null },
     });
     expect(r).toEqual({ ok: true, mode: "demoted" });
+  });
+});
+
+describe("updateAssistant", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.assistantPermission.deleteMany.mockResolvedValue({ count: 0 });
+    dbMock.assistantPermission.createMany.mockResolvedValue({ count: 0 });
+    dbMock.user.update.mockResolvedValue({});
+    dbMock.$transaction.mockImplementation(async (arg: any) =>
+      Array.isArray(arg) ? Promise.all(arg) : arg(dbMock),
+    );
+  });
+
+  it("404 quando o assistente é de outro criador", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-2", email: "x@x.com", passwordHash: "h",
+    });
+    const r = await updateAssistant({
+      assistantId: "a1", name: "Novo", scopes: [], requireCreatedByUserId: "org-1",
+    });
+    expect(r).toEqual({ ok: false, error: "Assistente não encontrado", status: 404 });
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("substitui nome + todas as permissões, achatando escopos de vários eventos", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "m@x.com", passwordHash: "h",
+    });
+
+    const r = await updateAssistant({
+      assistantId: "a1",
+      name: "Maria Silva",
+      scopes: [
+        { eventId: null, actionKeys: ["kits.view"] },
+        { eventId: "ev-1", actionKeys: ["kits.deliver", "registrations.view"] },
+      ],
+      requireCreatedByUserId: "org-1",
+    });
+
+    expect(dbMock.user.update).toHaveBeenCalledWith({ where: { id: "a1" }, data: { name: "Maria Silva" } });
+    expect(dbMock.assistantPermission.deleteMany).toHaveBeenCalledWith({ where: { userId: "a1" } });
+    expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
+      data: [
+        { userId: "a1", actionKey: "kits.view", eventId: null },
+        { userId: "a1", actionKey: "kits.deliver", eventId: "ev-1" },
+        { userId: "a1", actionKey: "registrations.view", eventId: "ev-1" },
+      ],
+      skipDuplicates: true,
+    });
+    expect(r).toEqual({ ok: true, mode: "updated" });
+  });
+
+  it("deduplica pares (eventId, actionKey) repetidos entre escopos", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "m@x.com", passwordHash: "h",
+    });
+
+    await updateAssistant({
+      assistantId: "a1",
+      name: "Maria",
+      scopes: [
+        { eventId: "ev-1", actionKeys: ["kits.view", "kits.view"] },
+        { eventId: "ev-1", actionKeys: ["kits.view"] },
+      ],
+      requireCreatedByUserId: "org-1",
+    });
+
+    expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
+      data: [{ userId: "a1", actionKey: "kits.view", eventId: "ev-1" }],
+      skipDuplicates: true,
+    });
+  });
+
+  it("sem nenhuma actionKey: só limpa as permissões e atualiza o nome (sem createMany)", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-1", email: "m@x.com", passwordHash: "h",
+    });
+
+    await updateAssistant({ assistantId: "a1", name: "Só nome", scopes: [], requireCreatedByUserId: "org-1" });
+
+    expect(dbMock.assistantPermission.deleteMany).toHaveBeenCalledWith({ where: { userId: "a1" } });
+    expect(dbMock.assistantPermission.createMany).not.toHaveBeenCalled();
+  });
+
+  it("admin (sem requireCreatedByUserId) pode editar assistente de qualquer organizador", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-9", email: "m@x.com", passwordHash: "h",
+    });
+
+    const r = await updateAssistant({
+      assistantId: "a1",
+      name: "Maria",
+      scopes: [{ eventId: null, actionKeys: ["events.view"] }],
+    });
+    expect(r).toEqual({ ok: true, mode: "updated" });
   });
 });
 
