@@ -13,7 +13,14 @@ const STATUS_MAP: Record<string, "DELIVERED" | "READ" | "FAILED"> = {
 };
 
 export async function POST(req: NextRequest) {
-  const form = await req.formData();
+  // Twilio sempre manda application/x-www-form-urlencoded. Corpo que não parseia como form
+  // não vem do Twilio — falha fechado, mesmo caminho de uma assinatura inválida.
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Assinatura inválida" }, { status: 403 });
+  }
   const params: Record<string, string> = {};
   for (const [k, v] of form.entries()) params[k] = String(v);
 
