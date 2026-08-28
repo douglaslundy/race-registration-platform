@@ -50,7 +50,7 @@ describe("admin event reject api", () => {
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
     expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
-      where: { userId: "assistant-1", actionKey: "events.reject" },
+      where: { userId: "assistant-1", actionKey: "events.reject", eventId: null },
     });
     expect(res.status).toBe(200);
   });

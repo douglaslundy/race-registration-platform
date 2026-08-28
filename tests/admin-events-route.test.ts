@@ -68,7 +68,7 @@ describe("admin events export", () => {
     const res = await GET(new Request("http://localhost/api/admin/events/export", { method: "GET" }) as any);
 
     expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
-      where: { userId: "assistant-1", actionKey: "events.view" },
+      where: { userId: "assistant-1", actionKey: "events.view", eventId: null },
     });
     expect(res.status).toBe(200);
   });

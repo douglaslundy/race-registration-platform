@@ -147,8 +147,9 @@ export async function checkAdminOnlyApiPermission(actionKey: string): Promise<Pe
   }
 
   if (session.user.role === "ASSISTANT") {
+    // Ações admin-only nunca são escopadas por evento: só linha global (eventId null) autoriza.
     const granted = await db.assistantPermission.findFirst({
-      where: { userId: session.user.id, actionKey },
+      where: { userId: session.user.id, actionKey, eventId: null },
     });
     if (granted) {
       const scope = await resolveActingScope(session);

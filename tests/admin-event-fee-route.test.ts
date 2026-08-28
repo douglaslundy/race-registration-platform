@@ -63,7 +63,7 @@ describe("admin event fee api", () => {
     const res = await PATCH(makeRequest({ platformFeePercent: 500 }), { params: Promise.resolve({ id: "event-1" }) });
 
     expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
-      where: { userId: "assistant-1", actionKey: "events.set-fee" },
+      where: { userId: "assistant-1", actionKey: "events.set-fee", eventId: null },
     });
     expect(res.status).toBe(200);
   });
