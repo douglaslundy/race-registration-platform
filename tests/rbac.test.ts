@@ -136,6 +136,16 @@ describe("checkApiPermission", () => {
     expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
+  it("ASSISTANT com { anyScope }: qualquer linha (global ou de qualquer evento) autoriza", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-e7", eventId: "e7" });
+    const result = await checkApiPermission("kits.deliver", { anyScope: true });
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: { in: ["kits.deliver"] } },
+    });
+    expect(result.allowed).toBe(true);
+  });
+
   it("ASSISTANT sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);

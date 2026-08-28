@@ -70,6 +70,20 @@ describe("resolveOrganizerAccess", () => {
     expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/eventos/e2/entrega-kits")).toBe(false);
   });
 
+  it("ASSISTANT com kit só num evento específico ENTRA em /organizador/entrega-kits (launcher, anyScope)", async () => {
+    assistantOfOrganizer();
+    // só tem kits.deliver no evento e1 (linha com eventId != null) e NENHUMA linha global
+    dbMock.assistantPermission.findFirst.mockImplementation(({ where }: any) => {
+      // anyScope: a query NÃO tem where.OR nem where.eventId — casa qualquer linha de kit
+      const isKit = where.actionKey.in.some((k: string) => k.startsWith("kits."));
+      const noScopeFilter = where.OR === undefined && where.eventId === undefined;
+      return Promise.resolve(isKit && noScopeFilter ? { id: "p1", eventId: "e1" } : null);
+    });
+    expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/entrega-kits")).toBe(true);
+    // mas continua barrado no relatório (rota sem anyScope, exige linha global)
+    expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/relatorio")).toBe(false);
+  });
+
   it("rota desconhecida sob /organizador → nega pra assistente (fail-safe)", async () => {
     assistantOfOrganizer();
     expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/rota-nova-qualquer")).toBe(false);

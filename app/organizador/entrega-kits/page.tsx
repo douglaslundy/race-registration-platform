@@ -9,7 +9,9 @@ export const metadata: Metadata = { title: "Entrega de kits" };
 export const dynamic = "force-dynamic";
 
 export default async function OrganizerKitDeliveryPage() {
-  const session = await requireAnyPermission(KIT_ACTIONS);
+  // anyScope: esta tela é um launcher — lista só os eventos que o assistente pode e delega o
+  // escopo real. Um assistente com kits.deliver só num evento específico PRECISA entrar aqui.
+  const session = await requireAnyPermission(KIT_ACTIONS, { anyScope: true });
   const scope = await resolveActingScope(session);
 
   // Assistente confinado a eventos específicos só enxerga esses; `null` = permissão global (todos).
