@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { WhatsAppSendError, whatsAppErrorLabel } from "@/lib/whatsapp/errors";
 
 const schema = z.object({
   phone: z.string().min(8, "Informe um telefone válido com DDI e DDD"),
@@ -27,7 +28,10 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ ok: true, to: parsed.data.phone });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Falha ao enviar WhatsApp de teste";
+    const msg =
+      err instanceof WhatsAppSendError
+        ? whatsAppErrorLabel(err.kind)
+        : "Falha ao enviar WhatsApp de teste";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }

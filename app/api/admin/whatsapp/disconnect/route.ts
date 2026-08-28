@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
+import { getWhatsAppConfig, getWhatsAppProvider, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import { logoutInstance } from "@/lib/whatsapp/evolution-client";
 
 export async function POST() {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  if ((await getWhatsAppProvider()) === "twilio") {
+    return NextResponse.json(
+      { error: "Ação disponível apenas com o provedor Evolution API" },
+      { status: 400 },
+    );
   }
 
   const config = await getWhatsAppConfig();

@@ -6,6 +6,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 vi.mock("@/lib/whatsapp-settings", () => ({
   getWhatsAppConfig: vi.fn(),
+  getWhatsAppProvider: vi.fn(),
   isWhatsAppConfigured: vi.fn(),
 }));
 
@@ -27,7 +28,7 @@ import { GET as statusGet } from "@/app/api/admin/whatsapp/status/route";
 import { POST as disconnectPost } from "@/app/api/admin/whatsapp/disconnect/route";
 import { POST as deletePost } from "@/app/api/admin/whatsapp/delete/route";
 import { POST as testPost } from "@/app/api/admin/whatsapp/test/route";
-import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
+import { getWhatsAppConfig, getWhatsAppProvider, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
 import {
   createInstance,
   getQrCode,
@@ -55,6 +56,7 @@ describe("admin whatsapp routes", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     vi.mocked(getWhatsAppConfig).mockResolvedValue(configMock);
+    vi.mocked(getWhatsAppProvider).mockResolvedValue("evolution");
     vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
   });
 
@@ -105,6 +107,36 @@ describe("admin whatsapp routes", () => {
       vi.mocked(getConnectionState).mockRejectedValueOnce(new Error("Evolution API 500: boom"));
       const res = await instancePost();
       expect(res.status).toBe(502);
+    });
+  });
+
+  describe("guard de provedor (Evolution-only)", () => {
+    beforeEach(() => {
+      vi.mocked(getWhatsAppProvider).mockResolvedValue("twilio");
+    });
+
+    it("instance retorna 400 quando o provedor é twilio", async () => {
+      const res = await instancePost();
+      expect(res.status).toBe(400);
+      expect(getConnectionState).not.toHaveBeenCalled();
+    });
+
+    it("status retorna 400 quando o provedor é twilio", async () => {
+      const res = await statusGet();
+      expect(res.status).toBe(400);
+      expect(getConnectionState).not.toHaveBeenCalled();
+    });
+
+    it("disconnect retorna 400 quando o provedor é twilio", async () => {
+      const res = await disconnectPost();
+      expect(res.status).toBe(400);
+      expect(logoutInstance).not.toHaveBeenCalled();
+    });
+
+    it("delete retorna 400 quando o provedor é twilio", async () => {
+      const res = await deletePost();
+      expect(res.status).toBe(400);
+      expect(deleteInstance).not.toHaveBeenCalled();
     });
   });
 

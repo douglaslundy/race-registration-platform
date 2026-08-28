@@ -28,11 +28,6 @@ export default function WhatsAppConnectionPanel({ configured }: { configured: bo
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [phone, setPhone] = useState("");
-  const [testing, setTesting] = useState(false);
-  const [testMsg, setTestMsg] = useState<string | null>(null);
-  const [testOk, setTestOk] = useState(false);
-
   async function refreshStatus() {
     setError(null);
     const res = await fetch("/api/admin/whatsapp/status");
@@ -128,30 +123,6 @@ export default function WhatsAppConnectionPanel({ configured }: { configured: bo
     }
   }
 
-  async function handleTest() {
-    setTesting(true);
-    setTestMsg(null);
-    setTestOk(false);
-    try {
-      const res = await fetch("/api/admin/whatsapp/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`);
-      setTestOk(true);
-      setTestMsg(`WhatsApp de teste enviado para ${data.to}.`);
-    } catch (err) {
-      setTestOk(false);
-      setTestMsg(err instanceof Error ? err.message : "Falha ao enviar WhatsApp de teste");
-    } finally {
-      setTesting(false);
-    }
-  }
-
-  const isConnected = state === "open";
-
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -210,43 +181,6 @@ export default function WhatsAppConnectionPanel({ configured }: { configured: bo
 
         {!configured && (
           <p className="text-xs text-gray-500 dark:text-gray-400">Configure e salve as credenciais primeiro.</p>
-        )}
-      </div>
-
-      <div className="border-t dark:border-gray-700 pt-4 space-y-3">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Enviar WhatsApp de teste</p>
-        {testMsg && (
-          <div
-            className={`text-sm rounded px-3 py-2 border ${
-              testOk
-                ? "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
-                : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800"
-            }`}
-          >
-            {testMsg}
-          </div>
-        )}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="input-field flex-1"
-            placeholder="5511999999999 (DDI + DDD + número)"
-          />
-          <button
-            type="button"
-            onClick={handleTest}
-            disabled={testing || !isConnected || !phone.trim()}
-            className="btn-secondary whitespace-nowrap disabled:opacity-50"
-          >
-            {testing ? "Enviando..." : "Enviar WhatsApp de teste"}
-          </button>
-        </div>
-        {!isConnected && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Conecte o WhatsApp primeiro (gere e escaneie o QR code acima).
-          </p>
         )}
       </div>
     </div>
