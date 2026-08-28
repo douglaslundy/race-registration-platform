@@ -204,6 +204,55 @@ describe("updateMessageLogStatusByProviderMessageId", () => {
   });
 });
 
+describe("updateMessageLogStatusByProviderMessageId — FAILED", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.messageLog.update.mockResolvedValue({});
+  });
+
+  it("marca FAILED quando o status atual é SENT", async () => {
+    dbMock.messageLog.findFirst.mockResolvedValueOnce({ id: "m1", status: "SENT", errorMessage: null });
+    await updateMessageLogStatusByProviderMessageId("SM1", "FAILED", "Twilio 63016");
+    expect(dbMock.messageLog.update).toHaveBeenCalledWith({
+      where: { id: "m1" },
+      data: { status: "FAILED", errorMessage: "Twilio 63016" },
+    });
+  });
+
+  it("preserva o errorMessage existente quando chamado sem o parâmetro", async () => {
+    dbMock.messageLog.findFirst.mockResolvedValueOnce({ id: "m1", status: "SENT", errorMessage: "anterior" });
+    await updateMessageLogStatusByProviderMessageId("SM1", "FAILED");
+    expect(dbMock.messageLog.update).toHaveBeenCalledWith({
+      where: { id: "m1" },
+      data: { status: "FAILED", errorMessage: "anterior" },
+    });
+  });
+
+  it("NÃO reverte um DELIVERED para FAILED", async () => {
+    dbMock.messageLog.findFirst.mockResolvedValueOnce({ id: "m1", status: "DELIVERED", errorMessage: null });
+    await updateMessageLogStatusByProviderMessageId("SM1", "FAILED");
+    expect(dbMock.messageLog.update).not.toHaveBeenCalled();
+  });
+
+  it("NÃO reverte um READ para FAILED", async () => {
+    dbMock.messageLog.findFirst.mockResolvedValueOnce({ id: "m1", status: "READ", errorMessage: null });
+    await updateMessageLogStatusByProviderMessageId("SM1", "FAILED");
+    expect(dbMock.messageLog.update).not.toHaveBeenCalled();
+  });
+
+  it("idempotente: FAILED de novo num log já FAILED → no-op", async () => {
+    dbMock.messageLog.findFirst.mockResolvedValueOnce({ id: "m1", status: "FAILED", errorMessage: "Twilio 63016" });
+    await updateMessageLogStatusByProviderMessageId("SM1", "FAILED", "Twilio 63016");
+    expect(dbMock.messageLog.update).not.toHaveBeenCalled();
+  });
+
+  it("providerMessageId desconhecido → no-op", async () => {
+    dbMock.messageLog.findFirst.mockResolvedValueOnce(null);
+    await updateMessageLogStatusByProviderMessageId("SM-x", "FAILED");
+    expect(dbMock.messageLog.update).not.toHaveBeenCalled();
+  });
+});
+
 describe("listMessageLogs", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -65,4 +65,48 @@ describe("updateCampaignRecipientStatusByProviderMessageId", () => {
     ).resolves.toBeUndefined();
     expect(dbMock.campaignRecipient.update).not.toHaveBeenCalled();
   });
+
+  describe("FAILED", () => {
+    it("marca FAILED quando o status atual é SENT", async () => {
+      dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({ id: "rec-f1", status: "SENT" });
+
+      await updateCampaignRecipientStatusByProviderMessageId("SM1", "FAILED", "Twilio 63016");
+
+      expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith({
+        where: { id: "rec-f1" },
+        data: { status: "FAILED", failureReason: "Twilio 63016" },
+      });
+    });
+
+    it("sem errorMessage: marca FAILED sem tocar em failureReason", async () => {
+      dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({ id: "rec-f2", status: "SENT" });
+
+      await updateCampaignRecipientStatusByProviderMessageId("SM1", "FAILED");
+
+      expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith({
+        where: { id: "rec-f2" },
+        data: { status: "FAILED" },
+      });
+    });
+
+    it("NÃO reverte DELIVERED/READ para FAILED", async () => {
+      for (const status of ["DELIVERED", "READ"]) {
+        dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({ id: "rec-fx", status });
+        await updateCampaignRecipientStatusByProviderMessageId("SM1", "FAILED");
+      }
+      expect(dbMock.campaignRecipient.update).not.toHaveBeenCalled();
+    });
+
+    it("idempotente: FAILED de novo num destinatário já FAILED → no-op", async () => {
+      dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({ id: "rec-f3", status: "FAILED" });
+      await updateCampaignRecipientStatusByProviderMessageId("SM1", "FAILED");
+      expect(dbMock.campaignRecipient.update).not.toHaveBeenCalled();
+    });
+
+    it("providerMessageId desconhecido → no-op", async () => {
+      dbMock.campaignRecipient.findFirst.mockResolvedValueOnce(null);
+      await updateCampaignRecipientStatusByProviderMessageId("SM-x", "FAILED");
+      expect(dbMock.campaignRecipient.update).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -83,15 +83,29 @@ export async function recordMessageLog(params: RecordMessageLogParams): Promise<
   }
 }
 
-/** Atualiza o status de uma mensagem de WhatsApp a partir do ACK recebido via webhook. Nunca
- * regride (READ não volta pra DELIVERED). */
+/** Atualiza o status de uma mensagem de WhatsApp a partir do ACK/callback recebido via webhook.
+ * Nunca regride (READ não volta pra DELIVERED). `"FAILED"` só é aplicado se o status atual for
+ * `SENT` — nunca reverte um `DELIVERED`/`READ` já confirmado. `errorMessage` é opcional e
+ * retrocompatível (o webhook Evolution chama sem ele). */
 export async function updateMessageLogStatusByProviderMessageId(
   providerMessageId: string,
-  status: "DELIVERED" | "READ",
+  status: "DELIVERED" | "READ" | "FAILED",
+  errorMessage?: string,
 ): Promise<void> {
   const existing = await db.messageLog.findFirst({ where: { providerMessageId } });
   if (!existing) return;
-  if (STATUS_RANK[status] <= STATUS_RANK[existing.status as MessageLogStatus]) return;
+  const current = existing.status as MessageLogStatus;
+
+  if (status === "FAILED") {
+    if (current !== "SENT") return; // não reverte DELIVERED/READ; idempotente sobre FAILED
+    await db.messageLog.update({
+      where: { id: existing.id },
+      data: { status: "FAILED", errorMessage: errorMessage ?? existing.errorMessage },
+    });
+    return;
+  }
+
+  if (STATUS_RANK[status] <= STATUS_RANK[current]) return;
 
   await db.messageLog.update({
     where: { id: existing.id },
