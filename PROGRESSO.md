@@ -43,7 +43,17 @@ Se aprovar → `superpowers:writing-plans` → execução subagent-driven → de
   lança `WhatsAppSendError` normalizado (helper `kindFromEvolutionStatus`) em `sendTextMessage`/`sendMediaMessage`;
   `sendMediaMessage` retorna `{ providerMessageId: null }`. `lib/whatsapp.ts` NÃO tocado (Task 4).
   Corpo cru do provider só vai pro `console.error`, não pra mensagem do erro.
-- Próxima: Task 3 (branch twilio no `getWhatsAppSender`).
+- Task 3 (mesclada, `215b2d1`): `TwilioSender` + `classifyTwilioError` em `lib/whatsapp/twilio-client.ts`;
+  `getWhatsAppSender` despacha `twilio`.
+- Task 4 (CONCLUÍDA, 2026-08-28): `lib/whatsapp.ts` (`sendWhatsAppMessage`/`sendWhatsAppDocument`)
+  para de importar `evolution-client`/`whatsapp-settings` e passa por `getWhatsAppSender()`.
+  `recordMessageLog` continua nesta camada (único lugar). Helper `safeErrorMessage` grava só
+  `kind: label` pra `WhatsAppSendError` (nunca providerCode/SID/token/corpo cru). `isConfigured()
+  === false` → lança "WhatsApp não configurado" sem MessageLog. `tests/whatsapp.test.ts` reescrito
+  (mocka `@/lib/whatsapp/sender`, usa `recordMessageLog` real contra db mockado). Nenhum outro
+  teste precisou de sweep — todos os demais mockam `@/lib/whatsapp` inteiro. Suíte: 2010 verdes,
+  tsc limpo. Report: `.superpowers/sdd/2026-08-28-twilio-whatsapp-provider/task-4-report.md`.
+- Próxima: Task 5+ (webhook de status Twilio / UI de config), ver plano do sub-projeto A.
 
 **Contexto necessário (sub-projeto A):**
 - `docs/superpowers/specs/2026-08-28-twilio-whatsapp-provider-design.md`

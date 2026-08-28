@@ -1,9 +1,20 @@
-import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
-import { sendTextMessage, sendMediaMessage } from "./whatsapp/evolution-client";
+import { getWhatsAppSender } from "./whatsapp/sender";
+import { WhatsAppSendError, whatsAppErrorLabel } from "./whatsapp/errors";
 import { recordMessageLog } from "./message-logs";
 
 function truncateForSubject(text: string): string {
   return text.length > 80 ? `${text.slice(0, 77)}...` : text;
+}
+
+/**
+ * Mensagem de erro segura para gravar no MessageLog: para uma falha normalizada do provider
+ * (`WhatsAppSendError`) grava só `kind` + rótulo amigável, nunca o `providerCode`, token, SID
+ * ou corpo cru da resposta. Para qualquer outro erro, trunca a mensagem.
+ */
+function safeErrorMessage(err: unknown): string {
+  if (err instanceof WhatsAppSendError) return `${err.kind}: ${whatsAppErrorLabel(err.kind)}`;
+  const m = err instanceof Error ? err.message : String(err);
+  return m.slice(0, 200);
 }
 
 export function buildPreferencesFooterText(): string {
@@ -12,9 +23,9 @@ export function buildPreferencesFooterText(): string {
 }
 
 /**
- * Normaliza um telefone brasileiro pro formato que a Evolution API espera (só dígitos, sempre
- * com o DDI 55), aceitando o número com ou sem "+55"/formatação. Não duplica o DDI se ele já
- * estiver presente.
+ * Normaliza um telefone brasileiro pro formato que os providers de WhatsApp esperam (só dígitos,
+ * sempre com o DDI 55), aceitando o número com ou sem "+55"/formatação. Não duplica o DDI se ele
+ * já estiver presente.
  */
 export function normalizePhoneForWhatsApp(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -33,7 +44,9 @@ export function isValidWhatsAppPhone(normalized: string): boolean {
   return /^55\d{10,11}$/.test(normalized);
 }
 
-/** Envia uma mensagem de WhatsApp usando a configuração salva (Evolution API). */
+/** Envia uma mensagem de WhatsApp pelo provider ativo (Evolution ou Twilio), registrando o
+ * resultado no MessageLog. O despacho por provider fica em `getWhatsAppSender()`; o MessageLog
+ * continua nesta camada — os dois providers passam pelo mesmo caminho de auditoria. */
 export async function sendWhatsAppMessage(
   phone: string,
   text: string,
@@ -48,8 +61,8 @@ export async function sendWhatsAppMessage(
     appendPreferencesFooter?: boolean;
   },
 ): Promise<{ providerMessageId?: string }> {
-  const config = await getWhatsAppConfig();
-  if (!isWhatsAppConfigured(config)) {
+  const sender = await getWhatsAppSender();
+  if (!sender.isConfigured()) {
     throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
   }
 
@@ -62,7 +75,7 @@ export async function sendWhatsAppMessage(
       : {};
 
   try {
-    const { providerMessageId } = await sendTextMessage(config, normalizedPhone, finalText);
+    const { providerMessageId } = await sender.sendText(normalizedPhone, finalText, { messageType });
     await recordMessageLog({
       channel: "WHATSAPP",
       messageType,
@@ -80,17 +93,17 @@ export async function sendWhatsAppMessage(
       subject,
       recipientAddress: normalizedPhone,
       status: "FAILED",
-      errorMessage: err instanceof Error ? err.message : String(err),
+      errorMessage: safeErrorMessage(err),
       ...relatedEntity,
     });
     throw err;
   }
 }
 
-/** Envia um documento (PDF/imagem) por WhatsApp usando a configuração salva (Evolution API),
- * registrando o envio no MessageLog (sucesso ou falha) — mesmo comportamento de auditoria de
- * `sendWhatsAppMessage`, necessário porque este envio deixou de ser só pra relatórios de
- * anúncio ocasionais e passou a rodar em todo envio de confirmação de inscrição (QR do kit). */
+/** Envia um documento (PDF/imagem) por WhatsApp pelo provider ativo, registrando o envio no
+ * MessageLog (sucesso ou falha) — mesmo comportamento de auditoria de `sendWhatsAppMessage`,
+ * necessário porque este envio deixou de ser só pra relatórios de anúncio ocasionais e passou a
+ * rodar em todo envio de confirmação de inscrição (QR do kit). */
 export async function sendWhatsAppDocument(
   phone: string,
   base64Pdf: string,
@@ -106,8 +119,8 @@ export async function sendWhatsAppDocument(
     mediatype?: "document" | "image";
   },
 ): Promise<void> {
-  const config = await getWhatsAppConfig();
-  if (!isWhatsAppConfigured(config)) {
+  const sender = await getWhatsAppSender();
+  if (!sender.isConfigured()) {
     throw new Error("WhatsApp não configurado. Configure em Admin → WhatsApp.");
   }
   const normalizedPhone = normalizePhoneForWhatsApp(phone);
@@ -117,7 +130,14 @@ export async function sendWhatsAppDocument(
       : {};
 
   try {
-    await sendMediaMessage(config, normalizedPhone, base64Pdf, filename, caption, options?.mediatype ?? "document");
+    await sender.sendMedia(
+      normalizedPhone,
+      base64Pdf,
+      filename,
+      caption,
+      options?.mediatype ?? "document",
+      { messageType: options?.messageType },
+    );
     await recordMessageLog({
       channel: "WHATSAPP",
       messageType: options?.messageType,
@@ -133,7 +153,7 @@ export async function sendWhatsAppDocument(
       subject: caption,
       recipientAddress: normalizedPhone,
       status: "FAILED",
-      errorMessage: err instanceof Error ? err.message : String(err),
+      errorMessage: safeErrorMessage(err),
       ...relatedEntity,
     });
     throw err;
