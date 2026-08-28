@@ -6,7 +6,7 @@ const protectedPrefixes = ["/dashboard", "/organizador", "/admin", "/inscricao"]
 const adminOnly = ["/admin"];
 const organizerOnly = ["/organizador"];
 
-export default auth((req: NextRequest & { auth: { user?: { role?: string } } | null }) => {
+export default auth((req: NextRequest & { auth: { user?: { role?: string; active?: boolean } } | null }) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
@@ -25,6 +25,13 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
 
   if (session?.user) {
     const role = session.user.role;
+
+    // Usuário bloqueado (ou excluído) que ainda carrega uma sessão viva: o `jwt` recarrega
+    // `active` do banco a cada request, então isto passa a valer no próximo clique — sem
+    // depender da expiração do token.
+    if (session.user.active === false && isProtected) {
+      return NextResponse.redirect(new URL("/acesso-negado", req.url));
+    }
 
     // ASSISTANT nunca é barrado aqui: o papel sozinho não diz a que áreas ele tem acesso (isso
     // depende das AssistantPermission e do escopo do criador). Os guards de página/rota

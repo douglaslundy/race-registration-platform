@@ -7,6 +7,8 @@ declare module "next-auth" {
       email: string;
       name: string;
       role: UserRole;
+      /** Espelha `User.active`. Recarregado do banco a cada refresh do JWT. */
+      active: boolean;
     };
   }
 

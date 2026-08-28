@@ -59,6 +59,32 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role: string }).role;
+        token.active = true; // `authorize` só devolve usuário ativo
+        return token;
+      }
+
+      // Sessão JWT: sem re-leitura, `role`/`active` ficam congelados no token até ele expirar.
+      // Isso quebrava o fluxo excluir → re-cadastrar: o assistente rebaixado para ATHLETE (ou
+      // re-promovido) continuava com o papel antigo no token e era jogado pro /acesso-negado
+      // pelo proxy, ou perdia o acesso que acabara de recuperar. Recarregamos a cada request —
+      // é um lookup por PK (barato) e a área logada já consulta o banco a cada render mesmo.
+      if (token.id) {
+        try {
+          const fresh = await db.user.findUnique({
+            where: { id: token.id as string },
+            select: { role: true, active: true },
+          });
+          if (fresh) {
+            token.role = fresh.role;
+            token.active = fresh.active;
+          } else {
+            // Usuário sumiu (exclusão física): invalida o papel — o proxy/guards barram.
+            token.active = false;
+          }
+        } catch (err) {
+          // Blip no banco não pode deslogar todo mundo — mantém o token como está.
+          console.error("[auth] jwt refresh falhou, mantendo token atual:", err);
+        }
       }
       return token;
     },
@@ -66,6 +92,7 @@ export const authConfig: NextAuthConfig = {
       if (token) {
         session.user.id = token.id as string;
         session.user.role = token.role as import("@prisma/client").UserRole;
+        session.user.active = token.active !== false;
       }
       return session;
     },
