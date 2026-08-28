@@ -30,7 +30,7 @@ vi.mock("@/lib/db", () => ({
     organizerProfile: { upsert: vi.fn(), findUnique: vi.fn(), findMany: vi.fn() },
     alertLog: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
     dailySummaryRecipient: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
-    assistantPermission: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
+    assistantPermission: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]), create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn() },
     messageLog: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
     adSlot: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     adMetricsSnapshot: { findMany: vi.fn(), upsert: vi.fn(), aggregate: vi.fn() },

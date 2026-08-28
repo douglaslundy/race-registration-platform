@@ -20,6 +20,13 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   if (session?.user) {
     const role = session.user.role;
 
+    // ASSISTANT nunca é barrado aqui: o papel sozinho não diz a que áreas ele tem acesso (isso
+    // depende das AssistantPermission e do escopo do criador). Os guards de página/rota
+    // (requireOrganizer / requireAdmin / requirePermission / requireAnyPermission) resolvem isso
+    // com consulta ao banco — coisa que este middleware (edge) não faz. Barrar o ASSISTANT aqui
+    // mandava pra /acesso-negado quem só precisava entregar kit.
+    if (role === "ASSISTANT") return NextResponse.next();
+
     if (adminOnly.some((p) => pathname.startsWith(p)) && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/acesso-negado", req.url));
     }

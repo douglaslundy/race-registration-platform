@@ -58,8 +58,35 @@ export type PermissionCheck =
   | { allowed: true; session: Session }
   | { allowed: false; response: NextResponse };
 
+/** Opções das checagens de permissão. `eventId` restringe a checagem a um evento: um ASSISTANT
+ * autoriza se tiver uma linha global (`eventId = null`, vale pra todos os eventos) OU uma linha
+ * específica daquele evento. Sem `eventId`, só linhas globais autorizam — é o comportamento
+ * seguro: um assistente confinado a 1 evento não ganha acesso "global" por engano. */
+export interface PermissionOptions {
+  eventId?: string;
+}
+
+/** Resolve se um ASSISTANT tem QUALQUER uma das actionKeys, respeitando o escopo de evento.
+ * Sem `eventId`: só linhas com `eventId = null`. Com `eventId`: linhas globais OU do evento. */
+async function assistantHasAnyPermission(
+  userId: string,
+  actionKeys: string[],
+  eventId?: string,
+): Promise<boolean> {
+  const scopeFilter = eventId
+    ? { OR: [{ eventId: null }, { eventId }] }
+    : { eventId: null };
+  const row = await db.assistantPermission.findFirst({
+    where: { userId, actionKey: { in: actionKeys }, ...scopeFilter },
+  });
+  return row !== null;
+}
+
 /** Checagem de permissão pra uso em Route Handlers (retorna NextResponse, não redireciona). */
-export async function checkApiPermission(actionKey: string): Promise<PermissionCheck> {
+export async function checkApiPermission(
+  actionKey: string,
+  opts?: PermissionOptions,
+): Promise<PermissionCheck> {
   const session = await auth();
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
@@ -70,10 +97,34 @@ export async function checkApiPermission(actionKey: string): Promise<PermissionC
   }
 
   if (session.user.role === "ASSISTANT") {
-    const granted = await db.assistantPermission.findUnique({
-      where: { userId_actionKey: { userId: session.user.id, actionKey } },
-    });
-    if (granted) return { allowed: true, session };
+    if (await assistantHasAnyPermission(session.user.id, [actionKey], opts?.eventId)) {
+      return { allowed: true, session };
+    }
+  }
+
+  return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
+}
+
+/** Como checkApiPermission, mas passa se o ASSISTANT tiver QUALQUER uma das actionKeys (ex.: a
+ * busca da tela de entrega de kits serve tanto pra quem tem `kits.view` quanto pra quem só tem
+ * `kits.deliver`). ADMIN/ORGANIZER titulares sempre passam. */
+export async function checkAnyApiPermission(
+  actionKeys: string[],
+  opts?: PermissionOptions,
+): Promise<PermissionCheck> {
+  const session = await auth();
+  if (!session?.user) {
+    return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+
+  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
+    return { allowed: true, session };
+  }
+
+  if (session.user.role === "ASSISTANT") {
+    if (await assistantHasAnyPermission(session.user.id, actionKeys, opts?.eventId)) {
+      return { allowed: true, session };
+    }
   }
 
   return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
@@ -96,8 +147,8 @@ export async function checkAdminOnlyApiPermission(actionKey: string): Promise<Pe
   }
 
   if (session.user.role === "ASSISTANT") {
-    const granted = await db.assistantPermission.findUnique({
-      where: { userId_actionKey: { userId: session.user.id, actionKey } },
+    const granted = await db.assistantPermission.findFirst({
+      where: { userId: session.user.id, actionKey },
     });
     if (granted) {
       const scope = await resolveActingScope(session);
@@ -151,7 +202,7 @@ export async function requireOrganizer() {
 /** Checagem de permissão pra uso em Server Components (páginas) — redireciona em vez de
  * retornar uma NextResponse. Mesma lógica de checkApiPermission: ADMIN/ORGANIZER titulares
  * sempre passam; ASSISTANT precisa da AssistantPermission gravada pra essa actionKey. */
-export async function requirePermission(actionKey: string) {
+export async function requirePermission(actionKey: string, opts?: PermissionOptions) {
   const session = await requireAuth();
 
   if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
@@ -159,10 +210,9 @@ export async function requirePermission(actionKey: string) {
   }
 
   if (session.user.role === "ASSISTANT") {
-    const granted = await db.assistantPermission.findUnique({
-      where: { userId_actionKey: { userId: session.user.id, actionKey } },
-    });
-    if (granted) return session;
+    if (await assistantHasAnyPermission(session.user.id, [actionKey], opts?.eventId)) {
+      return session;
+    }
   }
 
   redirect("/acesso-negado");
@@ -170,7 +220,7 @@ export async function requirePermission(actionKey: string) {
 
 /** Como requirePermission, mas passa se o ASSISTANT tiver QUALQUER uma das actionKeys informadas
  * (ex: a página de entrega de kits serve tanto pra quem só vê quanto pra quem confirma a entrega). */
-export async function requireAnyPermission(actionKeys: string[]) {
+export async function requireAnyPermission(actionKeys: string[], opts?: PermissionOptions) {
   const session = await requireAuth();
 
   if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
@@ -178,11 +228,25 @@ export async function requireAnyPermission(actionKeys: string[]) {
   }
 
   if (session.user.role === "ASSISTANT") {
-    const granted = await db.assistantPermission.findFirst({
-      where: { userId: session.user.id, actionKey: { in: actionKeys } },
-    });
-    if (granted) return session;
+    if (await assistantHasAnyPermission(session.user.id, actionKeys, opts?.eventId)) {
+      return session;
+    }
   }
 
   redirect("/acesso-negado");
+}
+
+/** Eventos aos quais um ASSISTANT tem alguma das actionKeys. Retorna `null` quando ele tem
+ * permissão GLOBAL (linha `eventId = null`) — o chamador deve interpretar como "todos os eventos".
+ * Retorna a lista de ids quando as permissões são todas restritas a eventos específicos. */
+export async function assistantPermittedEventIds(
+  userId: string,
+  actionKeys: string[],
+): Promise<string[] | null> {
+  const rows = await db.assistantPermission.findMany({
+    where: { userId, actionKey: { in: actionKeys } },
+    select: { eventId: true },
+  });
+  if (rows.some((r) => r.eventId === null)) return null;
+  return Array.from(new Set(rows.map((r) => r.eventId).filter((id): id is string => id !== null)));
 }

@@ -44,20 +44,20 @@ describe("admin event reject api", () => {
 
   it("ASSISTANT criado por ADMIN com events.reject concedido consegue rejeitar", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 
-    expect(dbMock.assistantPermission.findUnique).toHaveBeenCalledWith({
-      where: { userId_actionKey: { userId: "assistant-1", actionKey: "events.reject" } },
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: "events.reject" },
     });
     expect(res.status).toBe(200);
   });
 
   it("ASSISTANT sem events.reject é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
 

@@ -61,21 +61,21 @@ describe("admin events export", () => {
 
   it("ASSISTANT criado por ADMIN com events.view concedido consegue exportar", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.event.findMany.mockResolvedValueOnce([]);
 
     const res = await GET(new Request("http://localhost/api/admin/events/export", { method: "GET" }) as any);
 
-    expect(dbMock.assistantPermission.findUnique).toHaveBeenCalledWith({
-      where: { userId_actionKey: { userId: "assistant-1", actionKey: "events.view" } },
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: "events.view" },
     });
     expect(res.status).toBe(200);
   });
 
   it("ASSISTANT sem events.view é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await GET(new Request("http://localhost/api/admin/events/export", { method: "GET" }) as any);
 
@@ -94,7 +94,7 @@ describe("admin events export", () => {
 
   it("ASSISTANT criado por ORGANIZER com events.view concedido (mas actingAsAdmin=false) é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
     });

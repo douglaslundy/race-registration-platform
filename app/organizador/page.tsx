@@ -1,6 +1,7 @@
 import { requireOrganizer } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import { BADGE } from "@/lib/badge-colors";
@@ -30,6 +31,16 @@ export default async function OrganizerDashboard({
   searchParams: Promise<{ de?: string; ate?: string; eventId?: string }>;
 }) {
   const session = await requireOrganizer();
+
+  // ASSISTANT de organizador não tem OrganizerProfile próprio — este dashboard (métricas, receita,
+  // "meus eventos") não é dele. Antes ele caía no "Configure seu perfil de organizador", um
+  // beco sem saída. Manda pro que ele de fato pode fazer: a entrega de kits. Se não tiver nenhuma
+  // permissão de kit, o guard de lá resolve; mas um assistente de organizador sem função nenhuma
+  // não deveria existir.
+  if (session.user.role === "ASSISTANT") {
+    redirect("/organizador/entrega-kits");
+  }
+
   const { de, ate, eventId } = await searchParams;
 
   const to = parseDateInput(ate, true) ?? new Date();
