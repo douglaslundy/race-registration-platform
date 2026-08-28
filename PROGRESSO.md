@@ -1,5 +1,40 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — `fix/assistant-edit`: endurecer excluir→re-cadastrar + editar assistente no lugar — NÃO DEPLOYADO)
+
+Worktree `corridas-assistedit`, branch `fix/assistant-edit`. Base: `0a26751` (controller
+corrigiu o `anyScope` de entrega-kits). Feitos os 2 itens restantes. **Nada mergeado/deployado.**
+
+**Commit `3405243` — Item 1 (excluir → re-cadastrar → 404/bloqueado):**
+- Causa raiz dupla: (a) branch `existing.role === "ATHLETE"` de `createOrPromoteAssistant` não
+  restaurava `active` — assistente já bloqueado antes ficava com `active: false` e o login caía em
+  `authorize()`; (b) sessão JWT congelava `role` no token até expirar — assistente rebaixado/re-promovido
+  com sessão viva mantinha papel antigo e o `proxy` o mandava pro `/acesso-negado`.
+- `create-or-promote.ts`: branch ATHLETE seta `active: true`.
+- `lib/auth/config.ts`: callback `jwt` recarrega `role`+`active` do banco a cada request (PK lookup,
+  try/catch); `session.user.active` exposto. `lib/auth/types.ts` atualizado.
+- `proxy.ts`: usuário `active === false` com sessão viva → `/acesso-negado` nas rotas protegidas.
+- Limitação: não destrói a sessão (comportamento instável no next-auth beta.25); só a neutraliza.
+
+**Commit `b5b76ad` — Item 2 (editar assistente no lugar):**
+- `lib/assistants/manage.ts` `updateAssistant()`: substitui nome + TODAS as AssistantPermission numa
+  transação, achatando+deduplicando pares `(eventId, actionKey)`.
+- `PUT /api/organizer/assistants/[id]` `{ name, scopes:[{eventId,actionKeys}] }` (titular-only, valida
+  eventId contra eventos do organizador) e `PUT /api/admin/assistants/[id]` `{ name, actionKeys }`
+  (admin, escopo único event-less). Ambos auditam `ASSISTANT_UPDATED`.
+- `AssistantManager.tsx`: botão "Editar" → form em modo edição; organizador tem blocos de escopo
+  multi-evento ("+ adicionar escopo"), admin um conjunto único.
+- `tests/setup.ts`: mock do `$transaction` aceita forma de array.
+
+Suíte: **2031/2031** (era 2010; +21). `tsc` limpo, `build` compila. **Sem mudança de schema.**
+Detalhes completos em `ASSISTEDIT_REPORT.md` (raiz do worktree).
+
+**PRÓXIMA TAREFA:** review whole-branch de `fix/assistant-edit` → merge em `main` → deploy code-only
+(git pull + build + restart, sem `db push`). Sub-projeto Twilio (`feat/twilio-whatsapp-provider`)
+segue aguardando o mesmo.
+
+---
+
 ## Última atualização (2026-08-28 — Assistente de organizador via só as páginas da permissão dele — DEPLOY EM ANDAMENTO)
 
 Continuação da correção do assistente. Depois do deploy anterior, o assistente entrava mas via
