@@ -1,5 +1,50 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — Pedido grande de 4 frentes; metade já existia; sub-projeto A (Twilio) em spec)
+
+Usuário mandou um spec formal de 4 evoluções: (1) generalizar 2FA por código, (2) Twilio WhatsApp,
+(3) múltiplas contas Mercado Pago, (4) snapshot/override de dados da inscrição.
+
+**Auditoria inicial revelou que ~metade já está pronta e deployada:**
+- **2FA por código já é genérico** (`lib/security/sensitive-action-verification.ts`, spec
+  `2026-08-11-verificacao-2fa-acoes-sensiveis`). Cobre: estorno admin/organizador, aprovação de
+  cancelamento (admin/organizador), rejeição de anunciante com auto-estorno, cancelamento de
+  inscrição confirmada. Crypto seguro, hash, 10min, uso único, 5 tentativas, rate limit, anti-reuso
+  entre ações, auditoria. **Aceito como pronto.**
+- **Lacunas de 2FA achadas:** `POST /api/admin/settings` com credencial do gateway MP / troca de
+  provider (ALTO risco) e `POST /api/admin/backup/import` (CRÍTICO). Decisão: a do MP vai no
+  sub-projeto B (rotas dedicadas de `PaymentAccount` nascem com `FINANCIAL_ACCOUNT_CHANGE`); a do
+  backup/import faço junto do B.
+
+**Decomposição (confirmada com o usuário): 3 sub-projetos novos, um de cada vez, spec+plano+deploy
+próprios:**
+- **A — Twilio WhatsApp** (EM ANDAMENTO): spec escrita em
+  `docs/superpowers/specs/2026-08-28-twilio-whatsapp-provider-design.md`. Aguardando revisão do
+  usuário. Decisões travadas: template utilitário único (`{{1}}` = texto renderizado); webhook de
+  status novo `/api/webhooks/whatsapp/twilio`; config só com permissão admin (sem 2FA).
+- **B — Múltiplas contas Mercado Pago** (não iniciado): model `PaymentAccount`,
+  `Event.paymentAccountId`, `Payment.paymentAccountId` (conta de origem congelada), webhook por
+  conta, estorno pela conta original, migração da config atual → "Mercado Pago Principal",
+  integridade referencial, 2FA na troca + no backup/import.
+- **C — Snapshot/override de inscrição** (não iniciado): `Registration.participant*` (name, email,
+  phone, birthDate, gender, **cpf** — decidido: snapshot SEM unicidade, valida dígito verificador,
+  não toca `AthleteProfile.cpf @unique`), migração das inscrições existentes, rota `PATCH
+  /api/*/registrations/[id]` nova (a `.../athlete` atual faz o anti-padrão do §20 — vira só "editar
+  cadastro do atleta"), RBAC por recurso anti-IDOR, auditoria before/after, ajuste de TODOS os
+  consumidores (lista, kit, comprovante, relatórios, certificados, etc.), teste de regressão do §32.
+
+**PRÓXIMA TAREFA:** usuário revisa `docs/superpowers/specs/2026-08-28-twilio-whatsapp-provider-design.md`.
+Se aprovar → `superpowers:writing-plans` → execução subagent-driven → deploy. Depois, escolher B ou C.
+
+**Contexto necessário (sub-projeto A):**
+- `docs/superpowers/specs/2026-08-28-twilio-whatsapp-provider-design.md`
+- `lib/whatsapp.ts`, `lib/whatsapp/evolution-client.ts`, `lib/whatsapp-settings.ts`, `lib/message-logs.ts`
+- `app/admin/whatsapp/page.tsx`, `components/admin/WhatsAppCredentialsForm.tsx`
+- `app/api/webhooks/whatsapp/route.ts` (padrão do webhook de status Evolution)
+- `app/api/admin/settings/route.ts`, `app/api/admin/whatsapp/test/route.ts`
+
+---
+
 ## Última atualização (2026-08-27 — Desconto PIX: feature + minors + resumo diário do admin, TUDO deployado)
 
 Os 3 pedidos do usuário concluídos e deployados, nesta ordem:
