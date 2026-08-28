@@ -75,7 +75,7 @@ describe("POST /api/organizer/registrations/[id]/resend-confirmation-email", () 
 
   it("assistente de organizador com a permissão reenvia o e-mail escopado ao evento do criador", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.registration.findFirst.mockResolvedValueOnce(registrationFixture);
 
@@ -86,7 +86,7 @@ describe("POST /api/organizer/registrations/[id]/resend-confirmation-email", () 
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
 

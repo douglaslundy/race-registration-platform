@@ -108,7 +108,7 @@ describe("POST /api/admin/registrations/[id]/resend-payment-notification", () =>
 
   it("assistente de admin com a permissão reenvia a notificação (bypass também vale pra ele)", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.registration.findFirst.mockResolvedValueOnce(registrationFixture);
 
@@ -119,7 +119,7 @@ describe("POST /api/admin/registrations/[id]/resend-payment-notification", () =>
 
   it("assistente de organizador é barrado com 403 mesmo com a chave -any concedida por engano", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });

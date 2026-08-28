@@ -71,7 +71,7 @@ describe("GET /api/events/[id]/coupons/report-export", () => {
 
   it("assistente de organizador com a permissão exporta", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", title: "Corrida X", organizerId: "org-1" });
     dbMock.coupon.findMany.mockResolvedValueOnce([]);
@@ -84,7 +84,7 @@ describe("GET /api/events/[id]/coupons/report-export", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await GET(makeRequest(), makeContext("ev-1"));
 
@@ -93,7 +93,7 @@ describe("GET /api/events/[id]/coupons/report-export", () => {
 
   it("assistente de admin com a permissão exporta de qualquer evento (bypass também vale pra ele)", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.event.findUnique.mockResolvedValueOnce({ id: "ev-9", title: "Corrida Y", organizerId: "org-99" });
     dbMock.coupon.findMany.mockResolvedValueOnce([]);

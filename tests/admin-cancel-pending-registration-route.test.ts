@@ -124,7 +124,7 @@ describe("POST /api/admin/registrations/[id]/cancel-pending", () => {
 
   it("assistente de admin com a permissão cancela normalmente", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration());
     cancelPendingPaymentManuallyMock.mockResolvedValueOnce({ ok: true });
@@ -136,7 +136,7 @@ describe("POST /api/admin/registrations/[id]/cancel-pending", () => {
 
   it("assistente de organizador é barrado com 403 mesmo com a chave -any concedida por engano", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });

@@ -50,7 +50,7 @@ describe("POST /api/organizer/registrations/[id]/refund/request-code", () => {
 
   it("assistente de organizador resolve o organizerUserId antes de buscar a inscrição", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-user-1" });
     dbMock.registration.findFirst.mockResolvedValueOnce({ order: { payments: [{ id: "payment-1" }] } });
     requestCodeMock.mockResolvedValueOnce({ ok: true, verificationId: "code-1" });

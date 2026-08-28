@@ -70,7 +70,7 @@ describe("POST /api/organizer/refunds/[paymentId]/manual-resolve", () => {
 
   it("assistente de organizador com a permissão resolve usando o userId do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-1" });
     resolveMock.mockResolvedValueOnce({ ok: true });
 
@@ -86,7 +86,7 @@ describe("POST /api/organizer/refunds/[paymentId]/manual-resolve", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest({ resolutionNote: "nota" }), { params: Promise.resolve({ paymentId: "pay-1" }) });
 

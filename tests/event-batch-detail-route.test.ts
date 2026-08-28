@@ -78,7 +78,7 @@ describe("PATCH /api/events/[id]/batches/[batchId]", () => {
 
   it("assistente de organizador com a permissão edita o lote", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
     dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
@@ -91,7 +91,7 @@ describe("PATCH /api/events/[id]/batches/[batchId]", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await PATCH(makePatchRequest({ name: "Novo nome" }), makeContext("ev-1", "batch-1"));
 
@@ -138,7 +138,7 @@ describe("DELETE /api/events/[id]/batches/[batchId]", () => {
 
   it("assistente de organizador com a permissão exclui o lote", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
     dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
@@ -150,7 +150,7 @@ describe("DELETE /api/events/[id]/batches/[batchId]", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await DELETE(makeDeleteRequest(), makeContext("ev-1", "batch-1"));
 

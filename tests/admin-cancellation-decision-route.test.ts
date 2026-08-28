@@ -59,7 +59,7 @@ describe("POST /api/admin/registrations/[id]/cancellation-decision", () => {
 
   it("assistente de admin com a permissão decide o cancelamento (bypass também vale pra ele)", async () => {
     checkAdminMock.mockResolvedValueOnce({ allowed: true, session: { user: { id: "assistant-1", role: "ASSISTANT" } } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     decideMock.mockResolvedValueOnce({ ok: true, refund: "not_applicable" });
 
@@ -71,7 +71,7 @@ describe("POST /api/admin/registrations/[id]/cancellation-decision", () => {
 
   it("assistente de organizador é barrado com 403 mesmo com a chave -any concedida por engano", async () => {
     checkAdminMock.mockResolvedValueOnce({ allowed: false, response: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403 }) } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });

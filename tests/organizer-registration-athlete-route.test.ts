@@ -204,7 +204,7 @@ describe("PATCH /api/organizer/registrations/[id]/athlete", () => {
 
   it("assistente de organizador com a permissão edita o atleta escopado ao evento do criador", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique
       .mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } })
       .mockResolvedValueOnce({ id: "athlete-1", email: "atleta@exemplo.com" });
@@ -217,7 +217,7 @@ describe("PATCH /api/organizer/registrations/[id]/athlete", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await PATCH(makeRequest({ name: "Nome Ajustado" }), { params: Promise.resolve({ id: "reg-1" }) });
 

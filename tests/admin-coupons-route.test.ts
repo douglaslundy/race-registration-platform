@@ -54,7 +54,7 @@ describe("POST /api/admin/coupons", () => {
 
   it("assistente de admin com a permissão cria cupom global", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.coupon.findFirst.mockResolvedValueOnce(null);
     dbMock.coupon.create.mockResolvedValueOnce({ id: "c3", ...validBody });
@@ -66,7 +66,7 @@ describe("POST /api/admin/coupons", () => {
 
   it("assistente de organizador com a chave concedida por engano é barrado (não é assistente de admin)", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await POST(makeRequest(validBody));
@@ -77,7 +77,7 @@ describe("POST /api/admin/coupons", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(validBody));
 

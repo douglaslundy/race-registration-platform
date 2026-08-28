@@ -48,7 +48,7 @@ describe("PATCH /api/admin/coupons/[id]", () => {
 
   it("assistente de admin com a permissão edita qualquer cupom", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.coupon.update.mockResolvedValueOnce({ id: "c1", active: false });
 
@@ -59,7 +59,7 @@ describe("PATCH /api/admin/coupons/[id]", () => {
 
   it("assistente de organizador com a chave concedida por engano é barrado", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await PATCH(makePatchRequest({ active: false }), makeContext("c1"));
@@ -70,7 +70,7 @@ describe("PATCH /api/admin/coupons/[id]", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await PATCH(makePatchRequest({ active: false }), makeContext("c1"));
 
@@ -113,7 +113,7 @@ describe("DELETE /api/admin/coupons/[id]", () => {
 
   it("assistente de admin com a permissão exclui qualquer cupom", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
     dbMock.order.findFirst.mockResolvedValueOnce(null);
 
@@ -124,7 +124,7 @@ describe("DELETE /api/admin/coupons/[id]", () => {
 
   it("assistente de organizador com a chave concedida por engano é barrado", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-2" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-2" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
     const res = await DELETE(makeDeleteRequest(), makeContext("c1"));
@@ -135,7 +135,7 @@ describe("DELETE /api/admin/coupons/[id]", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await DELETE(makeDeleteRequest(), makeContext("c1"));
 

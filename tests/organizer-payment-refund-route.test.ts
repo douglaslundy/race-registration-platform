@@ -94,7 +94,7 @@ describe("POST /api/organizer/registrations/[id]/refund", () => {
 
   it("assistente de organizador com a permissão estorna usando o userId do criador, mas o código vai pro assistente", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-user-1" });
     dbMock.registration.findFirst.mockResolvedValueOnce(registrationWithPayment);
     refundPaymentMock.mockResolvedValueOnce({ alreadySynced: false } as any);
@@ -115,7 +115,7 @@ describe("POST /api/organizer/registrations/[id]/refund", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest(), makeContext("reg-1"));
 

@@ -167,7 +167,7 @@ describe("event results import/publish api", () => {
 
     it("assistente de organizador com a permissão importa no evento do criador", async () => {
       authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-      dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+      dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
       dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
       const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
@@ -178,7 +178,7 @@ describe("event results import/publish api", () => {
 
     it("assistente sem a permissão é barrado com 403", async () => {
       authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-      dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+      dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
       const res = await POST(makeImportRequest("bib_number,athlete_name\n1,Ana\n"), ctx);
 
@@ -226,7 +226,7 @@ describe("event results import/publish api", () => {
 
     it("assistente de organizador com a permissão publica no evento do criador", async () => {
       authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-      dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+      dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
       dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
 
       const res = await PATCH(makePublishRequest("import-1"), ctx);
@@ -237,7 +237,7 @@ describe("event results import/publish api", () => {
 
     it("assistente sem a permissão é barrado com 403", async () => {
       authMock.mockResolvedValueOnce({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-      dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+      dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
       const res = await PATCH(makePublishRequest("import-1"), ctx);
 

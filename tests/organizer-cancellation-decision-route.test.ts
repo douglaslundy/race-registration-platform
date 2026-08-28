@@ -85,7 +85,7 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
 
   it("assistente de organizador com a permissão decide o cancelamento escopado ao evento do criador", async () => {
     checkPermMock.mockResolvedValueOnce({ allowed: true, session: { user: { id: "assistant-1", role: "ASSISTANT" } } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     resolveScope.mockResolvedValueOnce({ actingAsAdmin: false, organizerId: "org-1" });
     decideMock.mockResolvedValueOnce({ ok: true, refund: "processed" });
@@ -102,7 +102,7 @@ describe("POST /api/organizer/registrations/[id]/cancellation-decision", () => {
 
   it("assistente sem a permissão é barrado com 403", async () => {
     checkPermMock.mockResolvedValueOnce({ allowed: false, response: new Response(JSON.stringify({ error: "Não autorizado" }), { status: 403 }) } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await POST(makeRequest({ decision: "APPROVE" }), { params: Promise.resolve({ id: "reg-1" }) });
 

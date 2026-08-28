@@ -48,7 +48,7 @@ describe("organizer events export", () => {
 
   it("ASSISTANT criado por organizador com events.view exporta os eventos do organizerId do criador", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({
       createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } },
     });
@@ -63,7 +63,7 @@ describe("organizer events export", () => {
 
   it("ASSISTANT órfão (sem organizerId resolvido) recebe 404", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-3", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce({ id: "perm-1" });
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: null });
 
     const res = await GET();
@@ -74,7 +74,7 @@ describe("organizer events export", () => {
 
   it("ASSISTANT sem events.view é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.assistantPermission.findUnique.mockResolvedValueOnce(null);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
 
     const res = await GET();
 
