@@ -1,5 +1,41 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — Correção do assistente: acesso-negado + promoção + escopo por evento, DEPLOYADA)
+
+Pedido do usuário: assistente cadastrado pra entregar kit caía em "Acesso negado" ao entrar; organizador
+não conseguia promover usuário já cadastrado; escopo de evento não era obrigatório no cadastro de assistente.
+
+**Feito** (branch `fix/assistant-event-scope`, 10 commits `48a7f71`..`d1ddc20`, mergeada em `main` FF + deployada):
+
+1. **Causa raiz do "Acesso negado"** — `proxy.ts` (middleware) barrava TODO `ASSISTANT` em `/organizador/*`
+   e `/admin/*` antes de qualquer guard de página rodar. Agora o middleware deixa o ASSISTANT passar e os
+   guards (`requireOrganizer`/`requireAdmin`/`requirePermission`/`requireAnyPermission`, que consultam
+   `AssistantPermission`) decidem. Layouts admin/organizador seguem protegidos.
+2. **Escopo por evento** — `AssistantPermission.eventId String?` (null = todos os eventos), FK Event
+   `onDelete: Cascade`, `@@unique([userId, actionKey, eventId])`, `@@index([eventId])`. Checagens de RBAC
+   ganharam `opts?: { eventId }`; `ASSISTANT` autoriza com linha global OU do evento. Novos helpers
+   `checkAnyApiPermission`, `assistantPermittedEventIds`. `checkAdminOnlyApiPermission` só aceita linha
+   global (`eventId: null`) — ação admin-only nunca é escopada por evento (brecha achada no review rápido,
+   corrigida no `2777fc4`).
+3. **Promoção de usuário existente** — `lib/assistants/create-or-promote.ts` promove usuário já cadastrado
+   a ASSISTANT com as permissões dadas; form do organizador mostra a mensagem certa (`data.isNew`).
+4. **Evento obrigatório no form** — `<select>` "Evento" obrigatório no cadastro de assistente pelo
+   organizador, com opção "Todos os eventos" (`"ALL"` → null). Rota `/api/organizer/assistants` exige
+   `eventId` no body. Rota admin: `eventId` opcional.
+5. Entrega de kits ponta a ponta ciente de escopo de evento; página `entrega-kits` virou server component
+   com guard `requireAnyPermission(["kits.view","kits.deliver"], { eventId })`.
+
+**Deploy VPS** (`d1ddc20`): `git pull` → `docker build` → `db push --accept-data-loss` (coluna `eventId` +
+rework do índice unique + FK; só 2 linhas na tabela, ambas distintas, zero risco) → restart. Smoke:
+`/` `/eventos` 200; rotas protegidas 307; sem erros no log. Schema confirmado no psql.
+
+Suíte: **1996/1996**, tsc + build limpos.
+
+**PRÓXIMA TAREFA:** confirmar no navegador de produção que o assistente de kit entra e chega em
+`/organizador/entrega-kits` sem "Acesso negado".
+
+---
+
 ## Última atualização (2026-08-28 — Pedido grande de 4 frentes; metade já existia; sub-projeto A (Twilio) em spec)
 
 Usuário mandou um spec formal de 4 evoluções: (1) generalizar 2FA por código, (2) Twilio WhatsApp,
