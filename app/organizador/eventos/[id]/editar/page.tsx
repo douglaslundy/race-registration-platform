@@ -1,4 +1,4 @@
-import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
+import { requireAnyPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -10,8 +10,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Editar Evento" };
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireOrganizer();
   const { id } = await params;
+  const session = await requireAnyPermission(["events.edit"], { eventId: id });
   const scope = await resolveActingScope(session);
 
   const [event, cancellationPolicyEnabled] = await Promise.all([

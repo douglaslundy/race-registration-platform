@@ -1,4 +1,4 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
 import { formatCurrency } from "@/lib/format";
 import { buildAbandonedCartWhere, buildAbandonedCartOrderBy, listAbandonedCarts } from "@/lib/alerts/abandoned-cart-query";
 import SendAbandonedCartAlertButton from "@/components/alerts/SendAbandonedCartAlertButton";
@@ -45,7 +45,7 @@ function SortLink({
 }
 
 export default async function OrganizerAbandonedCartsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const session = await requireOrganizer();
+  const session = await requireAnyPermission(["abandoned-carts.notify"]);
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const event = params.event?.trim() ?? "";

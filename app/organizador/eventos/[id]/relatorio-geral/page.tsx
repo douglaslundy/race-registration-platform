@@ -1,4 +1,4 @@
-import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
+import { requireAnyPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -26,8 +26,8 @@ export default async function RelatorioGeralPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const session = await requireOrganizer();
   const { id } = await params;
+  const session = await requireAnyPermission(["reports.export", "registrations.view"], { eventId: id });
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const categoryId = sp.categoryId?.trim() ?? "";

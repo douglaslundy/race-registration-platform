@@ -10,6 +10,12 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
+  // Expõe o pathname pros Server Components (layouts/páginas não recebem a URL nativamente no
+  // App Router). O guard de permissão da área do organizador lê isto via headers().
+  const forwardHeaders = new Headers(req.headers);
+  forwardHeaders.set("x-pathname", pathname);
+  const pass = () => NextResponse.next({ request: { headers: forwardHeaders } });
+
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
   if (isProtected && !session?.user) {
     const loginUrl = new URL("/auth/login", req.url);
@@ -25,7 +31,7 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
     // (requireOrganizer / requireAdmin / requirePermission / requireAnyPermission) resolvem isso
     // com consulta ao banco — coisa que este middleware (edge) não faz. Barrar o ASSISTANT aqui
     // mandava pra /acesso-negado quem só precisava entregar kit.
-    if (role === "ASSISTANT") return NextResponse.next();
+    if (role === "ASSISTANT") return pass();
 
     if (adminOnly.some((p) => pathname.startsWith(p)) && role !== "ADMIN") {
       return NextResponse.redirect(new URL("/acesso-negado", req.url));
@@ -40,7 +46,7 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string } } | n
     }
   }
 
-  return NextResponse.next();
+  return pass();
 });
 
 export const config = {

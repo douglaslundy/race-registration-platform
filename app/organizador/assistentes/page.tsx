@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import AssistantManager from "@/components/assistants/AssistantManager";
-import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
+import { requireRole, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Assistentes — Organizador" };
@@ -61,7 +61,8 @@ const ORGANIZER_EVENT_ACTIONS = [
 ];
 
 export default async function OrganizerAssistentesPage() {
-  const session = await requireOrganizer();
+  // Gestão de assistentes é só do titular (ORGANIZER/ADMIN) — nenhuma AssistantPermission cobre isso.
+  const session = await requireRole(["ORGANIZER", "ADMIN"]);
   const scope = await resolveActingScope(session);
   const events = scope.organizerId
     ? await db.event.findMany({

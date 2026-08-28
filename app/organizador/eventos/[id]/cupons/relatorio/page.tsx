@@ -1,4 +1,4 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Relatório de Cupons" };
 export const dynamic = "force-dynamic";
 
 export default async function CuponsRelatorioPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireOrganizer();
   const { id } = await params;
+  const session = await requireAnyPermission(["coupons.report-export"], { eventId: id });
 
   const event = await db.event.findFirst({
     where: { id, organizer: { userId: session.user.id } },

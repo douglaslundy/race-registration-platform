@@ -1,11 +1,11 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
 import ExpirePaymentsPanel from "@/components/payment/ExpirePaymentsPanel";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Pedidos vencidos" };
 
 export default async function OrganizerPedidosVencidosPage() {
-  await requireOrganizer();
+  await requireAnyPermission(["registrations.expire-payments"]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

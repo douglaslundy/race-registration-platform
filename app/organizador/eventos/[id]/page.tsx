@@ -1,4 +1,5 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
+import { EVENT_SCOPED_ACTIONS } from "@/lib/auth/organizer-access";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -39,8 +40,8 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 };
 
 export default async function OrganizerEventPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireOrganizer();
   const { id } = await params;
+  const session = await requireAnyPermission(EVENT_SCOPED_ACTIONS, { eventId: id });
 
   const event = await db.event.findFirst({
     where: { id, organizer: { userId: session.user.id } },
