@@ -1,5 +1,6 @@
 import { getWhatsAppProvider, type WhatsAppProvider } from "@/lib/whatsapp-settings";
 import { buildEvolutionSender } from "./evolution-sender";
+import { buildTwilioSender } from "./twilio-client";
 
 export interface SendContext {
   messageType?: string;
@@ -21,7 +22,6 @@ export interface WhatsAppSender {
 
 export async function getWhatsAppSender(): Promise<WhatsAppSender> {
   const provider = await getWhatsAppProvider();
-  // Task 3 adiciona: if (provider === "twilio") return buildTwilioSender();
-  void provider;
+  if (provider === "twilio") return buildTwilioSender();
   return buildEvolutionSender();
 }
