@@ -4,11 +4,11 @@ import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { slugify } from "@/lib/format";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.duplicate");
+  const { id } = await params;
+  const check = await checkApiPermission("events.duplicate", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const scope = await resolveActingScope(session);
 
   const event = await db.event.findFirst({

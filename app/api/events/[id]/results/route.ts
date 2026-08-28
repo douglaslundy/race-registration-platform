@@ -17,11 +17,11 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("results.import");
+  const { id: eventId } = await params;
+  const check = await checkApiPermission("results.import", { eventId });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id: eventId } = await params;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -86,11 +86,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("results.publish");
+  const { id: eventId } = await params;
+  const check = await checkApiPermission("results.publish", { eventId });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id: eventId } = await params;
   const { importId } = await req.json();
 
   const scope = await resolveActingScope(session);

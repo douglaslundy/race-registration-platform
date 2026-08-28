@@ -11,11 +11,11 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; sponsorId: string }> }) {
-  const check = await checkApiPermission("sponsors.edit");
+  const { id, sponsorId } = await params;
+  const check = await checkApiPermission("sponsors.edit", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, sponsorId } = await params;
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id } })
@@ -34,11 +34,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; sponsorId: string }> }) {
-  const check = await checkApiPermission("sponsors.delete");
+  const { id, sponsorId } = await params;
+  const check = await checkApiPermission("sponsors.delete", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, sponsorId } = await params;
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
     ? await db.event.findUnique({ where: { id } })

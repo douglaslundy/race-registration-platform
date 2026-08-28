@@ -13,11 +13,11 @@ const campaignSchema = z.object({
 });
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("campaigns.view");
+  const { id } = await params;
+  const check = await checkApiPermission("campaigns.view", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const context = await resolveCampaignListContext({ session, eventId: id });
   if (!context.ok) return context.response;
 
@@ -26,11 +26,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("campaigns.create");
+  const { id } = await params;
+  const check = await checkApiPermission("campaigns.create", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const context = await resolveCampaignListContext({ session, eventId: id });
   if (!context.ok) return context.response;
 

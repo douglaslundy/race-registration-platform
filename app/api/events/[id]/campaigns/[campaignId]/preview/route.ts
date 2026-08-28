@@ -9,11 +9,11 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; campaignId: string }> },
 ) {
-  const check = await checkApiPermission("campaigns.view");
+  const { id, campaignId } = await params;
+  const check = await checkApiPermission("campaigns.view", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, campaignId } = await params;
   const context = await resolveCampaignDetailContext({ session, eventId: id, campaignId });
   if (!context.ok) return context.response;
 

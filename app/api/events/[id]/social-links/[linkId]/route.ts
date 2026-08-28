@@ -12,11 +12,11 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; linkId: string }> }) {
-  const check = await checkApiPermission("social-links.edit");
+  const { id, linkId } = await params;
+  const check = await checkApiPermission("social-links.edit", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, linkId } = await params;
   const scope = await resolveActingScope(session);
   const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
@@ -33,11 +33,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; linkId: string }> }) {
-  const check = await checkApiPermission("social-links.delete");
+  const { id, linkId } = await params;
+  const check = await checkApiPermission("social-links.delete", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id, linkId } = await params;
   const scope = await resolveActingScope(session);
   const event = await db.event.findFirst({ where: { id, organizerId: scope.organizerId ?? "__none__" } });
   if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });

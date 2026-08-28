@@ -15,11 +15,11 @@ const batchSchema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("batches.create");
+  const { id: eventId } = await params;
+  const check = await checkApiPermission("batches.create", { eventId });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id: eventId } = await params;
   const body = await req.json();
   const parsed = batchSchema.safeParse(body);
   if (!parsed.success) {

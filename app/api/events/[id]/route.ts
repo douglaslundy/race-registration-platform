@@ -41,11 +41,11 @@ async function getEventAndVerifyOwnerByOrganizerId(eventId: string, organizerId:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.edit");
+  const { id } = await params;
+  const check = await checkApiPermission("events.edit", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
   const body = await req.json();
   const parsed = updateEventSchema.safeParse(body);
   if (!parsed.success) {
@@ -87,11 +87,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const check = await checkApiPermission("events.delete");
+  const { id } = await params;
+  const check = await checkApiPermission("events.delete", { eventId: id });
   if (!check.allowed) return check.response;
   const { session } = check;
 
-  const { id } = await params;
 
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
