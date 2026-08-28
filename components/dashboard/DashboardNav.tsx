@@ -16,11 +16,18 @@ export default function DashboardNav({
   userName,
   userRole,
   appName,
+  staffArea,
 }: {
   userName: string;
   userRole: string;
   appName: string;
+  /** "/admin" ou "/organizador" quando o usuário tem acesso a uma área administrativa (inclui
+   * ASSISTANT, cujo papel não diz sozinho para onde ir). null para atleta puro. */
+  staffArea?: "/admin" | "/organizador" | null;
 }) {
+  const areaHref =
+    staffArea ?? (userRole === "ADMIN" ? "/admin" : userRole === "ORGANIZER" ? "/organizador" : null);
+  const areaLabel = areaHref === "/admin" ? "Admin" : "Organizador";
   const pathname = usePathname();
 
   return (
@@ -50,12 +57,12 @@ export default function DashboardNav({
           </div>
           <div className="flex items-center gap-2 text-sm shrink-0">
             <span className="text-gray-500 dark:text-gray-400 hidden sm:block">{userName}</span>
-            {(userRole === "ADMIN" || userRole === "ORGANIZER") && (
+            {areaHref && (
               <Link
-                href={userRole === "ADMIN" ? "/admin" : "/organizador"}
+                href={areaHref}
                 className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-1 rounded font-medium"
               >
-                {userRole === "ADMIN" ? "Admin" : "Organizador"}
+                {areaLabel}
               </Link>
             )}
             <ThemeToggle />

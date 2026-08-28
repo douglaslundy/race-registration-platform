@@ -167,3 +167,22 @@ export async function requirePermission(actionKey: string) {
 
   redirect("/acesso-negado");
 }
+
+/** Como requirePermission, mas passa se o ASSISTANT tiver QUALQUER uma das actionKeys informadas
+ * (ex: a página de entrega de kits serve tanto pra quem só vê quanto pra quem confirma a entrega). */
+export async function requireAnyPermission(actionKeys: string[]) {
+  const session = await requireAuth();
+
+  if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
+    return session;
+  }
+
+  if (session.user.role === "ASSISTANT") {
+    const granted = await db.assistantPermission.findFirst({
+      where: { userId: session.user.id, actionKey: { in: actionKeys } },
+    });
+    if (granted) return session;
+  }
+
+  redirect("/acesso-negado");
+}

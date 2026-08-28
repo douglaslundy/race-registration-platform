@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAuth, resolveActingScope } from "@/lib/auth/rbac";
 import { getAppName } from "@/lib/settings";
 import {
   getMissingAthleteProfileFields,
@@ -20,10 +20,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
     suggestedFields = await getSuggestedAthleteProfileFields(session.user.id);
   }
 
+  // ASSISTANT não diz sozinho para onde vai — resolve o escopo pra oferecer o link certo da área
+  // administrativa (era invisível pra ele, deixando quem só entrega kit sem caminho até a página).
+  let staffArea: "/admin" | "/organizador" | null = null;
+  if (session.user.role === "ADMIN") staffArea = "/admin";
+  else if (session.user.role === "ORGANIZER") staffArea = "/organizador";
+  else if (session.user.role === "ASSISTANT") {
+    const scope = await resolveActingScope(session);
+    staffArea = scope.actingAsAdmin ? "/admin" : scope.organizerId ? "/organizador" : null;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <PageViewLogger />
-      <DashboardNav userName={session.user.name} userRole={session.user.role} appName={appName} />
+      <DashboardNav userName={session.user.name} userRole={session.user.role} appName={appName} staffArea={staffArea} />
       {suggestedFields.length > 0 && <ProfileCompletionNudge suggestedFields={suggestedFields} />}
       <div className="max-w-5xl mx-auto px-4 py-8">{children}</div>
     </div>

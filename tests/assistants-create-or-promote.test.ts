@@ -93,8 +93,8 @@ describe("createOrPromoteAssistant", () => {
     expect(dbMock.user.update).not.toHaveBeenCalled();
   });
 
-  it("bloqueia quando o e-mail já pertence a um ASSISTANT existente", async () => {
-    dbMock.user.findUnique.mockResolvedValueOnce({ id: "assistant-9", role: "ASSISTANT" });
+  it("bloqueia quando o e-mail já é assistente de OUTRO responsável", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "assistant-9", role: "ASSISTANT", createdByUserId: "org-2" });
 
     const result = await createOrPromoteAssistant({
       email: "ja-e-assistente@example.com",
@@ -105,6 +105,59 @@ describe("createOrPromoteAssistant", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.status).toBe(400);
+    expect(dbMock.user.delete).not.toHaveBeenCalled();
+  });
+
+  it("reenvia o convite e atualiza permissões quando o e-mail já é assistente PENDENTE do MESMO criador", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "assistant-pend",
+      email: "pendente@example.com",
+      role: "ASSISTANT",
+      createdByUserId: "org-1",
+      passwordHash: null,
+    });
+    dbMock.user.update.mockResolvedValueOnce({ id: "assistant-pend" });
+
+    const result = await createOrPromoteAssistant({
+      email: "pendente@example.com",
+      name: "Maria",
+      actionKeys: ["kits.deliver"],
+      createdByUserId: "org-1",
+    });
+
+    expect(dbMock.user.update).toHaveBeenCalledWith({
+      where: { id: "assistant-pend" },
+      data: { name: "Maria", active: true },
+    });
+    expect(dbMock.verificationToken.create).toHaveBeenCalled(); // token novo gerado
+    expect(sendAssistantInviteEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "pendente@example.com" }),
+    );
+    expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
+      data: [{ userId: "assistant-pend", actionKey: "kits.deliver" }],
+    });
+    expect(result).toEqual({ ok: true, userId: "assistant-pend", isNew: false, inviteResent: true });
+  });
+
+  it("NÃO reenvia convite quando o assistente do mesmo criador já concluiu o cadastro", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "assistant-ok",
+      email: "ok@example.com",
+      role: "ASSISTANT",
+      createdByUserId: "org-1",
+      passwordHash: "hash",
+    });
+    dbMock.user.update.mockResolvedValueOnce({ id: "assistant-ok" });
+
+    const result = await createOrPromoteAssistant({
+      email: "ok@example.com",
+      name: "Maria",
+      actionKeys: ["kits.deliver"],
+      createdByUserId: "org-1",
+    });
+
+    expect(sendAssistantInviteEmail).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, userId: "assistant-ok", isNew: false });
   });
 
   it("substitui o conjunto de permissões por completo ao promover um existente", async () => {

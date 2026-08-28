@@ -14,6 +14,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
             <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
             <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
             <Link href="/organizador/relatorio" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Relatório</Link>
+            <Link href="/organizador/entrega-kits" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Entrega de kits</Link>
             <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
             <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Dados</Link>
             <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>
@@ -43,6 +44,7 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
           <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
           <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
           <Link href="/organizador/relatorio" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Relatório</Link>
+          <Link href="/organizador/entrega-kits" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Entrega de kits</Link>
           <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
           <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Dados</Link>
           <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>

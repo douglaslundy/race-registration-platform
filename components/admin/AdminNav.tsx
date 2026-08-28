@@ -11,6 +11,7 @@ export default function AdminNav() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <Link href="/admin" className="font-bold text-yellow-400">Dashboard</Link>
           <Link href="/admin/eventos" className="hover:text-gray-300">Eventos</Link>
+          <Link href="/admin/entrega-kits" className="hover:text-gray-300">Entrega de kits</Link>
           <Link href="/admin/usuarios" className="hover:text-gray-300">Usuários</Link>
           <Link href="/admin/pagamentos" className="hover:text-gray-300">Pagamentos</Link>
           <Link href="/admin/pedidos-vencidos" className="hover:text-gray-300">Pedidos vencidos</Link>

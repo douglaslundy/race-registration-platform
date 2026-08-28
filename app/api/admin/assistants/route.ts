@@ -47,6 +47,7 @@ export async function GET() {
       email: true,
       active: true,
       createdAt: true,
+      passwordHash: true,
       assistantPermissions: { select: { actionKey: true } },
     },
   });
@@ -57,6 +58,7 @@ export async function GET() {
     email: u.email,
     active: u.active,
     createdAt: u.createdAt,
+    signupPending: u.passwordHash === null,
     permissions: u.assistantPermissions.map((p) => p.actionKey),
   }));
 
