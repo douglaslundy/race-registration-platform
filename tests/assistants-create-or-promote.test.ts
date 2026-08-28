@@ -44,8 +44,8 @@ describe("createOrPromoteAssistant", () => {
     });
     expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
       data: [
-        { userId: "new-user-1", actionKey: "events.view" },
-        { userId: "new-user-1", actionKey: "events.edit" },
+        { userId: "new-user-1", actionKey: "events.view", eventId: null },
+        { userId: "new-user-1", actionKey: "events.edit", eventId: null },
       ],
     });
     expect(dbMock.verificationToken.create).toHaveBeenCalled();
@@ -134,7 +134,7 @@ describe("createOrPromoteAssistant", () => {
       expect.objectContaining({ to: "pendente@example.com" }),
     );
     expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
-      data: [{ userId: "assistant-pend", actionKey: "kits.deliver" }],
+      data: [{ userId: "assistant-pend", actionKey: "kits.deliver", eventId: null }],
     });
     expect(result).toEqual({ ok: true, userId: "assistant-pend", isNew: false, inviteResent: true });
   });
@@ -160,6 +160,43 @@ describe("createOrPromoteAssistant", () => {
     expect(result).toEqual({ ok: true, userId: "assistant-ok", isNew: false });
   });
 
+  it("grava as permissões restritas ao eventId informado (novo usuário)", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+    dbMock.user.create.mockResolvedValueOnce({ id: "new-2", email: "ana@example.com", name: "Ana" });
+
+    await createOrPromoteAssistant({
+      email: "ana@example.com",
+      name: "Ana",
+      actionKeys: ["kits.view", "kits.deliver"],
+      createdByUserId: "org-1",
+      eventId: "event-42",
+    });
+
+    expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
+      data: [
+        { userId: "new-2", actionKey: "kits.view", eventId: "event-42" },
+        { userId: "new-2", actionKey: "kits.deliver", eventId: "event-42" },
+      ],
+    });
+  });
+
+  it("promove ATHLETE existente com escopo de evento", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "athlete-7", email: "p@example.com", role: "ATHLETE" });
+    dbMock.user.update.mockResolvedValueOnce({ id: "athlete-7" });
+
+    await createOrPromoteAssistant({
+      email: "p@example.com",
+      name: "Paulo",
+      actionKeys: ["kits.deliver"],
+      createdByUserId: "org-1",
+      eventId: "event-9",
+    });
+
+    expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
+      data: [{ userId: "athlete-7", actionKey: "kits.deliver", eventId: "event-9" }],
+    });
+  });
+
   it("substitui o conjunto de permissões por completo ao promover um existente", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce({ id: "athlete-1", email: "joao@example.com", role: "ATHLETE" });
     dbMock.user.update.mockResolvedValueOnce({ id: "athlete-1" });
@@ -173,7 +210,7 @@ describe("createOrPromoteAssistant", () => {
 
     expect(dbMock.assistantPermission.deleteMany).toHaveBeenCalledWith({ where: { userId: "athlete-1" } });
     expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
-      data: [{ userId: "athlete-1", actionKey: "events.view" }],
+      data: [{ userId: "athlete-1", actionKey: "events.view", eventId: null }],
     });
   });
 });
