@@ -68,7 +68,7 @@ export interface PermissionOptions {
 
 /** Resolve se um ASSISTANT tem QUALQUER uma das actionKeys, respeitando o escopo de evento.
  * Sem `eventId`: só linhas com `eventId = null`. Com `eventId`: linhas globais OU do evento. */
-async function assistantHasAnyPermission(
+export async function assistantHasAnyPermission(
   userId: string,
   actionKeys: string[],
   eventId?: string,

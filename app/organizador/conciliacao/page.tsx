@@ -1,11 +1,11 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
 import ReconciliationPanel from "@/components/payment/ReconciliationPanel";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Conciliação" };
 
 export default async function OrganizerConciliacaoPage() {
-  await requireOrganizer();
+  await requireAnyPermission(["payments.reconciliation"]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

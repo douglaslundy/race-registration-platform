@@ -3,26 +3,29 @@
 import Link from "next/link";
 import { signOutAndClearNudge } from "@/components/dashboard/ProfileCompletionNudge";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import type { OrganizerNavItem } from "@/lib/auth/organizer-access";
 
-export default function OrganizerNav({ userName, appName }: { userName: string; appName: string }) {
+const LINK_CLS =
+  "text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400";
+
+export default function OrganizerNav({
+  userName,
+  appName,
+  items,
+}: {
+  userName: string;
+  appName: string;
+  items: OrganizerNavItem[];
+}) {
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 print:hidden">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="font-bold text-primary-700 dark:text-primary-400">{appName}</Link>
           <div className="hidden md:flex items-center gap-4 text-sm">
-            <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
-            <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
-            <Link href="/organizador/relatorio" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Relatório</Link>
-            <Link href="/organizador/entrega-kits" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Entrega de kits</Link>
-            <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
-            <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Dados</Link>
-            <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>
-            <Link href="/organizador/pedidos-vencidos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Pedidos vencidos</Link>
-            <Link href="/organizador/carrinhos-abandonados" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Carrinhos abandonados</Link>
-            <Link href="/organizador/mensagens" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Mensagens</Link>
-            <Link href="/organizador/reembolsos-pendentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Cancelamentos pendentes</Link>
-            <Link href="/organizador/assistentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Assistentes</Link>
+            {items.map((item) => (
+              <Link key={item.href} href={item.href} className={LINK_CLS}>{item.label}</Link>
+            ))}
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm">
@@ -41,19 +44,10 @@ export default function OrganizerNav({ userName, appName }: { userName: string; 
       </div>
       <div className="md:hidden border-t border-gray-200 dark:border-gray-700 px-4 py-3">
         <div className="max-w-7xl mx-auto flex flex-wrap gap-4 text-sm">
-          <Link href="/organizador" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Dashboard</Link>
-          <Link href="/organizador#meus-eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Eventos</Link>
-          <Link href="/organizador/relatorio" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Relatório</Link>
-          <Link href="/organizador/entrega-kits" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Entrega de kits</Link>
-          <Link href="/organizador/eventos/novo" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Novo Evento</Link>
-          <Link href="/organizador/perfil" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Meus Dados</Link>
-          <Link href="/organizador/conciliacao" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Conciliação</Link>
-          <Link href="/organizador/pedidos-vencidos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Pedidos vencidos</Link>
-          <Link href="/organizador/carrinhos-abandonados" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Carrinhos abandonados</Link>
-          <Link href="/organizador/mensagens" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Mensagens</Link>
-          <Link href="/organizador/reembolsos-pendentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Cancelamentos pendentes</Link>
-          <Link href="/organizador/assistentes" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Assistentes</Link>
-          <Link href="/eventos" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">Área do atleta</Link>
+          {items.map((item) => (
+            <Link key={item.href} href={item.href} className={LINK_CLS}>{item.label}</Link>
+          ))}
+          <Link href="/eventos" className={LINK_CLS}>Área do atleta</Link>
         </div>
       </div>
     </nav>

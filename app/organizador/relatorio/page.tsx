@@ -1,4 +1,4 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { parseDateInput } from "@/lib/admin/audit";
@@ -29,7 +29,7 @@ export default async function OrganizerRelatorioPage({
 }: {
   searchParams: Promise<{ de?: string; ate?: string; eventId?: string }>;
 }) {
-  const session = await requireOrganizer();
+  const session = await requireAnyPermission(["reports.export"]);
   const { de, ate, eventId } = await searchParams;
 
   const organizer = await db.organizerProfile.findUnique({ where: { userId: session.user.id } });

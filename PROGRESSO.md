@@ -1,5 +1,33 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — Assistente de organizador vê só as páginas da permissão dele — DEPLOYADA)
+
+Continuação da correção do assistente. Depois do deploy anterior, o assistente entrava mas via
+TODAS as opções da área do organizador e conseguia abrir páginas fora da permissão dele (relatório
+financeiro, lista de inscritos com PII, receita por evento — várias lidas do banco direto, não via API).
+
+**Causa:** o layout `/organizador` só chamava `requireOrganizer()`, que confirma que a sessão é
+staff de *algum* organizador — não *qual* permissão o ASSISTANT tem.
+
+**Feito** (`main` `9fe0533`, code-only, deployada):
+- `lib/auth/organizer-access.ts` (novo): mapa rota→permissão de toda a área + filtro da nav.
+  `resolveOrganizerAccess()` / `organizerNavItems()`. Titular/assistente-de-admin passam sempre;
+  assistente-de-organizador só com a `AssistantPermission` da rota (global ou do evento). Rota
+  desconhecida ou header ausente → nega (fail-safe).
+- `proxy.ts`: injeta `x-pathname` no request (App Router não dá a URL pro Server Component).
+- `app/organizador/layout.tsx`: aplica o guard + passa só os itens de nav permitidos.
+- `OrganizerNav.tsx`: renderiza a partir da lista filtrada.
+- `app/organizador/page.tsx`: assistente é redirecionado pro 1º item que pode acessar.
+- Guard por página (layout não re-executa em nav client-side entre irmãs): 12 páginas server com
+  `requireAnyPermission`; `assistentes`/`perfil` viram `requireRole(["ORGANIZER","ADMIN"])`; 8 páginas
+  client de config de evento viraram wrapper server + `<X>Client.tsx`.
+- `lib/auth/rbac.ts`: exporta `assistantHasAnyPermission`.
+- `tests/organizer-access.test.ts`: 12 casos. Suíte 2008/2008, tsc + build limpos.
+
+Deploy VPS: `git pull` → `docker build` → restart. **SEM `db push`** (nenhuma mudança de schema).
+
+---
+
 ## Última atualização (2026-08-28 — Sub-projeto A: Twilio WhatsApp provider — implementação CONCLUÍDA, aguardando review whole-branch + deploy)
 
 Branch `feat/twilio-whatsapp-provider`. Execução subagent-driven (9 tasks + verificação). Adiciona o

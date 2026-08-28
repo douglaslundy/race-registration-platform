@@ -1,4 +1,4 @@
-import { requireOrganizer } from "@/lib/auth/rbac";
+import { requireAnyPermission } from "@/lib/auth/rbac";
 import { listPendingCancellations, listPendingRefunds } from "@/lib/registrations/pending-queue";
 import PendingCancellationsTable from "@/components/registrations/PendingCancellationsTable";
 import PendingRefundsTable from "@/components/payment/PendingRefundsTable";
@@ -8,7 +8,12 @@ export const metadata: Metadata = { title: "Cancelamentos e reembolsos pendentes
 export const dynamic = "force-dynamic";
 
 export default async function OrganizerReembolsosPendentesPage() {
-  const session = await requireOrganizer();
+  const session = await requireAnyPermission([
+    "registrations.cancellation-decision",
+    "registrations.manual-confirm",
+    "payments.refund",
+    "payments.manual-resolve",
+  ]);
   const [cancellations, refunds] = await Promise.all([
     listPendingCancellations(session.user.id),
     listPendingRefunds(session.user.id),
