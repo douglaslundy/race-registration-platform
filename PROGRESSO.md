@@ -34,9 +34,23 @@ guards contêm tudo que é protegido). +1 query no `jwt` por request (ok nessa e
 
 ---
 
-## Última atualização (2026-08-28 — Twilio WhatsApp provider: fix-wave da review whole-branch — CONCLUÍDA, aguardando deploy)
+## Última atualização (2026-08-28 — Twilio WhatsApp provider: MERGEADO EM MAIN, **não deployado**)
 
-Branch `feat/twilio-whatsapp-provider`. Review whole-branch voltou CHANGES NEEDED; corrigido tudo:
+Sub-projeto A completo. `feat/twilio-whatsapp-provider` → `main` (`7c1372b`), suíte 2098/2098.
+**Código em main mas NÃO em produção** (container VPS na imagem `dac05a5`, sem Twilio). Default do
+provider segue `evolution` — o código Twilio fica dormente até o admin trocar `whatsapp_provider`.
+
+### Pra ativar o Twilio (usuário, fora do código):
+1. **Validar** que o template "utilitário" aprovado na Meta aceita o corpo REAL (multi-linha) no
+   parâmetro `{{1}}` — a Meta às vezes rejeita `\n` em parâmetro. Se rejeitar, `TwilioSender.sendText`
+   precisa colapsar quebras de linha (degrada a formatação de toda mensagem — decisão de produto).
+2. Criar o template, pegar o Content SID.
+3. `/admin/whatsapp`: `twilio_account_sid` / `twilio_auth_token` / `twilio_from_number` /
+   `twilio_content_sid` + webhook de status → `<APP_URL>/api/webhooks/whatsapp/twilio`.
+4. Trocar `whatsapp_provider` → `twilio`.
+5. O deploy leva o Twilio junto no próximo `git pull`+build da main (code-only + dep `twilio`, sem `db push`).
+
+### Review whole-branch (CHANGES NEEDED) — tudo corrigido na fix-wave:
 
 - **C1**: `WhatsAppSender.isReady(): Promise<boolean>` (nova, opcional na intenção mas implementada
   nos 2 senders). Evolution = `isConfigured() && getConnectionState()==="open"`; Twilio = `isConfigured()`.
@@ -45,8 +59,9 @@ Branch `feat/twilio-whatsapp-provider`. Review whole-branch voltou CHANGES NEEDE
   usando `getConnectionState` direto (exceção documentada).
 - **I2**: `TwilioSender` constrói o client Twilio lazy dentro de `sendText/sendMedia` (try/catch →
   `classifyTwilioError`). `isTwilioConfigured` agora exige `accountSid.startsWith("AC")`.
-- **I3**: `app/api/admin/settings/route.ts` — `isSecretKey` cobre `*_sid`/`*_id`; catch 500 não
-  devolve/loga `err.message` (só `err.name` + string fixa).
+- **I3**: `app/api/admin/settings/route.ts` — `isSecretKey` cobre `*_sid` (NÃO `*_id` genérico —
+  pegaria IDs públicos adsense/analytics, commit `9410c59`); catch 500 não devolve/loga `err.message`
+  (só `err.name` + string fixa).
 - **I4**: `classifyTwilioError` faz `console.error` com code/status/message (console só).
 - **M6**: `sendWhatsAppDocument` captura `providerMessageId` do `sendMedia` e loga.
 - **M7**: cron `send-campaign-messages` usa `safeErrorMessage` (exportado de `lib/whatsapp.ts`) no
