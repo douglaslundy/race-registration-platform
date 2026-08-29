@@ -36,12 +36,16 @@ export async function POST(req: NextRequest) {
   if (sid && mapped) {
     const errorMessage =
       (mapped === "FAILED" && params.ErrorCode) ? `Twilio ${params.ErrorCode}` : undefined;
-    if (errorMessage) {
+    // `errorMessage` undefined é equivalente a omitir o 3º argumento nos dois updaters, então uma
+    // única chamada cobre os dois casos (com e sem ErrorCode).
+    try {
       await updateMessageLogStatusByProviderMessageId(sid, mapped, errorMessage);
       await updateCampaignRecipientStatusByProviderMessageId(sid, mapped, errorMessage);
-    } else {
-      await updateMessageLogStatusByProviderMessageId(sid, mapped);
-      await updateCampaignRecipientStatusByProviderMessageId(sid, mapped);
+    } catch (err) {
+      // Um erro de banco não pode virar 5xx: o Twilio trata resposta não-2xx como callback
+      // falhado e reenvia o mesmo evento em loop. Loga e segue pro 200.
+      const name = err instanceof Error ? err.name : "UnknownError";
+      console.error("[twilio-webhook] falha ao atualizar status sid=%s status=%s err=%s", sid, mapped, name);
     }
   }
 

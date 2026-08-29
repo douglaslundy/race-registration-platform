@@ -70,13 +70,13 @@ describe("POST /api/webhooks/whatsapp/twilio", () => {
     validateRequest.mockReturnValue(true);
     const res = await POST(formReq({ MessageSid: "SM1", MessageStatus: "delivered" }));
     expect(res.status).toBe(200);
-    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "DELIVERED");
+    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "DELIVERED", undefined);
   });
 
   it("read → READ", async () => {
     validateRequest.mockReturnValue(true);
     await POST(formReq({ MessageSid: "SM1", MessageStatus: "read" }));
-    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "READ");
+    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "READ", undefined);
   });
 
   it("failed com ErrorCode → FAILED + 'Twilio <code>' nos dois updaters", async () => {
@@ -86,11 +86,19 @@ describe("POST /api/webhooks/whatsapp/twilio", () => {
     expect(updateCampaignRecipientStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "FAILED", "Twilio 63016");
   });
 
-  it("undelivered sem ErrorCode → FAILED nos dois updaters, sem 3º arg", async () => {
+  it("undelivered sem ErrorCode → FAILED nos dois updaters (3º arg undefined, equivalente a omitir)", async () => {
     validateRequest.mockReturnValue(true);
     await POST(formReq({ MessageSid: "SM1", MessageStatus: "undelivered" }));
-    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "FAILED");
-    expect(updateCampaignRecipientStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "FAILED");
+    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "FAILED", undefined);
+    expect(updateCampaignRecipientStatusByProviderMessageId).toHaveBeenCalledWith("SM1", "FAILED", undefined);
+  });
+
+  it("erro de banco no updater → ainda responde 200 (Twilio não deve reenviar)", async () => {
+    validateRequest.mockReturnValue(true);
+    vi.mocked(updateMessageLogStatusByProviderMessageId).mockRejectedValueOnce(new Error("db down"));
+    const res = await POST(formReq({ MessageSid: "SM1", MessageStatus: "delivered" }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
   });
 
   it("sent/queued → no-op, 200", async () => {
