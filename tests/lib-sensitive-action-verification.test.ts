@@ -91,6 +91,59 @@ describe("requestSensitiveActionCode", () => {
     expect(result.ok).toBe(false);
     expect(dbMock.sensitiveActionCode.create).not.toHaveBeenCalled();
   });
+
+  it("aceita PAYMENT_ACCOUNT_CHANGE e BACKUP_IMPORT com label pt-BR", async () => {
+    const CODE = "123456";
+    const crypto = await import("crypto");
+    const codeHash = crypto.createHash("sha256").update(CODE).digest("hex");
+
+    // Mock responses for request
+    dbMock.sensitiveActionCode.create.mockResolvedValue({ id: "code-1" });
+
+    // Request code for PAYMENT_ACCOUNT_CHANGE
+    const requestResult = await requestSensitiveActionCode({
+      userId: "user-1",
+      actionType: "PAYMENT_ACCOUNT_CHANGE",
+      targetId: "acc_1",
+    });
+
+    expect(requestResult.ok).toBe(true);
+    expect(requestResult).toEqual({ ok: true, verificationId: "code-1" });
+
+    // Assert email was sent with correct actionLabel
+    expect(sendSensitiveActionCodeEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "admin@example.com",
+        name: "Admin",
+        actionLabel: "Confirmação de alteração de conta de pagamento",
+      }),
+    );
+
+    // Setup for verify
+    const validRecord = {
+      id: "code-1",
+      userId: "user-1",
+      actionType: "PAYMENT_ACCOUNT_CHANGE",
+      targetId: "acc_1",
+      codeHash,
+      attempts: 0,
+      consumedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+    dbMock.sensitiveActionCode.findUnique.mockResolvedValue(validRecord);
+    dbMock.sensitiveActionCode.update.mockResolvedValue({ ...validRecord, consumedAt: new Date() });
+
+    // Verify code
+    const verifyResult = await verifySensitiveActionCode({
+      verificationId: "code-1",
+      userId: "user-1",
+      actionType: "PAYMENT_ACCOUNT_CHANGE",
+      targetId: "acc_1",
+      code: CODE,
+    });
+
+    expect(verifyResult.ok).toBe(true);
+  });
 });
 
 describe("verifySensitiveActionCode", () => {
