@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 export async function requireAuth() {
   const session = await auth();
   if (!session?.user) redirect("/auth/login");
+  // Conta bloqueada com sessão viva (ver proxy.ts) — defesa dos Server Components.
+  if (session.user.active === false) redirect("/acesso-negado");
   return session;
 }
 
@@ -101,6 +103,9 @@ export async function checkApiPermission(
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
   }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
+  }
 
   if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
     return { allowed: true, session };
@@ -126,6 +131,9 @@ export async function checkAnyApiPermission(
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
   }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
+  }
 
   if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
     return { allowed: true, session };
@@ -150,6 +158,9 @@ export async function checkAdminOnlyApiPermission(actionKey: string): Promise<Pe
   const session = await auth();
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
   }
 
   if (session.user.role === "ADMIN") {
@@ -182,6 +193,9 @@ export async function checkAdvertiserApiPermission(): Promise<AdvertiserPermissi
   const session = await auth();
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
   }
   if (session.user.role !== "ADVERTISER") {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };

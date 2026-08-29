@@ -8,7 +8,7 @@ const schema = z.object({ active: z.boolean() });
 
 // Admin é global: permissões de assistente-de-admin nunca são escopadas por evento.
 const putSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
+  name: z.string().trim().min(1, "Nome é obrigatório").max(120),
   actionKeys: z.array(z.string()),
 });
 

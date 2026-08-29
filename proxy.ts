@@ -28,9 +28,15 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string; active
 
     // Usuário bloqueado (ou excluído) que ainda carrega uma sessão viva: o `jwt` recarrega
     // `active` do banco a cada request, então isto passa a valer no próximo clique — sem
-    // depender da expiração do token.
-    if (session.user.active === false && isProtected) {
-      return NextResponse.redirect(new URL("/acesso-negado", req.url));
+    // depender da expiração do token. Barra tanto páginas protegidas quanto QUALQUER rota de API
+    // autenticada (webhooks não têm sessão, então não caem aqui).
+    if (session.user.active === false) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Conta bloqueada" }, { status: 403 });
+      }
+      if (isProtected) {
+        return NextResponse.redirect(new URL("/acesso-negado", req.url));
+      }
     }
 
     // ASSISTANT nunca é barrado aqui: o papel sozinho não diz a que áreas ele tem acesso (isso

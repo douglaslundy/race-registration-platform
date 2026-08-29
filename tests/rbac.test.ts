@@ -154,6 +154,14 @@ describe("checkApiPermission", () => {
     if (!result.allowed) expect(result.response.status).toBe(403);
   });
 
+  it("conta bloqueada (active:false) é barrada com 403 mesmo com o papel certo, sem consultar permissão", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER", active: false } } as any);
+    const result = await checkApiPermission("events.view");
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(403);
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
+  });
+
   it("ATHLETE é barrado com 403, sem consultar AssistantPermission", async () => {
     authMock.mockResolvedValue({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
     const result = await checkApiPermission("events.approve");

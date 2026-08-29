@@ -8,7 +8,7 @@ import { resolveActingScope } from "@/lib/auth/rbac";
 const schema = z.object({ active: z.boolean() });
 
 const putSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
+  name: z.string().trim().min(1, "Nome é obrigatório").max(120),
   scopes: z
     .array(
       z.object({
