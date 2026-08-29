@@ -11,7 +11,7 @@ function truncateForSubject(text: string): string {
  * (`WhatsAppSendError`) grava só `kind` + rótulo amigável, nunca o `providerCode`, token, SID
  * ou corpo cru da resposta. Para qualquer outro erro, trunca a mensagem.
  */
-function safeErrorMessage(err: unknown): string {
+export function safeErrorMessage(err: unknown): string {
   if (err instanceof WhatsAppSendError) return `${err.kind}: ${whatsAppErrorLabel(err.kind)}`;
   const m = err instanceof Error ? err.message : String(err);
   return m.slice(0, 200);
@@ -130,7 +130,7 @@ export async function sendWhatsAppDocument(
       : {};
 
   try {
-    await sender.sendMedia(
+    const { providerMessageId } = await sender.sendMedia(
       normalizedPhone,
       base64Pdf,
       filename,
@@ -144,6 +144,9 @@ export async function sendWhatsAppDocument(
       subject: caption,
       recipientAddress: normalizedPhone,
       status: "SENT",
+      // Evolution devolve null aqui (o spread condicional omite o campo); Twilio devolve o SID da
+      // mensagem, necessário pra correlacionar o webhook de status de entrega.
+      ...(providerMessageId ? { providerMessageId } : {}),
       ...relatedEntity,
     });
   } catch (err) {

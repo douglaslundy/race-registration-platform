@@ -290,6 +290,26 @@ describe("sendWhatsAppDocument", () => {
     });
   });
 
+  it("M6: captura o providerMessageId devolvido por sendMedia e grava no MessageLog (Twilio)", async () => {
+    const sender = fakeSender({
+      sendMedia: vi.fn().mockResolvedValue({ providerMessageId: "SM-doc-1" }),
+    });
+    senderMock.mockResolvedValue(sender as any);
+
+    await sendWhatsAppDocument("5511999999999", "base64", "kit.png", "Seu QR", { mediatype: "image" });
+
+    expect(lastLoggedData()).toMatchObject({ status: "SENT", providerMessageId: "SM-doc-1" });
+  });
+
+  it("M6: sendMedia devolvendo providerMessageId null (Evolution) → campo omitido no log", async () => {
+    const sender = fakeSender({ sendMedia: vi.fn().mockResolvedValue({ providerMessageId: null }) });
+    senderMock.mockResolvedValue(sender as any);
+
+    await sendWhatsAppDocument("5511999999999", "base64", "rel.pdf", "Relatório");
+
+    expect(lastLoggedData().providerMessageId).toBeNull();
+  });
+
   it("grava messageType/relatedEntityType/relatedEntityId no log quando informados via options", async () => {
     const sender = fakeSender();
     senderMock.mockResolvedValue(sender as any);

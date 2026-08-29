@@ -6,6 +6,7 @@ import {
   buildPreferencesFooterText,
   normalizePhoneForWhatsApp,
   isValidWhatsAppPhone,
+  safeErrorMessage,
 } from "@/lib/whatsapp";
 import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 import { renderTemplate } from "@/lib/templates/render";
@@ -185,7 +186,9 @@ export async function POST(req: NextRequest) {
       data: {
         status: failed ? "FAILED" : "PENDING",
         attempts,
-        failureReason: err instanceof Error ? err.message : String(err),
+        // safeErrorMessage: pra um WhatsAppSendError grava "KIND: rótulo" (mesma string que o
+        // MessageLog.errorMessage recebe em lib/whatsapp.ts), nunca o providerCode/token/corpo cru.
+        failureReason: safeErrorMessage(err),
       },
     });
     // Nota: recordCampaignSendFailure() já foi chamado acima, dentro do try interno, se o erro
