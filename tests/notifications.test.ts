@@ -13,12 +13,8 @@ vi.mock("@/lib/whatsapp", () => ({
   sendWhatsAppMessage: vi.fn(),
   sendWhatsAppDocument: vi.fn(),
 }));
-vi.mock("@/lib/whatsapp-settings", () => ({
-  getWhatsAppConfig: vi.fn(),
-  isWhatsAppConfigured: vi.fn(),
-}));
-vi.mock("@/lib/whatsapp/evolution-client", () => ({
-  getConnectionState: vi.fn(),
+vi.mock("@/lib/whatsapp/sender", () => ({
+  getWhatsAppSender: vi.fn(),
 }));
 vi.mock("@/lib/proxy-athlete", () => ({
   isPlaceholderEmail: vi.fn(),
@@ -37,14 +33,20 @@ import { notifyOrderConfirmed } from "@/lib/notifications";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendRegistrationConfirmationEmail } from "@/lib/email";
 import { sendWhatsAppMessage, sendWhatsAppDocument } from "@/lib/whatsapp";
-import { getWhatsAppConfig, isWhatsAppConfigured } from "@/lib/whatsapp-settings";
-import { getConnectionState } from "@/lib/whatsapp/evolution-client";
+import { getWhatsAppSender } from "@/lib/whatsapp/sender";
 import { isPlaceholderEmail } from "@/lib/proxy-athlete";
 import { getSocialPromoText } from "@/lib/event-social-links";
 import { getSponsorPromoText } from "@/lib/event-sponsors";
 import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 
 const dbMock = db as any;
+
+// notifications.ts agora consulta o WhatsAppSender ativo (sender.isReady()) em vez de checar o
+// estado da conexao Evolution direto. Estes helpers substituem os mocks antigos do provider.
+const senderIsReady = vi.fn();
+function mockWhatsAppReady(ready: boolean) {
+  senderIsReady.mockResolvedValue(ready);
+}
 
 const orderFixture = {
   buyerUserId: "user-1",
@@ -69,8 +71,8 @@ describe("notifyOrderConfirmed", () => {
     vi.clearAllMocks();
     vi.mocked(isSmtpReady).mockReturnValue(true);
     vi.mocked(getSmtpConfig).mockResolvedValue({} as any);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
-    vi.mocked(getWhatsAppConfig).mockResolvedValue({ apiUrl: "", apiKey: "", instanceName: "" });
+    senderIsReady.mockResolvedValue(false);
+    vi.mocked(getWhatsAppSender).mockResolvedValue({ isReady: senderIsReady } as any);
     vi.mocked(isPlaceholderEmail).mockReturnValue(false);
   });
 
@@ -138,8 +140,7 @@ describe("notifyOrderConfirmed", () => {
 
   it("envia WhatsApp quando há conexão ativa e a inscrição tem telefone", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -173,8 +174,7 @@ describe("notifyOrderConfirmed", () => {
         },
       ],
     });
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -189,18 +189,15 @@ describe("notifyOrderConfirmed", () => {
 
   it("não envia WhatsApp quando não está configurado", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
 
     await notifyOrderConfirmed("order-1");
 
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
-    expect(getConnectionState).not.toHaveBeenCalled();
   });
 
   it("não envia WhatsApp quando está configurado mas a conexão não está aberta, e não reivindica a chave de dedupe", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("connecting");
+    mockWhatsAppReady(false);
 
     await notifyOrderConfirmed("order-1");
 
@@ -218,8 +215,7 @@ describe("notifyOrderConfirmed", () => {
       ...orderFixture,
       registrations: [{ ...orderFixture.registrations[0], athlete: { athleteProfile: { phone: null } } }],
     });
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -229,8 +225,7 @@ describe("notifyOrderConfirmed", () => {
   it("uma falha no envio do e-mail não impede o envio do WhatsApp", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
     vi.mocked(sendRegistrationConfirmationEmail).mockRejectedValueOnce(new Error("SMTP down"));
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -239,8 +234,7 @@ describe("notifyOrderConfirmed", () => {
 
   it("uma falha no envio do WhatsApp não impede o envio do e-mail", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
     vi.mocked(sendWhatsAppMessage).mockRejectedValueOnce(new Error("WhatsApp API down"));
 
     await expect(notifyOrderConfirmed("order-1")).resolves.toBeUndefined();
@@ -264,8 +258,7 @@ describe("notifyOrderConfirmed", () => {
 
   it("inclui o texto de patrocínio na mensagem de WhatsApp quando o template usa {{patrocinio}}", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
     vi.mocked(getSponsorPromoText).mockResolvedValueOnce("Confira nosso patrocinador ACME! https://acme.com");
     dbMock.messageTemplate.findFirst
       .mockResolvedValueOnce(null) // EVENT-scoped lookup: none
@@ -298,8 +291,7 @@ describe("notifyOrderConfirmed", () => {
 
   it("procuração: manda e-mail + WhatsApp pro comprador com texto avisando quem ele inscreveu", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValue("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -316,8 +308,7 @@ describe("notifyOrderConfirmed", () => {
 
   it("procuração: manda e-mail + WhatsApp pro atleta com texto avisando quem criou a inscrição", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValue("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -342,7 +333,6 @@ describe("notifyOrderConfirmed", () => {
   it("não chama getSocialPromoText quando nada é enviado (SMTP indisponível e WhatsApp não configurado)", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
     vi.mocked(isSmtpReady).mockReturnValue(false);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(false);
 
     await notifyOrderConfirmed("order-1");
 
@@ -353,8 +343,7 @@ describe("notifyOrderConfirmed", () => {
 
   it("procuração: não manda e-mail pro atleta quando o e-mail é sintético, mas manda WhatsApp normalmente", async () => {
     dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValue("open");
+    mockWhatsAppReady(true);
     vi.mocked(isPlaceholderEmail).mockReturnValue(true);
 
     await notifyOrderConfirmed("order-1");
@@ -448,8 +437,7 @@ describe("notifyOrderConfirmed", () => {
 
     it("comprador confirmando a própria inscrição (ORDER_CONFIRMED/BUYER)", async () => {
       dbMock.order.findUnique.mockResolvedValueOnce(orderFixture);
-      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-      vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+      mockWhatsAppReady(true);
 
       await notifyOrderConfirmed("order-1");
 
@@ -463,8 +451,7 @@ describe("notifyOrderConfirmed", () => {
 
     it("comprador que inscreveu outra pessoa por procuração (ORDER_CONFIRMED_PROXY_BUYER/BUYER)", async () => {
       dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
-      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-      vi.mocked(getConnectionState).mockResolvedValue("open");
+      mockWhatsAppReady(true);
 
       await notifyOrderConfirmed("order-1");
 
@@ -478,8 +465,7 @@ describe("notifyOrderConfirmed", () => {
 
     it("atleta convidado por procuração (ORDER_CONFIRMED_PROXY_ATHLETE/ATHLETE)", async () => {
       dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
-      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-      vi.mocked(getConnectionState).mockResolvedValue("open");
+      mockWhatsAppReady(true);
 
       await notifyOrderConfirmed("order-1");
 
@@ -493,8 +479,7 @@ describe("notifyOrderConfirmed", () => {
 
     it("preenche nome_atleta quando um template customizado da procuração usa essa variável (não fica em branco)", async () => {
       dbMock.order.findUnique.mockResolvedValueOnce(proxyOrderFixture);
-      vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-      vi.mocked(getConnectionState).mockResolvedValue("open");
+      mockWhatsAppReady(true);
       dbMock.messageTemplate.findFirst.mockImplementation(async ({ where }: any) =>
         where.alertKey === "ORDER_CONFIRMED_PROXY_ATHLETE"
           ? { subject: null, body: "Oi {{nome_atleta}}, {{nome_comprador}} te inscreveu!" }
@@ -533,8 +518,7 @@ describe("notifyOrderConfirmed", () => {
   it("uma falha no envio do documento do QR por WhatsApp não impede nem desfaz o envio da mensagem de texto", async () => {
     dbMock.order.findUnique.mockResolvedValue(orderFixture);
     mockPerKeyAlertLog();
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValue("open");
+    mockWhatsAppReady(true);
     vi.mocked(sendWhatsAppDocument).mockRejectedValueOnce(new Error("document send failed"));
 
     await expect(notifyOrderConfirmed("order-1")).resolves.toBeUndefined();
@@ -558,8 +542,7 @@ describe("notifyOrderConfirmed", () => {
       ...orderFixture,
       buyer: { ...orderFixture.buyer, receiveEventMessages: false },
     });
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValueOnce("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 
@@ -583,8 +566,7 @@ describe("notifyOrderConfirmed", () => {
         },
       ],
     });
-    vi.mocked(isWhatsAppConfigured).mockReturnValue(true);
-    vi.mocked(getConnectionState).mockResolvedValue("open");
+    mockWhatsAppReady(true);
 
     await notifyOrderConfirmed("order-1");
 

@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const messagesCreate = vi.fn();
+// Espelha a validação eager do SDK real: `twilio(sid, ...)` lança um Error cru se o sid não
+// começar com "AC".
 vi.mock("twilio", () => ({
-  default: vi.fn(() => ({ messages: { create: messagesCreate } })),
+  default: vi.fn((sid: string) => {
+    if (!String(sid).startsWith("AC")) {
+      throw new Error(`accountSid must start with AC (received "${sid}")`);
+    }
+    return { messages: { create: messagesCreate } };
+  }),
 }));
 vi.mock("@/lib/whatsapp-settings", async (orig) => {
   const actual = await orig<typeof import("@/lib/whatsapp-settings")>();
@@ -55,6 +62,16 @@ describe("TwilioSender.sendText", () => {
   it("isConfigured false com campo faltando", () => {
     expect(new TwilioSender({ ...CFG, contentSid: "" }).isConfigured()).toBe(false);
   });
+
+  it("I2: accountSid inválido (não começa com AC) → WhatsAppSendError kind AUTH, não Error cru, e não vaza o SID", async () => {
+    const sender = new TwilioSender({ ...CFG, accountSid: "SK_chave_errada" });
+    const err = await sender.sendText("5511988887777", "x", {}).catch((e) => e);
+    expect(err).toBeInstanceOf(WhatsAppSendError);
+    expect(err.name).toBe("WhatsAppSendError");
+    expect(err.kind).toBe("AUTH");
+    expect(err.message).not.toContain("SK_chave_errada");
+    expect(messagesCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe("classifyTwilioError", () => {
@@ -62,12 +79,17 @@ describe("classifyTwilioError", () => {
     [{ code: 20003 }, "AUTH"],
     [{ code: 21211 }, "INVALID_NUMBER"],
     [{ code: 21614 }, "INVALID_NUMBER"],
+    [{ code: 21610 }, "INVALID_NUMBER"],
+    [{ code: 21612 }, "INVALID_NUMBER"],
+    [{ code: 63007 }, "PROVIDER_UNAVAILABLE"],
     [{ code: 63016 }, "INVALID_TEMPLATE"],
     [{ code: 63018 }, "INVALID_TEMPLATE"],
     [{ code: 20429 }, "RATE_LIMITED"],
     [{ status: 429 }, "RATE_LIMITED"],
     [{ status: 503 }, "PROVIDER_UNAVAILABLE"],
     [{ code: "ETIMEDOUT" }, "TIMEOUT"],
+    [{ code: "ECONNREFUSED" }, "PROVIDER_UNAVAILABLE"],
+    [{ code: "ENOTFOUND" }, "PROVIDER_UNAVAILABLE"],
     [{ code: 99999 }, "UNKNOWN"],
   ];
   it.each(cases)("%o → %s", (err, kind) => {

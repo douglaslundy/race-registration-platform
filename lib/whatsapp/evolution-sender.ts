@@ -1,5 +1,5 @@
 import { getWhatsAppConfig, isWhatsAppConfigured, type WhatsAppConfig } from "@/lib/whatsapp-settings";
-import { sendTextMessage, sendMediaMessage } from "./evolution-client";
+import { sendTextMessage, sendMediaMessage, getConnectionState } from "./evolution-client";
 import type { WhatsAppSender, SendContext } from "./sender";
 
 export class EvolutionSender implements WhatsAppSender {
@@ -8,6 +8,15 @@ export class EvolutionSender implements WhatsAppSender {
 
   isConfigured() {
     return isWhatsAppConfigured(this.config);
+  }
+
+  async isReady() {
+    if (!this.isConfigured()) return false;
+    try {
+      return (await getConnectionState(this.config)) === "open";
+    } catch {
+      return false;
+    }
   }
 
   async sendText(phone: string, text: string, _ctx: SendContext) {

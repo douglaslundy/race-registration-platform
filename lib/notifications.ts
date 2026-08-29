@@ -2,8 +2,7 @@ import { db } from "./db";
 import { getSmtpConfig, isSmtpReady } from "./smtp-settings";
 import { sendRegistrationConfirmationEmail } from "./email";
 import { sendWhatsAppMessage, sendWhatsAppDocument } from "./whatsapp";
-import { getWhatsAppConfig, isWhatsAppConfigured } from "./whatsapp-settings";
-import { getConnectionState } from "./whatsapp/evolution-client";
+import { getWhatsAppSender } from "./whatsapp/sender";
 import { isPlaceholderEmail } from "./proxy-athlete";
 import { claimAlert, unclaimAlert, recordAlert } from "@/lib/alerts/dedupe";
 import { getEffectiveTemplate } from "@/lib/templates/resolve";
@@ -14,11 +13,15 @@ import { generateKitQrCodePng } from "@/lib/kit-qr-code";
 
 const ALERT_TYPE = "ORDER_CONFIRMED";
 
-async function isWhatsAppConnectionActive(): Promise<boolean> {
-  const config = await getWhatsAppConfig();
-  if (!isWhatsAppConfigured(config)) return false;
+/**
+ * O WhatsApp do provider ativo está pronto para enviar agora? Delega pro `WhatsAppSender`
+ * (`isReady()`): Evolution checa o estado da instância ("open"), Twilio só checa se está
+ * configurado. Mantém esta camada agnóstica de provider (sem `if (provider === "twilio")`).
+ */
+async function isWhatsAppReady(): Promise<boolean> {
   try {
-    return (await getConnectionState(config)) === "open";
+    const sender = await getWhatsAppSender();
+    return await sender.isReady();
   } catch {
     return false;
   }
@@ -43,7 +46,7 @@ async function sendWhatsAppIfActive(
   if (recipientReceivesEventMessages === false) return;
   let claimed = false;
   try {
-    if (!(await isWhatsAppConnectionActive())) return;
+    if (!(await isWhatsAppReady())) return;
     claimed = bypassDedupe ? true : await claimAlert(ALERT_TYPE, "Order", claimEntityId, "WHATSAPP");
     if (!claimed) return;
     const template = await getEffectiveTemplate(alertKey, "WHATSAPP", recipientRole, eventId);

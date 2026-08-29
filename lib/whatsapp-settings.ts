@@ -42,6 +42,18 @@ export interface TwilioConfig {
   contentSid: string;
 }
 
+/**
+ * Normaliza o número de origem do Twilio: remove espaços, tira o prefixo "whatsapp:" (o SDK espera
+ * só o E.164, o "whatsapp:" é adicionado na hora do envio) e força um "+" na frente quando o valor
+ * salvo veio só com dígitos (erro comum ao copiar do console do Twilio).
+ */
+export function normalizeTwilioFromNumber(raw: string): string {
+  let v = raw.trim();
+  if (/^whatsapp:/i.test(v)) v = v.slice(v.indexOf(":") + 1).trim();
+  if (/^\d+$/.test(v)) v = `+${v}`;
+  return v;
+}
+
 export async function getTwilioConfig(): Promise<TwilioConfig> {
   const [accountSid, authToken, fromNumber, contentSid] = await Promise.all([
     getSetting("twilio_account_sid"),
@@ -50,13 +62,17 @@ export async function getTwilioConfig(): Promise<TwilioConfig> {
     getSetting("twilio_content_sid"),
   ]);
   return {
-    accountSid: accountSid ?? process.env.TWILIO_ACCOUNT_SID ?? "",
-    authToken: authToken ?? process.env.TWILIO_AUTH_TOKEN ?? "",
-    fromNumber: (fromNumber ?? process.env.TWILIO_FROM_NUMBER ?? "").trim(),
+    accountSid: (accountSid ?? process.env.TWILIO_ACCOUNT_SID ?? "").trim(),
+    authToken: (authToken ?? process.env.TWILIO_AUTH_TOKEN ?? "").trim(),
+    fromNumber: normalizeTwilioFromNumber(fromNumber ?? process.env.TWILIO_FROM_NUMBER ?? ""),
     contentSid: (contentSid ?? process.env.TWILIO_CONTENT_SID ?? "").trim(),
   };
 }
 
 export function isTwilioConfigured(c: TwilioConfig): boolean {
-  return Boolean(c.accountSid && c.authToken && c.fromNumber && c.contentSid);
+  // accountSid TEM que começar com "AC" — o SDK do Twilio rejeita qualquer outra coisa (ex.: um
+  // API Key SID "SK…" ou um typo) lançando um Error cru no construtor. Barrar aqui faz a UI mostrar
+  // "não configurado" e o caminho de envio lançar o erro de "não configurado" normal, em vez de a
+  // construção do client explodir fora de qualquer try/catch.
+  return Boolean(c.accountSid.startsWith("AC") && c.authToken && c.fromNumber && c.contentSid);
 }

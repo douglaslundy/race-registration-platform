@@ -18,6 +18,13 @@ export interface WhatsAppSender {
     ctx: SendContext,
   ): Promise<{ providerMessageId: string | null }>;
   isConfigured(): boolean;
+  /**
+   * Pronto para enviar AGORA. Para a Evolution isso inclui checar o estado da instância ("open");
+   * para o Twilio basta estar configurado. Usado pelos fluxos que só devem tentar o envio quando há
+   * chance real de sucesso (ex.: confirmação de pedido em `lib/notifications.ts`), sem que a camada
+   * chamadora precise saber qual é o provider ativo.
+   */
+  isReady(): Promise<boolean>;
 }
 
 export async function getWhatsAppSender(): Promise<WhatsAppSender> {
