@@ -317,6 +317,8 @@ model Event {
   messageTemplates       MessageTemplate[]
   dailySummaryRecipients DailySummaryRecipient[]
   assistantPermissions   AssistantPermission[]
+  paymentAccountId       String?
+  paymentAccount         PaymentAccount? @relation(fields: [paymentAccountId], references: [id])
 
   @@index([status, startAt])
   @@index([city, modality])
@@ -449,6 +451,25 @@ model Order {
   @@map("orders")
 }
 
+model PaymentAccount {
+  id            String    @id @default(cuid())
+  label         String
+  provider      String    @default("mercadopago")
+  accessToken   String    @db.Text
+  webhookSecret String    @db.Text
+  publicKey     String?   @db.Text
+  isDefault     Boolean   @default(false)
+  archivedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  events   Event[]
+  payments Payment[]
+
+  @@index([isDefault])
+  @@map("payment_accounts")
+}
+
 model Payment {
   id                String        @id @default(cuid())
   orderId           String?
@@ -468,6 +489,8 @@ model Payment {
   idempotencyKey    String        @unique
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+  paymentAccountId  String?
+  paymentAccount    PaymentAccount? @relation(fields: [paymentAccountId], references: [id])
 
   order      Order?      @relation(fields: [orderId], references: [id])
   adPurchase AdPurchase? @relation(fields: [adPurchaseId], references: [id])
@@ -475,6 +498,7 @@ model Payment {
 
   @@index([orderId])
   @@index([status, expiresAt])
+  @@index([paymentAccountId])
   @@map("payments")
 }
 
