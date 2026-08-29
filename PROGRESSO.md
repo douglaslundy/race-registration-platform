@@ -1,5 +1,37 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — Twilio WhatsApp provider: fix-wave da review whole-branch — CONCLUÍDA, aguardando deploy)
+
+Branch `feat/twilio-whatsapp-provider`. Review whole-branch voltou CHANGES NEEDED; corrigido tudo:
+
+- **C1**: `WhatsAppSender.isReady(): Promise<boolean>` (nova, opcional na intenção mas implementada
+  nos 2 senders). Evolution = `isConfigured() && getConnectionState()==="open"`; Twilio = `isConfigured()`.
+  `lib/notifications.ts` agora chama `getWhatsAppSender().isReady()` em vez de `getConnectionState`
+  direto — sem `if (provider)` fora de `lib/whatsapp/sender.ts`. Rotas `/admin/whatsapp/*` seguem
+  usando `getConnectionState` direto (exceção documentada).
+- **I2**: `TwilioSender` constrói o client Twilio lazy dentro de `sendText/sendMedia` (try/catch →
+  `classifyTwilioError`). `isTwilioConfigured` agora exige `accountSid.startsWith("AC")`.
+- **I3**: `app/api/admin/settings/route.ts` — `isSecretKey` cobre `*_sid`/`*_id`; catch 500 não
+  devolve/loga `err.message` (só `err.name` + string fixa).
+- **I4**: `classifyTwilioError` faz `console.error` com code/status/message (console só).
+- **M6**: `sendWhatsAppDocument` captura `providerMessageId` do `sendMedia` e loga.
+- **M7**: cron `send-campaign-messages` usa `safeErrorMessage` (exportado de `lib/whatsapp.ts`) no
+  `failureReason`.
+- **M8/M9**: webhook Twilio — updaters em try/catch → sempre 200; branch `if (errorMessage)`
+  colapsado numa chamada só (`errorMessage` undefined ≡ omitir).
+- **M11**: `classifyTwilioError` cobre 21610/21612/63007/ECONNREFUSED/ENOTFOUND; template literal
+  sem interpolação corrigido.
+- **M12**: `normalizeTwilioFromNumber` (trim, tira `whatsapp:`, coage `+`).
+
+Fora de escopo (controller trata): findings 5, 10, race do providerMessageId.
+
+Verificação: `npx vitest run` 2074/2074 · `npx tsc --noEmit` limpo · `npm run build` limpo ·
+lint dos arquivos tocados 0 erros (só warnings `any` pré-existentes de estilo).
+
+Relatório: `.superpowers/sdd/2026-08-28-twilio-whatsapp-provider/final-fix-report.md`.
+
+---
+
 ## Última atualização (2026-08-28 — Assistente de organizador vê só as páginas da permissão dele — DEPLOYADA)
 
 Continuação da correção do assistente. Depois do deploy anterior, o assistente entrava mas via
