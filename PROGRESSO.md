@@ -1,5 +1,27 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-29 — `feat/multiplas-contas-mercadopago` Task 11: rotas admin `/api/admin/payment-accounts` com 2FA)
+
+Rotas admin CRUD de contas Mercado Pago, toda mutação atrás do 2FA-por-código
+(`actionType: "PAYMENT_ACCOUNT_CHANGE"`).
+
+- `app/api/admin/payment-accounts/route.ts`: `GET` (lista via `listPaymentAccounts`, sem credenciais)
+  + `POST` (cria, exige `label`/`accessToken`/`webhookSecret`, 2FA, audita `PAYMENT_ACCOUNT_CREATED`
+  com credenciais mascaradas via `maskCredential`).
+- `request-code/route.ts`: `POST { targetId? }` (default `"new"`) → `requestSensitiveActionCode`.
+- `[id]/route.ts` `PATCH`: 2FA + `updatePaymentAccount` + audita `PAYMENT_ACCOUNT_UPDATED`.
+- `[id]/make-default/route.ts` `POST`: 2FA + `makeDefaultPaymentAccount` (try/catch → 400) + audita
+  `PAYMENT_ACCOUNT_DEFAULT_CHANGED`.
+- `[id]/archive/route.ts` `POST { archived }`: 2FA + `setPaymentAccountArchived` (try/catch → 400) +
+  audita `PAYMENT_ACCOUNT_ARCHIVED` / `_UNARCHIVED`.
+- Helper compartilhado novo `lib/security/verify-2fa-body.ts` (`verify2faBody`): valida
+  `verificationId`/`code` como string (400 "Código de verificação obrigatório") e consome o código.
+- `app/admin/assistentes/page.tsx`: nova actionKey `payment-accounts.manage`.
+- Novo `tests/admin-payment-accounts-route.test.ts` — 11 casos, todos passam. `tsc --noEmit` limpo,
+  `npm run build` exit 0.
+
+---
+
 ## Última atualização (2026-08-29 — `feat/multiplas-contas-mercadopago` Task 8: estorno/conciliação/status usam a conta congelada)
 
 Estorno, conciliação e polling de status agora consultam/estornam pela conta Mercado Pago
