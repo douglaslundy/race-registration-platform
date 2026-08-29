@@ -11,10 +11,11 @@ const schema = z.object({
 });
 
 function isSecretKey(key: string): boolean {
-  // `*_sid` / `*_id` cobrem credenciais que não terminam em _token/_key/_secret/_password mas
-  // ainda identificam a conta do provedor (ex.: `twilio_account_sid`, `twilio_content_sid`) e
-  // nunca podem ir pro AuditLog em claro (requisito 4).
-  return /(_token|_key|_secret|_password|_sid|_id)$/.test(key);
+  // `*_sid` cobre credenciais do provedor que não terminam em _token/_key/_secret/_password mas
+  // ainda identificam a conta (ex.: `twilio_account_sid`, `twilio_content_sid`) e nunca podem ir
+  // pro AuditLog em claro (requisito 4). NÃO usar `_id$` genérico — pegaria IDs públicos que
+  // aparecem no HTML (`google_adsense_client_id`, `seo_google_analytics_id`) e só perderia rastro.
+  return /(_token|_key|_secret|_password|_sid)$/.test(key);
 }
 
 export async function POST(req: NextRequest) {
