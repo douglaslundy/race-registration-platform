@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
-import { notifyOrderConfirmed } from "@/lib/notifications";
-import { notifyPaymentError } from "@/lib/alerts/payment-error";
-import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
-import { confirmAdPurchasePayment } from "@/lib/ads/ad-purchase-confirmation";
-import { sendAdPurchaseConfirmationEmail } from "@/lib/email";
-import { notifyAdvertiserRequestPending } from "@/lib/alerts/advertiser-request-pending";
+import { processPaymentWebhookEvent } from "@/lib/payment/webhook-handler";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -110,83 +104,14 @@ export async function POST(req: NextRequest) {
 
   const event = parsedStatus;
 
-  const payment = await db.payment.findFirst({
-    where: { providerPaymentId: event.providerPaymentId },
-    include: {
-      order: { include: { registrations: true, buyer: { select: { name: true, email: true } } } },
-      adPurchase: { include: { advertiser: { include: { user: true } }, adPlan: true } },
-    },
+  await processPaymentWebhookEvent({
+    providerPaymentId: event.providerPaymentId,
+    status: event.status,
+    paidAt: event.paidAt,
+    gatewayFeeAmount: event.gatewayFeeAmount,
+    rawPayload: event.rawPayload,
+    accountId: undefined,
   });
-
-  if (!payment) return NextResponse.json({ ok: true });
-
-  if (payment.adPurchaseId) {
-    // Pagamento de compra de plano de anúncio (AdPurchase) — não passa pelo fluxo de
-    // Order/Registration abaixo, que assume payment.order não-nulo.
-    const adPurchase = payment.adPurchase;
-    if (!adPurchase) {
-      console.error(`[webhooks/payment] payment ${payment.id} tem adPurchaseId mas adPurchase não veio no include — ignorando evento`);
-      return NextResponse.json({ ok: true });
-    }
-    const result = await db.$transaction((tx) => confirmAdPurchasePayment(tx, { ...payment, adPurchase }, event.status));
-    if (result.changed && result.advertiserEmail && result.advertiserName && result.planName && result.endAt) {
-      try {
-        await sendAdPurchaseConfirmationEmail({
-          to: result.advertiserEmail,
-          name: result.advertiserName,
-          planName: result.planName,
-          endAt: result.endAt,
-        });
-      } catch (err) {
-        console.error(`[webhooks/payment] falha ao enviar e-mail de confirmação de compra de anúncio para adPurchase ${adPurchase.id}:`, err);
-      }
-    }
-    if (result.wentToPendingApproval) {
-      await notifyAdvertiserRequestPending(adPurchase.id);
-    }
-    return NextResponse.json({ ok: true });
-  }
-
-  if (!payment.order || !payment.orderId) {
-    // Chegou aqui um pagamento sem Order E sem AdPurchase associado (o branch de AdPurchase já
-    // retornou acima) — loga bem alto em vez de tentar sincronizar um pedido inexistente, mas
-    // ainda confirma o recebimento (ok:true) pro gateway não ficar reenviando.
-    console.error(`[webhooks/payment] payment ${payment.id} sem order associado — ignorando evento`);
-    return NextResponse.json({ ok: true });
-  }
-
-  const order = payment.order;
-  const orderId = payment.orderId;
-
-  const newPaymentStatus = event.status;
-
-  const result = await db.$transaction(async (tx) => {
-    return applyGatewayStatus(
-      tx,
-      payment,
-      order,
-      order.registrations,
-      newPaymentStatus,
-      "webhook",
-      {
-        paidAt: event.paidAt ? new Date(event.paidAt) : undefined,
-        gatewayFeeAmount: event.gatewayFeeAmount,
-        rawPayload: event.rawPayload,
-      },
-    );
-  });
-
-  if (!result.changed) return NextResponse.json({ ok: true });
-
-  // Envia a confirmação de inscrição por e-mail quando o pagamento é aprovado
-  if (newPaymentStatus === "PAID") {
-    void notifyOrderConfirmed(orderId);
-  }
-
-  // Avisa o atleta quando o pagamento falha ou expira
-  if (newPaymentStatus === "CANCELLED" || newPaymentStatus === "EXPIRED") {
-    void notifyPaymentError(payment.id);
-  }
 
   return NextResponse.json({ ok: true });
 }
