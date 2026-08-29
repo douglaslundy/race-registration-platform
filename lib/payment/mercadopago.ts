@@ -1,6 +1,7 @@
 import { MercadoPagoConfig, Payment, PaymentRefund } from "mercadopago";
 import crypto from "crypto";
 import { getMercadoPagoAccessToken, getMercadoPagoWebhookSecret } from "@/lib/payment-settings";
+import type { ResolvedPaymentAccount } from "./account-resolver";
 import type {
   PaymentProvider,
   CreatePaymentInput,
@@ -10,12 +11,6 @@ import type {
   RefundPaymentResult,
   PaymentStatusResult,
 } from "./types";
-
-async function getClient() {
-  const token = await getMercadoPagoAccessToken();
-  if (!token) throw new Error("MP_ACCESS_TOKEN não configurado");
-  return new MercadoPagoConfig({ accessToken: token, options: { timeout: 10000 } });
-}
 
 interface MPFeeDetail {
   type?: string;
@@ -36,8 +31,25 @@ export function extractGatewayFeeAmount(res: unknown): number | undefined {
 }
 
 export class MercadoPagoProvider implements PaymentProvider {
+  constructor(private account?: ResolvedPaymentAccount) {}
+
+  private async accessToken(): Promise<string> {
+    if (this.account) return this.account.accessToken;
+    const t = await getMercadoPagoAccessToken();
+    if (!t) throw new Error("MP_ACCESS_TOKEN não configurado");
+    return t;
+  }
+
+  private async webhookSecret(): Promise<string | null> {
+    return this.account ? this.account.webhookSecret : getMercadoPagoWebhookSecret();
+  }
+
+  private async getClient() {
+    return new MercadoPagoConfig({ accessToken: await this.accessToken(), options: { timeout: 10000 } });
+  }
+
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
-    const client = await getClient();
+    const client = await this.getClient();
     const amountBRL = parseFloat((input.amount / 100).toFixed(2));
     console.log("[mp] createPayment method=%s amount_cents=%d amount_brl=%s", input.method, input.amount, amountBRL);
     const [firstName, ...rest] = input.buyer.name.split(" ");
@@ -119,7 +131,7 @@ export class MercadoPagoProvider implements PaymentProvider {
     // Resolve payment_method_id: prefer what the frontend sent; fallback to card token lookup
     let paymentMethodId = input.cardBrand || undefined;
     if (!paymentMethodId) {
-      const accessToken = await getMercadoPagoAccessToken();
+      const accessToken = await this.accessToken();
       const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens/${input.cardToken}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -206,14 +218,14 @@ export class MercadoPagoProvider implements PaymentProvider {
   }
 
   async cancelPayment(providerPaymentId: string): Promise<void> {
-    const client = await getClient();
+    const client = await this.getClient();
     const paymentApi = new Payment(client);
     console.log("[mp] cancelPayment providerPaymentId=%s", providerPaymentId);
     await paymentApi.cancel({ id: providerPaymentId });
   }
 
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
-    const client = await getClient();
+    const client = await this.getClient();
     const refundApi = new PaymentRefund(client);
     console.log("[mp] refundPayment providerPaymentId=%s", input.providerPaymentId);
     const res = await refundApi.create({ payment_id: input.providerPaymentId });
@@ -221,7 +233,7 @@ export class MercadoPagoProvider implements PaymentProvider {
   }
 
   async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {
-    const secret = await getMercadoPagoWebhookSecret();
+    const secret = await this.webhookSecret();
     // Falha fechada: sem segredo configurado, nenhum webhook é aceito (nunca pular a
     // verificação — isso permitiria forjar confirmações de pagamento).
     if (!secret) return false;
@@ -237,7 +249,12 @@ export class MercadoPagoProvider implements PaymentProvider {
       .createHmac("sha256", secret)
       .update(manifest)
       .digest("hex");
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
+    const expectedBuf = Buffer.from(expected);
+    const providedBuf = Buffer.from(parts.v1);
+    // Assinatura com formato/comprimento inválido: rejeita sem lançar
+    // (timingSafeEqual joga RangeError se os buffers tiverem tamanhos diferentes).
+    if (expectedBuf.length !== providedBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, providedBuf);
   }
 
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload {
@@ -262,7 +279,7 @@ export class MercadoPagoProvider implements PaymentProvider {
   }
 
   async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusResult> {
-    const client = await getClient();
+    const client = await this.getClient();
     const paymentApi = new Payment(client);
     const res = await paymentApi.get({ id: providerPaymentId });
     const statusMap: Record<string, PaymentStatusResult["status"]> = {
