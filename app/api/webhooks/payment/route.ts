@@ -3,6 +3,7 @@ import { getPaymentProvider } from "@/lib/payment";
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
 import { processPaymentWebhookEvent } from "@/lib/payment/webhook-handler";
+import { getDefaultPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
 
 async function fetchMPPaymentStatus(
   paymentId: string
@@ -56,6 +57,22 @@ export async function POST(req: NextRequest) {
 
   if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
+  }
+
+  if (!isPagarMe) {
+    // MP: durante a migração pra múltiplas contas o painel do Mercado Pago ainda
+    // pode apontar pra cá. Loga um aviso pra migração e segue no caminho de compat.
+    // O shim NÃO passa `accountId` pro handler — o match por conta só vale pro
+    // endpoint novo (/api/webhooks/payment/mp/[accountId]).
+    try {
+      const account = await getDefaultPaymentAccount();
+      console.warn(
+        `[webhook] endpoint legado usado — migrar o painel da conta ${account.label} para /api/webhooks/payment/mp/${account.id}`,
+      );
+    } catch (e) {
+      if (!(e instanceof NoPaymentAccountError)) throw e;
+      // sem conta cadastrada → segue no caminho antigo com a setting global
+    }
   }
 
   // Mercado Pago notifica com action + data.id — busca o status real

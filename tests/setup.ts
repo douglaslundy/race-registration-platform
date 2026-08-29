@@ -25,6 +25,7 @@ vi.mock("@/lib/db", () => ({
     },
     fileAsset: { count: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
     platformSetting: { findUnique: vi.fn(), upsert: vi.fn(), findMany: vi.fn() },
+    paymentAccount: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
     auditLog: { create: vi.fn(), updateMany: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     athleteProfile: { upsert: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
     organizerProfile: { upsert: vi.fn(), findUnique: vi.fn(), findMany: vi.fn() },
