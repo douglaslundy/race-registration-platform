@@ -150,11 +150,11 @@ export default function CheckoutForm({
   const selectedCouponCode = (couponCode ?? "").trim().toUpperCase();
 
   useEffect(() => {
-    fetch("/api/checkout/card-config")
+    fetch(`/api/checkout/card-config?eventId=${event.id}`)
       .then((r) => r.json())
       .then((data) => setCardConfig(data))
       .catch(() => {});
-  }, []);
+  }, [event.id]);
 
   useEffect(() => {
     const normalizedCode = selectedCouponCode;

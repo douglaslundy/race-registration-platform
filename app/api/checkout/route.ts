@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
-import { getPaymentProviderSetting, getMercadoPagoAccessToken, getPagarMeApiKey } from "@/lib/payment-settings";
+import { resolveEventPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
+import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
+import { getPaymentProviderSetting, getPagarMeApiKey } from "@/lib/payment-settings";
 import { getEnabledPaymentMethods } from "@/lib/payment-methods";
 import type { ShirtSize, PaymentMethod } from "@prisma/client";
 import { emptyStringToUndefined, optionalEnumField, optionalOpaqueIdField, opaqueIdField } from "@/lib/checkout-validation";
@@ -93,13 +95,18 @@ export async function POST(req: NextRequest) {
   const idempotencyKey = `${checkout.orderId}_${paymentMethod}_${Date.now()}`;
 
   const providerKey = await getPaymentProviderSetting();
+  let account: ResolvedPaymentAccount | undefined;
   if (providerKey === "mercadopago") {
-    const token = await getMercadoPagoAccessToken();
-    if (!token) {
-      return NextResponse.json(
-        { error: "Gateway de pagamento não configurado. Acesse Admin → Configurações para configurar o Mercado Pago." },
-        { status: 503 }
-      );
+    try {
+      account = await resolveEventPaymentAccount(checkoutData.eventId);
+    } catch (e) {
+      if (e instanceof NoPaymentAccountError) {
+        return NextResponse.json(
+          { error: "Gateway de pagamento não configurado. Acesse Admin → Configurações." },
+          { status: 503 },
+        );
+      }
+      throw e;
     }
   }
   if (providerKey === "pagarme") {
@@ -112,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const provider = await getPaymentProvider();
+  const provider = await getPaymentProvider(account);
   const [buyer, athleteProfile] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },
@@ -180,6 +187,7 @@ export async function POST(req: NextRequest) {
           status: "PENDING",
           amount: checkout.totalAmount,
           idempotencyKey,
+          paymentAccountId: account?.id ?? null,
         },
       });
       await applyGatewayStatus(
@@ -212,6 +220,7 @@ export async function POST(req: NextRequest) {
       pixQrCodeText: paymentResult.pixQrCodeText ?? null,
       boletoUrl: paymentResult.boletoUrl ?? null,
       expiresAt: paymentResult.expiresAt ? new Date(paymentResult.expiresAt) : null,
+      paymentAccountId: account?.id ?? null,
     },
   });
 

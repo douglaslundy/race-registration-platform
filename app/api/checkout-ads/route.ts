@@ -5,6 +5,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createAdPlanCheckout } from "@/lib/checkout-ads";
 import { getPaymentProvider } from "@/lib/payment";
+import { getDefaultPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
+import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import type { PaymentMethod } from "@prisma/client";
 
@@ -44,7 +46,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const provider = await getPaymentProvider();
+  const providerKey = await getPaymentProviderSetting();
+  let account: ResolvedPaymentAccount | undefined;
+  if (providerKey === "mercadopago") {
+    try {
+      account = await getDefaultPaymentAccount();
+    } catch (e) {
+      if (e instanceof NoPaymentAccountError) {
+        return NextResponse.json({ error: "Gateway de pagamento não configurado." }, { status: 503 });
+      }
+      throw e;
+    }
+  }
+
+  const provider = await getPaymentProvider(account);
   const idempotencyKey = `${checkout.adPurchaseId}_${parsed.data.paymentMethod}_${randomUUID()}`;
 
   const paymentResult = await provider.createPayment({
@@ -59,8 +74,6 @@ export async function POST(req: NextRequest) {
     installments: parsed.data.installments,
   });
 
-  const providerKey = await getPaymentProviderSetting();
-
   await db.payment.create({
     data: {
       adPurchaseId: checkout.adPurchaseId,
@@ -74,6 +87,7 @@ export async function POST(req: NextRequest) {
       expiresAt: paymentResult.expiresAt ? new Date(paymentResult.expiresAt) : null,
       rawPayload: {},
       idempotencyKey,
+      paymentAccountId: account?.id ?? null,
     },
   });
 

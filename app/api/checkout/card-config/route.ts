@@ -5,16 +5,26 @@ import {
   getMercadoPagoPublicKey,
   getPagarMePublicKey,
 } from "@/lib/payment-settings";
+import { resolveEventPaymentAccount } from "@/lib/payment/account-resolver";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const provider = await getPaymentProviderSetting();
+  const eventId = new URL(req.url).searchParams.get("eventId");
 
   let publicKey: string | null = null;
   if (provider === "mercadopago") {
-    publicKey = await getMercadoPagoPublicKey();
+    if (eventId) {
+      try {
+        publicKey = (await resolveEventPaymentAccount(eventId)).publicKey;
+      } catch {
+        publicKey = null;
+      }
+    } else {
+      publicKey = await getMercadoPagoPublicKey();
+    }
   } else if (provider === "pagarme") {
     publicKey = await getPagarMePublicKey();
   }
