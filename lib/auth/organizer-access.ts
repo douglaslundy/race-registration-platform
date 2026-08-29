@@ -58,7 +58,7 @@ export const EVENT_SCOPED_ACTIONS = [
 ];
 
 type RouteRule =
-  | { re: RegExp; keys: string[]; scoped?: boolean }
+  | { re: RegExp; keys: string[]; scoped?: boolean; anyScope?: boolean }
   | { re: RegExp; titularOnly: true }
   | { re: RegExp; anyStaff: true };
 
@@ -68,7 +68,8 @@ const ROUTE_RULES: RouteRule[] = [
   { re: /^\/organizador\/perfil(\/|$)/, titularOnly: true },
   { re: /^\/organizador\/assistentes(\/|$)/, titularOnly: true },
   { re: /^\/organizador\/relatorio(\/|$)/, keys: ["reports.export"] },
-  { re: /^\/organizador\/entrega-kits(\/|$)/, keys: ["kits.view", "kits.deliver"] },
+  // launcher: lista só os eventos que o assistente pode; qualquer escopo de kit autoriza entrar.
+  { re: /^\/organizador\/entrega-kits(\/|$)/, keys: ["kits.view", "kits.deliver"], anyScope: true },
   { re: /^\/organizador\/conciliacao(\/|$)/, keys: ["payments.reconciliation"] },
   { re: /^\/organizador\/pedidos-vencidos(\/|$)/, keys: ["registrations.expire-payments"] },
   { re: /^\/organizador\/carrinhos-abandonados(\/|$)/, keys: ["abandoned-carts.notify"] },
@@ -119,7 +120,7 @@ export async function resolveOrganizerAccess(session: Session, pathname: string)
   if ("anyStaff" in rule) return true;
 
   const eventId = rule.scoped ? path.match(rule.re)?.[1] : undefined;
-  return assistantHasAnyPermission(session.user.id, rule.keys, eventId);
+  return assistantHasAnyPermission(session.user.id, rule.keys, eventId, rule.anyScope);
 }
 
 /** Itens de nav que a sessão pode ver. Titular / assistente-de-admin: todos. */

@@ -57,7 +57,12 @@ vi.mock("@/lib/db", () => ({
     eventSocialLink: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     eventSponsor: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     socialLinkSend: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
-    $transaction: vi.fn(async (fn: any) => fn({
+    // Suporta as duas formas: `$transaction(async (tx) => ...)` (callback) e
+    // `$transaction([p1, p2, ...])` (array de promises). Testes que precisam de controle fino
+    // continuam podendo sobrescrever com mockImplementation/mockResolvedValue.
+    $transaction: vi.fn(async (arg: any) => {
+      if (Array.isArray(arg)) return Promise.all(arg);
+      return arg({
       user: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
       ticketBatch: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
       order: { count: vi.fn() },
@@ -70,6 +75,7 @@ vi.mock("@/lib/db", () => ({
       campaignRecipient: { deleteMany: vi.fn(), count: vi.fn() },
       campaign: { delete: vi.fn() },
       athleteProfile: { upsert: vi.fn() },
-    })),
+      });
+    }),
   },
 }));

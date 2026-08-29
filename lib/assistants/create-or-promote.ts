@@ -73,9 +73,18 @@ export async function createOrPromoteAssistant(
     userId = created.id;
     isNew = true;
   } else if (existing.role === "ATHLETE") {
+    // `active: true` é obrigatório aqui: se este e-mail já foi assistente antes, foi bloqueado
+    // (active=false) e depois excluído (rebaixado para ATHLETE), a flag `active` continua `false`.
+    // Sem restaurá-la, a re-promoção "funciona" mas o login segue barrado em `authorize`
+    // (`!user.active`). Era exatamente o "promovido, mas cai no bloqueado/404" relatado.
     const updated = await db.user.update({
       where: { id: existing.id },
-      data: { role: "ASSISTANT", createdByUserId: params.createdByUserId, name: params.name },
+      data: {
+        role: "ASSISTANT",
+        createdByUserId: params.createdByUserId,
+        name: params.name,
+        active: true,
+      },
     });
     userId = updated.id;
     isNew = false;

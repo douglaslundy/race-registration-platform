@@ -1,5 +1,39 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-28 — `fix/assistant-edit`: endurecer excluir→re-cadastrar + editar assistente no lugar — DEPLOYADO)
+
+Branch `fix/assistant-edit` mergeada em `main` (`dac05a5`) e DEPLOYADA (code-only, sem `db push`).
+
+**Item 1 (excluir → re-cadastrar → 404/bloqueado) — causa raiz dupla:**
+- (a) branch `existing.role === "ATHLETE"` de `createOrPromoteAssistant` não restaurava `active` —
+  assistente já bloqueado antes ficava com `active: false` e o login caía em `authorize()`;
+- (b) sessão JWT congelava `role` no token até expirar — assistente rebaixado/re-promovido com
+  sessão viva mantinha papel antigo e o `proxy` o mandava pro `/acesso-negado`.
+- Correções: branch ATHLETE seta `active: true`; callback `jwt` recarrega `role`+`active` do banco
+  a cada request (PK lookup, try/catch); `session.user.active` exposto; `proxy.ts` barra
+  `active === false` (redirect nas páginas, 403 em `/api/*`); `requireAuth()` +
+  `check{Api,Any,AdminOnly,Advertiser}ApiPermission` também barram conta bloqueada (review focado
+  apontou que só as páginas estavam cobertas). Limitação: não destrói a sessão (instável no
+  next-auth beta.25) — só neutraliza.
+
+**Item 2 (editar assistente no lugar):**
+- `lib/assistants/manage.ts` `updateAssistant()`: substitui nome + TODAS as AssistantPermission numa
+  transação, achatando+deduplicando pares `(eventId, actionKey)`.
+- `PUT /api/organizer/assistants/[id]` `{ name, scopes:[{eventId,actionKeys}] }` (titular-only, valida
+  eventId contra eventos do organizador) e `PUT /api/admin/assistants/[id]` `{ name, actionKeys }`.
+  Ambos auditam `ASSISTANT_UPDATED`. `AssistantManager.tsx`: botão "Editar" (organizador = blocos
+  de escopo multi-evento; admin = conjunto único).
+
+Também: `anyScope` em `PermissionOptions` — assistente com kit escopado a um evento específico
+consegue entrar em `/organizador/entrega-kits` (a tela-launcher já filtra os eventos). Commit `0a26751`.
+
+Suíte **2032/2032**, `tsc` + `build` limpos.
+
+**Residual (documentado):** sessão JWT não é destruída no bloqueio/exclusão (workaround: relogar;
+guards contêm tudo que é protegido). +1 query no `jwt` por request (ok nessa escala).
+
+---
+
 ## Última atualização (2026-08-28 — Twilio WhatsApp provider: fix-wave da review whole-branch — CONCLUÍDA, aguardando deploy)
 
 Branch `feat/twilio-whatsapp-provider`. Review whole-branch voltou CHANGES NEEDED; corrigido tudo:

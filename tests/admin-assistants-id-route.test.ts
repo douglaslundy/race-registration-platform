@@ -6,7 +6,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/assistants/create-or-promote", () => ({ issueAssistantInvite: vi.fn() }));
 
 import { GET } from "@/app/api/admin/assistants/route";
-import { PATCH as PATCH_BY_ID, DELETE as DELETE_BY_ID } from "@/app/api/admin/assistants/[id]/route";
+import { PATCH as PATCH_BY_ID, DELETE as DELETE_BY_ID, PUT as PUT_BY_ID } from "@/app/api/admin/assistants/[id]/route";
 import { POST as RESEND } from "@/app/api/admin/assistants/[id]/resend-invite/route";
 
 const authMock = vi.mocked(auth);
@@ -127,6 +127,67 @@ describe("DELETE /api/admin/assistants/[id]", () => {
     });
     expect(dbMock.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ action: "ASSISTANT_DELETED" }) }),
+    );
+  });
+});
+
+describe("PUT /api/admin/assistants/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.assistantPermission.deleteMany.mockResolvedValue({ count: 0 });
+    dbMock.assistantPermission.createMany.mockResolvedValue({ count: 0 });
+    dbMock.user.update.mockResolvedValue({});
+    dbMock.auditLog.create.mockResolvedValue({ id: "log-1" });
+    dbMock.$transaction.mockImplementation(async (arg: any) =>
+      Array.isArray(arg) ? Promise.all(arg) : arg(dbMock),
+    );
+  });
+
+  function makePutRequest(body: unknown) {
+    return new Request("http://localhost/api/admin/assistants/a1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }) as any;
+  }
+
+  it("403 para quem não é admin", async () => {
+    authMock.mockResolvedValue({ user: { id: "u1", role: "ORGANIZER" } } as any);
+    const res = await PUT_BY_ID(makePutRequest({ name: "X", actionKeys: [] }), makeContext("a1"));
+    expect(res.status).toBe(403);
+  });
+
+  it("404 quando o alvo não é assistente", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN", name: "Admin" } } as any);
+    dbMock.user.findUnique.mockResolvedValueOnce({ id: "a1", role: "ATHLETE" });
+    const res = await PUT_BY_ID(makePutRequest({ name: "X", actionKeys: [] }), makeContext("a1"));
+    expect(res.status).toBe(404);
+  });
+
+  it("edita qualquer assistente com escopo único sem evento (eventId null)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN", name: "Admin" } } as any);
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "a1", role: "ASSISTANT", createdByUserId: "org-9", passwordHash: "h",
+    });
+
+    const res = await PUT_BY_ID(
+      makePutRequest({ name: "Novo Nome", actionKeys: ["events.view", "events.approve"] }),
+      makeContext("a1"),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(dbMock.user.update).toHaveBeenCalledWith({ where: { id: "a1" }, data: { name: "Novo Nome" } });
+    expect(dbMock.assistantPermission.createMany).toHaveBeenCalledWith({
+      data: [
+        { userId: "a1", actionKey: "events.view", eventId: null },
+        { userId: "a1", actionKey: "events.approve", eventId: null },
+      ],
+      skipDuplicates: true,
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: "ASSISTANT_UPDATED" }) }),
     );
   });
 });

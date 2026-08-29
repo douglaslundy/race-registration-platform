@@ -24,6 +24,12 @@ type Assistant = {
 type ActionOption = { key: string; label: string };
 type EventOption = { id: string; title: string };
 
+/** Bloco de escopo no formulário de edição do organizador: um evento (ou "ALL") + suas ações. */
+type EditScopeBlock = { uid: number; eventId: string; actionKeys: string[] };
+
+let scopeUid = 0;
+const nextScopeUid = () => ++scopeUid;
+
 export default function AssistantManager({
   apiBase,
   actionOptions,
@@ -49,6 +55,13 @@ export default function AssistantManager({
   const [confirmToggle, setConfirmToggle] = useState<{ id: string; nextActive: boolean } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+
+  // ----- edição em modo in-place -----
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editScopes, setEditScopes] = useState<EditScopeBlock[]>([]); // organizador
+  const [editKeys, setEditKeys] = useState<string[]>([]); // admin (escopo único, sem evento)
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function refresh() {
     const r = await fetch(`${apiBase}/assistants`).then((res) => res.json());
@@ -171,7 +184,92 @@ export default function AssistantManager({
     }
   }
 
+  function startEdit(a: Assistant) {
+    setError(null);
+    setNotice(null);
+    setEditingId(a.id);
+    setEditName(a.name);
+    if (scopedByEvent) {
+      const blocks: EditScopeBlock[] = (a.scopes ?? []).map((s) => ({
+        uid: nextScopeUid(),
+        eventId: s.eventId ?? "ALL",
+        actionKeys: [...s.permissions],
+      }));
+      setEditScopes(blocks.length > 0 ? blocks : [{ uid: nextScopeUid(), eventId: "ALL", actionKeys: [] }]);
+    } else {
+      setEditKeys([...a.permissions]);
+    }
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditScopes([]);
+    setEditKeys([]);
+    setEditName("");
+  }
+
+  function toggleEditKey(key: string) {
+    setEditKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  }
+
+  function updateScopeEvent(uid: number, value: string) {
+    setEditScopes((prev) => prev.map((b) => (b.uid === uid ? { ...b, eventId: value } : b)));
+  }
+
+  function toggleScopeKey(uid: number, key: string) {
+    setEditScopes((prev) =>
+      prev.map((b) =>
+        b.uid === uid
+          ? { ...b, actionKeys: b.actionKeys.includes(key) ? b.actionKeys.filter((k) => k !== key) : [...b.actionKeys, key] }
+          : b,
+      ),
+    );
+  }
+
+  function addScopeBlock() {
+    setEditScopes((prev) => [...prev, { uid: nextScopeUid(), eventId: "ALL", actionKeys: [] }]);
+  }
+
+  function removeScopeBlock(uid: number) {
+    setEditScopes((prev) => prev.filter((b) => b.uid !== uid));
+  }
+
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId) return;
+    setSavingEdit(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const payload = scopedByEvent
+        ? {
+            name: editName.trim(),
+            scopes: editScopes
+              .filter((b) => b.actionKeys.length > 0)
+              .map((b) => ({ eventId: b.eventId === "ALL" ? null : b.eventId, actionKeys: b.actionKeys })),
+          }
+        : { name: editName.trim(), actionKeys: editKeys };
+      const res = await fetch(`${apiBase}/assistants/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Erro ao salvar as alterações.");
+        return;
+      }
+      setNotice("Assistente atualizado.");
+      await refresh();
+      cancelEdit();
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   if (loading) return <div className="text-sm text-gray-500">Carregando...</div>;
+
+  const editing = editingId ? assistants.find((a) => a.id === editingId) ?? null : null;
 
   return (
     <div className="space-y-6">
@@ -216,6 +314,14 @@ export default function AssistantManager({
                   )}
                   <button
                     type="button"
+                    onClick={() => startEdit(a)}
+                    disabled={busyId === a.id}
+                    className="text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-50"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setConfirmToggle({ id: a.id, nextActive: !a.active })}
                     disabled={togglingId === a.id}
                     className="text-xs px-3 py-1.5 rounded-lg border font-medium disabled:opacity-50"
@@ -238,69 +344,157 @@ export default function AssistantManager({
         {notice && <p className="text-sm text-green-700 dark:text-green-400">{notice}</p>}
       </div>
 
-      <form onSubmit={handleCreate} className="card space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Criar assistente</h2>
-        <div className="grid grid-cols-2 gap-4">
+      {editing ? (
+        <form onSubmit={handleUpdate} className="card space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100">Editar assistente</h2>
+            <span className="text-xs text-gray-500">{editing.email}</span>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field w-full" required />
+            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="input-field w-full" required />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full" required />
-          </div>
-        </div>
 
-        {scopedByEvent && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Evento</label>
-            <select
-              value={eventId}
-              onChange={(e) => setEventId(e.target.value)}
-              className="input-field w-full"
-              required
-            >
-              <option value="ALL">Todos os eventos</option>
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>{e.title}</option>
+          {scopedByEvent ? (
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Permissões por escopo</p>
+              {editScopes.map((block) => (
+                <div key={block.uid} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Evento</label>
+                      <select
+                        value={block.eventId}
+                        onChange={(e) => updateScopeEvent(block.uid, e.target.value)}
+                        className="input-field w-full"
+                      >
+                        <option value="ALL">Todos os eventos</option>
+                        {events.map((ev) => (
+                          <option key={ev.id} value={ev.id}>{ev.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {editScopes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeScopeBlock(block.uid)}
+                        className="text-xs px-3 py-2 rounded-lg border border-red-300 text-red-700 dark:border-red-800 dark:text-red-400 font-medium"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+                    {actionOptions.map((opt) => (
+                      <label key={opt.key} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={block.actionKeys.includes(opt.key)}
+                          onChange={() => toggleScopeKey(block.uid, opt.key)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              As permissões abaixo valerão só para o evento escolhido (ou para todos, se &quot;Todos os eventos&quot;).
-            </p>
+              <button
+                type="button"
+                onClick={addScopeBlock}
+                className="text-xs px-3 py-1.5 rounded-lg border font-medium"
+              >
+                + adicionar escopo
+              </button>
+              <p className="text-xs text-gray-500">
+                Escopos sem nenhuma ação marcada são descartados ao salvar.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+              {actionOptions.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={editKeys.includes(opt.key)} onChange={() => toggleEditKey(opt.key)} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button type="submit" disabled={savingEdit} className="btn-primary flex-1">
+              {savingEdit ? "Salvando..." : "Salvar alterações"}
+            </button>
+            <button type="button" onClick={cancelEdit} disabled={savingEdit} className="px-4 py-2 rounded-lg border font-medium">
+              Cancelar
+            </button>
           </div>
-        )}
-
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" checked={mode === "view"} onChange={() => setMode("view")} />
-            Somente visualização e exportação
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="radio" checked={mode === "custom"} onChange={() => setMode("custom")} />
-            Ações específicas
-          </label>
-        </div>
-
-        {mode === "custom" && (
-          <div className="grid grid-cols-2 gap-2 border-t border-gray-200 dark:border-gray-700 pt-3">
-            {actionOptions.map((opt) => (
-              <label key={opt.key} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedKeys.includes(opt.key)}
-                  onChange={() => toggleKey(opt.key)}
-                />
-                {opt.label}
-              </label>
-            ))}
+        </form>
+      ) : (
+        <form onSubmit={handleCreate} className="card space-y-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Criar assistente</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field w-full" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-field w-full" required />
+            </div>
           </div>
-        )}
 
-        <button type="submit" disabled={saving} className="btn-primary w-full">
-          {saving ? "Criando..." : "Criar assistente"}
-        </button>
-      </form>
+          {scopedByEvent && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Evento</label>
+              <select
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
+                className="input-field w-full"
+                required
+              >
+                <option value="ALL">Todos os eventos</option>
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>{e.title}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                As permissões abaixo valerão só para o evento escolhido (ou para todos, se &quot;Todos os eventos&quot;).
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="radio" checked={mode === "view"} onChange={() => setMode("view")} />
+              Somente visualização e exportação
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="radio" checked={mode === "custom"} onChange={() => setMode("custom")} />
+              Ações específicas
+            </label>
+          </div>
+
+          {mode === "custom" && (
+            <div className="grid grid-cols-2 gap-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+              {actionOptions.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedKeys.includes(opt.key)}
+                    onChange={() => toggleKey(opt.key)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          )}
+
+          <button type="submit" disabled={saving} className="btn-primary w-full">
+            {saving ? "Criando..." : "Criar assistente"}
+          </button>
+        </form>
+      )}
 
       <ConfirmModal
         open={!!confirmToggle}

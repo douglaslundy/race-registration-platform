@@ -136,12 +136,30 @@ describe("checkApiPermission", () => {
     expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
+  it("ASSISTANT com { anyScope }: qualquer linha (global ou de qualquer evento) autoriza", async () => {
+    authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
+    dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-e7", eventId: "e7" });
+    const result = await checkApiPermission("kits.deliver", { anyScope: true });
+    expect(dbMock.assistantPermission.findFirst).toHaveBeenCalledWith({
+      where: { userId: "assistant-1", actionKey: { in: ["kits.deliver"] } },
+    });
+    expect(result.allowed).toBe(true);
+  });
+
   it("ASSISTANT sem a permissão é barrado com 403", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findFirst.mockResolvedValueOnce(null);
     const result = await checkApiPermission("events.approve");
     expect(result.allowed).toBe(false);
     if (!result.allowed) expect(result.response.status).toBe(403);
+  });
+
+  it("conta bloqueada (active:false) é barrada com 403 mesmo com o papel certo, sem consultar permissão", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER", active: false } } as any);
+    const result = await checkApiPermission("events.view");
+    expect(result.allowed).toBe(false);
+    if (!result.allowed) expect(result.response.status).toBe(403);
+    expect(dbMock.assistantPermission.findFirst).not.toHaveBeenCalled();
   });
 
   it("ATHLETE é barrado com 403, sem consultar AssistantPermission", async () => {

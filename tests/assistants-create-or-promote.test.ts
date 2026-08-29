@@ -68,11 +68,37 @@ describe("createOrPromoteAssistant", () => {
 
     expect(dbMock.user.update).toHaveBeenCalledWith({
       where: { id: "athlete-1" },
-      data: { role: "ASSISTANT", createdByUserId: "org-1", name: "João" },
+      data: { role: "ASSISTANT", createdByUserId: "org-1", name: "João", active: true },
     });
     expect(dbMock.user.create).not.toHaveBeenCalled();
     expect(sendAssistantInviteEmail).not.toHaveBeenCalled();
     expect(result).toEqual({ ok: true, userId: "athlete-1", isNew: false });
+  });
+
+  it("re-promove um ATHLETE que foi assistente bloqueado antes: restaura active E createdByUserId", async () => {
+    // Fluxo relatado: assistente bloqueado (active=false) → excluído (rebaixado p/ ATHLETE,
+    // createdByUserId=null) → re-cadastrado. Sem restaurar `active`, o login segue barrado.
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "athlete-x",
+      email: "voltou@example.com",
+      role: "ATHLETE",
+      active: false,
+      createdByUserId: null,
+    });
+    dbMock.user.update.mockResolvedValueOnce({ id: "athlete-x" });
+
+    const result = await createOrPromoteAssistant({
+      email: "voltou@example.com",
+      name: "Voltou",
+      actionKeys: ["kits.deliver"],
+      createdByUserId: "org-1",
+    });
+
+    expect(dbMock.user.update).toHaveBeenCalledWith({
+      where: { id: "athlete-x" },
+      data: { role: "ASSISTANT", createdByUserId: "org-1", name: "Voltou", active: true },
+    });
+    expect(result).toEqual({ ok: true, userId: "athlete-x", isNew: false });
   });
 
   it("bloqueia quando o e-mail já pertence a uma conta titular (ADMIN)", async () => {

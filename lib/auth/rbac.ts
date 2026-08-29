@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 export async function requireAuth() {
   const session = await auth();
   if (!session?.user) redirect("/auth/login");
+  // Conta bloqueada com sessão viva (ver proxy.ts) — defesa dos Server Components.
+  if (session.user.active === false) redirect("/acesso-negado");
   return session;
 }
 
@@ -61,21 +63,31 @@ export type PermissionCheck =
 /** Opções das checagens de permissão. `eventId` restringe a checagem a um evento: um ASSISTANT
  * autoriza se tiver uma linha global (`eventId = null`, vale pra todos os eventos) OU uma linha
  * específica daquele evento. Sem `eventId`, só linhas globais autorizam — é o comportamento
- * seguro: um assistente confinado a 1 evento não ganha acesso "global" por engano. */
+ * seguro: um assistente confinado a 1 evento não ganha acesso "global" por engano.
+ *
+ * `anyScope`: para telas-lançador que listam só o que o assistente pode (ex.: `/organizador/entrega-kits`,
+ * que já filtra os eventos via `assistantPermittedEventIds`). Aí qualquer linha — global OU de
+ * qualquer evento — autoriza a ENTRAR; o escopo real é aplicado pela própria página. Nunca usar
+ * `anyScope` numa tela que mostra dados agregados de todos os eventos. */
 export interface PermissionOptions {
   eventId?: string;
+  anyScope?: boolean;
 }
 
 /** Resolve se um ASSISTANT tem QUALQUER uma das actionKeys, respeitando o escopo de evento.
- * Sem `eventId`: só linhas com `eventId = null`. Com `eventId`: linhas globais OU do evento. */
+ * Sem `eventId`: só linhas com `eventId = null`. Com `eventId`: linhas globais OU do evento.
+ * Com `anyScope`: qualquer linha (global ou de qualquer evento). */
 export async function assistantHasAnyPermission(
   userId: string,
   actionKeys: string[],
   eventId?: string,
+  anyScope?: boolean,
 ): Promise<boolean> {
-  const scopeFilter = eventId
-    ? { OR: [{ eventId: null }, { eventId }] }
-    : { eventId: null };
+  const scopeFilter = anyScope
+    ? {}
+    : eventId
+      ? { OR: [{ eventId: null }, { eventId }] }
+      : { eventId: null };
   const row = await db.assistantPermission.findFirst({
     where: { userId, actionKey: { in: actionKeys }, ...scopeFilter },
   });
@@ -91,13 +103,16 @@ export async function checkApiPermission(
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
   }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
+  }
 
   if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
     return { allowed: true, session };
   }
 
   if (session.user.role === "ASSISTANT") {
-    if (await assistantHasAnyPermission(session.user.id, [actionKey], opts?.eventId)) {
+    if (await assistantHasAnyPermission(session.user.id, [actionKey], opts?.eventId, opts?.anyScope)) {
       return { allowed: true, session };
     }
   }
@@ -116,13 +131,16 @@ export async function checkAnyApiPermission(
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
   }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
+  }
 
   if (session.user.role === "ADMIN" || session.user.role === "ORGANIZER") {
     return { allowed: true, session };
   }
 
   if (session.user.role === "ASSISTANT") {
-    if (await assistantHasAnyPermission(session.user.id, actionKeys, opts?.eventId)) {
+    if (await assistantHasAnyPermission(session.user.id, actionKeys, opts?.eventId, opts?.anyScope)) {
       return { allowed: true, session };
     }
   }
@@ -140,6 +158,9 @@ export async function checkAdminOnlyApiPermission(actionKey: string): Promise<Pe
   const session = await auth();
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
   }
 
   if (session.user.role === "ADMIN") {
@@ -172,6 +193,9 @@ export async function checkAdvertiserApiPermission(): Promise<AdvertiserPermissi
   const session = await auth();
   if (!session?.user) {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 401 }) };
+  }
+  if (session.user.active === false) {
+    return { allowed: false, response: NextResponse.json({ error: "Conta bloqueada" }, { status: 403 }) };
   }
   if (session.user.role !== "ADVERTISER") {
     return { allowed: false, response: NextResponse.json({ error: "Não autorizado" }, { status: 403 }) };
@@ -211,7 +235,7 @@ export async function requirePermission(actionKey: string, opts?: PermissionOpti
   }
 
   if (session.user.role === "ASSISTANT") {
-    if (await assistantHasAnyPermission(session.user.id, [actionKey], opts?.eventId)) {
+    if (await assistantHasAnyPermission(session.user.id, [actionKey], opts?.eventId, opts?.anyScope)) {
       return session;
     }
   }
@@ -229,7 +253,7 @@ export async function requireAnyPermission(actionKeys: string[], opts?: Permissi
   }
 
   if (session.user.role === "ASSISTANT") {
-    if (await assistantHasAnyPermission(session.user.id, actionKeys, opts?.eventId)) {
+    if (await assistantHasAnyPermission(session.user.id, actionKeys, opts?.eventId, opts?.anyScope)) {
       return session;
     }
   }

@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Entrega de kits — Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminKitDeliveryPage() {
-  const session = await requireAnyPermission(KIT_ACTIONS);
+  // launcher — lista só os eventos permitidos e delega o escopo real (ver comentário na versão do organizador)
+  const session = await requireAnyPermission(KIT_ACTIONS, { anyScope: true });
   const scope = await resolveActingScope(session);
 
   const allowedEventIds =

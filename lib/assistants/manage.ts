@@ -2,8 +2,14 @@ import { db } from "@/lib/db";
 import { issueAssistantInvite } from "./create-or-promote";
 
 export type ManageAssistantResult =
-  | { ok: true; mode?: "deleted" | "demoted"; inviteResent?: boolean }
+  | { ok: true; mode?: "deleted" | "demoted" | "updated"; inviteResent?: boolean }
   | { ok: false; error: string; status: number };
+
+export interface AssistantScopeInput {
+  /** `null` = permissão vale pra todos os eventos do responsável. */
+  eventId: string | null;
+  actionKeys: string[];
+}
 
 /** Carrega o assistente e confere que é ASSISTANT e — quando `requireCreatedByUserId` é informado
  * (rota do organizador) — que foi criado por esse usuário. Admin passa `undefined` e pode agir
@@ -74,4 +80,46 @@ export async function deleteAssistant(params: {
     data: { role: "ATHLETE", createdByUserId: null },
   });
   return { ok: true, mode: "demoted" };
+}
+
+/**
+ * Edita um assistente que JÁ existe — nome + conjunto completo de permissões, sem criar conta
+ * nem disparar convite. Substitui TODAS as `AssistantPermission` do assistente pelas dos
+ * `scopes` informados (deleteMany + createMany numa transação).
+ *
+ * Um assistente pode ter permissões em VÁRIOS eventos (cada `scope` = um `eventId` ou `null`
+ * pra "todos os eventos"). Os pares `(eventId, actionKey)` são deduplicados pra respeitar o
+ * `@@unique([userId, actionKey, eventId])`.
+ *
+ * A validação de que cada `eventId` pertence ao responsável é feita ANTES, pela rota (que tem
+ * o `resolveActingScope`). `requireCreatedByUserId` (rota do organizador) garante que o
+ * assistente é do próprio organizador; admin passa `undefined`.
+ */
+export async function updateAssistant(params: {
+  assistantId: string;
+  name: string;
+  scopes: AssistantScopeInput[];
+  requireCreatedByUserId?: string;
+}): Promise<ManageAssistantResult> {
+  const target = await loadOwnedAssistant(params.assistantId, params.requireCreatedByUserId);
+  if (!target) return { ok: false, error: "Assistente não encontrado", status: 404 };
+
+  const seen = new Set<string>();
+  const rows: { userId: string; actionKey: string; eventId: string | null }[] = [];
+  for (const scope of params.scopes) {
+    for (const actionKey of scope.actionKeys) {
+      const dedupeKey = `${scope.eventId ?? ""}::${actionKey}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      rows.push({ userId: target.id, actionKey, eventId: scope.eventId });
+    }
+  }
+
+  await db.$transaction([
+    db.user.update({ where: { id: target.id }, data: { name: params.name } }),
+    db.assistantPermission.deleteMany({ where: { userId: target.id } }),
+    ...(rows.length ? [db.assistantPermission.createMany({ data: rows, skipDuplicates: true })] : []),
+  ]);
+
+  return { ok: true, mode: "updated" };
 }
