@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
+import { getPaymentAccountById } from "./account-resolver";
 import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { applyGatewayStatus } from "./sync-payment-status";
@@ -17,6 +18,25 @@ const PAID_LOOKBACK_DAYS = 90;
 const LATE_APPROVAL_LOOKBACK_DAYS = 7;
 
 type Provider = Awaited<ReturnType<typeof getPaymentProvider>>;
+type ProviderFor = (payment: { provider: string; paymentAccountId: string | null }) => Promise<Provider>;
+
+/**
+ * A reconciliação varre MUITOS pagamentos de uma vez, potencialmente feitos por contas Mercado
+ * Pago diferentes (inclusive já arquivadas). Cada pagamento precisa ser checado na conta que ficou
+ * congelada nele — então resolvemos um provider por conta e cacheamos. Pagamentos sem conta
+ * (antigos) ou de outro provedor caem numa única chave `null` → provider global.
+ */
+function makeProviderFor(): ProviderFor {
+  const cache = new Map<string | null, Provider>();
+  return async (payment) => {
+    const key = payment.provider === "mercadopago" ? payment.paymentAccountId : null;
+    if (!cache.has(key)) {
+      const account = key ? await getPaymentAccountById(key).catch(() => undefined) : undefined;
+      cache.set(key, await getPaymentProvider(account));
+    }
+    return cache.get(key)!;
+  };
+}
 
 export async function reconcilePayments(options?: { organizerUserId?: string }): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
   const settings = await getReconciliationAlertSettings();
@@ -25,11 +45,15 @@ export async function reconcilePayments(options?: { organizerUserId?: string }):
     ? { order: { event: { organizer: { userId: options.organizerUserId } } } }
     : {};
 
-  const provider = await getPaymentProvider();
+  const providerFor = makeProviderFor();
+  // Resolve já o provider global (chave `null`) — cobre pagamentos sem conta congelada e de outros
+  // provedores, que são a maioria. Contas Mercado Pago específicas (inclusive arquivadas) são
+  // resolvidas sob demanda dentro de `providerFor`, uma vez por conta.
+  await providerFor({ provider: "", paymentAccountId: null });
 
-  const pending = await checkPendingMismatches(provider, cutoff, organizerFilter);
-  const paid = await checkPaidMismatches(provider, organizerFilter);
-  const lateApproval = await checkLateApprovalMismatches(provider, organizerFilter);
+  const pending = await checkPendingMismatches(providerFor, cutoff, organizerFilter);
+  const paid = await checkPaidMismatches(providerFor, organizerFilter);
+  const lateApproval = await checkLateApprovalMismatches(providerFor, organizerFilter);
 
   return {
     checked: pending.checked + paid.checked + lateApproval.checked,
@@ -38,7 +62,7 @@ export async function reconcilePayments(options?: { organizerUserId?: string }):
 }
 
 async function checkPendingMismatches(
-  provider: Provider,
+  providerFor: ProviderFor,
   cutoff: Date,
   organizerFilter: Record<string, unknown>,
 ): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
@@ -51,6 +75,8 @@ async function checkPendingMismatches(
     },
     select: {
       id: true,
+      provider: true,
+      paymentAccountId: true,
       providerPaymentId: true,
       status: true,
       order: {
@@ -73,6 +99,7 @@ async function checkPendingMismatches(
         throw new Error(`Payment ${payment.id} sem order associado`);
       }
       const order = payment.order;
+      const provider = await providerFor(payment);
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === payment.status || gatewayStatus === "PENDING") continue;
 
@@ -106,7 +133,7 @@ async function checkPendingMismatches(
 }
 
 async function checkPaidMismatches(
-  provider: Provider,
+  providerFor: ProviderFor,
   organizerFilter: Record<string, unknown>,
 ): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
   const cutoff = new Date(Date.now() - PAID_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
@@ -119,6 +146,8 @@ async function checkPaidMismatches(
     },
     select: {
       id: true,
+      provider: true,
+      paymentAccountId: true,
       providerPaymentId: true,
       status: true,
       orderId: true,
@@ -142,6 +171,7 @@ async function checkPaidMismatches(
         throw new Error(`Payment ${payment.id} sem order associado`);
       }
       const order = payment.order;
+      const provider = await providerFor(payment);
       const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
         await db.$transaction(async (tx) => {
@@ -165,7 +195,7 @@ async function checkPaidMismatches(
 }
 
 async function checkLateApprovalMismatches(
-  provider: Provider,
+  providerFor: ProviderFor,
   organizerFilter: Record<string, unknown>,
 ): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
   const cutoff = new Date(Date.now() - LATE_APPROVAL_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
@@ -178,6 +208,8 @@ async function checkLateApprovalMismatches(
     },
     select: {
       id: true,
+      provider: true,
+      paymentAccountId: true,
       providerPaymentId: true,
       status: true,
       orderId: true,
@@ -201,6 +233,7 @@ async function checkLateApprovalMismatches(
         throw new Error(`Payment ${payment.id} sem order associado`);
       }
       const order = payment.order;
+      const provider = await providerFor(payment);
       const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
       if (gatewayStatus === "PAID") {
         const result = await db.$transaction(async (tx) => {

@@ -1,5 +1,30 @@
 # Progresso do Projeto
 
+## Última atualização (2026-08-29 — `feat/multiplas-contas-mercadopago` Task 8: estorno/conciliação/status usam a conta congelada)
+
+Estorno, conciliação e polling de status agora consultam/estornam pela conta Mercado Pago
+congelada em `Payment.paymentAccountId` (inclusive já arquivada), não pelas configs globais.
+
+- `lib/payment/refund-service.ts`: resolve `getPaymentAccountById(payment.paymentAccountId)` só
+  quando `provider === "mercadopago"` e há id; `.catch(() => undefined)` cai no global; passa a
+  conta pro `getPaymentProvider(account)`.
+- `lib/payment/check-mp-status.ts`: `checkMPPaymentStatus(providerPaymentId, accessToken?)` — 2º
+  arg opcional, `token = accessToken ?? await getMercadoPagoAccessToken()`.
+- `app/api/orders/[id]/status/route.ts` + `app/api/payments/mp-return/route.ts`: resolvem a conta
+  do `payment` em mãos (`.catch(() => null)`) e passam `acc?.accessToken`.
+- `lib/payment/reconciliation.ts`: `makeProviderFor()` cacheia 1 `PaymentProvider` por chave
+  (`paymentAccountId` p/ MP, senão `null`); prime eager da chave `null`; os 3 helpers recebem
+  `providerFor` e incluem `provider`+`paymentAccountId` no `select`.
+- `lib/payment/cancel-pending-manually.ts`: mesma resolução por conta.
+- Novo `tests/payment-refund-account.test.ts` (3 casos: conta arquivada / sem conta / pagarme).
+  Suíte cheia **2134/2134**, `tsc --noEmit` limpo.
+
+Decisão: em vez de resolver o provider preguiçosamente 100%, faço um "prime eager" da chave
+`null` no início da conciliação — mantém 1 única resolução pro caso comum e não quebra os mocks
+`mockResolvedValueOnce` já existentes de `payment-reconciliation.test.ts`.
+
+---
+
 ## Última atualização (2026-08-28 — `fix/assistant-edit`: endurecer excluir→re-cadastrar + editar assistente no lugar — DEPLOYADO)
 
 Branch `fix/assistant-edit` mergeada em `main` (`dac05a5`) e DEPLOYADA (code-only, sem `db push`).

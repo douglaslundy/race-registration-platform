@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
+import { getPaymentAccountById, type ResolvedPaymentAccount } from "./account-resolver";
 import { applyGatewayStatus } from "./sync-payment-status";
 
 export interface RefundPaymentParams {
@@ -27,7 +28,14 @@ export async function refundPayment(params: RefundPaymentParams): Promise<Refund
   const order = payment.order;
   const orderId = payment.orderId;
 
-  const provider = await getPaymentProvider();
+  // Estorna pela MESMA conta Mercado Pago congelada no pagamento — mesmo que essa conta já tenha
+  // sido arquivada. Pagamentos antigos (sem paymentAccountId) e de outros provedores
+  // (pagarme/sandbox) caem no caminho global. Um id de conta obsoleto não pode derrubar o estorno.
+  let account: ResolvedPaymentAccount | undefined;
+  if (payment.provider === "mercadopago" && payment.paymentAccountId) {
+    account = await getPaymentAccountById(payment.paymentAccountId).catch(() => undefined);
+  }
+  const provider = await getPaymentProvider(account);
 
   const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId);
   if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { checkMPPaymentStatus } from "@/lib/payment/check-mp-status";
+import { getPaymentAccountById } from "@/lib/payment/account-resolver";
 
 /**
  * URL de retorno do checkout do Mercado Pago — o navegador chega aqui com parâmetros
@@ -26,7 +27,14 @@ export async function GET(req: NextRequest) {
 
   const order = await db.order.findFirst({
     where: { id: orderId, buyerUserId: session.user.id },
-    include: { registrations: { take: 1 } },
+    include: {
+      registrations: { take: 1 },
+      payments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { provider: true, paymentAccountId: true },
+      },
+    },
   });
 
   if (!order) {
@@ -36,7 +44,11 @@ export async function GET(req: NextRequest) {
   const regId = order.registrations[0]?.id;
 
   if (paymentId && order.status !== "PAID") {
-    const realStatus = await checkMPPaymentStatus(paymentId);
+    const pmt = order.payments?.[0];
+    const acc = pmt?.paymentAccountId
+      ? await getPaymentAccountById(pmt.paymentAccountId).catch(() => null)
+      : null;
+    const realStatus = await checkMPPaymentStatus(paymentId, acc?.accessToken);
     if (realStatus === "PAID") {
       await db.$transaction([
         db.order.update({ where: { id: orderId }, data: { status: "PAID" } }),

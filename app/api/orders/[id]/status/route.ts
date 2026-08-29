@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { checkMPPaymentStatus } from "@/lib/payment/check-mp-status";
+import { getPaymentAccountById } from "@/lib/payment/account-resolver";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       payments: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { id: true, providerPaymentId: true, status: true },
+        select: { id: true, providerPaymentId: true, status: true, provider: true, paymentAccountId: true },
       },
       registrations: { select: { id: true, ticketBatchId: true, status: true } },
     },
@@ -35,7 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (payment?.providerPaymentId) {
       const providerSetting = await getPaymentProviderSetting();
       if (providerSetting === "mercadopago") {
-        const mpStatus = await checkMPPaymentStatus(payment.providerPaymentId);
+        const acc = payment.paymentAccountId
+          ? await getPaymentAccountById(payment.paymentAccountId).catch(() => null)
+          : null;
+        const mpStatus = await checkMPPaymentStatus(payment.providerPaymentId, acc?.accessToken);
         if (mpStatus === "PAID" && payment.status !== "PAID") {
           const result = await db.$transaction((tx) =>
             applyGatewayStatus(tx, payment, order, order.registrations, "PAID", "status_poll", { paidAt: new Date() }),

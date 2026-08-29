@@ -1,12 +1,16 @@
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 
 /**
- * Consulta o status real de um pagamento diretamente na API do Mercado Pago, usando a nossa
- * própria access token (nunca confia em status vindo de query string ou corpo de requisição não
- * verificados).
+ * Consulta o status real de um pagamento diretamente na API do Mercado Pago, usando uma access
+ * token nossa (nunca confia em status vindo de query string ou corpo de requisição não
+ * verificados). Recebe `accessToken` opcional para consultar pela conta congelada no pagamento
+ * (inclusive já arquivada); sem ela, cai na token global das configurações.
  */
-export async function checkMPPaymentStatus(providerPaymentId: string): Promise<"PAID" | "CANCELLED" | null> {
-  const token = await getMercadoPagoAccessToken();
+export async function checkMPPaymentStatus(
+  providerPaymentId: string,
+  accessToken?: string,
+): Promise<"PAID" | "CANCELLED" | null> {
+  const token = accessToken ?? (await getMercadoPagoAccessToken());
   if (!token) return null;
   try {
     const res = await fetch(`https://api.mercadopago.com/v1/payments/${providerPaymentId}`, {

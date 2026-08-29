@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payment";
+import { getPaymentAccountById } from "./account-resolver";
 import { cancelExpiredPayment } from "./expire-payments";
 
 export interface CancelPendingManuallyResult {
@@ -15,7 +16,10 @@ export interface CancelPendingManuallyResult {
  * cancelExpiredPayment. Se o gateway recusar (ex: pagamento já foi aprovado nesse meio-tempo),
  * falha alto em vez de cancelar localmente com o gateway ainda pagável. */
 export async function cancelPendingPaymentManually(paymentId: string): Promise<CancelPendingManuallyResult> {
-  const payment = await db.payment.findUnique({ where: { id: paymentId }, select: { status: true, providerPaymentId: true } });
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    select: { status: true, providerPaymentId: true, provider: true, paymentAccountId: true },
+  });
   if (!payment || payment.status !== "PENDING") {
     return { ok: false, error: "Nenhum pagamento pendente encontrado para esta inscrição" };
   }
@@ -23,7 +27,11 @@ export async function cancelPendingPaymentManually(paymentId: string): Promise<C
     return { ok: false, error: "Pagamento sem referência no gateway" };
   }
 
-  const provider = await getPaymentProvider();
+  const account =
+    payment.provider === "mercadopago" && payment.paymentAccountId
+      ? await getPaymentAccountById(payment.paymentAccountId).catch(() => undefined)
+      : undefined;
+  const provider = await getPaymentProvider(account);
   try {
     await provider.cancelPayment(payment.providerPaymentId);
   } catch (err) {
