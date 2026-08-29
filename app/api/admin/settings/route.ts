@@ -11,7 +11,10 @@ const schema = z.object({
 });
 
 function isSecretKey(key: string): boolean {
-  return /(_token|_key|_secret|_password)$/.test(key);
+  // `*_sid` / `*_id` cobrem credenciais que não terminam em _token/_key/_secret/_password mas
+  // ainda identificam a conta do provedor (ex.: `twilio_account_sid`, `twilio_content_sid`) e
+  // nunca podem ir pro AuditLog em claro (requisito 4).
+  return /(_token|_key|_secret|_password|_sid|_id)$/.test(key);
 }
 
 export async function POST(req: NextRequest) {
@@ -53,9 +56,12 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[settings] upsertSetting failed:", err);
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // NÃO logar `err.message` nem devolvê-lo: um PrismaClientValidationError serializa o objeto de
+    // argumentos (incluindo o valor sendo salvo, que pode ser um token/secret). Só o nome do erro
+    // vai pro log do servidor; o cliente recebe uma string fixa.
+    const name = err instanceof Error ? err.name : "UnknownError";
+    console.error("[settings] upsertSetting failed:", name);
+    return NextResponse.json({ error: "Erro ao salvar configuração" }, { status: 500 });
   }
 
   revalidatePath("/", "layout");
