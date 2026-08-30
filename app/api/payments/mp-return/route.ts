@@ -45,9 +45,10 @@ export async function GET(req: NextRequest) {
 
   if (paymentId && order.status !== "PAID") {
     const pmt = order.payments?.[0];
-    const acc = pmt?.paymentAccountId
-      ? await getPaymentAccountById(pmt.paymentAccountId).catch(() => null)
-      : null;
+    const acc =
+      pmt?.provider === "mercadopago" && pmt?.paymentAccountId
+        ? await getPaymentAccountById(pmt.paymentAccountId).catch(() => null)
+        : null;
     const realStatus = await checkMPPaymentStatus(paymentId, acc?.accessToken);
     if (realStatus === "PAID") {
       await db.$transaction([

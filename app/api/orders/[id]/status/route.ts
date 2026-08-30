@@ -36,9 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (payment?.providerPaymentId) {
       const providerSetting = await getPaymentProviderSetting();
       if (providerSetting === "mercadopago") {
-        const acc = payment.paymentAccountId
-          ? await getPaymentAccountById(payment.paymentAccountId).catch(() => null)
-          : null;
+        const acc =
+          payment.provider === "mercadopago" && payment.paymentAccountId
+            ? await getPaymentAccountById(payment.paymentAccountId).catch(() => null)
+            : null;
         const mpStatus = await checkMPPaymentStatus(payment.providerPaymentId, acc?.accessToken);
         if (mpStatus === "PAID" && payment.status !== "PAID") {
           const result = await db.$transaction((tx) =>
