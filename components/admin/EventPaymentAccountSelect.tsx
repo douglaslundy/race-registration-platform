@@ -30,6 +30,16 @@ export default function EventPaymentAccountSelect({
 
   const available = accounts.filter((a) => !a.archivedAt);
   const dirty = selected !== (currentAccountId ?? "");
+
+  // Evento fixado numa conta arquivada (ou removida da lista de disponíveis): o <select>
+  // controlado não teria <option> correspondente e cairia no "(padrão da plataforma)",
+  // escondendo que o dinheiro ainda vai pra conta arquivada. Prepende uma opção desabilitada
+  // com o rótulo + " (arquivada)" pra o value bater e o aviso vermelho fazer sentido.
+  const currentAccount = currentAccountId
+    ? accounts.find((a) => a.id === currentAccountId)
+    : undefined;
+  const showArchivedOption =
+    !!currentAccountId && !available.some((a) => a.id === currentAccountId);
   const busy = verification.step === "requesting" || verification.step === "submitting";
 
   async function handleSubmitCode(code: string) {
@@ -60,6 +70,11 @@ export default function EventPaymentAccountSelect({
           className="input-field w-full md:w-80"
         >
           <option value="">(padrão da plataforma: {defaultLabel})</option>
+          {showArchivedOption && (
+            <option value={currentAccountId as string} disabled>
+              {(currentAccount?.label ?? "Conta vinculada")} (arquivada)
+            </option>
+          )}
           {available.map((a) => (
             <option key={a.id} value={a.id}>
               {a.label}
