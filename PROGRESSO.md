@@ -69,6 +69,8 @@ exit 0**.
 2. **`prisma db push`** do schema novo (tabela `payment_accounts` + `Event.paymentAccountId` +
    `Payment.paymentAccountId`). **DEVE preceder o restart**: o shim do webhook (`/api/webhooks/payment`)
    consulta `payment_accounts` a cada webhook MP; sem a tabela → 500.
+   **NUNCA `prisma migrate deploy`** — `_prisma_migrations` da produção está congelada em 2026-07-08,
+   tudo desde então via `db push` (ver nota de deploy mais abaixo).
 3. **`docker compose run --rm --no-deps app sh -c "npx tsx prisma/backfill-payment-accounts.ts"`**
    — cria a conta "Mercado Pago Principal" (a partir das settings `mp_*`) + backfill dos `Payment`
    MP existentes. Idempotente.
