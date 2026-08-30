@@ -18,7 +18,7 @@ const verifyCodeMock = vi.mocked(verifySensitiveActionCode);
 const MODELS = [
   "raceResult", "resultImport", "refund", "payment", "registration", "order",
   "fileAsset", "auditLog", "transferPayout", "coupon", "ticketBatch",
-  "eventCategory", "eventRoute", "event", "athleteProfile", "organizerProfile",
+  "eventCategory", "eventRoute", "event", "paymentAccount", "athleteProfile", "organizerProfile",
   "user", "platformSetting", "alertLog",
 ];
 
@@ -266,6 +266,66 @@ describe("admin backup import api", () => {
             neighborhood: "Bela Vista",
           }),
         ]),
+      }),
+    );
+  });
+
+  it("restores payment_accounts and keeps paymentAccountId on events and payments", async () => {
+    const res = await POST(
+      makeRequest({
+        paymentAccounts: [
+          {
+            id: "acc_1", label: "Conta MP 1", provider: "mercadopago", accessToken: "TOK-1",
+            webhookSecret: "WHS-1", publicKey: "PUB-1", isDefault: true, archivedAt: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        events: [
+          {
+            id: "e1", organizerId: "org-1", title: "T", slug: "t", modality: "RUNNING", status: "DRAFT",
+            startAt: "2026-01-01T00:00:00.000Z", city: "X", state: "SP", createdAt: "2026-01-01T00:00:00.000Z",
+            paymentAccountId: "acc_1",
+          },
+        ],
+        orders: [
+          {
+            id: "o1", buyerUserId: "u1", eventId: "e1", subtotalAmount: 100, platformFeeAmount: 10,
+            paymentFeeAmount: 5, totalAmount: 115, status: "PAID", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        payments: [
+          {
+            id: "p1", orderId: "o1", provider: "mercadopago", method: "PIX", status: "PAID", amount: 115,
+            idempotencyKey: "idem-1", paymentAccountId: "acc_1", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.tables.find((t: any) => t.table === "paymentAccounts").restored).toBe(1);
+
+    expect(callOrder.indexOf("delete:payment")).toBeLessThan(callOrder.indexOf("delete:paymentAccount"));
+    expect(callOrder.indexOf("delete:event")).toBeLessThan(callOrder.indexOf("delete:paymentAccount"));
+    expect(callOrder.indexOf("create:paymentAccount")).toBeLessThan(callOrder.indexOf("create:event"));
+    expect(callOrder.indexOf("create:paymentAccount")).toBeLessThan(callOrder.indexOf("create:payment"));
+
+    expect(tx.paymentAccount.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({ id: "acc_1", accessToken: "TOK-1", webhookSecret: "WHS-1", isDefault: true }),
+        ]),
+      }),
+    );
+    expect(tx.event.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([expect.objectContaining({ paymentAccountId: "acc_1" })]),
+      }),
+    );
+    expect(tx.payment.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([expect.objectContaining({ paymentAccountId: "acc_1" })]),
       }),
     );
   });

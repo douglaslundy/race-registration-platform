@@ -32,6 +32,9 @@ describe("admin backup export api", () => {
     dbMock.auditLog.findMany.mockResolvedValue([]);
     dbMock.platformSetting.findMany.mockResolvedValue([{ key: "app_name", value: "Corridas" }]);
     dbMock.alertLog.findMany.mockResolvedValue([]);
+    dbMock.paymentAccount.findMany.mockResolvedValue([
+      { id: "acc_1", label: "Conta 1", accessToken: "TOK", webhookSecret: "WHS", isDefault: true, archivedAt: null },
+    ]);
   });
 
   it("streams a JSON object with every table, including the newly added ones", async () => {
@@ -43,7 +46,7 @@ describe("admin backup export api", () => {
 
     expect(Object.keys(data).sort()).toEqual(
       [
-        "users", "athleteProfiles", "events", "registrations", "orders", "payments", "coupons",
+        "users", "athleteProfiles", "paymentAccounts", "events", "registrations", "orders", "payments", "coupons",
         "organizerProfiles", "ticketBatches", "eventCategories", "eventRoutes", "transferPayouts",
         "resultImports", "raceResults", "fileAssets", "auditLogs", "platformSettings", "refunds",
         "alertLogs",
@@ -51,5 +54,8 @@ describe("admin backup export api", () => {
     );
     expect(data.users).toEqual([{ id: "u1", email: "a@a.com" }]);
     expect(data.platformSettings).toEqual([{ key: "app_name", value: "Corridas" }]);
+    expect(data.paymentAccounts).toEqual([
+      { id: "acc_1", label: "Conta 1", accessToken: "TOK", webhookSecret: "WHS", isDefault: true, archivedAt: null },
+    ]);
   });
 });

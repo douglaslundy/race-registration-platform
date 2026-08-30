@@ -74,10 +74,27 @@ function toOrganizerProfileRow(row: Row): Prisma.OrganizerProfileCreateManyInput
   };
 }
 
+// O backup pode conter as credenciais das contas Mercado Pago (accessToken/webhookSecret).
+// Consistente com o restante do arquivo, que já carrega todo hash/segredo; import é 2FA-gated.
+function toPaymentAccountRow(row: Row): Prisma.PaymentAccountCreateManyInput {
+  return {
+    id: s(row.id),
+    label: s(row.label),
+    provider: s(row.provider) || "mercadopago",
+    accessToken: s(row.accessToken),
+    webhookSecret: s(row.webhookSecret),
+    publicKey: sn(row.publicKey),
+    isDefault: b(row.isDefault),
+    archivedAt: dn(row.archivedAt),
+    createdAt: d(row.createdAt),
+  };
+}
+
 function toEventRow(row: Row): Prisma.EventCreateManyInput {
   return {
     id: s(row.id),
     organizerId: s(row.organizerId),
+    paymentAccountId: sn(row.paymentAccountId),
     title: s(row.title),
     slug: s(row.slug),
     description: sn(row.description),
@@ -229,6 +246,7 @@ function toPaymentRow(row: Row): Prisma.PaymentCreateManyInput {
   return {
     id: s(row.id),
     orderId: s(row.orderId),
+    paymentAccountId: sn(row.paymentAccountId),
     provider: s(row.provider),
     providerPaymentId: sn(row.providerPaymentId),
     method: s(row.method) as Prisma.PaymentCreateManyInput["method"],
@@ -344,7 +362,7 @@ function toAlertLogRow(row: Row): Prisma.AlertLogCreateManyInput {
 // ── handler ───────────────────────────────────────────────────────────────────
 
 const TABLE_KEYS = [
-  "users", "athleteProfiles", "organizerProfiles", "events", "eventRoutes", "eventCategories",
+  "users", "athleteProfiles", "organizerProfiles", "paymentAccounts", "events", "eventRoutes", "eventCategories",
   "ticketBatches", "transferPayouts", "coupons", "orders", "registrations", "payments", "refunds",
   "resultImports", "raceResults", "fileAssets", "auditLogs", "platformSettings", "alertLogs",
 ] as const;
@@ -399,6 +417,7 @@ export async function POST(req: NextRequest) {
   const users = (backup.users ?? []).map(toUserRow);
   const athleteProfiles = (backup.athleteProfiles ?? []).map(toAthleteProfileRow);
   const organizerProfiles = (backup.organizerProfiles ?? []).map(toOrganizerProfileRow);
+  const paymentAccounts = (backup.paymentAccounts ?? []).map(toPaymentAccountRow);
   const events = (backup.events ?? []).map(toEventRow);
   const eventRoutes = (backup.eventRoutes ?? []).map(toEventRouteRow);
   const eventCategories = (backup.eventCategories ?? []).map(toEventCategoryRow);
@@ -434,6 +453,7 @@ export async function POST(req: NextRequest) {
         await tx.eventCategory.deleteMany({});
         await tx.eventRoute.deleteMany({});
         await tx.event.deleteMany({});
+        await tx.paymentAccount.deleteMany({});
         await tx.athleteProfile.deleteMany({});
         await tx.organizerProfile.deleteMany({});
         await tx.user.deleteMany({});
@@ -444,6 +464,7 @@ export async function POST(req: NextRequest) {
         if (users.length) await tx.user.createMany({ data: users });
         if (athleteProfiles.length) await tx.athleteProfile.createMany({ data: athleteProfiles });
         if (organizerProfiles.length) await tx.organizerProfile.createMany({ data: organizerProfiles });
+        if (paymentAccounts.length) await tx.paymentAccount.createMany({ data: paymentAccounts });
         if (events.length) await tx.event.createMany({ data: events });
         if (eventRoutes.length) await tx.eventRoute.createMany({ data: eventRoutes });
         if (eventCategories.length) await tx.eventCategory.createMany({ data: eventCategories });
@@ -465,6 +486,7 @@ export async function POST(req: NextRequest) {
           { table: "users", restored: users.length },
           { table: "athleteProfiles", restored: athleteProfiles.length },
           { table: "organizerProfiles", restored: organizerProfiles.length },
+          { table: "paymentAccounts", restored: paymentAccounts.length },
           { table: "events", restored: events.length },
           { table: "eventRoutes", restored: eventRoutes.length },
           { table: "eventCategories", restored: eventCategories.length },

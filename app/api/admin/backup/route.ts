@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+// ATENÇÃO: o JSON gerado aqui contém segredos — inclusive `accessToken` e
+// `webhookSecret` das contas Mercado Pago (`paymentAccounts`). Isso é consistente
+// com o backup já carregar todo hash/segredo do sistema; o export é restrito a
+// ADMIN e o import é protegido por 2FA. Um backup que não restaura o roteamento de
+// pagamento é pior do que um que carrega as credenciais.
+
 const BATCH = 500;
 
 type Fetcher = (cursor: string | undefined) => Promise<Record<string, unknown>[]>;
@@ -30,6 +36,11 @@ async function* streamTables() {
       name: "users",
       fetcher: (cursor) =>
         db.user.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
+    },
+    {
+      name: "paymentAccounts",
+      fetcher: (cursor) =>
+        db.paymentAccount.findMany({ take: BATCH, ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), orderBy: { id: "asc" } }),
     },
     {
       name: "events",
