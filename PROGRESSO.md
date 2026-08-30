@@ -1,49 +1,83 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-29 — `feat/multiplas-contas-mercadopago` Task 11: rotas admin `/api/admin/payment-accounts` com 2FA)
+## Última atualização (2026-08-30 — Sub-projeto B — múltiplas contas Mercado Pago — CONCLUÍDO (não deployado))
 
-Rotas admin CRUD de contas Mercado Pago, toda mutação atrás do 2FA-por-código
-(`actionType: "PAYMENT_ACCOUNT_CHANGE"`).
+Branch `feat/multiplas-contas-mercadopago` (14 tasks, subagent-driven). Verificação final (Task 14)
+passou: **`vitest` 282 arquivos / 2174 testes verdes**, **`tsc --noEmit` limpo**, **`npm run build`
+exit 0**.
 
-- `app/api/admin/payment-accounts/route.ts`: `GET` (lista via `listPaymentAccounts`, sem credenciais)
-  + `POST` (cria, exige `label`/`accessToken`/`webhookSecret`, 2FA, audita `PAYMENT_ACCOUNT_CREATED`
-  com credenciais mascaradas via `maskCredential`).
-- `request-code/route.ts`: `POST { targetId? }` (default `"new"`) → `requestSensitiveActionCode`.
-- `[id]/route.ts` `PATCH`: 2FA + `updatePaymentAccount` + audita `PAYMENT_ACCOUNT_UPDATED`.
-- `[id]/make-default/route.ts` `POST`: 2FA + `makeDefaultPaymentAccount` (try/catch → 400) + audita
-  `PAYMENT_ACCOUNT_DEFAULT_CHANGED`.
-- `[id]/archive/route.ts` `POST { archived }`: 2FA + `setPaymentAccountArchived` (try/catch → 400) +
-  audita `PAYMENT_ACCOUNT_ARCHIVED` / `_UNARCHIVED`.
-- Helper compartilhado novo `lib/security/verify-2fa-body.ts` (`verify2faBody`): valida
-  `verificationId`/`code` como string (400 "Código de verificação obrigatório") e consome o código.
-- `app/admin/assistentes/page.tsx`: nova actionKey `payment-accounts.manage`.
-- Novo `tests/admin-payment-accounts-route.test.ts` — 11 casos, todos passam. `tsc --noEmit` limpo,
-  `npm run build` exit 0.
+### O que faz
+- N contas Mercado Pago geridas pelo admin (cada uma com access token / webhook secret / public key
+  próprios). Uma é a **padrão global**; cada evento pode ter **override** (`Event.paymentAccountId`).
+- A conta usada num pagamento fica **congelada** em `Payment.paymentAccountId` — estorno,
+  conciliação e polling de status usam essa conta (mesmo já arquivada), nunca as settings globais.
+- **Webhook por conta**: `POST /api/webhooks/payment/mp/[accountId]` — cada painel do MP aponta pro
+  seu endpoint; o handler exige que o pagamento pertença àquela conta antes de aplicar mudança.
+  Reconsulta o status na API do MP com o token DAQUELA conta. Sempre `200 { ok: true }` depois da
+  assinatura verificada (inclusive se o handler lançar — evita retry-storm do MP). Não-200 só em
+  404 (conta inexistente) / 401 (assinatura inválida) / 400 (corpo não-JSON).
+- **Shim legado**: `POST /api/webhooks/payment` continua funcionando — resolve a conta padrão, loga
+  aviso de migração, aplica com `accountId: undefined` (sem match por conta). Pagar.me/sandbox
+  intactos.
+- **2FA** (`PAYMENT_ACCOUNT_CHANGE`) em toda operação de conta (criar / editar / make-default /
+  archive) e no override por evento; **`BACKUP_IMPORT`** protege `POST /api/admin/backup/import`.
+- Migração da config atual → conta "Mercado Pago Principal" + backfill dos `Payment` MP antigos
+  (idempotente: 2ª execução → `{ created: false }`).
+- GET das rotas admin nunca devolve credencial; auditoria mascara tudo via `maskCredential` (`***`).
 
----
+### Arquivos principais
+- `lib/payment/account-resolver.ts` — `resolveEventPaymentAccount` / `getDefaultPaymentAccount` /
+  `getPaymentAccountById` / `NoPaymentAccountError` / `ResolvedPaymentAccount`.
+- `lib/payment/payment-accounts.ts` — CRUD (`listPaymentAccounts`/`createPaymentAccount`/
+  `updatePaymentAccount`/`makeDefaultPaymentAccount`/`setPaymentAccountArchived`), `toResolved`,
+  `maskCredential`, `PaymentAccountDto` (invariante: 1 só `isDefault` não-arquivada).
+- `lib/payment/index.ts` — `getPaymentProvider(account?)`; `lib/payment/mercadopago.ts` —
+  `MercadoPagoProvider(account?)` (token/secret da conta, fallback setting global sem conta).
+- `lib/payment/webhook-handler.ts` — `processPaymentWebhookEvent({ ..., accountId? })` com o match
+  de conta; `app/api/webhooks/payment/mp/[accountId]/route.ts` (novo) + `app/api/webhooks/payment/route.ts` (shim).
+- `lib/payment/refund-service.ts` / `reconciliation.ts` / `check-mp-status.ts` /
+  `cancel-pending-manually.ts` — resolvem pela conta congelada.
+- `app/api/checkout/route.ts` / `checkout-ads/route.ts` / `anunciante/solicitar/route.ts` — gravam
+  `paymentAccountId` em todo `db.payment.create` de MP; `app/api/checkout/card-config/route.ts` —
+  `?eventId` → public key da conta do evento.
+- `app/api/admin/payment-accounts/*` (route + `[id]` + `[id]/make-default` + `[id]/archive` +
+  `request-code`), `lib/security/verify-2fa-body.ts`, `app/api/admin/events/[id]` (override + 2FA).
+- `components/admin/PaymentAccountsManager.tsx` + strip no `PaymentGatewayForm` + select de conta
+  na edição de evento.
+- Schema: migration `prisma/migrations/20260829000000_add_payment_accounts`; dados:
+  `prisma/backfill-payment-accounts.ts` (`backfillPaymentAccounts`).
 
-## Última atualização (2026-08-29 — `feat/multiplas-contas-mercadopago` Task 8: estorno/conciliação/status usam a conta congelada)
+### Fixes da Task 14 (commit `8bff766`)
+- `card-config`: `console.error` no catch de `resolveEventPaymentAccount` (antes silencioso).
+- webhook por conta: `processPaymentWebhookEvent` em try/catch → ainda `200 { ok: true }` em erro
+  transitório (docblock atualizado). Testes novos: `tests/checkout-card-config-route.test.ts` +
+  caso "handler rejeita → 200" em `tests/payment-webhook-per-account.test.ts`.
 
-Estorno, conciliação e polling de status agora consultam/estornam pela conta Mercado Pago
-congelada em `Payment.paymentAccountId` (inclusive já arquivada), não pelas configs globais.
+### Revisão adversarial (grep) — tudo OK
+- `getMercadoPago{AccessToken,WebhookSecret,PublicKey}` só em `payment-settings.ts` (defs),
+  `mercadopago.ts` (fallback sem conta), `check-mp-status.ts` (fallback), `webhooks/payment/route.ts`
+  (shim legado) e `card-config` (branch sem eventId). Nenhum uso novo em path por conta.
+- `new MercadoPagoProvider()` direto: zero — tudo passa por `getPaymentProvider(account?)`.
+- `accessToken`/`webhookSecret` em `app/api/admin/payment-accounts` e `.../events`: nunca num
+  `NextResponse.json` de resposta; só `maskCredential(...)` em `metadata` de audit.
+- `paymentAccountId` gravado em TODOS os `db.payment.create` de MP (checkout, checkout-ads,
+  anunciante/solicitar).
+- `backfillPaymentAccounts` idempotente (guard `existing` → `{ created: false }`).
 
-- `lib/payment/refund-service.ts`: resolve `getPaymentAccountById(payment.paymentAccountId)` só
-  quando `provider === "mercadopago"` e há id; `.catch(() => undefined)` cai no global; passa a
-  conta pro `getPaymentProvider(account)`.
-- `lib/payment/check-mp-status.ts`: `checkMPPaymentStatus(providerPaymentId, accessToken?)` — 2º
-  arg opcional, `token = accessToken ?? await getMercadoPagoAccessToken()`.
-- `app/api/orders/[id]/status/route.ts` + `app/api/payments/mp-return/route.ts`: resolvem a conta
-  do `payment` em mãos (`.catch(() => null)`) e passam `acc?.accessToken`.
-- `lib/payment/reconciliation.ts`: `makeProviderFor()` cacheia 1 `PaymentProvider` por chave
-  (`paymentAccountId` p/ MP, senão `null`); prime eager da chave `null`; os 3 helpers recebem
-  `providerFor` e incluem `provider`+`paymentAccountId` no `select`.
-- `lib/payment/cancel-pending-manually.ts`: mesma resolução por conta.
-- Novo `tests/payment-refund-account.test.ts` (3 casos: conta arquivada / sem conta / pagarme).
-  Suíte cheia **2134/2134**, `tsc --noEmit` limpo.
-
-Decisão: em vez de resolver o provider preguiçosamente 100%, faço um "prime eager" da chave
-`null` no início da conciliação — mantém 1 única resolução pro caso comum e não quebra os mocks
-`mockResolvedValueOnce` já existentes de `payment-reconciliation.test.ts`.
+### PRÓXIMA TAREFA — deploy do sub-projeto B
+1. `git pull` na VPS → `docker build`.
+2. **`prisma db push`** do schema novo (tabela `payment_accounts` + `Event.paymentAccountId` +
+   `Payment.paymentAccountId`). **DEVE preceder o restart**: o shim do webhook (`/api/webhooks/payment`)
+   consulta `payment_accounts` a cada webhook MP; sem a tabela → 500.
+3. **`docker compose run --rm --no-deps app sh -c "npx tsx prisma/backfill-payment-accounts.ts"`**
+   — cria a conta "Mercado Pago Principal" (a partir das settings `mp_*`) + backfill dos `Payment`
+   MP existentes. Idempotente.
+4. Restart do container.
+5. Roteiro operacional (§6 da spec): admin vai em `/admin/configuracoes` → Contas Mercado Pago,
+   copia o webhook da conta principal (`/api/webhooks/payment/mp/<id>`) e atualiza no painel do MP;
+   depois cadastra as outras contas, aponta o webhook de cada uma e seta o override nos eventos que
+   usam conta diferente.
+6. Depois: sub-projeto C (snapshot/override de dados da inscrição).
 
 ---
 

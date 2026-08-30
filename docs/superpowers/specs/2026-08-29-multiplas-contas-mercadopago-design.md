@@ -384,31 +384,37 @@ targetId: "backup" })` antes de tocar no banco. `POST /api/admin/backup/import/r
 
 ## 5. Testes
 
-- **`lib/payment/account-resolver`**: override do evento → conta; sem override → padrão; sem padrão
-  → `NoPaymentAccountError`; `getPaymentAccountById` acha conta arquivada.
-- **`MercadoPagoProvider(account)`**: `createPayment`/`refundPayment`/`checkPaymentStatus`/
+> Status Task 14 (2026-08-30): suíte completa verde (282 arquivos / 2174 testes), `tsc --noEmit`
+> limpo, `npm run build` exit 0. Todos os itens abaixo cobertos.
+
+- [x] **`lib/payment/account-resolver`**: override do evento → conta; sem override → padrão; sem padrão
+  → `NoPaymentAccountError`; `getPaymentAccountById` acha conta arquivada. (`tests/payment-account-resolver.test.ts`)
+- [x] **`MercadoPagoProvider(account)`**: `createPayment`/`refundPayment`/`checkPaymentStatus`/
   `verifyWebhookSignature` usam token e secret da conta, não da setting; sem `account` → fallback
-  setting global (regressão Pagar.me/sandbox intacta).
-- **Checkout E2E**: `Payment.paymentAccountId` = conta resolvida do evento; `checkout-ads` = padrão.
-- **`card-config`**: com `eventId` → public key da conta do evento; sem → setting global.
-- **Webhook por conta** (`/mp/[accountId]`): assinatura válida da conta certa → aplica; assinatura
+  setting global (regressão Pagar.me/sandbox intacta). (`tests/payment-mercadopago-account.test.ts`)
+- [x] **Checkout E2E**: `Payment.paymentAccountId` = conta resolvida do evento; `checkout-ads` = padrão.
+  (`tests/checkout-payment-account.test.ts`, `tests/checkout-ads-route.test.ts`, `tests/anunciante-solicitar-route.test.ts`)
+- [x] **`card-config`**: com `eventId` → public key da conta do evento; sem → setting global.
+  (`tests/checkout-card-config-route.test.ts`)
+- [x] **Webhook por conta** (`/mp/[accountId]`): assinatura válida da conta certa → aplica; assinatura
   de outra conta → 401; `accountId` inexistente → 404; `providerPaymentId` de outra conta → ignora,
-  200; `Payment` inexistente → 200.
-- **Shim legado** (`/api/webhooks/payment`): MP → resolve padrão e aplica; Pagar.me → inalterado
-  (testes atuais seguem verdes).
-- **Refund**: usa a conta congelada (inclusive arquivada); `paymentAccountId` null → fallback
-  setting global.
-- **Rotas admin**: cada mutação sem `verificationId`/`code` válido → 403; GET nunca devolve
+  200; `Payment` inexistente → 200; handler rejeitando → ainda 200. (`tests/payment-webhook-per-account.test.ts`)
+- [x] **Shim legado** (`/api/webhooks/payment`): MP → resolve padrão e aplica; Pagar.me → inalterado
+  (testes atuais seguem verdes). (`tests/payment-webhook-per-account.test.ts`)
+- [x] **Refund**: usa a conta congelada (inclusive arquivada); `paymentAccountId` null → fallback
+  setting global. (`tests/payment-refund-account.test.ts`)
+- [x] **Rotas admin**: cada mutação sem `verificationId`/`code` válido → 403; GET nunca devolve
   `accessToken`/`webhookSecret`; `archive` da padrão → 400; `make-default` transacional (rebaixa a
-  antiga); auditoria mascara credenciais; primeira conta vira default.
-- **Override de evento**: `PATCH` com `paymentAccountId` sem 2FA → 403; com `null` → volta pra
-  padrão; conta arquivada → 400.
-- **backup/import**: sem código → 403.
-- **Migração** (teste do step de dados): com `mp_access_token` → cria "Mercado Pago Principal"
+  antiga); auditoria mascara credenciais; primeira conta vira default. (`tests/admin-payment-accounts-route.test.ts`,
+  `tests/payment-accounts-crud.test.ts`)
+- [x] **Override de evento**: `PATCH` com `paymentAccountId` sem 2FA → 403; com `null` → volta pra
+  padrão; conta arquivada → 400. (`tests/admin-event-payment-account-route.test.ts`)
+- [x] **backup/import**: sem código → 403. (`tests/admin-backup-import-2fa.test.ts`)
+- [x] **Migração** (teste do step de dados): com `mp_access_token` → cria "Mercado Pago Principal"
   default + backfill de `payments.paymentAccountId`; sem token → nenhuma conta; rodar 2x → não
-  duplica.
-- **Invariante**: nunca duas contas `isDefault=true` não-arquivadas (teste no fluxo de
-  `make-default` e de criação).
+  duplica. (`tests/backfill-payment-accounts.test.ts`)
+- [x] **Invariante**: nunca duas contas `isDefault=true` não-arquivadas (teste no fluxo de
+  `make-default` e de criação). (`tests/payment-accounts-crud.test.ts`)
 
 ## 6. Compatibilidade e migração operacional
 
