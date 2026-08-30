@@ -96,7 +96,21 @@ export async function POST(
       return NextResponse.json({ ok: true });
     }
 
-    status = MP_STATUS_MAP[data.status as string] ?? "CANCELLED";
+    const mapped = MP_STATUS_MAP[data.status as string];
+    if (!mapped) {
+      // Status não-terminal (pending, in_process, authorized, in_mediation…) ou
+      // desconhecido. O MP manda `payment.updated` pra transições intermediárias —
+      // mapear pra "CANCELLED" cancelaria um pagamento pendente real. Não aplica nada;
+      // o próximo webhook (ou a conciliação) traz o status definitivo.
+      console.log(
+        "[webhook/mp] status não-terminal %o para %s — nada aplicado",
+        data.status,
+        mpPaymentId,
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    status = mapped;
     paidAt = (data.date_approved as string | undefined) ?? undefined;
     gatewayFeeAmount = data.status === "approved" ? extractGatewayFeeAmount(data) : undefined;
   } else {

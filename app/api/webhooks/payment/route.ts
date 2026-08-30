@@ -108,9 +108,21 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ ok: true });
     }
+    const mapped = MP_STATUS_MAP[real.status];
+    if (!mapped) {
+      // Status não-terminal (pending, in_process, authorized, in_mediation…) ou
+      // desconhecido. O MP manda `payment.updated` pra transições intermediárias —
+      // mapear pra "CANCELLED" cancelaria um pagamento pendente real. Não aplica nada.
+      console.log(
+        "[webhook] status não-terminal %o para %s — nada aplicado",
+        real.status,
+        mpPaymentId,
+      );
+      return NextResponse.json({ ok: true });
+    }
     parsedStatus = {
       providerPaymentId: mpPaymentId,
-      status: MP_STATUS_MAP[real.status] ?? "CANCELLED",
+      status: mapped,
       paidAt: real.paidAt,
       gatewayFeeAmount: real.gatewayFeeAmount,
       rawPayload: payload,

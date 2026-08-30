@@ -139,6 +139,29 @@ describe("webhook por conta — /api/webhooks/payment/mp/[accountId]", () => {
     errSpy.mockRestore();
   });
 
+  it.each(["in_process", "pending"])(
+    "re-fetch bem-sucedido com status não-terminal (%s) → 200 { ok: true } e NADA é processado",
+    async (mpStatus) => {
+      vi.mocked(getPaymentAccountById).mockResolvedValueOnce(ACCOUNT as any);
+      vi.mocked(getPaymentProvider).mockResolvedValueOnce(provider(true) as any);
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: mpStatus }),
+      } as any);
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const res = await POST(
+        req(JSON.stringify({ action: "payment.updated", data: { id: "999" } }), { "x-signature": "ok" }),
+        { params },
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(processPaymentWebhookEvent).not.toHaveBeenCalled();
+      logSpy.mockRestore();
+    },
+  );
+
   it("processPaymentWebhookEvent retornando { handled: false } → ainda 200 { ok: true }", async () => {
     vi.mocked(getPaymentAccountById).mockResolvedValueOnce(ACCOUNT as any);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce(provider(true) as any);
@@ -243,6 +266,35 @@ describe("shim legado — /api/webhooks/payment (branch MP)", () => {
       expect.objectContaining({ providerPaymentId: "555", status: "PAID", accountId: undefined }),
     );
   });
+
+  it.each(["in_process", "pending"])(
+    "payment.updated + re-fetch retorna status não-terminal (%s) → 200 { ok: true } e NADA é processado",
+    async (mpStatus) => {
+      vi.mocked(getDefaultPaymentAccount).mockResolvedValueOnce(ACCOUNT as any);
+      vi.mocked(getMercadoPagoAccessToken).mockResolvedValueOnce("GLOBAL_TOKEN");
+      vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+        verifyWebhookSignature: vi.fn().mockResolvedValue(true),
+        parseWebhookPayload: vi.fn(),
+      } as any);
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: mpStatus }),
+      } as any);
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const res = await LEGACY_POST(
+        new Request("http://localhost/api/webhooks/payment", {
+          method: "POST",
+          body: JSON.stringify({ action: "payment.updated", data: { id: "556" } }),
+        }) as any,
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(processPaymentWebhookEvent).not.toHaveBeenCalled();
+      logSpy.mockRestore();
+    },
+  );
 
   it("payment.updated + re-fetch falha (sem status real) → 200 { ok: true } e NADA é processado", async () => {
     vi.mocked(getDefaultPaymentAccount).mockRejectedValueOnce(new NoPaymentAccountError());
