@@ -21,8 +21,10 @@ const MP_STATUS_MAP: Record<string, "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED
  * Depois que a assinatura é verificada, a resposta é SEMPRE `200 { ok: true }` —
  * `processPaymentWebhookEvent` retornar `{ handled: false }` é normal (pagamento
  * ainda não existe, conta não bate, evento sem order) e não pode virar erro, senão
- * o Mercado Pago fica reenviando. Os únicos não-200 aqui são: 404 (conta não
- * encontrada), 401 (assinatura inválida) e 400 (corpo não é JSON).
+ * o Mercado Pago fica reenviando. Um erro transitório (ex: banco fora do ar) dentro
+ * do handler também é engolido e vira 200 — não vale a pena provocar uma tempestade
+ * de retries do MP por uma falha que se resolve sozinha. Os únicos não-200 aqui são:
+ * 404 (conta não encontrada), 401 (assinatura inválida) e 400 (corpo não é JSON).
  */
 export async function POST(
   req: NextRequest,
@@ -83,14 +85,23 @@ export async function POST(
     status = MP_STATUS_MAP[String(payload.status ?? "pending")] ?? "CANCELLED";
   }
 
-  await processPaymentWebhookEvent({
-    providerPaymentId: mpPaymentId,
-    status,
-    paidAt,
-    gatewayFeeAmount,
-    rawPayload: payload,
-    accountId,
-  });
+  try {
+    await processPaymentWebhookEvent({
+      providerPaymentId: mpPaymentId,
+      status,
+      paidAt,
+      gatewayFeeAmount,
+      rawPayload: payload,
+      accountId,
+    });
+  } catch (e) {
+    // Erro transitório no handler (ex: banco indisponível) — não devolve 5xx, senão
+    // o Mercado Pago entra em retry-storm. O evento é reprocessável pela conciliação.
+    console.error(
+      `[webhooks/payment/mp/${accountId}] falha ao processar evento do pagamento ${mpPaymentId}`,
+      e,
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

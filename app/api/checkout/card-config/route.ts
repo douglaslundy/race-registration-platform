@@ -19,7 +19,8 @@ export async function GET(req: Request) {
     if (eventId) {
       try {
         publicKey = (await resolveEventPaymentAccount(eventId)).publicKey;
-      } catch {
+      } catch (e) {
+        console.error("[card-config] falha ao resolver conta do evento", e);
         publicKey = null;
       }
     } else {

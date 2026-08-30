@@ -120,6 +120,27 @@ describe("webhook por conta — /api/webhooks/payment/mp/[accountId]", () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 
+  it("processPaymentWebhookEvent rejeitando (erro transitório) → ainda 200 { ok: true }", async () => {
+    vi.mocked(getPaymentAccountById).mockResolvedValueOnce(ACCOUNT as any);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce(provider(true) as any);
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: "approved" }),
+    } as any);
+    vi.mocked(processPaymentWebhookEvent).mockRejectedValueOnce(new Error("db offline"));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await POST(
+      req(JSON.stringify({ action: "payment.updated", data: { id: "77" } }), { "x-signature": "ok" }),
+      { params },
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
   it("corpo não parseável → 400", async () => {
     vi.mocked(getPaymentAccountById).mockResolvedValueOnce(ACCOUNT as any);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce(provider(true) as any);
