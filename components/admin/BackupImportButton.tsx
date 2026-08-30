@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import CodeVerificationModal from "@/components/ui/CodeVerificationModal";
 
 type TableResult = { table: string; restored: number };
 type ImportResult = { tables: TableResult[]; totalRestored: number };
 
-type Phase = "idle" | "confirming" | "snapshotting" | "uploading" | "done" | "error";
+type Phase = "idle" | "confirming" | "snapshotting" | "verifying" | "uploading" | "done" | "error";
 
 const TABLE_LABELS: Record<string, string> = {
   users: "Usuários",
@@ -63,6 +64,12 @@ export default function BackupImportButton() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [confirmText, setConfirmText] = useState("");
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
+  const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null);
+  const [submittingCode, setSubmittingCode] = useState(false);
+  const [resendingCode, setResendingCode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function resetToIdle() {
@@ -70,7 +77,85 @@ export default function BackupImportButton() {
     setPendingFile(null);
     setCounts(null);
     setConfirmText("");
+    setVerificationId(null);
+    setCodeError(null);
+    setAttemptsRemaining(null);
+    setCodeExpiresAt(null);
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function requestImportCode(): Promise<boolean> {
+    const res = await fetch("/api/admin/backup/import/request-code", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setErrorMsg(typeof data.error === "string" ? data.error : "Não foi possível enviar o código.");
+      setPhase("error");
+      return false;
+    }
+    setVerificationId(data.verificationId ?? null);
+    setCodeError(null);
+    setAttemptsRemaining(null);
+    setCodeExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
+    return true;
+  }
+
+  async function handleResendCode() {
+    setResendingCode(true);
+    await requestImportCode();
+    setResendingCode(false);
+  }
+
+  function clearPending() {
+    setPendingFile(null);
+    setCounts(null);
+    setConfirmText("");
+    setVerificationId(null);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function handleSubmitCode(code: string) {
+    if (!pendingFile || !verificationId) return;
+    setSubmittingCode(true);
+    setCodeError(null);
+    setPhase("uploading");
+
+    let res: Response;
+    try {
+      const formData = new FormData();
+      formData.append("file", pendingFile);
+      formData.append("verificationId", verificationId);
+      formData.append("code", code);
+      res = await fetch("/api/admin/backup/import", { method: "POST", body: formData });
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Erro de conexão.");
+      setPhase("error");
+      setSubmittingCode(false);
+      clearPending();
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    setSubmittingCode(false);
+
+    if (!res.ok) {
+      // Código incorreto/expirado — mantém o modal aberto pra nova tentativa.
+      if (res.status === 400 && typeof data.attemptsRemaining !== "undefined") {
+        setCodeError(typeof data.error === "string" ? data.error : "Código inválido.");
+        setAttemptsRemaining(
+          typeof data.attemptsRemaining === "number" ? data.attemptsRemaining : null,
+        );
+        setPhase("verifying");
+        return;
+      }
+      setErrorMsg(typeof data.error === "string" ? data.error : `Erro HTTP ${res.status}`);
+      setPhase("error");
+      clearPending();
+      return;
+    }
+
+    setResult(data as ImportResult);
+    setPhase("done");
+    clearPending();
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -121,38 +206,21 @@ export default function BackupImportButton() {
       return;
     }
 
-    setPhase("uploading");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", pendingFile);
-
-      const res = await fetch("/api/admin/backup/import", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(typeof data.error === "string" ? data.error : `Erro HTTP ${res.status}`);
-        setPhase("error");
-        return;
-      }
-
-      setResult(data as ImportResult);
-      setPhase("done");
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Erro de conexão.");
-      setPhase("error");
-    } finally {
-      setPendingFile(null);
-      setCounts(null);
-      setConfirmText("");
-      if (inputRef.current) inputRef.current.value = "";
-    }
+    // Pede o código 2FA; o upload real acontece em handleSubmitCode.
+    const ok = await requestImportCode();
+    if (ok) setPhase("verifying");
   }
 
-  const isWorking = phase === "snapshotting" || phase === "uploading";
+  function handleCancelCode() {
+    setCodeError(null);
+    setAttemptsRemaining(null);
+    setCodeExpiresAt(null);
+    setPhase("error");
+    setErrorMsg("Importação cancelada — nenhum dado foi alterado.");
+    clearPending();
+  }
+
+  const isWorking = phase === "snapshotting" || phase === "verifying" || phase === "uploading";
 
   return (
     <div className="space-y-4">
@@ -229,6 +297,19 @@ export default function BackupImportButton() {
           <strong>Erro:</strong> {errorMsg}
         </div>
       )}
+
+      <CodeVerificationModal
+        open={phase === "verifying" || (phase === "uploading" && submittingCode)}
+        title="Confirmar restauração de backup"
+        expiresAt={codeExpiresAt}
+        error={codeError}
+        attemptsRemaining={attemptsRemaining}
+        loading={submittingCode}
+        resending={resendingCode}
+        onSubmit={handleSubmitCode}
+        onResend={handleResendCode}
+        onCancel={handleCancelCode}
+      />
 
       {result && (
         <div className="space-y-3">

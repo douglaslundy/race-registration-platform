@@ -4,9 +4,16 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/security/sensitive-action-verification", () => ({
+  verifySensitiveActionCode: vi.fn(),
+  requestSensitiveActionCode: vi.fn(),
+}));
+
+import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
+const verifyCodeMock = vi.mocked(verifySensitiveActionCode);
 
 const MODELS = [
   "raceResult", "resultImport", "refund", "payment", "registration", "order",
@@ -19,6 +26,8 @@ function makeRequest(body: Record<string, unknown[]>) {
   const file = new File([JSON.stringify(body)], "backup.json", { type: "application/json" });
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("verificationId", "v-1");
+  formData.append("code", "123456");
   return new Request("http://localhost/api/admin/backup/import", {
     method: "POST",
     body: formData,
@@ -32,6 +41,7 @@ describe("admin backup import api", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    verifyCodeMock.mockResolvedValue({ ok: true });
 
     callOrder = [];
     tx = {};

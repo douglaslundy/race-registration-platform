@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 
 export const maxDuration = 120;
 
@@ -355,10 +356,16 @@ export async function POST(req: NextRequest) {
   }
 
   let backup: Record<string, Row[]>;
+  let verificationId: string | null = null;
+  let code: string | null = null;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "Arquivo não enviado" }, { status: 400 });
+    const rawVerificationId = formData.get("verificationId");
+    const rawCode = formData.get("code");
+    verificationId = typeof rawVerificationId === "string" ? rawVerificationId : null;
+    code = typeof rawCode === "string" ? rawCode : null;
     const text = await file.text();
     backup = JSON.parse(text);
   } catch {
@@ -369,6 +376,24 @@ export async function POST(req: NextRequest) {
   const hasAnyKnownKey = TABLE_KEYS.some((k) => fileKeys.includes(k));
   if (!hasAnyKnownKey) {
     return NextResponse.json({ error: "Arquivo não parece ser um backup válido deste sistema" }, { status: 400 });
+  }
+
+  // 2FA obrigatório antes de qualquer operação destrutiva.
+  if (!verificationId || !code) {
+    return NextResponse.json({ error: "Código de verificação obrigatório" }, { status: 400 });
+  }
+  const verification = await verifySensitiveActionCode({
+    verificationId,
+    userId: session.user.id,
+    actionType: "BACKUP_IMPORT",
+    targetId: "backup",
+    code,
+  });
+  if (!verification.ok) {
+    return NextResponse.json(
+      { error: verification.error, attemptsRemaining: verification.attemptsRemaining },
+      { status: 400 },
+    );
   }
 
   const users = (backup.users ?? []).map(toUserRow);
