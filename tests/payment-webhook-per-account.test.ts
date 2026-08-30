@@ -31,6 +31,7 @@ import {
 } from "@/lib/payment/account-resolver";
 import { getPaymentProvider } from "@/lib/payment";
 import { processPaymentWebhookEvent } from "@/lib/payment/webhook-handler";
+import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 
 const ACCOUNT = { id: "acc_1", accessToken: "TOKEN_1", webhookSecret: "S", publicKey: null, label: "Conta 1", archived: false };
 
@@ -100,6 +101,42 @@ describe("webhook por conta — /api/webhooks/payment/mp/[accountId]", () => {
         accountId: "acc_1",
       }),
     );
+  });
+
+  it("re-fetch do status REJEITA (MP fora do ar) → 200 { ok: true } e NADA é processado", async () => {
+    vi.mocked(getPaymentAccountById).mockResolvedValueOnce(ACCOUNT as any);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce(provider(true) as any);
+    vi.mocked(global.fetch).mockRejectedValueOnce(new Error("ECONNRESET"));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await POST(
+      req(JSON.stringify({ action: "payment.updated", data: { id: "999" } }), { "x-signature": "ok" }),
+      { params },
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(processPaymentWebhookEvent).not.toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it("re-fetch do status responde não-2xx (502) → 200 { ok: true } e NADA é processado", async () => {
+    vi.mocked(getPaymentAccountById).mockResolvedValueOnce(ACCOUNT as any);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce(provider(true) as any);
+    vi.mocked(global.fetch).mockResolvedValueOnce({ ok: false, status: 502 } as any);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await POST(
+      req(JSON.stringify({ action: "payment.created", data: { id: "999" } }), { "x-signature": "ok" }),
+      { params },
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(processPaymentWebhookEvent).not.toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 
   it("processPaymentWebhookEvent retornando { handled: false } → ainda 200 { ok: true }", async () => {
@@ -174,6 +211,63 @@ describe("shim legado — /api/webhooks/payment (branch MP)", () => {
     expect(processPaymentWebhookEvent).toHaveBeenCalledWith(
       expect.objectContaining({ providerPaymentId: "pay-legacy", accountId: undefined }),
     );
+  });
+
+  it("conta padrão resolvida → provider e re-fetch usam o token DA CONTA, não a setting global", async () => {
+    vi.mocked(getDefaultPaymentAccount).mockResolvedValueOnce(ACCOUNT as any);
+    vi.mocked(getMercadoPagoAccessToken).mockResolvedValueOnce("GLOBAL_TOKEN");
+    const prov = {
+      verifyWebhookSignature: vi.fn().mockResolvedValue(true),
+      parseWebhookPayload: vi.fn(),
+    };
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce(prov as any);
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: "approved", date_approved: "2026-08-29T10:00:00.000Z" }),
+    } as any);
+
+    const res = await LEGACY_POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ action: "payment.updated", data: { id: "555" } }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(getPaymentProvider).toHaveBeenCalledWith(ACCOUNT);
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://api.mercadopago.com/v1/payments/555",
+      { headers: { Authorization: "Bearer TOKEN_1" } },
+    );
+    expect(processPaymentWebhookEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ providerPaymentId: "555", status: "PAID", accountId: undefined }),
+    );
+  });
+
+  it("payment.updated + re-fetch falha (sem status real) → 200 { ok: true } e NADA é processado", async () => {
+    vi.mocked(getDefaultPaymentAccount).mockRejectedValueOnce(new NoPaymentAccountError());
+    vi.mocked(getMercadoPagoAccessToken).mockResolvedValueOnce(undefined as any);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      verifyWebhookSignature: vi.fn().mockResolvedValue(true),
+      parseWebhookPayload: vi.fn().mockReturnValue({
+        providerPaymentId: "pay-x",
+        status: "CANCELLED",
+        rawPayload: {},
+      }),
+    } as any);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await LEGACY_POST(
+      new Request("http://localhost/api/webhooks/payment", {
+        method: "POST",
+        body: JSON.stringify({ action: "payment.updated", data: { id: "pay-x" } }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(processPaymentWebhookEvent).not.toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 
   it("sem conta padrão cadastrada (NoPaymentAccountError) → segue o caminho antigo sem estourar", async () => {

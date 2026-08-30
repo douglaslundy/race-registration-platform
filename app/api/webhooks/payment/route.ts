@@ -3,12 +3,17 @@ import { getPaymentProvider } from "@/lib/payment";
 import { getMercadoPagoAccessToken } from "@/lib/payment-settings";
 import { extractGatewayFeeAmount } from "@/lib/payment/mercadopago";
 import { processPaymentWebhookEvent } from "@/lib/payment/webhook-handler";
-import { getDefaultPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
+import {
+  getDefaultPaymentAccount,
+  NoPaymentAccountError,
+  type ResolvedPaymentAccount,
+} from "@/lib/payment/account-resolver";
 
 async function fetchMPPaymentStatus(
-  paymentId: string
+  paymentId: string,
+  accessToken?: string,
 ): Promise<{ status: string; paidAt?: string; gatewayFeeAmount?: number } | null> {
-  const token = await getMercadoPagoAccessToken();
+  const token = accessToken ?? (await getMercadoPagoAccessToken());
   if (!token) return null;
   try {
     const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -42,8 +47,6 @@ export async function POST(req: NextRequest) {
   const mpSignature = req.headers.get("x-signature") ?? req.headers.get("x-webhook-signature") ?? "";
   const pagarmeSignature = req.headers.get("authorization") ?? req.headers.get("x-hub-signature") ?? "";
 
-  const provider = await getPaymentProvider();
-
   let payload: Record<string, unknown>;
   try {
     payload = JSON.parse(rawBody);
@@ -53,26 +56,37 @@ export async function POST(req: NextRequest) {
 
   // Auto-detect provider from payload structure to pick right signature
   const isPagarMe = typeof payload.type === "string" && (payload.type as string).includes(".");
+
+  // MP: durante a migração pra múltiplas contas o painel do Mercado Pago ainda pode
+  // apontar pra cá. Se a conta padrão já existe, USA ela — o provider (assinatura) e a
+  // reconsulta de status precisam falar com as credenciais ATUAIS da conta, não com a
+  // setting global congelada no momento da migração (o form de pagamento não escreve
+  // mais `mp_*`, então essa setting nunca mais muda enquanto o admin rotaciona a conta).
+  // O shim NÃO passa `accountId` pro handler — o match por conta só vale pro endpoint
+  // novo (/api/webhooks/payment/mp/[accountId]).
+  let provider;
+  let mpAccount: ResolvedPaymentAccount | null = null;
+  if (isPagarMe) {
+    provider = await getPaymentProvider();
+  } else {
+    try {
+      mpAccount = await getDefaultPaymentAccount();
+      console.warn(
+        `[webhook] endpoint legado usado — migrar o painel da conta ${mpAccount.label} para /api/webhooks/payment/mp/${mpAccount.id}`,
+      );
+      provider = await getPaymentProvider(mpAccount);
+    } catch (e) {
+      if (!(e instanceof NoPaymentAccountError)) throw e;
+      // Instalação pré-migração, sem conta cadastrada → segue no caminho antigo com a setting global.
+      mpAccount = null;
+      provider = await getPaymentProvider();
+    }
+  }
+
   const signature = isPagarMe ? pagarmeSignature : mpSignature;
 
   if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
-  }
-
-  if (!isPagarMe) {
-    // MP: durante a migração pra múltiplas contas o painel do Mercado Pago ainda
-    // pode apontar pra cá. Loga um aviso pra migração e segue no caminho de compat.
-    // O shim NÃO passa `accountId` pro handler — o match por conta só vale pro
-    // endpoint novo (/api/webhooks/payment/mp/[accountId]).
-    try {
-      const account = await getDefaultPaymentAccount();
-      console.warn(
-        `[webhook] endpoint legado usado — migrar o painel da conta ${account.label} para /api/webhooks/payment/mp/${account.id}`,
-      );
-    } catch (e) {
-      if (!(e instanceof NoPaymentAccountError)) throw e;
-      // sem conta cadastrada → segue no caminho antigo com a setting global
-    }
   }
 
   // Mercado Pago notifica com action + data.id — busca o status real
@@ -83,16 +97,24 @@ export async function POST(req: NextRequest) {
   let parsedStatus: ReturnType<typeof provider.parseWebhookPayload> | null = null;
 
   if (!isPagarMe && (action === "payment.updated" || action === "payment.created") && mpPaymentId) {
-    const real = await fetchMPPaymentStatus(mpPaymentId);
-    if (real) {
-      parsedStatus = {
-        providerPaymentId: mpPaymentId,
-        status: MP_STATUS_MAP[real.status] ?? "CANCELLED",
-        paidAt: real.paidAt,
-        gatewayFeeAmount: real.gatewayFeeAmount,
-        rawPayload: payload,
-      };
+    const real = await fetchMPPaymentStatus(mpPaymentId, mpAccount?.accessToken);
+    if (!real) {
+      // Reconsulta falhou (MP 5xx/429/timeout ou token revogado). NÃO adivinha um
+      // status terminal — o fallback "CANCELLED" cancelaria um pagamento real. A
+      // conciliação é o caminho de recuperação.
+      console.error(
+        "[webhook] reconsulta de status do MP falhou para %s — nada aplicado, conciliação recupera",
+        mpPaymentId,
+      );
+      return NextResponse.json({ ok: true });
     }
+    parsedStatus = {
+      providerPaymentId: mpPaymentId,
+      status: MP_STATUS_MAP[real.status] ?? "CANCELLED",
+      paidAt: real.paidAt,
+      gatewayFeeAmount: real.gatewayFeeAmount,
+      rawPayload: payload,
+    };
   }
 
   if (!parsedStatus) {

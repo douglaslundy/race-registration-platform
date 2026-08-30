@@ -67,20 +67,38 @@ export async function POST(
   if (action === "payment.updated" || action === "payment.created") {
     // Reconsulta o status real na API do MP com o token DESTA conta — nunca confia
     // no status que veio cru no corpo do webhook.
+    let data: Record<string, unknown> | null = null;
     try {
       const res = await fetch(`https://api.mercadopago.com/v1/payments/${mpPaymentId}`, {
         headers: { Authorization: `Bearer ${account.accessToken}` },
       });
       if (res.ok) {
-        const data = await res.json();
-        status = MP_STATUS_MAP[data.status as string] ?? "CANCELLED";
-        paidAt = data.date_approved ?? undefined;
-        gatewayFeeAmount = data.status === "approved" ? extractGatewayFeeAmount(data) : undefined;
+        data = await res.json();
+      } else {
+        console.error(
+          "[webhook/mp] re-fetch falhou para %s (HTTP %s) — nada aplicado, conciliação recupera",
+          mpPaymentId,
+          res.status,
+        );
       }
-    } catch {
-      // Falha ao reconsultar a API — mantém o fallback (CANCELLED) e deixa o handler
-      // decidir; a mesma resiliência do fluxo do endpoint legado.
+    } catch (e) {
+      console.error(
+        "[webhook/mp] re-fetch lançou para %s — nada aplicado, conciliação recupera",
+        mpPaymentId,
+        e,
+      );
     }
+
+    if (!data) {
+      // Sem status real confirmado, NÃO adivinha um status terminal (o inicializador
+      // "CANCELLED" cancelaria um pagamento pago/pendente de verdade). A conciliação
+      // é o caminho de recuperação.
+      return NextResponse.json({ ok: true });
+    }
+
+    status = MP_STATUS_MAP[data.status as string] ?? "CANCELLED";
+    paidAt = (data.date_approved as string | undefined) ?? undefined;
+    gatewayFeeAmount = data.status === "approved" ? extractGatewayFeeAmount(data) : undefined;
   } else {
     status = MP_STATUS_MAP[String(payload.status ?? "pending")] ?? "CANCELLED";
   }
