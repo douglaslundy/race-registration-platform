@@ -5,9 +5,6 @@ import type { PaymentProviderKey } from "@/lib/payment-settings";
 
 interface PaymentGatewayFormProps {
   currentProvider: PaymentProviderKey;
-  accessTokenConfigured: boolean;
-  webhookSecretConfigured: boolean;
-  mpPublicKeyConfigured: boolean;
   pagarmeApiKeyConfigured: boolean;
   pagarmePublicKeyConfigured: boolean;
   pagarmeWebhookPasswordConfigured: boolean;
@@ -15,17 +12,11 @@ interface PaymentGatewayFormProps {
 
 export default function PaymentGatewayForm({
   currentProvider,
-  accessTokenConfigured,
-  webhookSecretConfigured,
-  mpPublicKeyConfigured,
   pagarmeApiKeyConfigured,
   pagarmePublicKeyConfigured,
   pagarmeWebhookPasswordConfigured,
 }: PaymentGatewayFormProps) {
   const [provider, setProvider] = useState<PaymentProviderKey>(currentProvider);
-  const [accessToken, setAccessToken] = useState("");
-  const [webhookSecret, setWebhookSecret] = useState("");
-  const [mpPublicKey, setMpPublicKey] = useState("");
   const [pagarmeApiKey, setPagarmeApiKey] = useState("");
   const [pagarmePublicKey, setPagarmePublicKey] = useState("");
   const [pagarmeWebhookPassword, setPagarmeWebhookPassword] = useState("");
@@ -52,21 +43,12 @@ export default function PaymentGatewayForm({
     try {
       await saveSetting("payment_provider", provider);
 
-      if (provider === "mercadopago") {
-        if (accessToken.trim()) await saveSetting("mp_access_token", accessToken.trim());
-        if (webhookSecret.trim()) await saveSetting("mp_webhook_secret", webhookSecret.trim());
-        if (mpPublicKey.trim()) await saveSetting("mp_public_key", mpPublicKey.trim());
-      }
-
       if (provider === "pagarme") {
         if (pagarmeApiKey.trim()) await saveSetting("pagarme_api_key", pagarmeApiKey.trim());
         if (pagarmePublicKey.trim()) await saveSetting("pagarme_public_key", pagarmePublicKey.trim());
         if (pagarmeWebhookPassword.trim()) await saveSetting("pagarme_webhook_password", pagarmeWebhookPassword.trim());
       }
 
-      setAccessToken("");
-      setWebhookSecret("");
-      setMpPublicKey("");
       setPagarmeApiKey("");
       setPagarmePublicKey("");
       setPagarmeWebhookPassword("");
@@ -105,54 +87,8 @@ export default function PaymentGatewayForm({
       </div>
 
       {provider === "mercadopago" && (
-        <div className="space-y-3 border dark:border-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Mercado Pago</h3>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Access Token (backend)
-              </label>
-              <input
-                type="password"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                className="input-field w-full"
-                placeholder={accessTokenConfigured ? "••••••• (configurado)" : "Cole a access token"}
-                autoComplete="off"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Deixe em branco para manter.</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Public Key (frontend)
-              </label>
-              <input
-                type="password"
-                value={mpPublicKey}
-                onChange={(e) => setMpPublicKey(e.target.value)}
-                className="input-field w-full"
-                placeholder={mpPublicKeyConfigured ? "••••••• (configurado)" : "Cole a public key"}
-                autoComplete="off"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Usada para tokenizar cartões no browser.</p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Webhook Secret
-            </label>
-            <input
-              type="password"
-              value={webhookSecret}
-              onChange={(e) => setWebhookSecret(e.target.value)}
-              className="input-field w-full md:w-96"
-              placeholder={webhookSecretConfigured ? "••••••• (configurado)" : "Cole o segredo do webhook"}
-              autoComplete="off"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Deixe em branco para manter.</p>
-          </div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 border dark:border-gray-700 rounded-lg p-4">
+          As credenciais do Mercado Pago ficam em <strong>Contas Mercado Pago</strong> (acima).
         </div>
       )}
 

@@ -7,6 +7,10 @@ type Step = "idle" | "requesting" | "code" | "submitting";
 export function useSensitiveActionVerification(params: {
   requestCodeEndpoint: string;
   confirmEndpoint: string;
+  /** Corpo JSON opcional enviado no POST de request-code (ex.: `{ targetId }`). */
+  requestCodeBody?: Record<string, unknown>;
+  /** Método HTTP do confirmEndpoint. Padrão: "POST". */
+  confirmMethod?: string;
 }) {
   const [step, setStep] = useState<Step>("idle");
   const [verificationId, setVerificationId] = useState<string | null>(null);
@@ -15,11 +19,18 @@ export function useSensitiveActionVerification(params: {
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [resending, setResending] = useState(false);
 
+  const requestCodeBodyJson = params.requestCodeBody ? JSON.stringify(params.requestCodeBody) : null;
+
   const requestCode = useCallback(async () => {
     setError(null);
     let res: Response;
     try {
-      res = await fetch(params.requestCodeEndpoint, { method: "POST" });
+      res = await fetch(
+        params.requestCodeEndpoint,
+        requestCodeBodyJson
+          ? { method: "POST", headers: { "Content-Type": "application/json" }, body: requestCodeBodyJson }
+          : { method: "POST" },
+      );
     } catch {
       setError("Erro de conexão. Tente novamente.");
       return false;
@@ -33,7 +44,7 @@ export function useSensitiveActionVerification(params: {
     setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
     setAttemptsRemaining(null);
     return true;
-  }, [params.requestCodeEndpoint]);
+  }, [params.requestCodeEndpoint, requestCodeBodyJson]);
 
   const start = useCallback(async () => {
     setStep("requesting");
@@ -55,7 +66,7 @@ export function useSensitiveActionVerification(params: {
       let res: Response;
       try {
         res = await fetch(params.confirmEndpoint, {
-          method: "POST",
+          method: params.confirmMethod ?? "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ verificationId, code, ...extraBody }),
         });
@@ -74,7 +85,7 @@ export function useSensitiveActionVerification(params: {
       setStep("code");
       return { ok: false, response: res };
     },
-    [verificationId, params.confirmEndpoint],
+    [verificationId, params.confirmEndpoint, params.confirmMethod],
   );
 
   const cancel = useCallback(() => {

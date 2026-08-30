@@ -5,6 +5,8 @@ import SetPlatformFeeForm from "@/components/admin/SetPlatformFeeForm";
 import AppNameForm from "@/components/admin/AppNameForm";
 import PaymentMethodsForm from "@/components/admin/PaymentMethodsForm";
 import PaymentGatewayForm from "@/components/admin/PaymentGatewayForm";
+import PaymentAccountsManager from "@/components/admin/PaymentAccountsManager";
+import { listPaymentAccounts } from "@/lib/payment/payment-accounts";
 import StorageSettingsForm from "@/components/admin/StorageSettingsForm";
 import SmtpSettingsForm from "@/components/admin/SmtpSettingsForm";
 import DefaultPlatformFeeForm from "@/components/admin/DefaultPlatformFeeForm";
@@ -29,7 +31,7 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracoesPage() {
   await requireAdmin();
 
-  const [events, appName, enabledPaymentMethods, paymentProvider, accessToken, webhookSecret, mpPublicKey, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, pixServiceFeeDiscount, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting, socialLinkValuesArray] = await Promise.all([
+  const [events, appName, enabledPaymentMethods, paymentProvider, paymentAccounts, pagarmeApiKey, pagarmePublicKey, pagarmeWebhookPassword, recentLogs, storageConfig, defaultPlatformFee, serviceFeePercent, serviceFeeMin, pixServiceFeeDiscount, bannerInterval, smtpConfig, cancellationPolicyEnabled, adsMarketplaceEnabledSetting, socialLinkValuesArray] = await Promise.all([
     db.event.findMany({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] } },
       select: { id: true, title: true, platformFeePercent: true, pixServiceFeeDiscountPercent: true, status: true },
@@ -38,9 +40,7 @@ export default async function ConfiguracoesPage() {
     getAppName(),
     getSetting("enabled_payment_methods"),
     getPaymentProviderSetting(),
-    getSetting("mp_access_token"),
-    getSetting("mp_webhook_secret"),
-    getSetting("mp_public_key"),
+    listPaymentAccounts(),
     getSetting("pagarme_api_key"),
     getSetting("pagarme_public_key"),
     getSetting("pagarme_webhook_password"),
@@ -142,15 +142,21 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="card space-y-4">
+        <h2 className="font-semibold text-lg dark:text-gray-100">Contas Mercado Pago</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Cadastre uma ou mais contas do Mercado Pago. A conta padrão é usada por todos os eventos que não
+          tiverem uma conta específica definida. Alterações exigem confirmação por código.
+        </p>
+        <PaymentAccountsManager accounts={paymentAccounts} />
+      </div>
+
+      <div className="card space-y-4">
         <h2 className="font-semibold text-lg dark:text-gray-100">Gateway de pagamento</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Configure o provedor e as credenciais usadas para criar cobranças e validar webhooks.
         </p>
         <PaymentGatewayForm
           currentProvider={paymentProvider}
-          accessTokenConfigured={Boolean(accessToken)}
-          webhookSecretConfigured={Boolean(webhookSecret)}
-          mpPublicKeyConfigured={Boolean(mpPublicKey)}
           pagarmeApiKeyConfigured={Boolean(pagarmeApiKey)}
           pagarmePublicKeyConfigured={Boolean(pagarmePublicKey)}
           pagarmeWebhookPasswordConfigured={Boolean(pagarmeWebhookPassword)}

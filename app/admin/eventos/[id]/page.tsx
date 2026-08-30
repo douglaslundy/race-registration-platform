@@ -6,6 +6,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import GeneratePayoutButton from "@/components/admin/GeneratePayoutButton";
 import EventDailySummaryRecipientsManager from "@/components/organizer/EventDailySummaryRecipientsManager";
+import EventPaymentAccountSelect from "@/components/admin/EventPaymentAccountSelect";
+import { listPaymentAccounts } from "@/lib/payment/payment-accounts";
 import { EVENT_STATUS_LABEL, MODALITY_LABEL } from "@/lib/admin/labels";
 import {
   computeRegistrationStatusBreakdown,
@@ -34,10 +36,14 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
       categories: { orderBy: { name: "asc" } },
       ticketBatches: { orderBy: { startAt: "asc" } },
       coupons: { orderBy: { createdAt: "asc" } },
+      paymentAccount: { select: { label: true, archivedAt: true } },
     },
   });
 
   if (!event) notFound();
+
+  const paymentAccounts = await listPaymentAccounts();
+  const defaultAccountLabel = paymentAccounts.find((a) => a.isDefault)?.label ?? "nenhuma conta padrão";
 
   const [couponStats, statusCounts, dimensionRegistrations, paymentGroups, paymentsAgg, orderFeeAgg] = await Promise.all([
     event.coupons.length > 0
@@ -244,6 +250,17 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
             Ver perfil
           </Link>
         </div>
+      </div>
+
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Pagamento</h2>
+        <EventPaymentAccountSelect
+          eventId={event.id}
+          currentAccountId={event.paymentAccountId}
+          currentAccountArchived={event.paymentAccount?.archivedAt != null}
+          accounts={paymentAccounts}
+          defaultLabel={defaultAccountLabel}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
