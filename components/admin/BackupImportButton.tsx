@@ -138,8 +138,10 @@ export default function BackupImportButton() {
     setSubmittingCode(false);
 
     if (!res.ok) {
-      // Código incorreto/expirado — mantém o modal aberto pra nova tentativa.
-      if (res.status === 400 && typeof data.attemptsRemaining !== "undefined") {
+      // Qualquer 400 (código incorreto, expirado, consumido, desconhecido) mantém o
+      // CodeVerificationModal aberto — o botão "Reenviar código" é o caminho de recuperação.
+      // Só 500 / erro de rede ejeta pra fase de erro (e obriga refazer o fluxo).
+      if (res.status === 400) {
         setCodeError(typeof data.error === "string" ? data.error : "Código inválido.");
         setAttemptsRemaining(
           typeof data.attemptsRemaining === "number" ? data.attemptsRemaining : null,

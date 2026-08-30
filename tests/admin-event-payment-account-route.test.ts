@@ -39,6 +39,7 @@ describe("POST /api/admin/events/[id]/payment-account", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     verifyMock.mockResolvedValue({ ok: true });
+    dbMock.event.findUnique.mockResolvedValue({ id: "ev-1" });
     dbMock.event.update.mockResolvedValue({});
     dbMock.auditLog.create.mockResolvedValue({});
   });
@@ -103,6 +104,24 @@ describe("POST /api/admin/events/[id]/payment-account", () => {
     const res = await POST(req({ paymentAccountId: "acc_missing", ...VALID_2FA }), ctx("ev-1"));
     expect(res.status).toBe(400);
     expect(dbMock.event.update).not.toHaveBeenCalled();
+  });
+
+  it("sem a chave paymentAccountId no corpo → 400", async () => {
+    const res = await POST(req({ ...VALID_2FA }), ctx("ev-1"));
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.error).toMatch(/obrigatório/i);
+    expect(dbMock.event.update).not.toHaveBeenCalled();
+  });
+
+  it("evento inexistente → 404 sem alterar nada", async () => {
+    dbMock.event.findUnique.mockResolvedValueOnce(null);
+    const res = await POST(req({ paymentAccountId: null, ...VALID_2FA }), ctx("ev-missing"));
+    const body = await res.json();
+    expect(res.status).toBe(404);
+    expect(body.error).toBe("Evento não encontrado");
+    expect(dbMock.event.update).not.toHaveBeenCalled();
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("não-admin → 403", async () => {
