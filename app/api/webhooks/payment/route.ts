@@ -84,8 +84,9 @@ export async function POST(req: NextRequest) {
   }
 
   const signature = isPagarMe ? pagarmeSignature : mpSignature;
+  const requestId = req.headers.get("x-request-id") ?? undefined;
 
-  if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
+  if (!(await provider.verifyWebhookSignature(rawBody, signature, requestId))) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
 

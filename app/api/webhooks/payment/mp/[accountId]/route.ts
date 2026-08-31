@@ -44,8 +44,9 @@ export async function POST(
 
   const rawBody = await req.text();
   const signature = req.headers.get("x-signature") ?? req.headers.get("x-webhook-signature") ?? "";
+  const requestId = req.headers.get("x-request-id") ?? undefined;
   const provider = await getPaymentProvider(account);
-  if (!(await provider.verifyWebhookSignature(rawBody, signature))) {
+  if (!(await provider.verifyWebhookSignature(rawBody, signature, requestId))) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
 

@@ -39,17 +39,51 @@ describe("MercadoPagoProvider.verifyWebhookSignature", () => {
     expect(result).toBe(false);
   });
 
-  it("aceita quando o HMAC da assinatura bate com o segredo configurado", async () => {
+  it("aceita quando o HMAC bate com o manifesto no formato do MP (id;request-id do header;ts;)", async () => {
     const secret = "super-secreto";
     mockGetMPSecret.mockResolvedValueOnce(secret);
     const payload = JSON.stringify({ data: { id: "123" } });
     const ts = "1700000000";
-    const manifest = `id:123;request-id:${ts};ts:${ts}`;
+    const requestId = "req-abc-123";
+    const manifest = `id:123;request-id:${requestId};ts:${ts};`;
+    const v1 = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+
+    const provider = new MercadoPagoProvider();
+    const result = await provider.verifyWebhookSignature(payload, `ts=${ts},v1=${v1}`, requestId);
+    expect(result).toBe(true);
+  });
+
+  it("rejeita quando o manifesto usa o formato ANTIGO (request-id = ts, sem ';' final)", async () => {
+    const secret = "super-secreto";
+    mockGetMPSecret.mockResolvedValueOnce(secret);
+    const payload = JSON.stringify({ data: { id: "123" } });
+    const ts = "1700000000";
+    const oldManifest = `id:123;request-id:${ts};ts:${ts}`;
+    const v1 = crypto.createHmac("sha256", secret).update(oldManifest).digest("hex");
+
+    const provider = new MercadoPagoProvider();
+    const result = await provider.verifyWebhookSignature(payload, `ts=${ts},v1=${v1}`, "req-abc-123");
+    expect(result).toBe(false);
+  });
+
+  it("rejeita quando o header x-request-id está ausente (manifesto não bate)", async () => {
+    const secret = "super-secreto";
+    mockGetMPSecret.mockResolvedValueOnce(secret);
+    const payload = JSON.stringify({ data: { id: "123" } });
+    const ts = "1700000000";
+    const manifest = `id:123;request-id:req-abc-123;ts:${ts};`;
     const v1 = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
 
     const provider = new MercadoPagoProvider();
     const result = await provider.verifyWebhookSignature(payload, `ts=${ts},v1=${v1}`);
-    expect(result).toBe(true);
+    expect(result).toBe(false);
+  });
+
+  it("retorna false (sem lançar) quando o corpo não é JSON", async () => {
+    mockGetMPSecret.mockResolvedValueOnce("super-secreto");
+    const provider = new MercadoPagoProvider();
+    const result = await provider.verifyWebhookSignature("<<not json>>", "ts=1700000000,v1=abcdef", "req-1");
+    expect(result).toBe(false);
   });
 
   it("rejeita quando o HMAC não bate com o segredo configurado", async () => {

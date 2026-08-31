@@ -34,16 +34,17 @@ describe("MercadoPagoProvider — conta no construtor", () => {
 
   it("verifyWebhookSignature valida com o secret da conta e rejeita a mesma assinatura sem conta (secret global)", async () => {
     const ts = "1700000000";
+    const requestId = "req-xyz";
     const payload = '{"data":{"id":"123"}}';
-    const manifest = `id:123;request-id:${ts};ts:${ts}`;
+    const manifest = `id:123;request-id:${requestId};ts:${ts};`;
     const v1 = crypto.createHmac("sha256", "ACC_SECRET").update(manifest).digest("hex");
     const sig = `ts=${ts},v1=${v1}`;
 
     // com a conta ("ACC_SECRET") → assinatura confere
-    expect(await new MercadoPagoProvider(ACC).verifyWebhookSignature(payload, sig)).toBe(true);
+    expect(await new MercadoPagoProvider(ACC).verifyWebhookSignature(payload, sig, requestId)).toBe(true);
 
     // sem conta → usa o secret global ("GLOBAL_SECRET"), mesma assinatura não confere
-    expect(await new MercadoPagoProvider().verifyWebhookSignature(payload, sig)).toBe(false);
+    expect(await new MercadoPagoProvider().verifyWebhookSignature(payload, sig, requestId)).toBe(false);
   });
 
   it("branch de cartão: o lookup de card_tokens usa o token da conta (Bearer ACC_TOKEN)", async () => {

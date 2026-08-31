@@ -232,7 +232,11 @@ export class MercadoPagoProvider implements PaymentProvider {
     return { providerRefundId: res.id !== undefined ? String(res.id) : undefined };
   }
 
-  async verifyWebhookSignature(payload: string, signature: string): Promise<boolean> {
+  async verifyWebhookSignature(
+    payload: string,
+    signature: string,
+    requestId?: string,
+  ): Promise<boolean> {
     const secret = await this.webhookSecret();
     // Falha fechada: sem segredo configurado, nenhum webhook é aceito (nunca pular a
     // verificação — isso permitiria forjar confirmações de pagamento).
@@ -244,7 +248,18 @@ export class MercadoPagoProvider implements PaymentProvider {
     );
     if (!parts.ts || !parts.v1) return false;
 
-    const manifest = `id:${JSON.parse(payload)?.data?.id ?? ""};request-id:${parts.ts};ts:${parts.ts}`;
+    // Corpo não-JSON: rejeita sem lançar (o handler per-account chama isto antes do
+    // seu próprio JSON.parse, então um throw aqui viraria 500).
+    let dataId = "";
+    try {
+      dataId = String((JSON.parse(payload) as { data?: { id?: unknown } })?.data?.id ?? "");
+    } catch {
+      return false;
+    }
+
+    // Manifesto exatamente no formato documentado pelo Mercado Pago:
+    // id:<data.id>;request-id:<x-request-id header>;ts:<ts>;  (com o ";" final)
+    const manifest = `id:${dataId};request-id:${requestId ?? ""};ts:${parts.ts};`;
     const expected = crypto
       .createHmac("sha256", secret)
       .update(manifest)
