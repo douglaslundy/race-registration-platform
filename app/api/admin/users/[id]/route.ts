@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { verify2faBody } from "@/lib/security/verify-2fa-body";
 
 const roleSchema = z.enum(["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"]);
 
@@ -38,6 +39,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const existing = await db.user.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+  // M1: mudança de perfil (role), status (active) ou senha é ação sensível — exige 2FA.
+  // Edições comuns (nome, e-mail, dados de atleta) seguem sem código.
+  const wantsRoleChange = !!parsed.data.role && parsed.data.role !== existing.role;
+  const wantsActiveChange =
+    typeof parsed.data.active === "boolean" && parsed.data.active !== existing.active;
+  const wantsPasswordChange = !!parsed.data.password;
+  if (wantsRoleChange || wantsActiveChange || wantsPasswordChange) {
+    const verified = await verify2faBody(session, "USER_SECURITY_CHANGE", id, body);
+    if (!verified.ok) return verified.response;
+  }
 
   const incomingEmail = parsed.data.email?.toLowerCase();
   if (incomingEmail && incomingEmail !== existing.email) {

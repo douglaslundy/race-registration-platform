@@ -9,7 +9,9 @@ export type SensitiveActionType =
   | "REGISTRATION_CANCELLATION_REFUND"
   | "REGISTRATION_CANCEL_CONFIRMED"
   | "PAYMENT_ACCOUNT_CHANGE"
-  | "BACKUP_IMPORT";
+  | "BACKUP_IMPORT"
+  | "USER_SECURITY_CHANGE"
+  | "PAYOUT_STATUS_CHANGE";
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -21,6 +23,8 @@ const ACTION_LABEL: Record<SensitiveActionType, string> = {
   REGISTRATION_CANCEL_CONFIRMED: "Confirmação de cancelamento de inscrição confirmada",
   PAYMENT_ACCOUNT_CHANGE: "Confirmação de alteração de conta de pagamento",
   BACKUP_IMPORT: "Confirmação de importação de backup",
+  USER_SECURITY_CHANGE: "Confirmação de alteração de acesso de usuário (perfil / status / senha)",
+  PAYOUT_STATUS_CHANGE: "Confirmação de mudança de status de repasse",
 };
 
 function hashCode(code: string): string {

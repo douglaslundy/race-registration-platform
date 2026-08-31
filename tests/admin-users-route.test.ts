@@ -2,13 +2,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/admin/users/route";
 import { GET as GETUserExport } from "@/app/api/admin/users/[id]/export/route";
 import { DELETE, PATCH } from "@/app/api/admin/users/[id]/route";
+import { POST as REQUEST_USER_CODE } from "@/app/api/admin/users/[id]/request-code/route";
 import { PATCH as PATCHUserPreferences } from "@/app/api/me/preferences/route";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import {
+  verifySensitiveActionCode,
+  requestSensitiveActionCode,
+} from "@/lib/security/sensitive-action-verification";
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+}));
+
+vi.mock("@/lib/security/sensitive-action-verification", () => ({
+  verifySensitiveActionCode: vi.fn(),
+  requestSensitiveActionCode: vi.fn(),
 }));
 
 vi.mock("bcryptjs", () => ({
@@ -19,11 +29,14 @@ vi.mock("bcryptjs", () => ({
 
 const authMock = vi.mocked(auth);
 const dbMock = db as any;
+const verifyMock = vi.mocked(verifySensitiveActionCode);
+const requestCodeMock = vi.mocked(requestSensitiveActionCode);
 
 describe("admin users API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    verifyMock.mockResolvedValue({ ok: true });
     dbMock.$transaction.mockImplementation(async (fn: any) =>
       fn({
         auditLog: { updateMany: vi.fn(), create: vi.fn() },
@@ -176,6 +189,8 @@ describe("admin users API", () => {
     dbMock.user.findUnique.mockResolvedValueOnce({
       id: "user-1",
       email: "old@exemplo.com",
+      role: "ATHLETE",
+      active: true,
     });
     const txUserUpdate = vi.fn().mockResolvedValueOnce({
       id: "user-1",
@@ -203,12 +218,17 @@ describe("admin users API", () => {
           password: "87654321",
           role: "ADMIN",
           active: false,
+          verificationId: "v-1",
+          code: "123456",
         }),
       }) as any,
       { params: Promise.resolve({ id: "user-1" }) },
     );
 
     expect(res.status).toBe(200);
+    expect(verifyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actionType: "USER_SECURITY_CHANGE", targetId: "user-1", userId: "admin-1" }),
+    );
     expect(txUserUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "user-1" },
@@ -229,6 +249,76 @@ describe("admin users API", () => {
         }),
       }),
     );
+  });
+
+  it("M1 — mudança de role sem código 2FA → 400 e nada é gravado", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "user-1",
+      email: "u@exemplo.com",
+      role: "ATHLETE",
+      active: true,
+    });
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ role: "ADMIN" }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+    expect(verifyMock).not.toHaveBeenCalled();
+  });
+
+  it("M1 — mudança só de nome NÃO exige 2FA", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      id: "user-1",
+      email: "u@exemplo.com",
+      role: "ATHLETE",
+      active: true,
+    });
+    const txUserUpdate = vi.fn().mockResolvedValueOnce({
+      id: "user-1", name: "Novo", email: "u@exemplo.com", role: "ATHLETE", active: true,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
+      fn({ user: { update: txUserUpdate }, athleteProfile: { upsert: vi.fn() }, auditLog: { create: vi.fn() } }),
+    );
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/users/user-1", {
+        method: "PATCH",
+        body: JSON.stringify({ name: "Novo" }),
+      }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(verifyMock).not.toHaveBeenCalled();
+  });
+
+  it("M1 — request-code exige admin e delega para requestSensitiveActionCode", async () => {
+    requestCodeMock.mockResolvedValueOnce({ ok: true, verificationId: "v-99" });
+    const res = await REQUEST_USER_CODE(
+      new Request("http://localhost/api/admin/users/user-1/request-code", { method: "POST" }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ verificationId: "v-99" });
+    expect(requestCodeMock).toHaveBeenCalledWith({
+      userId: "admin-1",
+      actionType: "USER_SECURITY_CHANGE",
+      targetId: "user-1",
+    });
+
+    authMock.mockResolvedValueOnce({ user: { id: "o-1", role: "ORGANIZER" } } as any);
+    const forbidden = await REQUEST_USER_CODE(
+      new Request("http://localhost/api/admin/users/user-1/request-code", { method: "POST" }) as any,
+      { params: Promise.resolve({ id: "user-1" }) },
+    );
+    expect(forbidden.status).toBe(403);
   });
 
   it("corrige CPF e data de nascimento de um atleta", async () => {

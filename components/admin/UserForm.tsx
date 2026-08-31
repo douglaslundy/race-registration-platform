@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UserRole } from "@prisma/client";
+import CodeVerificationModal from "@/components/ui/CodeVerificationModal";
+import { useSensitiveActionVerification } from "@/lib/hooks/use-sensitive-action-verification";
 
 const ROLES: UserRole[] = ["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"];
 
@@ -57,11 +59,13 @@ export default function UserForm({
 
   const isEdit = mode === "edit";
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
+  const verification = useSensitiveActionVerification({
+    requestCodeEndpoint: `/api/admin/users/${initialUser?.id}/request-code`,
+    confirmEndpoint: `/api/admin/users/${initialUser?.id}`,
+    confirmMethod: "PATCH",
+  });
 
+  function buildPayload(): Record<string, unknown> {
     const payload: Record<string, unknown> = {
       name: name.trim(),
       email: email.trim(),
@@ -82,6 +86,31 @@ export default function UserForm({
       payload.campaignsEnabled = campaignsEnabled;
     }
 
+    return payload;
+  }
+
+  // M1: mudança de perfil / status / senha num usuário existente exige 2FA.
+  function securityFieldsChanged(): boolean {
+    if (!isEdit || !initialUser) return false;
+    return (
+      role !== initialUser.role ||
+      active !== initialUser.active ||
+      password.trim().length > 0
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    const payload = buildPayload();
+
+    if (securityFieldsChanged()) {
+      await verification.start();
+      return;
+    }
+
+    setSaving(true);
     const res = await fetch(isEdit ? `/api/admin/users/${initialUser?.id}` : "/api/admin/users", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,6 +126,14 @@ export default function UserForm({
 
     router.push(successRedirect);
     router.refresh();
+  }
+
+  async function handleSubmitCode(code: string) {
+    const result = await verification.submitCode(code, buildPayload());
+    if (result.ok) {
+      router.push(successRedirect);
+      router.refresh();
+    }
   }
 
   return (
@@ -212,14 +249,18 @@ export default function UserForm({
         </p>
       </div>
 
-      {error && (
+      {(error || (verification.step === "idle" && verification.error)) && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {error ?? verification.error}
         </div>
       )}
 
       <div className="flex flex-wrap gap-3">
-        <button type="submit" className="btn-primary" disabled={saving}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={saving || verification.step === "requesting" || verification.step === "submitting"}
+        >
           {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar usuário"}
         </button>
         <button
@@ -230,6 +271,19 @@ export default function UserForm({
           Cancelar
         </button>
       </div>
+
+      <CodeVerificationModal
+        open={verification.step === "code" || verification.step === "submitting"}
+        title="Confirmar alteração de acesso do usuário"
+        expiresAt={verification.expiresAt}
+        error={verification.step !== "idle" ? verification.error : null}
+        attemptsRemaining={verification.attemptsRemaining}
+        loading={verification.step === "submitting"}
+        resending={verification.resending}
+        onSubmit={handleSubmitCode}
+        onResend={verification.resend}
+        onCancel={verification.cancel}
+      />
     </form>
   );
 }
