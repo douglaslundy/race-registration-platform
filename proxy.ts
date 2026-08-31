@@ -6,7 +6,7 @@ const protectedPrefixes = ["/dashboard", "/organizador", "/admin", "/inscricao"]
 const adminOnly = ["/admin"];
 const organizerOnly = ["/organizador"];
 
-export default auth((req: NextRequest & { auth: { user?: { role?: string; active?: boolean } } | null }) => {
+export default auth((req: NextRequest & { auth: { user?: { role?: string; active?: boolean; revoked?: boolean } } | null }) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
@@ -25,6 +25,21 @@ export default auth((req: NextRequest & { auth: { user?: { role?: string; active
 
   if (session?.user) {
     const role = session.user.role;
+
+    // Token revogado por troca de senha (M9/C-1): NÃO é conta bloqueada — o destino certo é o
+    // login, não a tela de "acesso negado". O `jwt` marca `revoked` quando o token foi emitido
+    // antes da última troca de senha; o usuário reautentica e recebe um token novo.
+    if (session.user.revoked === true) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Sessão expirada. Faça login novamente." }, { status: 401 });
+      }
+      if (isProtected) {
+        const loginUrl = new URL("/auth/login", req.url);
+        loginUrl.searchParams.set("callbackUrl", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+      return pass();
+    }
 
     // Usuário bloqueado (ou excluído) que ainda carrega uma sessão viva: o `jwt` recarrega
     // `active` do banco a cada request, então isto passa a valer no próximo clique — sem

@@ -17,7 +17,20 @@ describe("authConfig.callbacks.jwt — recarrega role/active do banco", () => {
       user: { id: "u1", role: "ASSISTANT" },
     } as any);
 
-    expect(token).toEqual(expect.objectContaining({ id: "u1", role: "ASSISTANT", active: true }));
+    expect(token).toEqual(
+      expect.objectContaining({ id: "u1", role: "ASSISTANT", active: true, revoked: false, pwdEpoch: 0 }),
+    );
+    expect(dbMock.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("no login semeia `pwdEpoch` com a época da senha do usuário", async () => {
+    const changedAt = new Date("2026-08-31T12:00:00.000Z");
+    const token = await jwt({
+      token: {},
+      user: { id: "u1", role: "ATHLETE", passwordChangedAt: changedAt },
+    } as any);
+
+    expect(token.pwdEpoch).toBe(changedAt.getTime());
     expect(dbMock.user.findUnique).not.toHaveBeenCalled();
   });
 
@@ -36,7 +49,7 @@ describe("authConfig.callbacks.jwt — recarrega role/active do banco", () => {
     expect(token).toEqual(expect.objectContaining({ id: "u1", role: "ASSISTANT", active: true }));
   });
 
-  it("M9 — token emitido antes da troca de senha é invalidado (active=false)", async () => {
+  it("M9/C-1 — token com pwdEpoch antigo + passwordChangedAt novo → active=false e revoked=true", async () => {
     dbMock.user.findUnique.mockResolvedValueOnce({
       role: "ATHLETE",
       active: true,
@@ -44,24 +57,47 @@ describe("authConfig.callbacks.jwt — recarrega role/active do banco", () => {
     });
 
     const token = await jwt({
-      token: { id: "u1", role: "ATHLETE", active: true, iat: Math.floor(new Date("2026-08-31T11:00:00.000Z").getTime() / 1000) },
+      token: {
+        id: "u1",
+        role: "ATHLETE",
+        active: true,
+        pwdEpoch: new Date("2026-08-31T11:00:00.000Z").getTime(),
+      },
     } as any);
 
     expect(token.active).toBe(false);
+    expect(token.revoked).toBe(true);
   });
 
-  it("M9 — token emitido depois da troca de senha continua válido", async () => {
+  it("M9/C-1 — o próprio usuário que trocou a senha (pwdEpoch == passwordChangedAt) continua válido", async () => {
+    const epoch = new Date("2026-08-31T12:00:00.000Z");
     dbMock.user.findUnique.mockResolvedValueOnce({
       role: "ATHLETE",
       active: true,
-      passwordChangedAt: new Date("2026-08-31T12:00:00.000Z"),
+      passwordChangedAt: epoch,
     });
 
     const token = await jwt({
-      token: { id: "u1", role: "ATHLETE", active: true, iat: Math.floor(new Date("2026-08-31T13:00:00.000Z").getTime() / 1000) },
+      token: { id: "u1", role: "ATHLETE", active: true, pwdEpoch: epoch.getTime() },
     } as any);
 
     expect(token.active).toBe(true);
+    expect(token.revoked).toBeFalsy();
+  });
+
+  it("M9/C-1 — passwordChangedAt nulo não tem efeito (deploy: ninguém é deslogado)", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      role: "ATHLETE",
+      active: true,
+      passwordChangedAt: null,
+    });
+
+    const token = await jwt({
+      token: { id: "u1", role: "ATHLETE", active: true },
+    } as any);
+
+    expect(token.active).toBe(true);
+    expect(token.revoked).toBeFalsy();
   });
 
   it("propaga o bloqueio: active=false do banco chega no token", async () => {

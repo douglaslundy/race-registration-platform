@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 
 export default function ChangePasswordForm() {
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
@@ -30,9 +31,12 @@ export default function ChangePasswordForm() {
     if (!res.ok) {
       setPwError(data.error ?? "Erro ao alterar senha.");
     } else {
+      // M9/C-1: a senha mudou → o token atual passa a ser revogado no próximo request.
+      // Em vez de deixar o usuário na página com um cookie que vai bater em "sessão expirada",
+      // deslogamos já e mandamos pro login pra ele entrar com a senha nova.
       setPwSuccess(true);
       setPwForm({ current: "", next: "", confirm: "" });
-      setTimeout(() => setPwSuccess(false), 4000);
+      await signOut({ callbackUrl: "/auth/login" });
     }
   }
 

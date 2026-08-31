@@ -67,6 +67,7 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           name: user.name,
           role: user.role,
+          passwordChangedAt: user.passwordChangedAt,
         };
       },
     }),
@@ -77,6 +78,13 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.role = (user as { role: string }).role;
         token.active = true; // `authorize` só devolve usuário ativo
+        // M9/C-1: grava a época conhecida da senha NO MOMENTO do login. `pwdEpoch` não é
+        // campo reservado do JWT, então o `@auth/core` nunca o sobrescreve (ao contrário de
+        // `iat`, que é reemitido a cada leitura de sessão). No refresh comparamos com o banco:
+        // se a senha mudou depois deste login, o token é considerado revogado.
+        token.pwdEpoch =
+          (user as { passwordChangedAt?: Date | null }).passwordChangedAt?.getTime() ?? 0;
+        token.revoked = false;
         return token;
       }
 
@@ -94,14 +102,15 @@ export const authConfig: NextAuthConfig = {
           if (fresh) {
             token.role = fresh.role;
             token.active = fresh.active;
-            // M9: token emitido ANTES da última troca de senha é considerado revogado —
-            // um token roubado não sobrevive à troca. `iat` está em segundos.
-            if (
-              fresh.passwordChangedAt &&
-              typeof token.iat === "number" &&
-              token.iat * 1000 < fresh.passwordChangedAt.getTime()
-            ) {
+            // M9/C-1: token emitido ANTES da última troca de senha é revogado — um token
+            // roubado não sobrevive à troca. Comparação contra `token.pwdEpoch` (semeado no
+            // login), NÃO contra `token.iat` (que o auth core reemite a cada request).
+            // Tokens antigos (pré-deploy) não têm `pwdEpoch` → tratado como 0; como
+            // `passwordChangedAt` é nulo pra todos os usuários hoje, ninguém é deslogado no deploy.
+            const dbEpoch = fresh.passwordChangedAt?.getTime() ?? 0;
+            if (dbEpoch > ((token.pwdEpoch as number | undefined) ?? 0)) {
               token.active = false;
+              token.revoked = true;
             }
           } else {
             // Usuário sumiu (exclusão física): invalida o papel — o proxy/guards barram.
@@ -119,6 +128,7 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         session.user.role = token.role as import("@prisma/client").UserRole;
         session.user.active = token.active !== false;
+        session.user.revoked = token.revoked === true;
       }
       return session;
     },
