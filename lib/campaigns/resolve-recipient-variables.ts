@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { formatDate, formatCurrency } from "@/lib/format";
+import { formatDate, formatDateOnly, formatCurrency } from "@/lib/format";
 import { REGISTRATION_STATUS } from "@/lib/registration-status";
 import { getAppName, getSetting } from "@/lib/settings";
 import { getSponsorPromoText } from "@/lib/event-sponsors";
@@ -44,7 +44,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
     email_atleta: user?.email ?? "",
     telefone_atleta: user?.athleteProfile?.phone ?? "",
     documento_atleta: user?.athleteProfile?.cpf ?? "",
-    data_nascimento_atleta: user?.athleteProfile?.birthDate ? formatDate(user.athleteProfile.birthDate) : "",
+    data_nascimento_atleta: user?.athleteProfile?.birthDate ? formatDateOnly(user.athleteProfile.birthDate) : "",
     equipe_atleta: user?.athleteProfile?.teamName ?? "",
     nome_plataforma: await getAppName(),
     email_suporte: (await getSetting("support_email")) ?? "",
@@ -100,7 +100,7 @@ export async function resolveCampaignRecipientVariables(recipient: {
   values.email_atleta = registration.participantEmail;
   values.telefone_atleta = registration.participantPhone ?? "";
   values.documento_atleta = registration.participantCpf ?? "";
-  values.data_nascimento_atleta = registration.participantBirthDate ? formatDate(registration.participantBirthDate) : "";
+  values.data_nascimento_atleta = registration.participantBirthDate ? formatDateOnly(registration.participantBirthDate) : "";
   values.equipe_atleta = registration.teamName ?? "";
 
   values.categoria_inscricao = registration.category?.name ?? "";

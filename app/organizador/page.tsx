@@ -9,7 +9,7 @@ import { BADGE } from "@/lib/badge-colors";
 import PrintButton from "@/components/ui/PrintButton";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 import { parseDateInput } from "@/lib/admin/audit";
-import { getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence } from "@/lib/dashboard-metrics";
+import { getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence, organizerRevenueWhere } from "@/lib/dashboard-metrics";
 import LineChart from "@/components/ui/LineChartLazy";
 import MultiLineChart from "@/components/ui/MultiLineChartLazy";
 
@@ -91,14 +91,8 @@ export default async function OrganizerDashboard({
     db.order.aggregate({
       // Receita do organizador = valor das inscrições (subtotal). totalAmount inclui
       // taxa da plataforma e taxa de serviço, que são receita da plataforma, não dele.
-      // Filtra por Payment.paidAt (quando o dinheiro de fato entrou), não Order.createdAt —
-      // pra Pix/boleto os dois podem cair em dias diferentes.
       _sum: { subtotalAmount: true },
-      where: {
-        status: "PAID",
-        event: { organizerId: organizer.id },
-        payments: { some: { status: "PAID", paidAt: { gte: from, lte: to } } },
-      },
+      where: organizerRevenueWhere({ organizerId: organizer.id, from, to, eventId: eventId || undefined }),
     }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.count({ where: { event: { organizerId: organizer.id }, status: "PENDING_PAYMENT", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),

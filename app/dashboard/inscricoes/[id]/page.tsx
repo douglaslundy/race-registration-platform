@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateOnly } from "@/lib/format";
 import Link from "next/link";
 import PaymentStatusPoller from "@/components/dashboard/PaymentStatusPoller";
 import CancelRegistrationButton from "@/components/dashboard/CancelRegistrationButton";
@@ -194,7 +194,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           </div>
           <div className="flex justify-between py-1 border-b dark:border-gray-700">
             <span className="text-gray-500">Nascimento</span>
-            <span>{registration.participantBirthDate ? formatDate(registration.participantBirthDate) : "—"}</span>
+            <span>{registration.participantBirthDate ? formatDateOnly(registration.participantBirthDate) : "—"}</span>
           </div>
           <div className="flex justify-between py-1 border-b dark:border-gray-700">
             <span className="text-gray-500">Gênero</span>

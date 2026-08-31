@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateOnly } from "@/lib/format";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 import { REGISTRATION_STATUS } from "@/lib/registration-status";
 
@@ -256,7 +256,7 @@ export default function AthleteDetailsModal({
                       <div>
                         <dt className="text-xs text-gray-500">Nascimento</dt>
                         <dd className="text-gray-800 dark:text-gray-200">
-                          {profile.birthDate ? formatDate(profile.birthDate, "dd/MM/yyyy") : "—"}
+                          {profile.birthDate ? formatDateOnly(profile.birthDate) : "—"}
                         </dd>
                       </div>
                       <div>

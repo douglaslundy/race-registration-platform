@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { ACTION_LABEL, ENTITY_LABEL } from "@/lib/admin/labels";
 import { parseDateInput } from "@/lib/admin/audit";
-import { getDailySignups, getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence } from "@/lib/dashboard-metrics";
+import { getDailySignups, getDailyRegistrations, getDailyCouponUsageByCode, getDailyRegistrationsByCouponPresence, adminRevenueWhere } from "@/lib/dashboard-metrics";
 import LineChart from "@/components/ui/LineChartLazy";
 import MultiLineChart from "@/components/ui/MultiLineChartLazy";
 import Link from "next/link";
@@ -33,9 +33,12 @@ export default async function AdminDashboard({
     db.registration.count({ where: { status: "CONFIRMED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.count({ where: { status: "PENDING_PAYMENT", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
     db.registration.count({ where: { status: "CANCELLED", createdAt: { gte: from, lte: to }, ...(eventId ? { eventId } : {}) } }),
-    // Receita "no período" tem que refletir quando o dinheiro entrou (paidAt), não quando o
-    // pedido foi criado — pra Pix/boleto os dois podem cair em dias diferentes.
-    db.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: from, lte: to } } }),
+    // Receita "no período": reflete quando o dinheiro entrou (paidAt) e respeita o filtro de
+    // evento (via order.eventId), igual às contagens de inscrições acima.
+    db.payment.aggregate({
+      _sum: { amount: true },
+      where: adminRevenueWhere({ from, to, eventId: eventId || undefined }),
+    }),
   ]);
 
   const [signupsData, registrationsData, couponUsage, couponPresence, events] = await Promise.all([

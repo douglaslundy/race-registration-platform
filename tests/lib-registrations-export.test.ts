@@ -55,6 +55,19 @@ describe("buildRegistrationExportRows", () => {
     ]);
   });
 
+  it("exporta o dia de nascimento salvo no banco mesmo com o processo em fuso negativo (regressão: saía 1 dia a menos)", () => {
+    const originalTZ = process.env.TZ;
+    process.env.TZ = "America/Sao_Paulo"; // igual ao container em produção (UTC-3)
+    try {
+      // participantBirthDate como o Prisma devolve pra uma data-calendário: meia-noite UTC.
+      const reg = { ...fullRegistration, participantBirthDate: new Date("1986-09-08T00:00:00.000Z") };
+      const rows = buildRegistrationExportRows([reg], eventDate);
+      expect(rows[0][1]).toBe("08/09/1986");
+    } finally {
+      process.env.TZ = originalTZ;
+    }
+  });
+
   it("calcula a idade em relação à data do EVENTO, não à data de hoje", () => {
     // Aniversário em setembro (15/03 -> completa em março de cada ano). Um evento ANTES do
     // aniversário do ano corrente dá uma idade a menos do que se calculado "hoje" (bem depois do

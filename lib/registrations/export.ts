@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { calculateAge, formatDate } from "@/lib/format";
+import { calculateAge, formatDateOnly } from "@/lib/format";
 
 export const REGISTRATION_EXPORT_HEADERS = [
   "Nome",
@@ -37,7 +37,7 @@ export function buildRegistrationExportRows(registrations: RegistrationExportSou
     const birthDate = r.participantBirthDate;
     return [
       r.participantName,
-      birthDate ? formatDate(birthDate) : "",
+      birthDate ? formatDateOnly(birthDate) : "",
       birthDate ? String(calculateAge(birthDate, eventDate)) : "",
       r.participantGender ?? "",
       r.teamName ?? "",

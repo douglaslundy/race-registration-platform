@@ -4,6 +4,8 @@ import {
   getDailyRegistrations,
   getDailyCouponUsageByCode,
   getDailyRegistrationsByCouponPresence,
+  organizerRevenueWhere,
+  adminRevenueWhere,
 } from "@/lib/dashboard-metrics";
 import { db } from "@/lib/db";
 
@@ -139,6 +141,41 @@ describe("getDailyRegistrationsByCouponPresence", () => {
     expect(dbMock.registration.findMany).toHaveBeenCalledWith({
       where: { createdAt: { gte: from, lte: to }, eventId: "event-1", event: { organizerId: "org-1" } },
       select: { createdAt: true, order: { select: { couponId: true } } },
+    });
+  });
+});
+
+describe("organizerRevenueWhere", () => {
+  it("always scopes by organizer, PAID status and paidAt within the period", () => {
+    const where = organizerRevenueWhere({ organizerId: "org-1", from, to });
+    expect(where).toEqual({
+      status: "PAID",
+      event: { organizerId: "org-1" },
+      payments: { some: { status: "PAID", paidAt: { gte: from, lte: to } } },
+    });
+  });
+
+  it("restricts to the selected event when eventId is given (regression: revenue used to ignore the event filter)", () => {
+    const where = organizerRevenueWhere({ organizerId: "org-1", from, to, eventId: "event-1" });
+    expect(where).toMatchObject({ eventId: "event-1", event: { organizerId: "org-1" } });
+  });
+
+  it("omits the eventId key entirely when no event is selected", () => {
+    expect(organizerRevenueWhere({ organizerId: "org-1", from, to })).not.toHaveProperty("eventId");
+  });
+});
+
+describe("adminRevenueWhere", () => {
+  it("scopes by PAID status and paidAt within the period, no event filter by default", () => {
+    expect(adminRevenueWhere({ from, to })).toEqual({
+      status: "PAID",
+      paidAt: { gte: from, lte: to },
+    });
+  });
+
+  it("restricts to the selected event via order.eventId when eventId is given", () => {
+    expect(adminRevenueWhere({ from, to, eventId: "event-1" })).toMatchObject({
+      order: { is: { eventId: "event-1" } },
     });
   });
 });

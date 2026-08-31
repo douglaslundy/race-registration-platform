@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 interface DailyPoint {
   label: string;
@@ -134,4 +135,45 @@ export async function getDailyRegistrationsByCouponPresence(
   }));
 
   return { data: bucketSeriesByDay(entries, series, from, to), series };
+}
+
+/**
+ * Where-clause do card "Receita no período" do dashboard do ORGANIZADOR
+ * (`db.order.aggregate({ _sum: { subtotalAmount } })`).
+ *
+ * Extraído e testado de propósito: o filtro de evento já foi esquecido aqui uma vez — todo o
+ * resto do dashboard restringia por `eventId` e só a receita somava todos os eventos do
+ * organizador. `paidAt` (não `Order.createdAt`) porque pra Pix/boleto a criação e a confirmação
+ * do pagamento caem em dias diferentes.
+ */
+export function organizerRevenueWhere(scope: {
+  organizerId: string;
+  from: Date;
+  to: Date;
+  eventId?: string;
+}): Prisma.OrderWhereInput {
+  return {
+    status: "PAID",
+    event: { organizerId: scope.organizerId },
+    payments: { some: { status: "PAID", paidAt: { gte: scope.from, lte: scope.to } } },
+    ...(scope.eventId ? { eventId: scope.eventId } : {}),
+  };
+}
+
+/**
+ * Where-clause do card "Receita no período" do dashboard do ADMIN
+ * (`db.payment.aggregate({ _sum: { amount } })`). Mesmo cuidado com o filtro de evento, que
+ * aqui chega via `order.eventId` (o pagamento não tem `eventId` próprio). Pagamentos sem pedido
+ * (compra de anúncio) são naturalmente excluídos quando há filtro de evento.
+ */
+export function adminRevenueWhere(scope: {
+  from: Date;
+  to: Date;
+  eventId?: string;
+}): Prisma.PaymentWhereInput {
+  return {
+    status: "PAID",
+    paidAt: { gte: scope.from, lte: scope.to },
+    ...(scope.eventId ? { order: { is: { eventId: scope.eventId } } } : {}),
+  };
 }

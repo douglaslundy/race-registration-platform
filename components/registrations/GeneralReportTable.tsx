@@ -1,4 +1,4 @@
-import { calculateAge, formatCurrency, formatDate } from "@/lib/format";
+import { calculateAge, formatCurrency, formatDate, formatDateOnly } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL } from "./RegistrationsTable";
 
 export interface GeneralReportRow {
@@ -53,7 +53,7 @@ export default function GeneralReportTable({
                 <p className="text-gray-500">{r.participantEmail}</p>
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                {r.participantBirthDate ? formatDate(r.participantBirthDate) : "—"}
+                {r.participantBirthDate ? formatDateOnly(r.participantBirthDate) : "—"}
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
                 {r.participantBirthDate ? calculateAge(r.participantBirthDate, eventDate) : "—"}

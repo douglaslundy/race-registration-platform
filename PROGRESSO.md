@@ -1,6 +1,24 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-31 — Sub-projeto C — snapshot de dados da inscrição — CONCLUÍDO (não deployado))
+## Última atualização (2026-08-31 — 2 bugs corrigidos: receita do dashboard + data de nascimento na exportação)
+
+**Não commitado** (working tree). `npx tsc --noEmit` limpo · `npx vitest run` 294 arq / 2322 testes verdes · `npx next build` exit 0.
+
+### Bug 1 — "Receita no período" ignorava o filtro de evento
+`app/organizador/page.tsx`: o agregado de receita não aplicava `eventId` (todo o resto do dashboard aplicava) → somava todos os eventos do organizador mesmo com um evento selecionado. Mesmo defeito em `app/admin/page.tsx`.
+- Extraí `organizerRevenueWhere` / `adminRevenueWhere` para `lib/dashboard-metrics.ts` (testados em `tests/dashboard-metrics.test.ts`) e usei nos dois dashboards. Admin filtra via `order.is.eventId` (payment não tem eventId).
+
+### Bug 2 — data de nascimento saía 1 dia a menos no CSV/XLSX/PDF
+Datas de nascimento são datas de calendário guardadas como meia-noite UTC (`1986-09-08T00:00:00Z`, coluna `timestamp without time zone`). `formatDate()` (date-fns) renderiza no fuso local; container roda `TZ=America/Sao_Paulo` (UTC-3) e o navegador idem → `08/09` virava `07/09`. **Dado no banco está correto — bug só de formatação.**
+- `lib/format.ts`: novo `formatDateOnly(date, pattern?)` (usa componentes UTC) + `toDateInputValue` + `calculateAge` passou a usar `getUTC*`.
+- Trocado `formatDate`→`formatDateOnly` em: `lib/registrations/export.ts`, `components/registrations/GeneralReportTable.tsx`, `components/registrations/AthleteDetailsModal.tsx`, `app/dashboard/inscricoes/[id]/page.tsx`, `lib/campaigns/resolve-recipient-variables.ts` (2×).
+- Prefills de `<input type=date>` (perfil, UserForm, EditMyRegistrationButton, modal) já usavam `.toISOString()` — corretos, não mexi.
+- Testes de regressão forçando `TZ=America/Sao_Paulo` em `tests/unit/format.test.ts` e `tests/lib-registrations-export.test.ts`.
+- **Fora de escopo (registrado):** conferir se `Event.startAt` (mesmo tipo de coluna) está deslocando horário de largada na exibição.
+
+---
+
+## Sub-projeto C — snapshot de dados da inscrição — CONCLUÍDO (não deployado)
 
 Branch `feat/snapshot-dados-inscricao` (15 tasks, subagent-driven). Verificação final (Task 15):
 **`npx vitest run` 289 arquivos / 2234 testes verdes**, **`npx tsc --noEmit` limpo**, **`npm run
