@@ -11,6 +11,12 @@ const credentialsSchema = z.object({
   password: z.string().min(6),
 });
 
+// Hash bcrypt fixo (cost 12) de uma senha que não corresponde a nenhuma conta. Usado pra
+// rodar um `bcrypt.compare` no caminho de usuário inexistente/inativo, eliminando o oráculo
+// de timing que permitia enumerar quais e-mails existem (o compare real leva ~250ms; sem
+// esse dummy, o "não existe" retornava instantâneo). Ver M3 da auditoria 2026-08-31.
+const DUMMY_PASSWORD_HASH = "$2a$12$SK3ctLIHQVTU1PrEFptwA.IqqFy6/ELsbmSy9aaicKtUvyeAEa1KK";
+
 export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(db),
   session: { strategy: "jwt" },
@@ -32,15 +38,26 @@ export const authConfig: NextAuthConfig = {
         // Duas chaves: por IP (evita força bruta distribuída contra várias contas) e por e-mail
         // (evita alguém martelando uma conta específica a partir de vários IPs).
         const ip = getClientIp(request);
-        const ipCheck = checkRateLimit(`login:ip:${ip}`, RATE_LIMITS.AUTH);
-        const emailCheck = checkRateLimit(`login:email:${parsed.data.email}`, RATE_LIMITS.AUTH);
+        const ipCheck = checkRateLimit(`login:ip:${ip}`, RATE_LIMITS.LOGIN);
+        // Chave por e-mail normalizada (lowercase) — sem isso, variar a caixa do e-mail
+        // multiplicava o orçamento de tentativas por conta. (O lookup no banco continua
+        // com o e-mail original: contas antigas podem ter caixa mista.)
+        const emailCheck = checkRateLimit(
+          `login:email:${parsed.data.email.toLowerCase()}`,
+          RATE_LIMITS.LOGIN,
+        );
         if (!ipCheck.allowed || !emailCheck.allowed) return null;
 
         const user = await db.user.findUnique({
           where: { email: parsed.data.email },
         });
 
-        if (!user || !user.passwordHash || !user.active) return null;
+        if (!user || !user.passwordHash || !user.active) {
+          // Roda um compare falso pra igualar o tempo de resposta do caminho de usuário
+          // válido (defesa contra enumeração por timing).
+          await bcrypt.compare(parsed.data.password, DUMMY_PASSWORD_HASH);
+          return null;
+        }
 
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;

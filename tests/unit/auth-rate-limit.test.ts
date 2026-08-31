@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 vi.mock("bcryptjs", () => ({ default: { compare: vi.fn() } }));
 vi.mock("@/lib/rate-limit", async () => {
@@ -55,8 +56,16 @@ describe("authConfig credentials authorize — rate limiting", () => {
 
     await authorize({ email: "atleta@example.com", password: "123456" }, makeRequest("1.2.3.4"));
 
-    expect(rateLimitMock).toHaveBeenCalledWith("login:ip:1.2.3.4", expect.objectContaining({ requests: 10 }));
-    expect(rateLimitMock).toHaveBeenCalledWith("login:email:atleta@example.com", expect.objectContaining({ requests: 10 }));
+    expect(rateLimitMock).toHaveBeenCalledWith("login:ip:1.2.3.4", expect.objectContaining({ requests: 5 }));
+    expect(rateLimitMock).toHaveBeenCalledWith("login:email:atleta@example.com", expect.objectContaining({ requests: 5 }));
+  });
+
+  it("M3 — chave por e-mail é normalizada em lowercase", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+
+    await authorize({ email: "Atleta@Example.COM", password: "123456" }, makeRequest("1.2.3.4"));
+
+    expect(rateLimitMock).toHaveBeenCalledWith("login:email:atleta@example.com", expect.anything());
   });
 
   it("consulta o banco normalmente quando dentro do limite", async () => {
@@ -66,5 +75,15 @@ describe("authConfig credentials authorize — rate limiting", () => {
 
     expect(result).toBeNull();
     expect(dbMock.user.findUnique).toHaveBeenCalledWith({ where: { email: "atleta@example.com" } });
+  });
+
+  it("M3 — roda um bcrypt.compare dummy quando o usuário não existe (defesa contra timing)", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+    vi.mocked(bcrypt.compare).mockResolvedValueOnce(false as never);
+
+    const result = await authorize({ email: "naoexiste@example.com", password: "seja-la-o-que-for" }, makeRequest("1.2.3.4"));
+
+    expect(result).toBeNull();
+    expect(bcrypt.compare).toHaveBeenCalledWith("seja-la-o-que-for", expect.stringMatching(/^\$2[aby]\$/));
   });
 });
