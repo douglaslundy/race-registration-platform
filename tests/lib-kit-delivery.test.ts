@@ -28,11 +28,12 @@ describe("findRegistrationForKitDelivery", () => {
           OR: expect.arrayContaining([
             { id: "123.456.789-00" },
             { bibNumber: "123.456.789-00" },
-            { athlete: { name: { contains: "123.456.789-00", mode: "insensitive" } } },
-            { athlete: { athleteProfile: { cpf: "12345678900" } } },
+            { participantName: { contains: "123.456.789-00", mode: "insensitive" } },
+            { participantCpf: "12345678900" },
           ]),
         }),
         take: 10,
+        orderBy: { participantName: "asc" },
       }),
     );
   });
@@ -43,7 +44,7 @@ describe("findRegistrationForKitDelivery", () => {
     await findRegistrationForKitDelivery("event-1", "João");
 
     const call = dbMock.registration.findMany.mock.calls[0][0];
-    const hasCpfClause = call.where.OR.some((clause: any) => clause.athlete?.athleteProfile?.cpf);
+    const hasCpfClause = call.where.OR.some((clause: any) => clause.participantCpf);
     expect(hasCpfClause).toBe(false);
   });
 
@@ -51,11 +52,10 @@ describe("findRegistrationForKitDelivery", () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
         id: "reg-1",
-        proxyAthleteDisplayName: null,
+        participantName: "João Silva",
         bibNumber: "42",
         shirtSize: "M",
         status: "CONFIRMED",
-        athlete: { name: "João Silva" },
         category: { name: "Geral" },
         kitDelivery: null,
         notes: null,
@@ -85,11 +85,10 @@ describe("findRegistrationForKitDelivery", () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
         id: "reg-3",
-        proxyAthleteDisplayName: null,
+        participantName: "Carla Souza",
         bibNumber: "10",
         shirtSize: "G",
         status: "CONFIRMED",
-        athlete: { name: "Carla Souza" },
         category: null,
         kitDelivery: null,
         notes: "Atleta solicitou retirada por terceiro. Verificar documento.",
@@ -101,16 +100,15 @@ describe("findRegistrationForKitDelivery", () => {
     expect(result[0].notes).toBe("Atleta solicitou retirada por terceiro. Verificar documento.");
   });
 
-  it("mapeia inscrição já entregue, usando proxyAthleteDisplayName quando presente", async () => {
+  it("mapeia inscrição já entregue, usando participantName (que já é o nome do proxy)", async () => {
     const deliveredAt = new Date("2026-08-20T10:00:00.000Z");
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
         id: "reg-2",
-        proxyAthleteDisplayName: "Maria (procuração)",
+        participantName: "Maria (procuração)",
         bibNumber: null,
         shirtSize: null,
         status: "CONFIRMED",
-        athlete: { name: "Nome da conta" },
         category: null,
         kitDelivery: {
           deliveredAt,
@@ -148,9 +146,10 @@ describe("getKitDeliveryProgress", () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
         id: "reg-2",
-        proxyAthleteDisplayName: null,
+        participantName: "Atleta B",
+        participantEmail: "b@example.com",
+        participantPhone: null,
         bibNumber: "2",
-        athlete: { name: "Atleta B", email: "b@example.com", athleteProfile: null },
         category: null,
       },
     ]);
@@ -185,7 +184,10 @@ describe("getKitDeliveryProgress", () => {
     });
 
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { eventId: "event-1", status: "CONFIRMED", kitDelivery: null } }),
+      expect.objectContaining({
+        where: { eventId: "event-1", status: "CONFIRMED", kitDelivery: null },
+        orderBy: { participantName: "asc" },
+      }),
     );
     const findManyCall = dbMock.registration.findMany.mock.calls[0][0];
     expect(findManyCall.take).toBeUndefined();

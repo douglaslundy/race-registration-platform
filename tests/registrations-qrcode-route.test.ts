@@ -15,9 +15,8 @@ function makeRequest(query = "") {
 
 const registrationFixture = {
   id: "reg-1",
-  proxyAthleteDisplayName: null,
+  participantName: "Maria Exemplo",
   bibNumber: "1234",
-  athlete: { name: "Maria Exemplo" },
   event: { title: "Corrida Exemplo" },
 };
 
@@ -78,10 +77,10 @@ describe("GET /api/registrations/[id]/qrcode", () => {
     expect(buffer.subarray(0, 4).toString("ascii")).toBe("%PDF");
   });
 
-  it("usa proxyAthleteDisplayName no PDF quando a inscrição é por procuração", async () => {
+  it("usa participantName no PDF quando a inscrição é por procuração", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce({
       ...registrationFixture,
-      proxyAthleteDisplayName: "Atleta Convidado",
+      participantName: "Atleta Convidado",
     });
 
     const res = await GET(makeRequest("?format=pdf"), { params: Promise.resolve({ id: "reg-1" }) });

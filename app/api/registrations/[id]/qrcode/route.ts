@@ -17,15 +17,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: scope.actingAsAdmin ? { id } : { id, event: { organizerId: scope.organizerId ?? "__none__" } },
     select: {
       id: true,
-      proxyAthleteDisplayName: true,
+      participantName: true,
       bibNumber: true,
-      athlete: { select: { name: true } },
       event: { select: { title: true } },
     },
   });
   if (!registration) return NextResponse.json({ error: "Inscrição não encontrada" }, { status: 404 });
 
-  const athleteName = registration.proxyAthleteDisplayName ?? registration.athlete.name;
+  const athleteName = registration.participantName;
   const qrPng = await generateKitQrCodePng(registration.id);
 
   if (format === "pdf") {

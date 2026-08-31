@@ -41,7 +41,7 @@ export async function findRegistrationForKitDelivery(
   if (!trimmed) return [];
 
   const normalizedCpf = normalizeCpf(trimmed);
-  const cpfClause = normalizedCpf.length === 11 ? [{ athlete: { athleteProfile: { cpf: normalizedCpf } } }] : [];
+  const cpfClause = normalizedCpf.length === 11 ? [{ participantCpf: normalizedCpf }] : [];
 
   const registrations = await db.registration.findMany({
     where: {
@@ -50,14 +50,13 @@ export async function findRegistrationForKitDelivery(
       OR: [
         { id: trimmed },
         { bibNumber: trimmed },
-        { athlete: { name: { contains: trimmed, mode: "insensitive" } } },
+        { participantName: { contains: trimmed, mode: "insensitive" } },
         ...cpfClause,
       ],
     },
     take: 10,
-    orderBy: { athlete: { name: "asc" } },
+    orderBy: { participantName: "asc" },
     include: {
-      athlete: { select: { name: true } },
       category: { select: { name: true } },
       kitDelivery: { include: { deliveredBy: { select: { name: true } } } },
     },
@@ -65,7 +64,7 @@ export async function findRegistrationForKitDelivery(
 
   return registrations.map((r) => ({
     id: r.id,
-    athleteName: r.proxyAthleteDisplayName ?? r.athlete.name,
+    athleteName: r.participantName,
     bibNumber: r.bibNumber,
     shirtSize: r.shirtSize,
     categoryName: r.category?.name ?? null,
@@ -91,10 +90,9 @@ export async function getKitDeliveryProgress(eventId: string, pendingLimit?: num
     db.registration.count({ where: { eventId, status: "CONFIRMED", kitDelivery: null } }),
     db.registration.findMany({
       where: { eventId, status: "CONFIRMED", kitDelivery: null },
-      orderBy: { athlete: { name: "asc" } },
+      orderBy: { participantName: "asc" },
       ...(pendingLimit !== undefined ? { take: pendingLimit } : {}),
       include: {
-        athlete: { select: { name: true, email: true, athleteProfile: { select: { phone: true } } } },
         category: { select: { name: true } },
       },
     }),
@@ -102,11 +100,11 @@ export async function getKitDeliveryProgress(eventId: string, pendingLimit?: num
 
   const pending = pendingRows.map((r) => ({
     id: r.id,
-    athleteName: r.proxyAthleteDisplayName ?? r.athlete.name,
+    athleteName: r.participantName,
     bibNumber: r.bibNumber,
     categoryName: r.category?.name ?? null,
-    email: r.athlete.email,
-    phone: r.athlete.athleteProfile?.phone ?? null,
+    email: r.participantEmail,
+    phone: r.participantPhone ?? null,
   }));
 
   return { total, delivered, pending, pendingTotal };
