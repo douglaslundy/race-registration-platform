@@ -38,5 +38,6 @@ export const RATE_LIMITS = {
   LOGIN: { requests: 5, windowMs: 60_000 },
   CHECKOUT: { requests: 5, windowMs: 60_000 },
   WEBHOOK: { requests: 100, windowMs: 60_000 },
+  UPLOAD: { requests: 20, windowMs: 60_000 },
   SENSITIVE_ACTION_CODE: { requests: 3, windowMs: 300_000 },
 } satisfies Record<string, RateLimitConfig>;

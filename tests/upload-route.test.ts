@@ -5,6 +5,12 @@ import { POST } from "@/app/api/upload/route";
 import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
+vi.mock("@/lib/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit");
+  return { ...actual, checkRateLimit: vi.fn(() => ({ allowed: true, remaining: 19 })) };
+});
+
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const authMock = vi.mocked(auth);
 
@@ -45,6 +51,20 @@ describe("POST /api/upload", () => {
     const file = new File([Buffer.from("x")], "banner.jpg", { type: "image/jpeg" });
     const res = await POST(makeUploadRequest(file));
     expect(res.status).toBe(401);
+  });
+
+  it("L3 — ATHLETE não pode fazer upload (403)", async () => {
+    authMock.mockResolvedValueOnce({ user: { id: "athlete-1", role: "ATHLETE" } } as any);
+    const file = new File([Buffer.from("x")], "banner.jpg", { type: "image/jpeg" });
+    const res = await POST(makeUploadRequest(file));
+    expect(res.status).toBe(403);
+  });
+
+  it("L3 — rate-limit por usuário excedido → 429", async () => {
+    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, remaining: 0 });
+    const file = new File([Buffer.from("x")], "banner.jpg", { type: "image/jpeg" });
+    const res = await POST(makeUploadRequest(file));
+    expect(res.status).toBe(429);
   });
 
   it(

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { randomUUID } from "crypto";
 import sharp from "sharp";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+
+// Purposes deste endpoint são todos de gestão de evento — atleta comum não sobe nada aqui.
+const UPLOAD_ROLES = new Set(["ADMIN", "ORGANIZER", "ASSISTANT"]);
 
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -81,6 +85,16 @@ function getSupabaseConfig() {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (!UPLOAD_ROLES.has(session.user.role)) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+
+  // L3: teto de uploads por usuário — sem isso qualquer conta autenticada podia despejar
+  // arquivos no bucket público (storage exhaustion / hospedagem grátis).
+  const { allowed } = checkRateLimit(`upload:${session.user.id}`, RATE_LIMITS.UPLOAD);
+  if (!allowed) {
+    return NextResponse.json({ error: "Muitos envios em pouco tempo. Aguarde um minuto." }, { status: 429 });
+  }
 
   const cfg = getSupabaseConfig();
   if (!cfg.ready) {
