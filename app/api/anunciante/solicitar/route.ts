@@ -10,6 +10,8 @@ import { getDefaultPaymentAccount, NoPaymentAccountError } from "@/lib/payment/a
 import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
 import { getPaymentProviderSetting } from "@/lib/payment-settings";
 import { getSetting } from "@/lib/settings";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { hasValidMxRecord } from "@/lib/validate-email-domain";
 import type { PaymentMethod } from "@prisma/client";
 
 const profileSchema = z.object({
@@ -44,6 +46,12 @@ export async function POST(req: NextRequest) {
 
   const session = await auth();
 
+  // M6: rota cria User + Payment sem autenticação (só gated pela setting). Rate-limit por IP.
+  const ipCheck = checkRateLimit(`anunciante-solicitar:ip:${getClientIp(req)}`, RATE_LIMITS.AUTH);
+  if (!ipCheck.allowed) {
+    return NextResponse.json({ error: "Muitas solicitações. Aguarde um minuto e tente novamente." }, { status: 429 });
+  }
+
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
@@ -52,6 +60,19 @@ export async function POST(req: NextRequest) {
 
   if (!session?.user && !parsed.data.newAccount) {
     return NextResponse.json({ error: "Dados da conta são obrigatórios" }, { status: 400 });
+  }
+
+  // Solicitação anônima (nova conta): rate-limit adicional por e-mail + checagem de MX
+  // (mesma proteção do /api/auth/register — evita spam de contas e bombardeio de caixa).
+  if (!session?.user && parsed.data.newAccount) {
+    const emailKey = parsed.data.newAccount.email.toLowerCase();
+    const emailCheck = checkRateLimit(`anunciante-solicitar:email:${emailKey}`, RATE_LIMITS.AUTH);
+    if (!emailCheck.allowed) {
+      return NextResponse.json({ error: "Muitas solicitações para este e-mail. Aguarde um minuto." }, { status: 429 });
+    }
+    if (!(await hasValidMxRecord(parsed.data.newAccount.email))) {
+      return NextResponse.json({ error: "Domínio de e-mail inválido ou inexistente" }, { status: 400 });
+    }
   }
 
   const accountResult = await requestAdvertiserAccount({

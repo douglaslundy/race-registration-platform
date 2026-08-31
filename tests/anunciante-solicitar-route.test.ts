@@ -8,8 +8,15 @@ vi.mock("@/lib/checkout-ads", () => ({ createAdPlanCheckout: vi.fn() }));
 vi.mock("@/lib/payment", () => ({ getPaymentProvider: vi.fn() }));
 vi.mock("@/lib/payment-settings", () => ({ getPaymentProviderSetting: vi.fn() }));
 vi.mock("@/lib/settings", () => ({ getSetting: vi.fn() }));
+vi.mock("@/lib/validate-email-domain", () => ({ hasValidMxRecord: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit");
+  return { ...actual, checkRateLimit: vi.fn(() => ({ allowed: true, remaining: 9 })) };
+});
 
 import { POST } from "@/app/api/anunciante/solicitar/route";
+import { hasValidMxRecord } from "@/lib/validate-email-domain";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { requestAdvertiserAccount } from "@/lib/advertisers/request-advertiser";
 import { createAdPlanCheckout } from "@/lib/checkout-ads";
 import { getPaymentProvider } from "@/lib/payment";
@@ -107,6 +114,30 @@ describe("POST /api/anunciante/solicitar", () => {
     expect(body.error).toMatch(/conta foi criada/i);
     expect(body.error).toMatch(/anuncie/);
     expect(dbMock.payment.create).not.toHaveBeenCalled();
+  });
+
+  it("M6 — rate-limit por IP excedido → 429 antes de criar qualquer coisa", async () => {
+    vi.mocked(checkRateLimit).mockReturnValueOnce({ allowed: false, remaining: 0 });
+
+    const res = await POST(makeRequest({
+      newAccount: { name: "Fulano", email: "novo@example.com", password: "senha1234" },
+      profile: PROFILE, adPlanId: "plan-1", paymentMethod: "PIX",
+    }));
+
+    expect(res.status).toBe(429);
+    expect(requestAdvertiserAccount).not.toHaveBeenCalled();
+  });
+
+  it("M6 — e-mail com domínio sem MX → 400", async () => {
+    vi.mocked(hasValidMxRecord).mockResolvedValueOnce(false);
+
+    const res = await POST(makeRequest({
+      newAccount: { name: "Fulano", email: "novo@dominioinvalido.xyz", password: "senha1234" },
+      profile: PROFILE, adPlanId: "plan-1", paymentMethod: "PIX",
+    }));
+
+    expect(res.status).toBe(400);
+    expect(requestAdvertiserAccount).not.toHaveBeenCalled();
   });
 
   it("reaproveita a sessão já logada, ignora newAccount se enviado por engano", async () => {
