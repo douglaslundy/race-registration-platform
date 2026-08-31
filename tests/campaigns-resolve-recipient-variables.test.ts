@@ -22,6 +22,15 @@ const athleteUser = {
   },
 };
 
+// Snapshot da inscrição — a fonte de verdade das variáveis de identidade em campanha de evento.
+const registrationSnapshot = {
+  participantName: "Snap Atleta",
+  participantEmail: "snap@inscricao.com",
+  participantPhone: "11970000000",
+  participantCpf: "98765432100",
+  participantBirthDate: new Date("1985-07-20T00:00:00Z"),
+};
+
 describe("resolveCampaignRecipientVariables", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -52,6 +61,7 @@ describe("resolveCampaignRecipientVariables", () => {
       createdAt: new Date("2026-08-01T00:00:00Z"),
       bibNumber: "1234",
       teamName: "Equipe Teste",
+      ...registrationSnapshot,
       route: { name: "5km", distanceKm: 5 },
       category: { name: "Elite" },
       event: {
@@ -74,6 +84,13 @@ describe("resolveCampaignRecipientVariables", () => {
       messageBody: "Olá {{nome_atleta}}!",
     });
 
+    // Identidade vem do snapshot da inscrição, não do perfil atual (athleteUser).
+    expect(values.nome_atleta).toBe("Snap Atleta");
+    expect(values.primeiro_nome_atleta).toBe("Snap");
+    expect(values.email_atleta).toBe("snap@inscricao.com");
+    expect(values.telefone_atleta).toBe("11970000000");
+    expect(values.documento_atleta).toBe("98765432100");
+    expect(values.equipe_atleta).toBe("Equipe Teste");
     expect(values.nome_evento).toBe("Corrida Exemplo");
     expect(values.cidade_evento).toBe("São Paulo");
     expect(values.nome_modalidade).toBe("5km");
@@ -89,6 +106,80 @@ describe("resolveCampaignRecipientVariables", () => {
     expect(values.qrcode_inscricao).toBe("");
     expect(values.patrocinio).toBe("");
     expect(values.redes_sociais).toBe("");
+  });
+
+  it("nome_atleta/telefone_atleta/documento_atleta vêm do participant* da inscrição do recipient, não do perfil", async () => {
+    // user mock traz nome/telefone/cpf DIFERENTES do snapshot — o snapshot deve vencer.
+    dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      id: "reg-1",
+      status: "CONFIRMED",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      bibNumber: "1234",
+      teamName: "Equipe Snap",
+      ...registrationSnapshot,
+      route: { name: "5km", distanceKm: 5 },
+      category: { name: "Elite" },
+      event: {
+        title: "Corrida Exemplo",
+        description: "Descrição",
+        startAt: new Date("2026-09-20T10:00:00Z"),
+        venueName: "Parque Exemplo",
+        city: "São Paulo",
+        state: "SP",
+        addressLine: "Av. Exemplo, 1000",
+        slug: "corrida-exemplo",
+        organizer: { companyName: "Organização Exemplo", phone: "1197777777", user: { name: "João Organizador", email: "joao@org.com" } },
+      },
+      order: { id: "order-1", totalAmount: 9000 },
+    });
+
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
+
+    expect(values.nome_atleta).toBe("Snap Atleta");
+    expect(values.telefone_atleta).toBe("11970000000");
+    expect(values.documento_atleta).toBe("98765432100");
+    expect(values.equipe_atleta).toBe("Equipe Snap");
+  });
+
+  it("telefone_atleta / documento_atleta ficam vazios quando o participant* correspondente é null", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(athleteUser);
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      id: "reg-1",
+      status: "CONFIRMED",
+      createdAt: new Date("2026-08-01T00:00:00Z"),
+      bibNumber: null,
+      teamName: null,
+      participantName: "Só Nome",
+      participantEmail: "so@nome.com",
+      participantPhone: null,
+      participantCpf: null,
+      participantBirthDate: null,
+      route: null,
+      category: null,
+      event: {
+        title: "Corrida", description: null, startAt: new Date("2026-06-01T07:00:00Z"),
+        venueName: null, city: "São Paulo", state: "SP", addressLine: null, slug: "corrida",
+        organizer: { companyName: null, phone: null, user: { name: "Org", email: "org@example.com" } },
+      },
+      order: null,
+    });
+
+    const { values } = await resolveCampaignRecipientVariables({
+      athleteUserId: "athlete-1",
+      registrationId: "reg-1",
+      messageBody: "Olá {{nome_atleta}}!",
+    });
+
+    expect(values.nome_atleta).toBe("Só Nome");
+    expect(values.telefone_atleta).toBe("");
+    expect(values.documento_atleta).toBe("");
+    expect(values.data_nascimento_atleta).toBe("");
+    expect(values.equipe_atleta).toBe("");
   });
 
   it("numero_peito/equipe_inscricao/distancia_percurso ficam vazios quando os campos correspondentes são nulos", async () => {

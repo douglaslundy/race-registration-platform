@@ -22,7 +22,8 @@ describe("prepareCampaignRecipients", () => {
       {
         id: "reg-1",
         athleteUserId: "athlete-1",
-        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+        participantPhone: "11999999999",
+        athlete: { receivePromotionalMessages: true },
       },
     ]);
 
@@ -48,7 +49,8 @@ describe("prepareCampaignRecipients", () => {
       {
         id: "reg-1",
         athleteUserId: "athlete-1",
-        athlete: { receivePromotionalMessages: false, athleteProfile: { phone: "11999999999" } },
+        participantPhone: "11999999999",
+        athlete: { receivePromotionalMessages: false },
       },
     ]);
 
@@ -58,12 +60,13 @@ describe("prepareCampaignRecipients", () => {
     expect(result.pending).toBe(0);
   });
 
-  it("marca como INVALID_PHONE quando o telefone está ausente", async () => {
+  it("marca como INVALID_PHONE quando o participantPhone da inscrição é null (sem fallback pro perfil)", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
         id: "reg-1",
         athleteUserId: "athlete-1",
-        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: null } },
+        participantPhone: null,
+        athlete: { receivePromotionalMessages: true },
       },
     ]);
 
@@ -78,7 +81,8 @@ describe("prepareCampaignRecipients", () => {
       {
         id: "reg-1",
         athleteUserId: "athlete-1",
-        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: "123" } },
+        participantPhone: "123",
+        athlete: { receivePromotionalMessages: true },
       },
     ]);
 
@@ -92,12 +96,14 @@ describe("prepareCampaignRecipients", () => {
       {
         id: "reg-1",
         athleteUserId: "athlete-1",
-        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+        participantPhone: "11999999999",
+        athlete: { receivePromotionalMessages: true },
       },
       {
         id: "reg-2",
         athleteUserId: "athlete-2",
-        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+        participantPhone: "11999999999",
+        athlete: { receivePromotionalMessages: true },
       },
     ]);
 
@@ -114,10 +120,8 @@ describe("prepareCampaignRecipients", () => {
     const batch1 = Array.from({ length: 500 }, (_, i) => ({
       id: `reg-${i}`,
       athleteUserId: `athlete-${i}`,
-      athlete: {
-        receivePromotionalMessages: true,
-        athleteProfile: { phone: `119${String(10000000 + i).slice(-8)}` },
-      },
+      participantPhone: `119${String(10000000 + i).slice(-8)}`,
+      athlete: { receivePromotionalMessages: true },
     }));
     dbMock.registration.findMany.mockResolvedValueOnce(batch1).mockResolvedValueOnce([]);
 
@@ -134,18 +138,15 @@ describe("prepareCampaignRecipients", () => {
     const batch1 = Array.from({ length: 500 }, (_, i) => ({
       id: `reg-${i}`,
       athleteUserId: `athlete-${i}`,
-      athlete: {
-        receivePromotionalMessages: true,
-        athleteProfile: {
-          phone: i === 499 ? DUP_PHONE : `119${String(10000000 + i).slice(-8)}`,
-        },
-      },
+      participantPhone: i === 499 ? DUP_PHONE : `119${String(10000000 + i).slice(-8)}`,
+      athlete: { receivePromotionalMessages: true },
     }));
     const batch2 = [
       {
         id: "reg-500",
         athleteUserId: "athlete-500",
-        athlete: { receivePromotionalMessages: true, athleteProfile: { phone: DUP_PHONE } },
+        participantPhone: DUP_PHONE,
+        athlete: { receivePromotionalMessages: true },
       },
     ];
     dbMock.registration.findMany.mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2);
@@ -237,7 +238,9 @@ describe("prepareCampaignRecipients", () => {
     dbMock.user.findMany.mockResolvedValueOnce([
       { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
     ]);
-    dbMock.registration.findMany.mockResolvedValueOnce([{ id: "reg-99", athleteUserId: "athlete-1" }]);
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      { id: "reg-99", athleteUserId: "athlete-1", participantPhone: "11999999999" },
+    ]);
 
     const result = await prepareCampaignRecipients("campaign-1", null, ["athlete-1"], "event-9");
 
@@ -264,6 +267,23 @@ describe("prepareCampaignRecipients", () => {
 
     expect(dbMock.campaignRecipient.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({ athleteUserId: "athlete-1", registrationId: null })],
+    });
+  });
+
+  it("seleção manual com inscrição casada mas participantPhone null → INVALID_PHONE, sem cair no telefone do perfil", async () => {
+    dbMock.user.findMany.mockResolvedValueOnce([
+      { id: "athlete-1", receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } },
+    ]);
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      { id: "reg-99", athleteUserId: "athlete-1", participantPhone: null },
+    ]);
+
+    const result = await prepareCampaignRecipients("campaign-1", null, ["athlete-1"], "event-9");
+
+    expect(result.invalidPhone).toBe(1);
+    expect(result.pending).toBe(0);
+    expect(dbMock.campaignRecipient.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ registrationId: "reg-99", status: "INVALID_PHONE" })],
     });
   });
 

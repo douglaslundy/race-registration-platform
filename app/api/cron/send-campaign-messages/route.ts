@@ -110,13 +110,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ processed: true, result: "opted_out" });
     }
 
-    // 6b. Usa o telefone ATUAL do atleta (buscado agora), não o snapshot capturado quando a Fase B
-    // preparou a lista — pode estar dias desatualizado numa campanha lenta, e enviar pro número
-    // errado (reatribuído/corrigido nesse meio-tempo) seria uma mensagem promocional pra quem não
-    // consentiu, enquanto quem consentiu de fato nunca recebe.
-    const freshPhone = athlete.athleteProfile?.phone
-      ? normalizePhoneForWhatsApp(athlete.athleteProfile.phone)
-      : null;
+    // 6b. Usa o telefone ATUAL do destinatário (relido agora), não o normalizedPhone capturado
+    // quando a Fase B preparou a lista — pode estar dias desatualizado numa campanha lenta, e
+    // enviar pro número errado (reatribuído/corrigido nesse meio-tempo) seria uma mensagem
+    // promocional pra quem não consentiu, enquanto quem consentiu de fato nunca recebe.
+    // Para destinatário vinculado a inscrição, "atual" = `participantPhone` daquela inscrição
+    // relido agora (spec §4.7): se estiver null, o destinatário é PULADO (INVALID_PHONE) — NÃO cai
+    // no telefone da conta, senão contornaria consentimento/opt-out, que são por número.
+    let rawPhone: string | null;
+    if (recipient.registrationId) {
+      const reg = await db.registration.findUnique({
+        where: { id: recipient.registrationId },
+        select: { participantPhone: true },
+      });
+      rawPhone = reg?.participantPhone ?? null;
+    } else {
+      rawPhone = athlete.athleteProfile?.phone ?? null;
+    }
+    const freshPhone = rawPhone ? normalizePhoneForWhatsApp(rawPhone) : null;
     if (!freshPhone || !isValidWhatsAppPhone(freshPhone)) {
       await db.campaignRecipient.update({ where: { id: recipient.id }, data: { status: "INVALID_PHONE" } });
       return NextResponse.json({ processed: true, result: "invalid_phone" });

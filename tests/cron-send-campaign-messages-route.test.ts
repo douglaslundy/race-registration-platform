@@ -50,6 +50,9 @@ describe("POST /api/cron/send-campaign-messages", () => {
     // explicitamente db.user.findUnique cairia sempre no ramo OPTED_OUT (valor undefined vira
     // falsy), nunca exercitando o envio/retry/falha que o teste alega testar.
     dbMock.user.findUnique.mockResolvedValue({ receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } });
+    // Default: destinatário vinculado a inscrição tem participantPhone válido no snapshot. Testes
+    // do caminho INVALID_PHONE por snapshot sobrescrevem com mockResolvedValueOnce({ participantPhone: null }).
+    dbMock.registration.findUnique.mockResolvedValue({ participantPhone: "11999999999" });
   });
 
   it("401 sem o segredo correto", async () => {
@@ -192,6 +195,47 @@ describe("POST /api/cron/send-campaign-messages", () => {
     );
     expect(sendMock).not.toHaveBeenCalled();
     expect(recordCampaignSendFailure).not.toHaveBeenCalled();
+  });
+
+  it("destinatário vinculado a inscrição com participantPhone null é PULADO (INVALID_PHONE), sem usar o telefone da conta", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1",
+      athleteUserId: "athlete-1",
+      registrationId: "reg-x",
+      campaignId: "campaign-1",
+      normalizedPhone: "5511999999999",
+    });
+    // Conta tem telefone válido — não deve ser usado como fallback (spec §4.7).
+    dbMock.user.findUnique.mockResolvedValueOnce({ receivePromotionalMessages: true, athleteProfile: { phone: "11999999999" } });
+    dbMock.registration.findUnique.mockResolvedValueOnce({ participantPhone: null });
+
+    const res = await POST(makeRequest());
+    const data = await res.json();
+
+    expect(data).toEqual({ processed: true, result: "invalid_phone" });
+    expect(dbMock.campaignRecipient.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "rec-1" }, data: expect.objectContaining({ status: "INVALID_PHONE" }) }),
+    );
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sendDocumentMock).not.toHaveBeenCalled();
+    expect(recordCampaignSendFailure).not.toHaveBeenCalled();
+  });
+
+  it("destinatário vinculado a inscrição usa o participantPhone do snapshot (relido agora), não o normalizedPhone da Fase B", async () => {
+    dbMock.campaignRecipient.findFirst.mockResolvedValueOnce({
+      id: "rec-1",
+      athleteUserId: "athlete-1",
+      registrationId: "reg-x",
+      campaignId: "campaign-1",
+      normalizedPhone: "5511888888888",
+    });
+    dbMock.campaign.findFirst.mockResolvedValueOnce({ id: "campaign-1", messageBody: "Olá {{nome_atleta}}" });
+    dbMock.registration.findUnique.mockResolvedValueOnce({ participantPhone: "11970000000" });
+    sendMock.mockResolvedValueOnce({ providerMessageId: "wamid.1" });
+
+    await POST(makeRequest());
+
+    expect(sendMock).toHaveBeenCalledWith("5511970000000", expect.stringContaining("RODAPE"), "CAMPAIGN_MESSAGE");
   });
 
   it("falha com attempts < 3: volta pra PENDING, incrementa attempts e o contador de falhas", async () => {

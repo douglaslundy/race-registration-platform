@@ -30,10 +30,10 @@ async function fetchCandidateBatch(
       select: {
         id: true,
         athleteUserId: true,
+        participantPhone: true,
         athlete: {
           select: {
             receivePromotionalMessages: true,
-            athleteProfile: { select: { phone: true } },
           },
         },
       },
@@ -42,11 +42,14 @@ async function fetchCandidateBatch(
       orderBy: { id: "asc" },
     });
 
+    // Telefone de envio = snapshot da inscrição (spec §4.7). `participantPhone` null cai
+    // naturalmente em INVALID_PHONE mais abaixo — NÃO há fallback pro telefone da conta
+    // (consentimento e opt-out são por número; usar o da conta contornaria isso).
     return registrations.map((r) => ({
       athleteUserId: r.athleteUserId,
       registrationId: r.id,
       receivePromotionalMessages: r.athlete.receivePromotionalMessages,
-      phone: r.athlete.athleteProfile?.phone ?? null,
+      phone: r.participantPhone ?? null,
     }));
   }
 
@@ -70,21 +73,28 @@ async function fetchCandidateBatch(
   // refere pra variáveis de Evento/Inscrição resolverem corretamente (ver
   // messageUsesEventScopedVariables em lib/campaigns/variables.ts). Busca em lote — 1 query pro
   // batch inteiro, não 1 por atleta.
-  let registrationByAthlete = new Map<string, string>();
+  let registrationByAthlete = new Map<string, { id: string; participantPhone: string | null }>();
   if (manualEventId && users.length > 0) {
     const registrations = await db.registration.findMany({
       where: { eventId: manualEventId, status: "CONFIRMED", athleteUserId: { in: users.map((u) => u.id) } },
-      select: { id: true, athleteUserId: true },
+      select: { id: true, athleteUserId: true, participantPhone: true },
     });
-    registrationByAthlete = new Map(registrations.map((r) => [r.athleteUserId, r.id]));
+    registrationByAthlete = new Map(
+      registrations.map((r) => [r.athleteUserId, { id: r.id, participantPhone: r.participantPhone }]),
+    );
   }
 
-  return users.map((u) => ({
-    athleteUserId: u.id,
-    registrationId: registrationByAthlete.get(u.id) ?? null,
-    receivePromotionalMessages: u.receivePromotionalMessages,
-    phone: u.athleteProfile?.phone ?? null,
-  }));
+  return users.map((u) => {
+    const reg = registrationByAthlete.get(u.id);
+    return {
+      athleteUserId: u.id,
+      registrationId: reg?.id ?? null,
+      receivePromotionalMessages: u.receivePromotionalMessages,
+      // Casado com uma inscrição do evento (seleção manual filtrada por evento) → telefone do
+      // snapshot da inscrição; senão (base de atletas, sem snapshot) → telefone do perfil.
+      phone: reg ? reg.participantPhone ?? null : u.athleteProfile?.phone ?? null,
+    };
+  });
 }
 
 /** Repopula os destinatários de uma campanha: apaga os existentes e busca candidatos de novo — do

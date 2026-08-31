@@ -330,6 +330,82 @@ describe("admin backup import api", () => {
     );
   });
 
+  it("restaura o snapshot de dados da inscrição (participant*) e o registrationEditDeadline do evento", async () => {
+    const res = await POST(
+      makeRequest({
+        events: [
+          {
+            id: "e1", organizerId: "org-1", title: "T", slug: "t", modality: "RUNNING", status: "DRAFT",
+            startAt: "2026-01-01T00:00:00.000Z", city: "X", state: "SP", createdAt: "2026-01-01T00:00:00.000Z",
+            registrationEditDeadline: "2026-05-01T00:00:00.000Z",
+          },
+        ],
+        registrations: [
+          {
+            id: "r1", eventId: "e1", athleteUserId: "u1", ticketBatchId: "tb1", orderId: "o1",
+            status: "CONFIRMED", createdAt: "2026-01-01T00:00:00.000Z",
+            participantName: "Fulano da Silva", participantEmail: "fulano@example.com",
+            participantPhone: "11999998888", participantBirthDate: "1990-02-03T00:00:00.000Z",
+            participantGender: "M", participantCpf: "12345678900",
+          },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+
+    expect(tx.event.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({ registrationEditDeadline: new Date("2026-05-01T00:00:00.000Z") }),
+        ]),
+      }),
+    );
+    expect(tx.registration.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            participantName: "Fulano da Silva",
+            participantEmail: "fulano@example.com",
+            participantPhone: "11999998888",
+            participantBirthDate: new Date("1990-02-03T00:00:00.000Z"),
+            participantGender: "M",
+            participantCpf: "12345678900",
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("registration sem participant* no backup (formato antigo) usa defaults NOT NULL vazios e nullables null", async () => {
+    const res = await POST(
+      makeRequest({
+        registrations: [
+          {
+            id: "r1", eventId: "e1", athleteUserId: "u1", ticketBatchId: "tb1", orderId: "o1",
+            status: "CONFIRMED", createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(tx.registration.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            participantName: "",
+            participantEmail: "",
+            participantPhone: null,
+            participantBirthDate: null,
+            participantGender: null,
+            participantCpf: null,
+          }),
+        ]),
+      }),
+    );
+  });
+
   it("rolls back and reports a single error when a table insert fails", async () => {
     tx.event.createMany.mockRejectedValueOnce(new Error("dado malformado"));
 

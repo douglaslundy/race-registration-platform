@@ -65,6 +65,11 @@ export async function resolveCampaignRecipientVariables(recipient: {
       bibNumber: true,
       teamName: true,
       eventId: true,
+      participantName: true,
+      participantEmail: true,
+      participantPhone: true,
+      participantCpf: true,
+      participantBirthDate: true,
       route: { select: { name: true, distanceKm: true } },
       category: { select: { name: true } },
       event: {
@@ -85,6 +90,18 @@ export async function resolveCampaignRecipientVariables(recipient: {
   });
 
   if (!registration) return { values };
+
+  // Sobrescreve os vars de identidade do atleta com o SNAPSHOT desta inscrição (spec §4.7): numa
+  // campanha de evento, "quem é o atleta" é como ele se inscreveu naquele evento, não o estado atual
+  // do perfil. O fallback pro `user` acima continua valendo pra campanha de plataforma
+  // (`registrationId === null`, que já retornou antes deste ponto).
+  values.nome_atleta = registration.participantName;
+  values.primeiro_nome_atleta = registration.participantName ? firstName(registration.participantName) : "";
+  values.email_atleta = registration.participantEmail;
+  values.telefone_atleta = registration.participantPhone ?? "";
+  values.documento_atleta = registration.participantCpf ?? "";
+  values.data_nascimento_atleta = registration.participantBirthDate ? formatDate(registration.participantBirthDate) : "";
+  values.equipe_atleta = registration.teamName ?? "";
 
   values.categoria_inscricao = registration.category?.name ?? "";
   values.nome_modalidade = registration.route?.name ?? "";
