@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 
 vi.mock("@/lib/ads/private-ad-metrics", () => ({ recordClick: vi.fn() }));
+vi.mock("@/lib/ads/abuse-guard", () => ({ shouldCountAdClick: vi.fn(() => true) }));
 
 import { GET } from "@/app/api/ads/click/[privateAdId]/route";
 import { recordClick } from "@/lib/ads/private-ad-metrics";
+import { shouldCountAdClick } from "@/lib/ads/abuse-guard";
 
 const dbMock = db as any;
 
@@ -29,6 +31,16 @@ describe("GET /api/ads/click/[privateAdId]", () => {
     dbMock.privateAd.findUnique.mockResolvedValueOnce(null);
     const res = await GET(makeRequest(), { params: Promise.resolve({ privateAdId: "ad-1" }) });
     expect(res.status).toBe(404);
+    expect(recordClick).not.toHaveBeenCalled();
+  });
+
+  it("M7 — redireciona mas NÃO registra clique quando shouldCountAdClick é falso (prefetch/dedupe)", async () => {
+    vi.mocked(shouldCountAdClick).mockReturnValueOnce(false);
+    dbMock.privateAd.findUnique.mockResolvedValueOnce({ id: "ad-1", adSlotId: "slot-1", targetUrl: "https://empresa.com", status: "APPROVED" });
+
+    const res = await GET(makeRequest(), { params: Promise.resolve({ privateAdId: "ad-1" }) });
+
+    expect(res.status).toBe(307);
     expect(recordClick).not.toHaveBeenCalled();
   });
 

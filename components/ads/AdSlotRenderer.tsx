@@ -1,8 +1,29 @@
 import Image from "next/image";
+import { headers } from "next/headers";
 import { getAdSlot } from "@/lib/ad-slots";
 import { getSetting } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { recordImpression } from "@/lib/ads/private-ad-metrics";
+import { shouldCountAdImpression } from "@/lib/ads/abuse-guard";
+
+async function clientIpFromHeaders(): Promise<string> {
+  try {
+    const h = await headers();
+    const fwd = h.get("x-forwarded-for");
+    if (fwd) return fwd.split(",")[0].trim();
+    return h.get("x-real-ip") ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+async function countImpression(slotId: string, source: string): Promise<void> {
+  // M7: dedupe por IP+slot numa janela curta — evita inflar impressão a cada re-render/SSR.
+  const ip = await clientIpFromHeaders();
+  if (shouldCountAdImpression(ip, slotId)) {
+    await recordImpression(slotId, source);
+  }
+}
 
 function ClickableAd({
   href,
@@ -42,7 +63,7 @@ export default async function AdSlotRenderer({ position }: { position: string })
   if (slot.source === "PRIVATE") {
     const ad = await db.privateAd.findFirst({ where: { adSlotId: slot.id, status: "APPROVED" } });
     if (!ad) return null;
-    await recordImpression(slot.id, "PRIVATE");
+    await countImpression(slot.id, "PRIVATE");
     return (
       <ClickableAd
         href={`/api/ads/click/${ad.id}`}
@@ -56,7 +77,7 @@ export default async function AdSlotRenderer({ position }: { position: string })
 
   if (slot.source === "HOUSE") {
     if (!slot.houseAdImageUrl) return null;
-    await recordImpression(slot.id, "HOUSE");
+    await countImpression(slot.id, "HOUSE");
     if (!slot.houseAdTargetUrl) {
       // Anúncio da casa sem link de destino: continua visível, sem ação de navegação — não
       // envolve em <a> nenhuma pra não ter âncora sem destino.
