@@ -1,4 +1,4 @@
-import { validateAdDestinationUrl } from "@/lib/validate-url";
+import { validateInternalServiceUrl } from "@/lib/validate-url";
 
 /**
  * M4 (auditoria 2026-08-31): a rota `POST /api/admin/settings` aceitava qualquer `{key,value}`.
@@ -50,7 +50,11 @@ const NUMERIC_RULES: Record<string, { min: number; max: number }> = {
   alert_reconciliation_minutes_threshold: { min: 1, max: 100_000 },
 };
 
-/** Chaves de URL: precisam ser https e não podem apontar para host interno/privado. */
+/**
+ * Chaves de URL de serviço interno: precisam ser https, sem credenciais, e não podem
+ * apontar para metadata de nuvem / link-local. Host privado (RFC1918, nome de serviço
+ * Docker) é PERMITIDO — Evolution/MinIO self-hosted (I-3, auditoria 2026-08-31).
+ */
 const URL_KEYS = new Set<string>(["whatsapp_api_url", "storage_endpoint", "storage_public_url"]);
 
 export function isKnownSettingKey(key: string): boolean {
@@ -78,7 +82,7 @@ export function validateSettingWrite(key: string, value: string): SettingWriteRe
   }
 
   if (URL_KEYS.has(key) && value.trim() !== "") {
-    const res = validateAdDestinationUrl(value);
+    const res = validateInternalServiceUrl(value);
     if (!res.ok) {
       return { ok: false, error: `URL inválida para "${key}": ${res.error}` };
     }

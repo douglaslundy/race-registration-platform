@@ -82,6 +82,87 @@ function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
+/**
+ * I-3 (auditoria 2026-08-31): endereços de metadata de nuvem / link-local — bloqueados
+ * mesmo para URLs de infra interna. RFC1918 (10/8, 172.16/12, 192.168/16), loopback comum
+ * e nomes de serviço Docker são PERMITIDOS aqui — o objetivo é impedir apontar a Evolution
+ * pra `169.254.169.254`, não impedir deploy interno.
+ */
+function isMetadataIPv4(dotted: string): boolean {
+  if (/^169\.254\.\d{1,3}\.\d{1,3}$/.test(dotted)) return true; // link-local / cloud metadata (AWS/GCP/Azure 169.254.169.254)
+  if (dotted === "100.100.100.200") return true; // Alibaba Cloud metadata
+  return false;
+}
+
+function isMetadataOrLinkLocalHost(hostname: string): boolean {
+  const normalized = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "").toLowerCase();
+
+  if (normalized === "::1") return true;
+
+  if (normalized.includes(":")) {
+    if (normalized === "fd00:ec2::254") return true; // AWS IMDS via IPv6
+    if (/^fe[89ab][0-9a-f]?:/.test(normalized)) return true; // link-local fe80::/10
+    // IPv4 link-local embutido em IPv6 pontuado (::ffff:169.254.169.254)
+    const v4 = normalized.match(/(?:^|:)((?:\d{1,3}\.){3}\d{1,3})$/);
+    if (v4) {
+      const dotted = normalizeIPv4(v4[1]);
+      if (dotted && isMetadataIPv4(dotted)) return true;
+    }
+    // IPv4 link-local mapeado em hex (::ffff:a9fe:a9fe)
+    const v4hex = normalized.match(/::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (v4hex) {
+      const hi = parseInt(v4hex[1], 16);
+      const lo = parseInt(v4hex[2], 16);
+      const dotted = [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255].join(".");
+      if (isMetadataIPv4(dotted)) return true;
+    }
+    return false;
+  }
+
+  const dotted = normalizeIPv4(normalized);
+  if (dotted) return isMetadataIPv4(dotted);
+  return false;
+}
+
+/**
+ * Validação frouxa para URLs de serviços internos configuráveis pelo admin
+ * (`whatsapp_api_url`, `storage_endpoint`, `storage_public_url`). Exige https e sem
+ * credenciais, e só bloqueia endereços de metadata de nuvem / link-local — hosts privados
+ * "normais" (RFC1918, nome de serviço Docker) são permitidos. Ver I-3.
+ */
+export function validateInternalServiceUrl(input: string): ValidateAdUrlResult {
+  const trimmed = input.trim();
+
+  if (!trimmed) {
+    return { ok: false, error: "URL não pode ser vazia" };
+  }
+  if (trimmed.length > MAX_LENGTH) {
+    return { ok: false, error: `URL excede o limite de ${MAX_LENGTH} caracteres` };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { ok: false, error: "URL inválida" };
+  }
+
+  if (parsed.protocol !== "https:") {
+    return { ok: false, error: "URL precisa começar com https://" };
+  }
+  if (parsed.username || parsed.password) {
+    return { ok: false, error: "URL não pode conter credenciais (usuário:senha@)" };
+  }
+  if (isMetadataOrLinkLocalHost(parsed.hostname)) {
+    return {
+      ok: false,
+      error: "URL não pode apontar para um endereço de metadata de nuvem / link-local",
+    };
+  }
+
+  return { ok: true, url: parsed.toString() };
+}
+
 export interface ValidateAdUrlOptions {
   allowRelative?: boolean;
 }

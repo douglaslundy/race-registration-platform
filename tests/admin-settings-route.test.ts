@@ -153,15 +153,39 @@ describe("admin settings api", () => {
     expect(res.status).toBe(400);
   });
 
-  it("M4 — rejeita whatsapp_api_url apontando para host interno", async () => {
+  it("M4/I-3 — rejeita whatsapp_api_url apontando para metadata de nuvem (169.254.169.254)", async () => {
     const res = await POST(
       new Request("http://localhost/api/admin/settings", {
         method: "POST",
-        body: JSON.stringify({ key: "whatsapp_api_url", value: "http://169.254.169.254/" }),
+        body: JSON.stringify({ key: "whatsapp_api_url", value: "https://169.254.169.254" }),
       }) as any,
     );
     expect(res.status).toBe(400);
     expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("M4/I-3 — rejeita whatsapp_api_url em http (sem TLS)", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "whatsapp_api_url", value: "http://evolution:8080" }),
+      }) as any,
+    );
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("I-3 — aceita whatsapp_api_url apontando para nome de serviço Docker (host privado, https)", async () => {
+    dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
+    dbMock.platformSetting.upsert.mockResolvedValueOnce({});
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "whatsapp_api_url", value: "https://evolution:8080" }),
+      }) as any,
+    );
+    expect(res.status).toBe(200);
+    expect(dbMock.platformSetting.upsert).toHaveBeenCalled();
   });
 
   it("M4 — aceita service_fee_percent inteiro válido (normalizado)", async () => {
