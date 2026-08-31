@@ -18,6 +18,7 @@ const ADMIN_EVENT_ACTIONS = [
   { key: "registrations.cancel-confirmed-any", label: "Cancelar inscrição confirmada (qualquer inscrição)" },
   { key: "registrations.resend-confirmation-email-any", label: "Reenviar e-mail de confirmação (qualquer inscrição)" },
   { key: "registrations.resend-payment-notification-any", label: "Reenviar notificação de erro de pagamento (qualquer inscrição)" },
+  { key: "registrations.edit-athlete-any", label: "Corrigir dados de uma inscrição (qualquer evento)" },
   { key: "registrations.expire-payments-any", label: "Expirar pagamentos pendentes (plataforma inteira)" },
   { key: "coupons.view", label: "Ver cupons de um evento" },
   { key: "coupons.report-export", label: "Exportar relatório de uso de cupons de um evento" },
