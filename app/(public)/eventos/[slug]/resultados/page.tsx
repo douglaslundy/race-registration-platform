@@ -19,7 +19,17 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
 
   const event = await db.event.findUnique({
     where: { slug },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      title: true,
+      bannerUrl: true,
+      listBannerUrl: true,
+      resultsSubtitle: true,
+      resultFiles: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, label: true, fileUrl: true },
+      },
+    },
   });
   if (!event) notFound();
 
@@ -55,15 +65,53 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
       })
     : [];
 
+  const bannerUrl = event.bannerUrl ?? event.listBannerUrl;
+  const hasPdfs = event.resultFiles.length > 0;
+  const hasAnything = hasPdfs || Boolean(latestImport);
+
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-2">{event.title}</h1>
-      <h2 className="text-lg text-gray-600 mb-6">Resultados</h2>
+      <h1 className="text-center text-2xl font-extrabold tracking-widest text-green-700 dark:text-green-500 uppercase mb-6">
+        Resultados
+      </h1>
 
-      {!latestImport ? (
-        <p className="text-gray-500 text-center py-12">Resultados ainda não publicados.</p>
+      {bannerUrl ? (
+        <div className="relative w-full max-w-md mx-auto aspect-[3/1] mb-6">
+          <img src={bannerUrl} alt={event.title} className="w-full h-full object-contain" />
+        </div>
       ) : (
+        <h2 className="text-center text-xl font-semibold mb-6">{event.title}</h2>
+      )}
+
+      {event.resultsSubtitle && (
+        <p className="text-center text-3xl font-extrabold text-primary-700 dark:text-primary-400 mb-8">
+          {event.resultsSubtitle}
+        </p>
+      )}
+
+      {hasPdfs && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto mb-10">
+          {event.resultFiles.map((f) => (
+            <a
+              key={f.id}
+              href={f.fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-2xl bg-slate-800 text-white shadow-lg px-4 py-6 text-center font-bold uppercase underline hover:bg-slate-700 transition-colors"
+            >
+              {f.label}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {!hasAnything && (
+        <p className="text-gray-500 text-center py-12">Resultados ainda não publicados.</p>
+      )}
+
+      {latestImport && (
         <>
+          <h2 className="text-lg font-semibold mb-4">Classificação detalhada</h2>
           <form className="flex gap-3 mb-6">
             <input name="q" defaultValue={sp.q} className="input-field flex-1" placeholder="Buscar por nome ou número..." />
             <select name="categoria" defaultValue={sp.categoria} className="input-field w-40">
