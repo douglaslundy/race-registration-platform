@@ -5,6 +5,19 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 
+/**
+ * IMPORTANTE: esta rota edita o CADASTRO DO ATLETA — `User` + `AthleteProfile` (a conta,
+ * que é compartilhada entre todas as inscrições daquele atleta). NÃO edita os dados
+ * congelados de UMA inscrição.
+ *
+ * Para corrigir os dados de uma inscrição específica (o snapshot `Registration.participant*`),
+ * use `PATCH /api/organizer/registrations/[id]` (organizador) ou
+ * `PATCH /api/admin/registrations/[id]` (admin) — essas rotas nunca tocam `User`/`AthleteProfile`.
+ *
+ * Na UI: o botão "Editar cadastro do atleta" do modal de inscritos aponta pra cá; o botão
+ * "Corrigir dados desta inscrição" aponta pra rota do snapshot.
+ */
+
 const patchSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   email: z.string().email().optional(),

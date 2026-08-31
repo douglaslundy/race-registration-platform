@@ -27,6 +27,19 @@ it("preenche participant* das linhas com participantName vazio, do athlete", asy
   expect(res).toEqual({ updated: 1 });
 });
 
+it("inscrição por procuração → participantName usa proxyAthleteDisplayName, não o nome da conta", async () => {
+  const prisma = makePrisma([[
+    { id: "r3", participantName: "", participantEmail: "", proxyAthleteDisplayName: "Fulano Convidado",
+      athlete: { name: "Conta Placeholder", email: "proxy@x.com", athleteProfile: { phone: "22", birthDate: null, gender: null, cpf: null } } },
+  ], []]);
+  await backfillRegistrationParticipants(prisma);
+  expect(prisma.registration.update).toHaveBeenCalledWith({
+    where: { id: "r3" },
+    data: { participantName: "Fulano Convidado", participantEmail: "proxy@x.com", participantPhone: "22",
+      participantBirthDate: null, participantGender: null, participantCpf: null },
+  });
+});
+
 it("atleta sem AthleteProfile → só nome e email, resto null", async () => {
   const prisma = makePrisma([[
     { id: "r2", participantName: "", participantEmail: "",

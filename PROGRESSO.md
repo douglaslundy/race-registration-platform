@@ -1,6 +1,101 @@
 # Progresso do Projeto
 
-## Última atualização (2026-08-30 — Sub-projeto B — múltiplas contas Mercado Pago — CONCLUÍDO (não deployado))
+## Última atualização (2026-08-31 — Sub-projeto C — snapshot de dados da inscrição — CONCLUÍDO (não deployado))
+
+Branch `feat/snapshot-dados-inscricao` (15 tasks, subagent-driven). Verificação final (Task 15):
+**`npx vitest run` 289 arquivos / 2234 testes verdes**, **`npx tsc --noEmit` limpo**, **`npm run
+build` exit 0**.
+
+### O que faz
+- Toda `Registration` agora tem 6 colunas de identidade **congeladas** no momento da inscrição:
+  `participantName` / `participantEmail` (NOT NULL, default `""`) + `participantPhone` /
+  `participantBirthDate` / `participantGender` / `participantCpf` (nullable). É a fonte ÚNICA de
+  nome/e-mail/CPF/telefone/nascimento/gênero de uma inscrição em toda a UI, export, kit,
+  notificação e campanha — nunca mais `registration.athlete.*`.
+- `Event.registrationEditDeadline` (nullable): até quando o ATLETA pode corrigir a própria
+  inscrição. `null` = só organizador/admin editam.
+- 3 rotas novas de edição do snapshot, todas com auditoria `REGISTRATION_PARTICIPANT_UPDATED`
+  (`before`/`after` só dos campos mudados) e **nenhuma** escrita em `User`/`AthleteProfile`:
+  - `PATCH /api/organizer/registrations/[id]` — organizador (IDOR → 404) / assistente
+    (`registrations.edit-athlete`).
+  - `PATCH /api/admin/registrations/[id]` — admin (`registrations.edit-athlete-any`).
+  - `PATCH /api/athlete/registrations/[id]` — o próprio atleta, gated por `registrationEditDeadline`;
+    `email`/`cpf` fora do schema (não editáveis pelo atleta).
+- A rota antiga `PATCH /api/organizer/registrations/[id]/athlete` **continua** — ela edita o
+  CADASTRO DO ATLETA (`User`+`AthleteProfile`), não a inscrição. No modal de inscritos: botão
+  "Corrigir dados desta inscrição" (snapshot) + "Editar cadastro do atleta" (conta).
+- Painel do atleta: card "Dados do participante" + botão "Editar meus dados da inscrição"
+  (`components/dashboard/EditMyRegistrationButton.tsx`), só aparece dentro do prazo.
+- Campanhas: personalização (`nome_atleta` etc.) vem do snapshot da inscrição; o telefone de ENVIO
+  = `participantPhone` (se `null`, destinatário é PULADO — sem cair no telefone da conta;
+  consentimento e opt-out são por número). `receivePromotionalMessages` (conta) e opt-out por
+  número **não mudaram**.
+- Notificações/alertas: só o nome/CPF EXIBIDOS usam `participant*`; destinatário de e-mail,
+  `receiveEventMessages`, `isPlaceholderEmail` e telefone do WhatsApp seguem na conta.
+- Backup: export já leva os campos novos (findMany sem select); import (`toRegistrationRow`/
+  `toEventRow`) restaura os 6 `participant*` + `registrationEditDeadline`.
+
+### Arquivos principais
+- Schema: `prisma/schema.prisma` (Registration +6, Event +1) + migration
+  `prisma/migrations/20260830000000_registration_participant_snapshot`.
+- Backfill: `prisma/backfill-registration-participants.ts` — `backfillRegistrationParticipants`,
+  paginado, idempotente (`where: { participantName: "" }`), trata procuração
+  (`proxyAthleteDisplayName ?? athlete.name`).
+- `lib/registrations/participant-identity.ts` — `resolveParticipantIdentity` /
+  `participantSnapshotData` / `pickParticipantChanges` (usados por checkout + 3 rotas).
+- `lib/checkout.ts` — spread de `participantSnapshotData(...)` no único `tx.registration.create`.
+- Rotas: `app/api/{organizer,admin,athlete}/registrations/[id]/route.ts`,
+  `app/api/organizer/registrations/[id]/athlete/route.ts` (docblock novo),
+  `app/api/events/[id]/route.ts` (`registrationEditDeadline` no schema/update).
+- Consumidores: `lib/organizer/registrations.ts`, `lib/registrations/pending-queue.ts`,
+  `lib/registrations/export.ts`, `lib/reports/general-report.ts`, `lib/kit-delivery.ts`,
+  `lib/notifications.ts`, `lib/alerts/{cancellation-requested,registration-cancelled-by-staff}.ts`,
+  `lib/campaigns/{recipients,resolve-recipient-variables}.ts`,
+  `app/api/cron/send-campaign-messages/route.ts`, `app/api/admin/backup/import/route.ts`,
+  `app/api/events/[id]/registrations/route.ts`, `app/api/registrations/[id]/qrcode/route.ts`,
+  `app/{organizador,admin}/eventos/[id]/{inscritos,relatorio-geral}/page.tsx`,
+  `app/dashboard/inscricoes/{page,[id]/page}.tsx`,
+  `components/registrations/{RegistrationsTable,AthleteDetailsModal,GeneralReportTable,PendingCancellationsTable}.tsx`,
+  `components/organizer/EditEventForm.tsx`, `lib/templates/variables.ts`.
+
+### Decisões que não são óbvias no código
+- **Snapshot sempre congelado (opção A)**, não ponteiro vivo — escolhido pela segurança de dados:
+  uma fonte de verdade por inscrição, sem `??` de fallback espalhado por ~30 consumidores.
+- `participantCpf` **sem `@unique`** + validação de dígito verificador; guardado só dígitos.
+- `city`/`state` **não** entram no snapshot (não são identidade) — export lê de
+  `athlete.athleteProfile.city`.
+- `resultados/page.tsx` (§4.5) **não mudou**: `RaceResult` é dataset importado sem `registrationId`,
+  não há casamento com `Registration` — ligar bib→inscrição seria feature nova, fora de escopo.
+- `listPendingRefunds`/`PendingRefundsTable` seguem em `order.buyer` — reembolso é por-pedido (um
+  pedido pode ter várias inscrições), o comprador é o contato certo.
+- `equipe_atleta` em campanha de EVENTO passa a ser `Registration.teamName` (equipe daquela
+  inscrição); em campanha de plataforma segue `AthleteProfile.teamName`.
+
+### Erro do controller durante a execução (registrado)
+- A Task 11 (entrega de kit) foi **pulada** na sequência inicial (fui de T10 → T12); detectada pelo
+  grep adversarial da Task 15 e executada em seguida (commit `f27d767`), revisada e aprovada.
+
+### Pendência menor conhecida (não bloqueia)
+- `EditMyRegistrationButton`: se o atleta LIMPAR a data de nascimento, o corpo manda `birthDate:
+  null` e a rota (`z.string().optional()`, sem `.nullable()`) devolve 400 genérico. Sem corrupção
+  de dado. Corrigir na revisão whole-branch ou depois (tornar `birthDate` nullable na rota Task 6).
+
+### PRÓXIMA TAREFA — revisão whole-branch (Opus) + deploy dos 3 sub-projetos juntos
+
+1. **Revisão whole-branch** da `feat/snapshot-dados-inscricao` (Opus) → 1 fix wave → 1 re-review →
+   `finishing-a-development-branch` (usuário escolhe merge).
+2. **Deploy** — os 3 sub-projetos (A Twilio, B contas MP, C snapshot) saem JUNTOS no primeiro
+   deploy. Ordem pro C:
+   - `git pull` no VPS (`/opt/corridas/src`) → `docker build` (~15–25 min)
+   - `prisma db push` (schema aditivo: colunas nullable / com default — NUNCA `migrate deploy`)
+   - **`docker compose run --rm --no-deps app sh -c "npx tsx prisma/backfill-registration-participants.ts"`**
+     (ANTES do restart — evita janela com `participantName = ""`; o script é idempotente)
+   - restart
+3. Confirmar no navegador de produção: modal de inscritos com os 2 botões; campo de prazo na
+   edição de evento; painel do atleta.
+
+---
+
 
 Branch `feat/multiplas-contas-mercadopago` (14 tasks, subagent-driven). Verificação final (Task 14)
 passou: **`vitest` 282 arquivos / 2174 testes verdes**, **`tsc --noEmit` limpo**, **`npm run build`

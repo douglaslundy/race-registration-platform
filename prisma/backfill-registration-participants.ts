@@ -15,6 +15,7 @@ export async function backfillRegistrationParticipants(
       orderBy: { id: "asc" },
       select: {
         id: true,
+        proxyAthleteDisplayName: true,
         athlete: {
           select: {
             name: true, email: true,
@@ -28,7 +29,11 @@ export async function backfillRegistrationParticipants(
       await prisma.registration.update({
         where: { id: r.id },
         data: {
-          participantName: r.athlete.name,
+          // Inscrição por procuração: o nome exibível é o `proxyAthleteDisplayName` (digitado pelo
+          // comprador), não o nome da conta-placeholder do atleta — mesmo critério do checkout novo
+          // (resolveParticipantIdentity). E-mail/telefone/etc. seguem da conta, que é o único dado
+          // de contato do proxy que foi persistido antes deste snapshot existir.
+          participantName: r.proxyAthleteDisplayName ?? r.athlete.name,
           participantEmail: r.athlete.email,
           participantPhone: r.athlete.athleteProfile?.phone ?? null,
           participantBirthDate: r.athlete.athleteProfile?.birthDate ?? null,

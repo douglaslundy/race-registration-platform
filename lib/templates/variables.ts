@@ -14,7 +14,7 @@ export const ALL_VARIABLES: VariableDefinition[] = [
   { name: "telefone_atleta", label: "Telefone do atleta", category: "Atleta", description: "Registration.participantPhone. Pode ser vazio.", sample: "(11) 98888-8888" },
   { name: "documento_atleta", label: "CPF do atleta", category: "Atleta", description: "Registration.participantCpf. Pode ser vazio.", sample: "123.456.789-00" },
   { name: "data_nascimento_atleta", label: "Data de nascimento", category: "Atleta", description: "Registration.participantBirthDate, formatada dd/mm/aaaa.", sample: "15/03/1990" },
-  { name: "equipe_atleta", label: "Equipe do atleta", category: "Atleta", description: "AthleteProfile.teamName. Pode ser vazio.", sample: "Equipe Exemplo Corrida" },
+  { name: "equipe_atleta", label: "Equipe do atleta", category: "Atleta", description: "Em campanha de evento, Registration.teamName (equipe desta inscrição); em campanha de plataforma, AthleteProfile.teamName. Pode ser vazio.", sample: "Equipe Exemplo Corrida" },
   { name: "categoria_inscricao", label: "Categoria da inscrição", category: "Atleta", description: "EventCategory.name da inscrição (não é campo do atleta).", sample: "Masculino 30-34" },
 
   // Organizador

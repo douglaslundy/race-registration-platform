@@ -322,6 +322,12 @@ Cada um: adicionar os `participant*` ao `select` da `Registration` (onde hoje te
 
 ## 6. Testes
 
+> ✅ **CONCLUÍDO (2026-08-31, branch `feat/snapshot-dados-inscricao`).** Suíte completa
+> `npx vitest run` — **289 arquivos / 2234 testes verdes**; `npx tsc --noEmit` limpo; `npm run build`
+> exit 0. Todos os itens abaixo cobertos pelos testes das Tasks 1–15 (SDD). Revisão adversarial
+> (grep) executada na Task 15 — nenhum uso de `athlete.name`/`athlete.email` em contexto de
+> exibir/exportar dados de uma inscrição.
+
 - **Regressão de isolamento (obrigatório):** 3 inscrições do mesmo atleta em 3 eventos → editar só
   a 2ª (nome + CPF) via `PATCH /api/organizer/registrations/[id]` → asserir que a 1ª, a 3ª, o `User`
   e o `AthleteProfile` **não mudaram** e a 2ª mudou.
