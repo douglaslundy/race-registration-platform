@@ -29,6 +29,7 @@ export default function EventResultFilesManager({ eventId, slug, initialSubtitle
   const [newFileUrl, setNewFileUrl] = useState<string | null>(null);
   const [newFileName, setNewFileName] = useState<string>("");
   const [adding, setAdding] = useState(false);
+  const [uploadKey, setUploadKey] = useState(0);
 
   const [deleting, setDeleting] = useState<ResultFile | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
@@ -71,6 +72,7 @@ export default function EventResultFilesManager({ eventId, slug, initialSubtitle
     setNewLabel("");
     setNewFileUrl(null);
     setNewFileName("");
+    setUploadKey((k) => k + 1);
     router.refresh();
   }
 
@@ -159,6 +161,7 @@ export default function EventResultFilesManager({ eventId, slug, initialSubtitle
           />
         </div>
         <FileUploadInput
+          key={uploadKey}
           purpose="result_pdf"
           accept="application/pdf"
           label="PDF do resultado"

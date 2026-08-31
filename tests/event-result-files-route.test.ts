@@ -61,6 +61,11 @@ describe("POST /api/events/[id]/result-files", () => {
     expect(dbMock.eventResultFile.create).toHaveBeenCalledWith({
       data: { eventId: "event-1", label: "Geral Masculino", fileUrl: "https://x/a.pdf", fileName: "a.pdf", createdById: "u-1" },
     });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "RESULT_FILE_ADDED", entityType: "EventResultFile", entityId: "rf-1" }),
+      }),
+    );
   });
 
   it("admin titular usa event.findUnique", async () => {
@@ -124,13 +129,18 @@ describe("DELETE /api/events/[id]/result-files/[fileId]", () => {
 
   it("exclui e responde { ok: true }", async () => {
     dbMock.eventResultFile = {
-      findFirst: vi.fn().mockResolvedValue({ id: "rf-1", eventId: "event-1" }),
+      findFirst: vi.fn().mockResolvedValue({ id: "rf-1", eventId: "event-1", label: "Geral", fileName: "a.pdf" }),
       delete: vi.fn().mockResolvedValue({}),
     };
     const res = await DELETE(delReq(), delCtx);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(dbMock.eventResultFile.delete).toHaveBeenCalledWith({ where: { id: "rf-1" } });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "RESULT_FILE_DELETED", entityType: "EventResultFile", entityId: "rf-1" }),
+      }),
+    );
   });
 
   it("bloqueia sem permissão", async () => {

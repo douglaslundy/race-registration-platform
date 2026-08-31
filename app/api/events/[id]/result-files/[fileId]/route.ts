@@ -23,5 +23,16 @@ export async function DELETE(
   if (!file) return NextResponse.json({ error: "Resultado não encontrado" }, { status: 404 });
 
   await db.eventResultFile.delete({ where: { id: fileId } });
+
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "RESULT_FILE_DELETED",
+      entityType: "EventResultFile",
+      entityId: fileId,
+      metadata: { eventId: id, label: file.label, fileName: file.fileName },
+    },
+  });
+
   return NextResponse.json({ ok: true });
 }

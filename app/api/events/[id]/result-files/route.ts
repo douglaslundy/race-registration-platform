@@ -49,6 +49,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       createdById: session.user.id,
     },
   });
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "RESULT_FILE_ADDED",
+      entityType: "EventResultFile",
+      entityId: created.id,
+      metadata: { eventId: id, label: created.label, fileName: created.fileName },
+    },
+  });
+
   return NextResponse.json(
     { id: created.id, label: created.label, fileUrl: created.fileUrl, fileName: created.fileName, createdAt: created.createdAt },
     { status: 201 },
