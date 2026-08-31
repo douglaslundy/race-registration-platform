@@ -3,15 +3,15 @@ import type { Prisma, ShirtSize } from "@prisma/client";
 export function buildGeneralReportOrderBy(sort: string): Prisma.RegistrationOrderByWithRelationInput[] {
   switch (sort) {
     case "emergencyContact":
-      return [{ emergencyContactName: { sort: "asc", nulls: "last" } }, { athlete: { name: "asc" } }];
+      return [{ emergencyContactName: { sort: "asc", nulls: "last" } }, { participantName: "asc" }];
     case "allergies":
-      return [{ medicalNotes: { sort: "asc", nulls: "last" } }, { athlete: { name: "asc" } }];
+      return [{ medicalNotes: { sort: "asc", nulls: "last" } }, { participantName: "asc" }];
     case "route":
-      return [{ route: { name: "asc" } }, { athlete: { name: "asc" } }];
+      return [{ route: { name: "asc" } }, { participantName: "asc" }];
     case "date":
       return [{ createdAt: "asc" }];
     default:
-      return [{ athlete: { name: "asc" } }];
+      return [{ participantName: "asc" }];
   }
 }
 

@@ -3,7 +3,7 @@ import { buildGeneralReportOrderBy, computeGeneralReportDashboard } from "@/lib/
 
 describe("buildGeneralReportOrderBy", () => {
   it("padrão (nome) ordena por nome do atleta", () => {
-    expect(buildGeneralReportOrderBy("")).toEqual([{ athlete: { name: "asc" } }]);
+    expect(buildGeneralReportOrderBy("")).toEqual([{ participantName: "asc" }]);
   });
 
   it("date ordena por data de criação", () => {
@@ -13,19 +13,19 @@ describe("buildGeneralReportOrderBy", () => {
   it("emergencyContact prioriza quem tem contato preenchido, com nome como desempate", () => {
     expect(buildGeneralReportOrderBy("emergencyContact")).toEqual([
       { emergencyContactName: { sort: "asc", nulls: "last" } },
-      { athlete: { name: "asc" } },
+      { participantName: "asc" },
     ]);
   });
 
   it("allergies prioriza quem tem alergia preenchida, com nome como desempate", () => {
     expect(buildGeneralReportOrderBy("allergies")).toEqual([
       { medicalNotes: { sort: "asc", nulls: "last" } },
-      { athlete: { name: "asc" } },
+      { participantName: "asc" },
     ]);
   });
 
   it("route ordena por nome do percurso, com nome do atleta como desempate", () => {
-    expect(buildGeneralReportOrderBy("route")).toEqual([{ route: { name: "asc" } }, { athlete: { name: "asc" } }]);
+    expect(buildGeneralReportOrderBy("route")).toEqual([{ route: { name: "asc" } }, { participantName: "asc" }]);
   });
 });
 

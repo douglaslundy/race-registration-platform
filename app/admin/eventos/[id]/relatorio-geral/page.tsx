@@ -55,8 +55,8 @@ export default async function AdminRelatorioGeralPage({
     ...(q
       ? {
           OR: [
-            { athlete: { name: { contains: q, mode: "insensitive" as const } } },
-            { athlete: { email: { contains: q, mode: "insensitive" as const } } },
+            { participantName: { contains: q, mode: "insensitive" as const } },
+            { participantEmail: { contains: q, mode: "insensitive" as const } },
           ],
         }
       : {}),
@@ -65,9 +65,6 @@ export default async function AdminRelatorioGeralPage({
   const registrations = await db.registration.findMany({
     where,
     include: {
-      athlete: {
-        select: { name: true, email: true, athleteProfile: { select: { cpf: true, phone: true, birthDate: true } } },
-      },
       route: { select: { name: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true } },

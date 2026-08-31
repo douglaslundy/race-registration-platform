@@ -10,10 +10,10 @@ import {
 const eventDate = new Date("2026-09-20T10:00:00Z");
 
 const fullRegistration = {
-  athlete: {
-    name: "Maria Exemplo",
-    athleteProfile: { birthDate: new Date("1990-03-15T12:00:00Z"), gender: "Feminino", city: "São Paulo" },
-  },
+  participantName: "Maria Exemplo",
+  participantBirthDate: new Date("1990-03-15T12:00:00Z"),
+  participantGender: "Feminino",
+  athlete: { athleteProfile: { city: "São Paulo" } },
   route: { name: "10km" },
   category: { name: "Adulto" },
   teamName: "Equipe Exemplo",
@@ -23,7 +23,10 @@ const fullRegistration = {
 };
 
 const emptyRegistration = {
-  athlete: { name: "Atleta Sem Perfil", athleteProfile: null },
+  participantName: "Atleta Sem Perfil",
+  participantBirthDate: null,
+  participantGender: null,
+  athlete: { athleteProfile: null },
   route: null,
   category: null,
   teamName: null,

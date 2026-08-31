@@ -15,10 +15,10 @@ function makeRequest(query = "format=csv") {
 }
 
 const fullRegistration = {
-  athlete: {
-    name: "Ana Silva",
-    athleteProfile: { birthDate: new Date("1990-03-15T12:00:00.000Z"), gender: "Feminino", city: "São Paulo" },
-  },
+  participantName: "Ana Silva",
+  participantBirthDate: new Date("1990-03-15T12:00:00.000Z"),
+  participantGender: "Feminino",
+  athlete: { athleteProfile: { city: "São Paulo" } },
   route: { name: "10km" },
   category: { name: "Adulto" },
   teamName: "Equipe Exemplo",
@@ -60,7 +60,10 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
   it("CSV: usa string vazia quando o atleta não tem perfil/rota/categoria", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([
       {
-        athlete: { name: "Bruno Costa", athleteProfile: null },
+        participantName: "Bruno Costa",
+        participantBirthDate: null,
+        participantGender: null,
+        athlete: { athleteProfile: null },
         route: null,
         category: null,
         teamName: null,

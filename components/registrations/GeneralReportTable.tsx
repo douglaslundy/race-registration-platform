@@ -7,11 +7,11 @@ export interface GeneralReportRow {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   medicalNotes: string | null;
-  athlete: {
-    name: string;
-    email: string;
-    athleteProfile: { cpf: string | null; phone: string | null; birthDate: Date | null } | null;
-  };
+  participantName: string;
+  participantEmail: string;
+  participantCpf: string | null;
+  participantPhone: string | null;
+  participantBirthDate: Date | null;
   route: { name: string } | null;
   category: { name: string } | null;
   ticketBatch: { name: string };
@@ -49,17 +49,17 @@ export default function GeneralReportTable({
           {registrations.map((r) => (
             <tr key={r.id} className="border-b dark:border-gray-700 last:border-0">
               <td className="py-2 pr-3">
-                <p className="font-medium">{r.athlete.name}</p>
-                <p className="text-gray-500">{r.athlete.email}</p>
+                <p className="font-medium">{r.participantName}</p>
+                <p className="text-gray-500">{r.participantEmail}</p>
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                {r.athlete.athleteProfile?.birthDate ? formatDate(r.athlete.athleteProfile.birthDate) : "—"}
+                {r.participantBirthDate ? formatDate(r.participantBirthDate) : "—"}
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
-                {r.athlete.athleteProfile?.birthDate ? calculateAge(r.athlete.athleteProfile.birthDate, eventDate) : "—"}
+                {r.participantBirthDate ? calculateAge(r.participantBirthDate, eventDate) : "—"}
               </td>
-              <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.athlete.athleteProfile?.cpf ?? "—"}</td>
-              <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.athlete.athleteProfile?.phone ?? "—"}</td>
+              <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.participantCpf ?? "—"}</td>
+              <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">{r.participantPhone ?? "—"}</td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">
                 <p>{r.route?.name ?? "—"} {r.category ? `· ${r.category.name}` : ""}</p>
                 <p className="text-gray-500">{r.ticketBatch.name}</p>

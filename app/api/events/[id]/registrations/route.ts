@@ -38,9 +38,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const registrations = await db.registration.findMany({
       where,
       select: {
-        athlete: {
-          select: { name: true, athleteProfile: { select: { birthDate: true, gender: true, city: true } } },
-        },
+        participantName: true,
+        participantBirthDate: true,
+        participantGender: true,
+        athlete: { select: { athleteProfile: { select: { city: true } } } },
         route: { select: { name: true } },
         category: { select: { name: true } },
         teamName: true,
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         emergencyContactPhone: true,
         medicalNotes: true,
       },
-      orderBy: { athlete: { name: "asc" } },
+      orderBy: { participantName: "asc" },
     });
     const rows = buildRegistrationExportRows(registrations, event.startAt);
 

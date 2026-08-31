@@ -15,10 +15,10 @@ export const REGISTRATION_EXPORT_HEADERS = [
 ];
 
 export interface RegistrationExportSource {
-  athlete: {
-    name: string;
-    athleteProfile: { birthDate: Date | null; gender: string | null; city: string | null } | null;
-  };
+  participantName: string;
+  participantBirthDate: Date | null;
+  participantGender: string | null;
+  athlete: { athleteProfile: { city: string | null } | null };
   route: { name: string } | null;
   category: { name: string } | null;
   teamName: string | null;
@@ -34,12 +34,12 @@ export interface RegistrationExportSource {
  * prova, não a idade atual de quem gera o relatório. */
 export function buildRegistrationExportRows(registrations: RegistrationExportSource[], eventDate: Date): string[][] {
   return registrations.map((r) => {
-    const birthDate = r.athlete.athleteProfile?.birthDate;
+    const birthDate = r.participantBirthDate;
     return [
-      r.athlete.name,
+      r.participantName,
       birthDate ? formatDate(birthDate) : "",
       birthDate ? String(calculateAge(birthDate, eventDate)) : "",
-      r.athlete.athleteProfile?.gender ?? "",
+      r.participantGender ?? "",
       r.teamName ?? "",
       r.category?.name ?? "",
       r.athlete.athleteProfile?.city ?? "",
