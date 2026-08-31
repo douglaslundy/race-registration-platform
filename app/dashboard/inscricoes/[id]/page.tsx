@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import Link from "next/link";
 import PaymentStatusPoller from "@/components/dashboard/PaymentStatusPoller";
 import CancelRegistrationButton from "@/components/dashboard/CancelRegistrationButton";
+import EditMyRegistrationButton from "@/components/dashboard/EditMyRegistrationButton";
 import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
 import QRCode from "react-qr-code";
@@ -38,12 +39,12 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           title: true, slug: true, startAt: true, kitPickupAt: true,
           venueName: true, addressLine: true, city: true, state: true,
           organizerContact: true, cancellationDeadline: true, cancellationRequiresApproval: true,
+          registrationEditDeadline: true,
         },
       },
       route: { select: { name: true, distanceKm: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true, priceAmount: true } },
-      athlete: { select: { name: true } },
       order: {
         select: {
           id: true,
@@ -98,7 +99,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
 
       {createdByMeForOther && (
         <div className="text-sm text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-100 dark:border-primary-800 rounded-lg px-4 py-2">
-          Inscrição feita por você para {registration.proxyAthleteDisplayName ?? registration.athlete.name}.
+          Inscrição feita por você para {registration.participantName}.
         </div>
       )}
 
@@ -180,6 +181,36 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
         </div>
       </div>
 
+      <div className="card space-y-4">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Dados do participante</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
+            <span className="text-gray-500">Nome</span>
+            <span className="text-right">{registration.participantName || "—"}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
+            <span className="text-gray-500">Telefone</span>
+            <span className="text-right">{registration.participantPhone ?? "—"}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
+            <span className="text-gray-500">Nascimento</span>
+            <span>{registration.participantBirthDate ? formatDate(registration.participantBirthDate) : "—"}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
+            <span className="text-gray-500">Gênero</span>
+            <span>{registration.participantGender ?? "—"}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
+            <span className="text-gray-500">Contato de emergência</span>
+            <span className="text-right">{registration.emergencyContactName ?? "—"}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b dark:border-gray-700">
+            <span className="text-gray-500">Telefone de emergência</span>
+            <span className="text-right">{registration.emergencyContactPhone ?? "—"}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="card space-y-3">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">Resumo financeiro</h3>
         <div className="space-y-1 text-sm">
@@ -243,6 +274,19 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
         <Link href={`/eventos/${registration.event.slug}`} className="btn-secondary flex-1 text-center text-sm">
           Ver página do evento
         </Link>
+        <EditMyRegistrationButton
+          registrationId={registration.id}
+          deadline={registration.event.registrationEditDeadline?.toISOString() ?? null}
+          canEdit={registration.athleteUserId === session.user.id}
+          participantName={registration.participantName}
+          participantPhone={registration.participantPhone}
+          participantBirthDate={registration.participantBirthDate?.toISOString() ?? null}
+          participantGender={registration.participantGender}
+          shirtSize={registration.shirtSize}
+          teamName={registration.teamName}
+          emergencyContactName={registration.emergencyContactName}
+          emergencyContactPhone={registration.emergencyContactPhone}
+        />
         {canCancel && (
           <CancelRegistrationButton registrationId={registration.id} requiresApproval={requiresApproval} />
         )}
