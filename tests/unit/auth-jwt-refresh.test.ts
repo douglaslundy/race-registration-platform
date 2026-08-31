@@ -31,9 +31,37 @@ describe("authConfig.callbacks.jwt — recarrega role/active do banco", () => {
 
     expect(dbMock.user.findUnique).toHaveBeenCalledWith({
       where: { id: "u1" },
-      select: { role: true, active: true },
+      select: { role: true, active: true, passwordChangedAt: true },
     });
     expect(token).toEqual(expect.objectContaining({ id: "u1", role: "ASSISTANT", active: true }));
+  });
+
+  it("M9 — token emitido antes da troca de senha é invalidado (active=false)", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      role: "ATHLETE",
+      active: true,
+      passwordChangedAt: new Date("2026-08-31T12:00:00.000Z"),
+    });
+
+    const token = await jwt({
+      token: { id: "u1", role: "ATHLETE", active: true, iat: Math.floor(new Date("2026-08-31T11:00:00.000Z").getTime() / 1000) },
+    } as any);
+
+    expect(token.active).toBe(false);
+  });
+
+  it("M9 — token emitido depois da troca de senha continua válido", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce({
+      role: "ATHLETE",
+      active: true,
+      passwordChangedAt: new Date("2026-08-31T12:00:00.000Z"),
+    });
+
+    const token = await jwt({
+      token: { id: "u1", role: "ATHLETE", active: true, iat: Math.floor(new Date("2026-08-31T13:00:00.000Z").getTime() / 1000) },
+    } as any);
+
+    expect(token.active).toBe(true);
   });
 
   it("propaga o bloqueio: active=false do banco chega no token", async () => {

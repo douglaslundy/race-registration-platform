@@ -351,6 +351,25 @@ export async function sendPasswordResetEmail(params: {
   });
 }
 
+/** Aviso de que a senha da conta foi alterada (M9 — canal de detecção de invasão). */
+export async function sendPasswordChangedEmail(params: {
+  to: string;
+  name?: string;
+}): Promise<void> {
+  const appName = await getAppName();
+  await sendMail({
+    to: params.to,
+    messageType: "PASSWORD_CHANGED",
+    subject: `Sua senha foi alterada — ${appName}`,
+    html: layout(
+      appName,
+      `<p>Olá${params.name ? ` ${params.name}` : ""},</p>
+       <p>A senha da sua conta foi alterada agora há pouco. Todas as sessões abertas foram encerradas.</p>
+       <p style="font-size:13px;color:#6b7280">Se foi você, pode ignorar este aviso. Se <strong>não</strong> foi você, redefina a senha imediatamente pelo "Esqueci minha senha" e entre em contato com o suporte.</p>`
+    ),
+  });
+}
+
 /** E-mail de convite pra um novo usuário assistente definir a senha e acessar o sistema. */
 export async function sendAssistantInviteEmail(params: {
   to: string;

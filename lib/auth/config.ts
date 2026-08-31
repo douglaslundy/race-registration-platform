@@ -89,11 +89,20 @@ export const authConfig: NextAuthConfig = {
         try {
           const fresh = await db.user.findUnique({
             where: { id: token.id as string },
-            select: { role: true, active: true },
+            select: { role: true, active: true, passwordChangedAt: true },
           });
           if (fresh) {
             token.role = fresh.role;
             token.active = fresh.active;
+            // M9: token emitido ANTES da última troca de senha é considerado revogado —
+            // um token roubado não sobrevive à troca. `iat` está em segundos.
+            if (
+              fresh.passwordChangedAt &&
+              typeof token.iat === "number" &&
+              token.iat * 1000 < fresh.passwordChangedAt.getTime()
+            ) {
+              token.active = false;
+            }
           } else {
             // Usuário sumiu (exclusão física): invalida o papel — o proxy/guards barram.
             token.active = false;
