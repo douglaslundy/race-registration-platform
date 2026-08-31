@@ -90,6 +90,8 @@ export async function getEventBySlug(slug: string) {
           user: { select: { name: true, email: true } },
         },
       },
+      resultFiles: { take: 1, select: { id: true } },
+      resultImports: { where: { published: true }, take: 1, select: { id: true } },
     },
   });
 }

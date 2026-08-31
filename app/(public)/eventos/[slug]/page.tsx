@@ -22,6 +22,7 @@ import { MODALITY_LABEL } from "@/lib/admin/labels";
 import { getBatchStatus, getEventDisplayStatus } from "@/lib/batch-status";
 import JsonLd from "@/components/seo/JsonLd";
 import { buildEventJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/build-event-json-ld";
+import { eventHasResults } from "@/lib/events/has-results";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -118,6 +119,10 @@ export default async function EventoPage({ params }: Props) {
   const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches);
   const availableBatches = event.ticketBatches.filter((b) => b.soldCount < b.capacity);
   const heroBannerUrl = event.bannerUrl ?? event.listBannerUrl;
+  const hasResults = eventHasResults({
+    resultFilesCount: event.resultFiles.length,
+    publishedImportCount: event.resultImports.length,
+  });
 
   return (
     <>
@@ -288,6 +293,15 @@ export default async function EventoPage({ params }: Props) {
                 <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
                   {displayStatus === "SOLD_OUT" ? "Esgotado" : "Inscrições fechadas"}
                 </button>
+              )}
+
+              {hasResults && (
+                <Link
+                  href={`/eventos/${event.slug}/resultados`}
+                  className="btn-secondary w-full text-center block mt-3"
+                >
+                  🏆 Resultado
+                </Link>
               )}
             </div>
 
