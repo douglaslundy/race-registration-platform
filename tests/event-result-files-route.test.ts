@@ -8,6 +8,7 @@ vi.mock("@/lib/auth/rbac", () => ({
 }));
 
 import { POST, PATCH } from "@/app/api/events/[id]/result-files/route";
+import { DELETE } from "@/app/api/events/[id]/result-files/[fileId]/route";
 
 const checkPermMock = vi.mocked(checkApiPermission);
 const resolveScopeMock = vi.mocked(resolveActingScope);
@@ -98,5 +99,45 @@ describe("PATCH /api/events/[id]/result-files (resultsSubtitle)", () => {
     const res = await PATCH(makeReq({ resultsSubtitle: "5KM" }, "PATCH"), ctx);
     expect(res.status).toBe(403);
     expect(dbMock.event.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/events/[id]/result-files/[fileId]", () => {
+  const delCtx = { params: Promise.resolve({ id: "event-1", fileId: "rf-1" }) };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    checkPermMock.mockResolvedValue({ allowed: true, session: { user: { id: "u-1", role: "ORGANIZER" } } } as any);
+    resolveScopeMock.mockResolvedValue({ actingAsAdmin: false, organizerId: "org-1" } as any);
+    dbMock.event.findFirst.mockResolvedValue({ id: "event-1", organizerId: "org-1" });
+  });
+
+  function delReq() {
+    return new Request("http://localhost/api/events/event-1/result-files/rf-1", { method: "DELETE" }) as any;
+  }
+
+  it("404 quando o fileId não é do evento", async () => {
+    dbMock.eventResultFile = { findFirst: vi.fn().mockResolvedValue(null), delete: vi.fn() };
+    const res = await DELETE(delReq(), delCtx);
+    expect(res.status).toBe(404);
+    expect(dbMock.eventResultFile.delete).not.toHaveBeenCalled();
+  });
+
+  it("exclui e responde { ok: true }", async () => {
+    dbMock.eventResultFile = {
+      findFirst: vi.fn().mockResolvedValue({ id: "rf-1", eventId: "event-1" }),
+      delete: vi.fn().mockResolvedValue({}),
+    };
+    const res = await DELETE(delReq(), delCtx);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(dbMock.eventResultFile.delete).toHaveBeenCalledWith({ where: { id: "rf-1" } });
+  });
+
+  it("bloqueia sem permissão", async () => {
+    checkPermMock.mockResolvedValueOnce({ allowed: false, response: new Response("no", { status: 403 }) } as any);
+    dbMock.eventResultFile = { findFirst: vi.fn(), delete: vi.fn() };
+    const res = await DELETE(delReq(), delCtx);
+    expect(res.status).toBe(403);
+    expect(dbMock.eventResultFile.delete).not.toHaveBeenCalled();
   });
 });
