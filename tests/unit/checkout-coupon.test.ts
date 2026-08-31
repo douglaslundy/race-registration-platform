@@ -86,6 +86,32 @@ describe("createCheckout coupon handling", () => {
     expect(result.totalAmount).toBe(19980);
   });
 
+  it("H1 — cupom PERCENT > 100 nunca gera subtotal negativo (clamp no preço do lote)", async () => {
+    const tx = createTx({
+      id: "coupon-evil",
+      discountType: "PERCENT",
+      discountValue: 1000,
+      maxUses: null,
+      usedCount: 0,
+      active: true,
+      expiresAt: null,
+    });
+
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    const result = await createCheckout({
+      eventId: "event-1",
+      ticketBatchId: "batch-1",
+      buyerUserId: "user-1",
+      athleteUserId: "user-1",
+      couponCode: "EVIL",
+    });
+
+    expect(result.discountAmount).toBe(20000);
+    expect(result.subtotalAmount).toBe(0);
+    expect(result.totalAmount).toBeGreaterThanOrEqual(0);
+  });
+
   it("requires a route when the event has routes", async () => {
     const tx = createTx(null);
     tx.eventRoute.count.mockResolvedValue(1);

@@ -35,6 +35,15 @@ export default function CuponsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+
+    if (form.discountType === "PERCENT") {
+      const pct = Number(form.discountValue);
+      if (!Number.isInteger(pct) || pct <= 0 || pct > 100) {
+        setFormError("Desconto percentual deve ser um inteiro entre 1 e 100.");
+        return;
+      }
+    }
+
     setSaving(true);
     const res = await fetch(`/api/events/${id}/coupons`, {
       method: "POST",
@@ -163,7 +172,7 @@ export default function CuponsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Desconto {form.discountType === "PERCENT" ? "(%)" : "(R$)"}</label>
-              <input required type="number" min="0" step={form.discountType === "PERCENT" ? "1" : "0.01"} value={form.discountValue} onChange={(e) => setForm({ ...form, discountValue: e.target.value })} className="input w-full" placeholder={form.discountType === "PERCENT" ? "10" : "20.00"} />
+              <input required type="number" min={form.discountType === "PERCENT" ? "1" : "0"} max={form.discountType === "PERCENT" ? "100" : undefined} step={form.discountType === "PERCENT" ? "1" : "0.01"} value={form.discountValue} onChange={(e) => setForm({ ...form, discountValue: e.target.value })} className="input w-full" placeholder={form.discountType === "PERCENT" ? "10" : "20.00"} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Usos máximos</label>

@@ -3,13 +3,19 @@ import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const couponSchema = z.object({
-  code: z.string().trim().min(3).toUpperCase(),
-  discountType: z.enum(["PERCENT", "FIXED"]),
-  discountValue: z.number().positive(),
-  maxUses: z.number().int().positive().optional().nullable(),
-  expiresAt: z.string().optional().nullable(),
-});
+const couponSchema = z
+  .object({
+    code: z.string().trim().min(3).toUpperCase(),
+    discountType: z.enum(["PERCENT", "FIXED"]),
+    // PERCENT: inteiro (10 = 10%, máx. 100); FIXED: centavos
+    discountValue: z.number().int().positive(),
+    maxUses: z.number().int().positive().optional().nullable(),
+    expiresAt: z.string().optional().nullable(),
+  })
+  .refine((d) => d.discountType !== "PERCENT" || d.discountValue <= 100, {
+    message: "Desconto percentual não pode passar de 100%",
+    path: ["discountValue"],
+  });
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

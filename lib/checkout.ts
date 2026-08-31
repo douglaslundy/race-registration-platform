@@ -170,8 +170,11 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       if (coupon.discountType === "PERCENT") {
         discountAmount = Math.round((batch.priceAmount * coupon.discountValue) / 100);
       } else {
-        discountAmount = Math.min(coupon.discountValue, batch.priceAmount);
+        discountAmount = coupon.discountValue;
       }
+      // Defesa em profundidade (H1): nunca deixa o desconto passar do preço do lote,
+      // pros dois tipos — um cupom PERCENT > 100 gravado por outra via não gera subtotal negativo.
+      discountAmount = Math.max(0, Math.min(discountAmount, batch.priceAmount));
       await tx.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
     }
 

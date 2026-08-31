@@ -184,4 +184,32 @@ describe("POST /api/events/[id]/coupons", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("H1 — rejeita cupom PERCENT com valor > 100", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+
+    const res = await POST(
+      makePostRequest({ code: "PROMO101", discountType: "PERCENT", discountValue: 101 }),
+      makeContext("ev-1"),
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.coupon.create).not.toHaveBeenCalled();
+  });
+
+  it("H1 — rejeita desconto não-inteiro", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+
+    const res = await POST(
+      makePostRequest({ code: "PROMOHALF", discountType: "PERCENT", discountValue: 10.5 }),
+      makeContext("ev-1"),
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.coupon.create).not.toHaveBeenCalled();
+  });
 });
