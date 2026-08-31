@@ -6,6 +6,7 @@ import Link from "next/link";
 import ErrorModal from "@/components/ui/ErrorModal";
 import QrCameraScanner from "@/components/organizer/QrCameraScanner";
 import KitDeliveryReportCard from "@/components/organizer/KitDeliveryReportCard";
+import KitDeliveryFullList from "@/components/organizer/KitDeliveryFullList";
 
 interface SearchResult {
   id: string;
@@ -45,6 +46,7 @@ export default function EntregaKitsClient() {
   const [reportError, setReportError] = useState<string | null>(null);
 
   const [showCamera, setShowCamera] = useState(false);
+  const [tab, setTab] = useState<"search" | "list">("search");
 
   async function loadReport() {
     const res = await fetch(`/api/events/${id}/kit-deliveries/report`);
@@ -131,6 +133,35 @@ export default function EntregaKitsClient() {
         </p>
       </div>
 
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => setTab("search")}
+          className={`px-4 py-2 text-sm -mb-px border-b-2 transition-colors ${
+            tab === "search"
+              ? "border-primary-500 text-primary-600 font-medium"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Buscar &amp; entregar
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("list")}
+          className={`px-4 py-2 text-sm -mb-px border-b-2 transition-colors ${
+            tab === "list"
+              ? "border-primary-500 text-primary-600 font-medium"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Todos os inscritos
+        </button>
+      </div>
+
+      {tab === "list" ? (
+        <KitDeliveryFullList eventId={id} />
+      ) : (
+      <>
       <form onSubmit={handleSearchSubmit} className="flex gap-2">
         <input
           autoFocus
@@ -234,6 +265,8 @@ export default function EntregaKitsClient() {
           />
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

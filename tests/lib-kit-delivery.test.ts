@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { findRegistrationForKitDelivery, getKitDeliveryProgress } from "@/lib/kit-delivery";
+import { findRegistrationForKitDelivery, getKitDeliveryProgress, listKitDeliveries } from "@/lib/kit-delivery";
 import { db } from "@/lib/db";
 
 const dbMock = db as any;
@@ -206,5 +206,88 @@ describe("getKitDeliveryProgress", () => {
     expect(dbMock.registration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 50 }),
     );
+  });
+});
+
+describe("listKitDeliveries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("busca todas as inscrições CONFIRMED do evento, ordenadas por participantName", async () => {
+    dbMock.registration.findMany.mockResolvedValueOnce([]);
+
+    await listKitDeliveries("event-1");
+
+    expect(dbMock.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { eventId: "event-1", status: "CONFIRMED" },
+        orderBy: { participantName: "asc" },
+      }),
+    );
+  });
+
+  it("mapeia inscrição entregue (com os dados da entrega) e pendente (campos de entrega null)", async () => {
+    const deliveredAt = new Date("2026-08-30T10:00:00.000Z");
+    dbMock.registration.findMany.mockResolvedValueOnce([
+      {
+        id: "reg-1",
+        participantName: "Ana Entregue",
+        participantCpf: "11144477735",
+        bibNumber: "10",
+        shirtSize: "M",
+        notes: "Retira por terceiro",
+        category: { name: "Geral" },
+        kitDelivery: {
+          deliveredAt,
+          receivedByName: "Pedro (amigo)",
+          receivedByDocument: "123",
+          deliveredBy: { name: "Organizador Um" },
+        },
+      },
+      {
+        id: "reg-2",
+        participantName: "Bruno Pendente",
+        participantCpf: null,
+        bibNumber: null,
+        shirtSize: null,
+        notes: null,
+        category: null,
+        kitDelivery: null,
+      },
+    ]);
+
+    const result = await listKitDeliveries("event-1");
+
+    expect(result).toEqual([
+      {
+        id: "reg-1",
+        participantName: "Ana Entregue",
+        participantCpf: "11144477735",
+        bibNumber: "10",
+        shirtSize: "M",
+        categoryName: "Geral",
+        notes: "Retira por terceiro",
+        delivered: true,
+        deliveredAt,
+        deliveredByName: "Organizador Um",
+        receivedByName: "Pedro (amigo)",
+        receivedByDocument: "123",
+      },
+      {
+        id: "reg-2",
+        participantName: "Bruno Pendente",
+        participantCpf: null,
+        bibNumber: null,
+        shirtSize: null,
+        categoryName: null,
+        notes: null,
+        delivered: false,
+        deliveredAt: null,
+        deliveredByName: null,
+        receivedByName: null,
+        receivedByDocument: null,
+      },
+    ]);
   });
 });

@@ -29,6 +29,65 @@ export interface KitDeliveryProgress {
   pendingTotal: number;
 }
 
+export interface KitDeliveryListItem {
+  id: string;
+  participantName: string;
+  participantCpf: string | null;
+  bibNumber: string | null;
+  shirtSize: string | null;
+  categoryName: string | null;
+  notes: string | null;
+  delivered: boolean;
+  deliveredAt: Date | null;
+  deliveredByName: string | null;
+  receivedByName: string | null;
+  receivedByDocument: string | null;
+}
+
+/** Lista COMPLETA das inscrições CONFIRMED de um evento com o status de entrega de kit de cada
+ * uma — usada pela aba "Todos os inscritos" da tela de entrega de kits (visualização com filtro
+ * entregues/pendentes e busca por nome/CPF, feita no cliente). Diferente de
+ * `findRegistrationForKitDelivery` (busca pontual, 10 resultados) e de `getKitDeliveryProgress`
+ * (contadores + só os pendentes). Ordenada por nome. */
+export async function listKitDeliveries(eventId: string): Promise<KitDeliveryListItem[]> {
+  const rows = await db.registration.findMany({
+    where: { eventId, status: "CONFIRMED" },
+    orderBy: { participantName: "asc" },
+    select: {
+      id: true,
+      participantName: true,
+      participantCpf: true,
+      bibNumber: true,
+      shirtSize: true,
+      notes: true,
+      category: { select: { name: true } },
+      kitDelivery: {
+        select: {
+          deliveredAt: true,
+          receivedByName: true,
+          receivedByDocument: true,
+          deliveredBy: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    participantName: r.participantName,
+    participantCpf: r.participantCpf,
+    bibNumber: r.bibNumber,
+    shirtSize: r.shirtSize,
+    categoryName: r.category?.name ?? null,
+    notes: r.notes,
+    delivered: r.kitDelivery !== null,
+    deliveredAt: r.kitDelivery?.deliveredAt ?? null,
+    deliveredByName: r.kitDelivery?.deliveredBy.name ?? null,
+    receivedByName: r.kitDelivery?.receivedByName ?? null,
+    receivedByDocument: r.kitDelivery?.receivedByDocument ?? null,
+  }));
+}
+
 /** Busca inscrições CONFIRMED de um evento pra retirada de kit — por id exato (vindo de QR lido
  * por câmera, leitor físico, ou colado), número de peito exato, nome (contains, case-insensitive)
  * ou CPF do atleta (só quando a query tem exatamente 11 dígitos após normalizar). Limitado a 10

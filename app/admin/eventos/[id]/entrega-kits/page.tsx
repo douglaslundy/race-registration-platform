@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { requireAnyPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getKitDeliveryProgress } from "@/lib/kit-delivery";
-import KitDeliveryReportCard from "@/components/organizer/KitDeliveryReportCard";
+import EntregaKitsAdminClient from "./EntregaKitsAdminClient";
 
 export const metadata: Metadata = { title: "Entrega de kits — Admin" };
 
@@ -33,7 +33,7 @@ export default async function AdminEntregaKitsPage({ params }: { params: Promise
         <p className="text-sm text-gray-500">Acompanhamento só leitura — a confirmação de entrega é feita pelo organizador.</p>
       </div>
 
-      <KitDeliveryReportCard
+      <EntregaKitsAdminClient
         eventId={id}
         total={progress.total}
         delivered={progress.delivered}
