@@ -159,6 +159,26 @@ describe("PATCH /api/athlete/registrations/[id]", () => {
     expect(data).not.toHaveProperty("participantCpf");
   });
 
+  it("birthDate: null limpa o participantBirthDate e registra a mudança na auditoria", async () => {
+    const res = await PATCH(makeRequest({ birthDate: null }), {
+      params: Promise.resolve({ id: "reg-1" }),
+    });
+    expect(res.status).toBe(200);
+    expect(dbMock.registration.update).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { participantBirthDate: null },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        metadata: expect.objectContaining({
+          by: "athlete",
+          before: { participantBirthDate: REG.participantBirthDate },
+          after: { participantBirthDate: null },
+        }),
+      }),
+    });
+  });
+
   it("shirtSize/teamName/emergencyContact* também são editáveis", async () => {
     const res = await PATCH(
       makeRequest({

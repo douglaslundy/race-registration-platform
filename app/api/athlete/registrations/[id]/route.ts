@@ -9,7 +9,7 @@ const schema = z
   .object({
     name: z.string().min(1).max(120).optional(),
     phone: z.string().max(30).nullable().optional(),
-    birthDate: z.string().optional(),
+    birthDate: z.string().nullable().optional(),
     gender: z.string().max(20).nullable().optional(),
     shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XGG"]).nullable().optional(),
     teamName: z.string().max(100).nullable().optional(),
@@ -63,11 +63,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (b.phone !== undefined) data.participantPhone = b.phone;
   if (b.gender !== undefined) data.participantGender = b.gender;
   if (b.birthDate !== undefined) {
-    const d = new Date(b.birthDate);
-    if (Number.isNaN(d.getTime())) {
-      return NextResponse.json({ error: "Data de nascimento inválida" }, { status: 400 });
+    if (b.birthDate === null || b.birthDate === "") {
+      data.participantBirthDate = null;
+    } else {
+      const d = new Date(b.birthDate);
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json({ error: "Data de nascimento inválida" }, { status: 400 });
+      }
+      data.participantBirthDate = d;
     }
-    data.participantBirthDate = d;
   }
   if (b.shirtSize !== undefined) data.shirtSize = b.shirtSize;
   if (b.teamName !== undefined) data.teamName = b.teamName;

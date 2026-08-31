@@ -175,8 +175,8 @@ export default function AthleteDetailsModal({
       ? {
           name: form.name,
           email: form.email,
-          cpf: form.cpf ? normalizeCpf(form.cpf) : undefined,
-          birthDate: form.birthDate || undefined,
+          cpf: form.cpf ? normalizeCpf(form.cpf) : null,
+          birthDate: form.birthDate || null,
           phone: form.phone || null,
           gender: form.gender || null,
         }

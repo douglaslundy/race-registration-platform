@@ -137,6 +137,38 @@ describe("PATCH /api/admin/registrations/[id]", () => {
     });
   });
 
+  it("birthDate: null e cpf: \"\" limpam os campos (viram null) e a auditoria registra a mudança", async () => {
+    const res = await PATCH(makeRequest({ birthDate: null, cpf: "" }), {
+      params: Promise.resolve({ id: "reg-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.registration.update).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { participantBirthDate: null, participantCpf: null },
+    });
+    expect(dbMock.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        metadata: {
+          before: { participantBirthDate: REG.participantBirthDate, participantCpf: "11144477735" },
+          after: { participantBirthDate: null, participantCpf: null },
+        },
+      }),
+    });
+  });
+
+  it("cpf: null limpa o participantCpf sem passar pela validação de CPF", async () => {
+    const res = await PATCH(makeRequest({ cpf: null }), {
+      params: Promise.resolve({ id: "reg-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.registration.update).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { participantCpf: null },
+    });
+  });
+
   it("assistente-de-admin com registrations.edit-athlete-any global → passa", async () => {
     checkPermMock.mockResolvedValueOnce({
       allowed: true,

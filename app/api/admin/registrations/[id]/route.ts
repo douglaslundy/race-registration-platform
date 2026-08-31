@@ -11,9 +11,9 @@ const schema = z
     name: z.string().min(1).max(120).optional(),
     email: z.string().email().optional(),
     phone: z.string().max(30).nullable().optional(),
-    birthDate: z.string().optional(),
+    birthDate: z.string().nullable().optional(),
     gender: z.string().max(20).nullable().optional(),
-    cpf: z.string().optional(),
+    cpf: z.string().nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "Informe ao menos um campo" });
 
@@ -52,16 +52,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (b.phone !== undefined) data.participantPhone = b.phone;
   if (b.gender !== undefined) data.participantGender = b.gender;
   if (b.birthDate !== undefined) {
-    const d = new Date(b.birthDate);
-    if (Number.isNaN(d.getTime())) {
-      return NextResponse.json({ error: "Data de nascimento inválida" }, { status: 400 });
+    if (b.birthDate === null || b.birthDate === "") {
+      data.participantBirthDate = null;
+    } else {
+      const d = new Date(b.birthDate);
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json({ error: "Data de nascimento inválida" }, { status: 400 });
+      }
+      data.participantBirthDate = d;
     }
-    data.participantBirthDate = d;
   }
   if (b.cpf !== undefined) {
-    const c = normalizeCpf(b.cpf);
-    if (!isValidCpf(c)) return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
-    data.participantCpf = c;
+    if (b.cpf === null || b.cpf.trim() === "") {
+      data.participantCpf = null;
+    } else {
+      const c = normalizeCpf(b.cpf);
+      if (!isValidCpf(c)) return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
+      data.participantCpf = c;
+    }
   }
 
   const changes = pickParticipantChanges(reg as Record<string, unknown>, { ...reg, ...data });
