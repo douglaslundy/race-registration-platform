@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ErrorModal from "@/components/ui/ErrorModal";
+import CodeVerificationModal from "@/components/ui/CodeVerificationModal";
 import { formatCurrency } from "@/lib/format";
+import { useSensitiveActionVerification } from "@/lib/hooks/use-sensitive-action-verification";
 
 interface PayoutPreview {
   orderCount: number;
@@ -19,6 +21,12 @@ export default function GeneratePayoutButton({ eventId }: { eventId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<PayoutPreview | null>(null);
   const router = useRouter();
+
+  const verification = useSensitiveActionVerification({
+    requestCodeEndpoint: `/api/admin/events/${eventId}/payouts/request-code`,
+    confirmEndpoint: `/api/admin/events/${eventId}/payouts`,
+    confirmMethod: "POST",
+  });
 
   async function openModal() {
     setLoading(true);
@@ -39,16 +47,13 @@ export default function GeneratePayoutButton({ eventId }: { eventId: string }) {
   }
 
   async function handleConfirm() {
-    setLoading(true);
-    const res = await fetch(`/api/admin/events/${eventId}/payouts`, { method: "POST" });
-    setLoading(false);
     setOpen(false);
-    if (res.ok) {
-      router.refresh();
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    setError(data.error ?? "Erro ao gerar o repasse.");
+    await verification.start();
+  }
+
+  async function handleSubmitCode(code: string) {
+    const result = await verification.submitCode(code);
+    if (result.ok) router.refresh();
   }
 
   return (
@@ -56,7 +61,7 @@ export default function GeneratePayoutButton({ eventId }: { eventId: string }) {
       <button
         type="button"
         onClick={openModal}
-        disabled={loading}
+        disabled={loading || verification.step === "requesting" || verification.step === "submitting"}
         className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded hover:bg-primary-200 disabled:opacity-50"
       >
         Gerar repasse
@@ -67,16 +72,36 @@ export default function GeneratePayoutButton({ eventId }: { eventId: string }) {
         title="Gerar repasse"
         message={
           preview
-            ? `${preview.orderCount} pedido(s) pago(s) pendente(s) de repasse.\n\nBruto: ${formatCurrency(preview.grossAmount)}\nTaxa da plataforma: ${formatCurrency(preview.platformFee)}\nLíquido a repassar: ${formatCurrency(preview.netAmount)}`
+            ? `${preview.orderCount} pedido(s) pago(s) pendente(s) de repasse.\n\nBruto: ${formatCurrency(preview.grossAmount)}\nTaxa da plataforma: ${formatCurrency(preview.platformFee)}\nLíquido a repassar: ${formatCurrency(preview.netAmount)}\n\nVocê receberá um código de confirmação por e-mail e WhatsApp.`
             : ""
         }
-        confirmLabel="Gerar repasse"
+        confirmLabel="Continuar"
         tone="success"
-        loading={loading}
+        loading={verification.step === "requesting"}
         onConfirm={handleConfirm}
         onCancel={() => setOpen(false)}
       />
-      <ErrorModal message={error} onClose={() => setError(null)} />
+
+      <CodeVerificationModal
+        open={verification.step === "code" || verification.step === "submitting"}
+        title="Confirmar geração de repasse"
+        expiresAt={verification.expiresAt}
+        error={verification.step !== "idle" ? verification.error : null}
+        attemptsRemaining={verification.attemptsRemaining}
+        loading={verification.step === "submitting"}
+        resending={verification.resending}
+        onSubmit={handleSubmitCode}
+        onResend={verification.resend}
+        onCancel={verification.cancel}
+      />
+
+      <ErrorModal
+        message={error ?? (verification.step === "idle" ? verification.error : null)}
+        onClose={() => {
+          setError(null);
+          verification.cancel();
+        }}
+      />
     </>
   );
 }
