@@ -113,7 +113,9 @@ export async function verifySensitiveActionCode(params: {
       where: { id: record.id },
       data: { attempts: { increment: 1 } },
     });
-    return { ok: false, error: "Código incorreto.", attemptsRemaining: Math.max(0, MAX_ATTEMPTS - updated.attempts) };
+    // L7: mesma mensagem de "expirado/inválido" — não distingue "id desconhecido" de
+    // "id conhecido, código errado".
+    return { ok: false, error: INVALID_OR_EXPIRED, attemptsRemaining: Math.max(0, MAX_ATTEMPTS - updated.attempts) };
   }
 
   await db.sensitiveActionCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });

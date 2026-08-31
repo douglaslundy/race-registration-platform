@@ -188,7 +188,7 @@ describe("verifySensitiveActionCode", () => {
       verificationId: "code-1", userId: "user-1", actionType: "PAYMENT_REFUND", targetId: "payment-1", code: "000000",
     });
 
-    expect(result).toEqual({ ok: false, error: "Código incorreto.", attemptsRemaining: 4 });
+    expect(result).toEqual({ ok: false, error: "Código expirado ou inválido, solicite um novo.", attemptsRemaining: 4 });
     expect(dbMock.sensitiveActionCode.update).toHaveBeenCalledWith({
       where: { id: "code-1" },
       data: { attempts: { increment: 1 } },
