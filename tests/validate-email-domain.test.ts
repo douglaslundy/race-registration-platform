@@ -3,13 +3,14 @@ import dns from "node:dns";
 
 vi.mock("node:dns", () => ({ default: { resolveMx: vi.fn() } }));
 
-import { hasValidMxRecord } from "@/lib/validate-email-domain";
+import { hasValidMxRecord, __clearMxRecordCache } from "@/lib/validate-email-domain";
 
 const resolveMxMock = vi.mocked(dns.resolveMx);
 
 describe("hasValidMxRecord", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __clearMxRecordCache();
   });
 
   it("retorna false quando o e-mail não tem domínio", async () => {
@@ -64,10 +65,20 @@ describe("hasValidMxRecord", () => {
     });
 
     const promise = hasValidMxRecord("user@example.com");
-    await vi.advanceTimersByTimeAsync(4000);
+    await vi.advanceTimersByTimeAsync(3000);
     const result = await promise;
 
     expect(result).toBe(true);
     vi.useRealTimers();
+  });
+
+  it("L6 — cacheia o resultado: a segunda chamada pro mesmo domínio não resolve MX de novo", async () => {
+    resolveMxMock.mockImplementationOnce((_domain: any, cb: any) => {
+      cb(null, [{ exchange: "mx.cache.com", priority: 10 }]);
+    });
+
+    expect(await hasValidMxRecord("a@cache.com")).toBe(true);
+    expect(await hasValidMxRecord("b@cache.com")).toBe(true);
+    expect(resolveMxMock).toHaveBeenCalledTimes(1);
   });
 });
