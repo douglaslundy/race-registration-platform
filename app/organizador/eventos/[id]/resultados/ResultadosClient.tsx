@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function ResultadosPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,11 +43,8 @@ export default function ResultadosPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div>
-        <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600">← Voltar</Link>
-        <h1 className="text-xl font-bold mt-1">Importar resultados</h1>
-      </div>
+    <div className="space-y-4">
+      <h2 className="font-semibold">Importar via planilha (CSV)</h2>
 
       <div className="card space-y-3">
         <h2 className="font-semibold">Formato do CSV</h2>
