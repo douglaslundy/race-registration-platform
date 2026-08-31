@@ -50,4 +50,14 @@ describe("POST /api/auth/reset-password", () => {
     expect(res.status).toBe(200);
     expect(dbMock.$transaction).toHaveBeenCalled();
   });
+
+  it("L1 — busca o token pelo sha256, nunca pelo valor bruto do link", async () => {
+    const { createHash } = await import("crypto");
+    const expectedHash = createHash("sha256").update("abc123").digest("hex");
+
+    await POST(makeRequest(validBody));
+
+    expect(dbMock.verificationToken.findUnique).toHaveBeenCalledWith({ where: { token: expectedHash } });
+    expect(expectedHash).not.toBe("abc123");
+  });
 });

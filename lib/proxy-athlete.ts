@@ -1,5 +1,6 @@
-import { randomUUID, randomBytes } from "crypto";
+import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
+import { generateVerificationToken } from "@/lib/auth/verification-token";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendProxyRegistrationInviteEmail } from "@/lib/email";
 
@@ -26,13 +27,13 @@ export async function sendProxyRegistrationInvite(params: {
   invitedByName: string;
 }): Promise<void> {
   try {
-    const token = randomBytes(32).toString("hex");
+    const { rawToken, tokenHash } = generateVerificationToken();
     const expires = new Date(Date.now() + 1000 * 60 * 60);
     await db.verificationToken.deleteMany({ where: { identifier: params.email } });
-    await db.verificationToken.create({ data: { identifier: params.email, token, expires } });
+    await db.verificationToken.create({ data: { identifier: params.email, token: tokenHash, expires } });
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-    const resetUrl = `${baseUrl}/auth/nova-senha?token=${token}&email=${encodeURIComponent(params.email)}`;
+    const resetUrl = `${baseUrl}/auth/nova-senha?token=${rawToken}&email=${encodeURIComponent(params.email)}`;
 
     const cfg = await getSmtpConfig();
     if (!isSmtpReady(cfg)) return;

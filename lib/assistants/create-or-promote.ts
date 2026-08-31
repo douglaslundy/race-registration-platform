@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { generateVerificationToken } from "@/lib/auth/verification-token";
 import { db } from "@/lib/db";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { sendAssistantInviteEmail } from "@/lib/email";
@@ -27,14 +27,14 @@ export async function issueAssistantInvite(params: {
   invitedByName?: string;
 }): Promise<void> {
   const email = params.email.trim().toLowerCase();
-  const token = randomBytes(32).toString("hex");
+  const { rawToken, tokenHash } = generateVerificationToken();
   const expires = new Date(Date.now() + 1000 * 60 * 60 * 72); // 72h — 1h era curto demais pra convite por e-mail
 
   await db.verificationToken.deleteMany({ where: { identifier: email } });
-  await db.verificationToken.create({ data: { identifier: email, token, expires } });
+  await db.verificationToken.create({ data: { identifier: email, token: tokenHash, expires } });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const resetUrl = `${baseUrl}/auth/nova-senha?token=${token}&email=${encodeURIComponent(email)}`;
+  const resetUrl = `${baseUrl}/auth/nova-senha?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
   const cfg = await getSmtpConfig();
   if (!isSmtpReady(cfg)) return;

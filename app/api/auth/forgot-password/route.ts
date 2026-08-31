@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { randomBytes } from "crypto";
+import { generateVerificationToken } from "@/lib/auth/verification-token";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { getSmtpConfig, isSmtpReady } from "@/lib/smtp-settings";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
@@ -26,17 +26,17 @@ export async function POST(req: NextRequest) {
   // Sempre retorna sucesso para evitar enumeração de e-mails.
   if (!user) return NextResponse.json({ ok: true });
 
-  const token = randomBytes(32).toString("hex");
+  const { rawToken, tokenHash } = generateVerificationToken();
   const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
 
-  // Remove tokens anteriores deste usuário e cria um novo.
+  // Remove tokens anteriores deste usuário e cria um novo (guarda só o hash).
   await db.verificationToken.deleteMany({ where: { identifier: normalizedEmail } });
   await db.verificationToken.create({
-    data: { identifier: normalizedEmail, token, expires },
+    data: { identifier: normalizedEmail, token: tokenHash, expires },
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? "";
-  const resetUrl = `${baseUrl}/auth/nova-senha?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
+  const resetUrl = `${baseUrl}/auth/nova-senha?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
 
   if (process.env.NODE_ENV === "development") {
     console.log(`[PASSWORD RESET] ${normalizedEmail} → ${resetUrl}`);

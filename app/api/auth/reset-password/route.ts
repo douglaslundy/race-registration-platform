@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { hashVerificationToken } from "@/lib/auth/verification-token";
 
 const schema = z.object({
   email: z.string().email(),
@@ -20,17 +21,18 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { token, password } = parsed.data;
+  const { password } = parsed.data;
   const email = parsed.data.email.trim().toLowerCase();
+  const tokenHash = hashVerificationToken(parsed.data.token);
 
-  const record = await db.verificationToken.findUnique({ where: { token } });
+  const record = await db.verificationToken.findUnique({ where: { token: tokenHash } });
 
   if (!record || record.identifier !== email) {
     return NextResponse.json({ error: "Token inválido" }, { status: 400 });
   }
 
   if (record.expires < new Date()) {
-    await db.verificationToken.delete({ where: { token } });
+    await db.verificationToken.delete({ where: { token: tokenHash } });
     return NextResponse.json({ error: "Token expirado. Solicite uma nova recuperação." }, { status: 400 });
   }
 
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   await db.$transaction([
     db.user.update({ where: { email }, data: { passwordHash: hash } }),
-    db.verificationToken.delete({ where: { token } }),
+    db.verificationToken.delete({ where: { token: tokenHash } }),
   ]);
 
   return NextResponse.json({ ok: true });
