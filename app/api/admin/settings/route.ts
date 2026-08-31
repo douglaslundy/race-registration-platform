@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { upsertSetting } from "@/lib/settings";
+import { validateSettingWrite } from "@/lib/settings-keys";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -28,16 +29,13 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  if (parsed.data.key === "pix_service_fee_discount_percent") {
-    const n = Number(parsed.data.value);
-    if (!Number.isInteger(n) || n < 0 || n > 100) {
-      return NextResponse.json(
-        { error: "Desconto PIX deve ser um inteiro entre 0 e 100" },
-        { status: 400 },
-      );
-    }
-    parsed.data.value = String(n); // persiste normalizado (getPixServiceFeeDiscountPercent lê com parseInt)
+  // M4: whitelist de chaves + validação por-chave no servidor (numéricas com range, URLs
+  // com https/host não-privado). Valores numéricos/URL são persistidos normalizados.
+  const validated = validateSettingWrite(parsed.data.key, parsed.data.value);
+  if (!validated.ok) {
+    return NextResponse.json({ error: validated.error }, { status: 400 });
   }
+  parsed.data.value = validated.value;
 
   try {
     const previous = await db.platformSetting.findUnique({ where: { key: parsed.data.key } });

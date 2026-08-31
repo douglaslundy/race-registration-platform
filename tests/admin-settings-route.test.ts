@@ -121,6 +121,64 @@ describe("admin settings api", () => {
     expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
   });
 
+  it("M4 — rejeita chave desconhecida", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "arbitrary_evil_key", value: "x" }),
+      }) as any,
+    );
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("M4 — rejeita service_fee_percent não-numérico", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "service_fee_percent", value: "abc" }),
+      }) as any,
+    );
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("M4 — rejeita service_fee_percent negativo", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "service_fee_percent", value: "-5000" }),
+      }) as any,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("M4 — rejeita whatsapp_api_url apontando para host interno", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "whatsapp_api_url", value: "http://169.254.169.254/" }),
+      }) as any,
+    );
+    expect(res.status).toBe(400);
+    expect(dbMock.platformSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("M4 — aceita service_fee_percent inteiro válido (normalizado)", async () => {
+    dbMock.platformSetting.findUnique.mockResolvedValueOnce(null);
+    dbMock.platformSetting.upsert.mockResolvedValueOnce({});
+    const res = await POST(
+      new Request("http://localhost/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({ key: "service_fee_percent", value: "500" }),
+      }) as any,
+    );
+    expect(res.status).toBe(200);
+    expect(dbMock.platformSetting.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: { value: "500" } }),
+    );
+  });
+
   it("mascara o valor no audit log quando a key é secreta (twilio_auth_token)", async () => {
     dbMock.platformSetting.findUnique.mockResolvedValueOnce({ value: "old-token" });
     dbMock.platformSetting.upsert.mockResolvedValueOnce({});
