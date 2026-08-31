@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { deleteObject } from "@/lib/s3";
+import { zodErrorResponse } from "@/lib/http/zod-error";
 
 const updateEventSchema = z.object({
   title: z.string().min(3).max(200).optional(),
@@ -50,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
   const parsed = updateEventSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return zodErrorResponse(parsed.error);
   }
 
   const scope = await resolveActingScope(session);

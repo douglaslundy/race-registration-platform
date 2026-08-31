@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 import { normalizeCep, isValidCep } from "@/lib/cep";
 import { hasValidMxRecord } from "@/lib/validate-email-domain";
+import { zodErrorResponse } from "@/lib/http/zod-error";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 const registerSchema = z
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return zodErrorResponse(parsed.error);
     }
 
     const {
