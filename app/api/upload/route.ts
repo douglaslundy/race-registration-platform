@@ -15,7 +15,7 @@ const ALLOWED_MIME: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
-const ALLOWED_PURPOSES = new Set(["banner", "list_banner", "regulation", "kit_info"]);
+const ALLOWED_PURPOSES = new Set(["banner", "list_banner", "regulation", "kit_info", "result_pdf"]);
 const MAX_SIZE = 10 * 1024 * 1024;
 
 // Confere os bytes reais do arquivo contra a assinatura do formato — o Content-Type do FormData

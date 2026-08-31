@@ -146,4 +146,33 @@ describe("POST /api/upload", () => {
     expect(res.status).toBe(400);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("aceita purpose=result_pdf para um PDF válido", async () => {
+    const pdfBytes = Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(20)]);
+    let uploadedBody: Buffer | undefined;
+    global.fetch = vi.fn(async (_url: any, init: any) => {
+      uploadedBody = Buffer.from(init.body as ArrayBuffer);
+      return new Response(null, { status: 200 });
+    }) as any;
+
+    const file = new File([pdfBytes], "classificacao.pdf", { type: "application/pdf" });
+    const res = await POST(makeUploadRequest(file, "result_pdf"));
+
+    expect(res.status).toBe(200);
+    expect(uploadedBody).toEqual(pdfBytes);
+  });
+
+  it("rejeita result_pdf quando os bytes não são de PDF (magic bytes)", async () => {
+    const fake = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    const fetchSpy = vi.fn();
+    global.fetch = fetchSpy as any;
+
+    const file = new File([fake], "fake.pdf", { type: "application/pdf" });
+    const res = await POST(makeUploadRequest(file, "result_pdf"));
+
+    const data = await res.json();
+    expect(res.status).toBe(400);
+    expect(data.error).toMatch(/não corresponde ao tipo/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

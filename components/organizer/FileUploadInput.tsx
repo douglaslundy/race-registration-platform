@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 interface Props {
-  purpose: "banner" | "list_banner" | "regulation" | "kit_info";
+  purpose: "banner" | "list_banner" | "regulation" | "kit_info" | "result_pdf";
   accept: string;
   label: string;
   hint?: string;
