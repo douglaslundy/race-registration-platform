@@ -28,6 +28,17 @@ interface AthleteProfileData {
   updatedAt: Date | string;
 }
 
+/** Snapshot dos dados do participante gravados NA inscrição (colunas `participant*`). É essa a
+ * identidade da inscrição — não a conta do atleta. */
+interface ParticipantData {
+  name: string;
+  email: string;
+  cpf: string | null;
+  birthDate: Date | string | null;
+  phone: string | null;
+  gender: string | null;
+}
+
 interface RegistrationContextData {
   status: string;
   createdAt: Date | string;
@@ -44,11 +55,18 @@ interface RegistrationContextData {
 }
 
 interface AthleteDetailsModalProps {
+  /** Nome da CONTA do atleta — usado no header quando não há `participant` e no form de conta. */
   athleteName: string;
+  /** E-mail da CONTA do atleta. */
   athleteEmail: string;
   profile: AthleteProfileData | null;
+  /** Snapshot da inscrição. Quando presente, o header e o botão primário passam a operar sobre ele. */
+  participant?: ParticipantData;
   registrationContext?: RegistrationContextData;
+  /** Endpoint da CONTA do atleta (`User`/`AthleteProfile`) — PATCH com os 10 campos do perfil. */
   editEndpoint?: string;
+  /** Endpoint do SNAPSHOT da inscrição (`participant*`) — PATCH com { name, email, cpf, birthDate, phone, gender }. */
+  participantEditEndpoint?: string;
   /** Presente sempre que o modal é aberto a partir de uma inscrição real (não usado em telas que
    * só mostram o perfil do atleta sem contexto de inscrição) — habilita o download do QR code. */
   registrationId?: string;
@@ -67,6 +85,8 @@ interface EditFormState {
   preferredShirtSize: string;
 }
 
+type Mode = "view" | "edit-registration" | "edit-account";
+
 function toDateInputValue(value: Date | string | null): string {
   if (!value) return "";
   const date = new Date(value);
@@ -77,18 +97,42 @@ export default function AthleteDetailsModal({
   athleteName,
   athleteEmail,
   profile,
+  participant,
   registrationContext,
   editEndpoint,
+  participantEditEndpoint,
   registrationId,
 }: AthleteDetailsModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [mode, setMode] = useState<Mode>("view");
   const [form, setForm] = useState<EditFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function startEdit() {
+  const displayName = participant?.name ?? athleteName;
+  const displayEmail = participant?.email ?? athleteEmail;
+  const canEditRegistration = Boolean(participant && participantEditEndpoint);
+
+  function startEditRegistration() {
+    if (!participant) return;
+    setForm({
+      name: participant.name,
+      email: participant.email,
+      cpf: participant.cpf ?? "",
+      birthDate: toDateInputValue(participant.birthDate ?? null),
+      phone: participant.phone ?? "",
+      gender: participant.gender ?? "",
+      city: "",
+      state: "",
+      teamName: "",
+      preferredShirtSize: "",
+    });
+    setError(null);
+    setMode("edit-registration");
+  }
+
+  function startEditAccount() {
     setForm({
       name: athleteName,
       email: athleteEmail,
@@ -102,7 +146,7 @@ export default function AthleteDetailsModal({
       preferredShirtSize: profile?.preferredShirtSize ?? "",
     });
     setError(null);
-    setMode("edit");
+    setMode("edit-account");
   }
 
   function cancelEdit() {
@@ -115,7 +159,7 @@ export default function AthleteDetailsModal({
   }
 
   async function handleSave() {
-    if (!form || !editEndpoint) return;
+    if (!form) return;
     setError(null);
 
     if (form.cpf && !isValidCpf(form.cpf)) {
@@ -123,22 +167,37 @@ export default function AthleteDetailsModal({
       return;
     }
 
+    const isRegistration = mode === "edit-registration";
+    const endpoint = isRegistration ? participantEditEndpoint : editEndpoint;
+    if (!endpoint) return;
+
+    const body = isRegistration
+      ? {
+          name: form.name,
+          email: form.email,
+          cpf: form.cpf ? normalizeCpf(form.cpf) : undefined,
+          birthDate: form.birthDate || undefined,
+          phone: form.phone || null,
+          gender: form.gender || null,
+        }
+      : {
+          name: form.name,
+          email: form.email,
+          cpf: form.cpf ? normalizeCpf(form.cpf) : undefined,
+          birthDate: form.birthDate || undefined,
+          phone: form.phone || null,
+          gender: form.gender || null,
+          city: form.city || null,
+          state: form.state || null,
+          teamName: form.teamName || null,
+          preferredShirtSize: form.preferredShirtSize || null,
+        };
+
     setSaving(true);
-    const res = await fetch(editEndpoint, {
+    const res = await fetch(endpoint, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        email: form.email,
-        cpf: form.cpf ? normalizeCpf(form.cpf) : undefined,
-        birthDate: form.birthDate || undefined,
-        phone: form.phone || null,
-        gender: form.gender || null,
-        city: form.city || null,
-        state: form.state || null,
-        teamName: form.teamName || null,
-        preferredShirtSize: form.preferredShirtSize || null,
-      }),
+      body: JSON.stringify(body),
     });
     setSaving(false);
 
@@ -151,6 +210,12 @@ export default function AthleteDetailsModal({
     setMode("view");
     router.refresh();
   }
+
+  const profileHeading = participant ? "Cadastro do atleta (conta)" : "Perfil do atleta";
+  const primaryBtnClass =
+    "px-4 py-2 text-sm rounded-lg border border-primary-500 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors";
+  const secondaryBtnClass =
+    "px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors";
 
   return (
     <>
@@ -170,12 +235,17 @@ export default function AthleteDetailsModal({
           >
             {mode === "view" ? (
               <>
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{athleteName}</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{athleteEmail}</p>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{displayName}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{displayEmail}</p>
+                {participant && (
+                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                    Dados desta inscrição (snapshot). O cadastro da conta aparece abaixo.
+                  </p>
+                )}
 
                 <div className="mt-4">
                   <h3 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2">
-                    Perfil do atleta
+                    {profileHeading}
                   </h3>
                   {profile ? (
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -313,21 +383,22 @@ export default function AthleteDetailsModal({
                   </p>
                 )}
 
-                <div className="mt-5 flex justify-end gap-2">
+                <div className="mt-5 flex flex-wrap justify-end gap-2">
+                  {canEditRegistration && (
+                    <button type="button" onClick={startEditRegistration} className={primaryBtnClass}>
+                      Corrigir dados desta inscrição
+                    </button>
+                  )}
                   {editEndpoint && (
                     <button
                       type="button"
-                      onClick={startEdit}
-                      className="px-4 py-2 text-sm rounded-lg border border-primary-500 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                      onClick={startEditAccount}
+                      className={participant ? secondaryBtnClass : primaryBtnClass}
                     >
-                      Editar
+                      {participant ? "Editar cadastro do atleta" : "Editar"}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setOpen(false)}
-                    className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
+                  <button type="button" onClick={() => setOpen(false)} className={secondaryBtnClass}>
                     Fechar
                   </button>
                 </div>
@@ -335,7 +406,14 @@ export default function AthleteDetailsModal({
             ) : (
               form && (
                 <>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Editar dados do atleta</h2>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    {mode === "edit-registration" ? "Corrigir dados desta inscrição" : "Editar cadastro do atleta"}
+                  </h2>
+                  {mode === "edit-registration" && (
+                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      Corrige apenas o snapshot desta inscrição. Não altera a conta do atleta.
+                    </p>
+                  )}
 
                   <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                     <div className="col-span-2">
@@ -399,48 +477,52 @@ export default function AthleteDetailsModal({
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Cidade</label>
-                      <input
-                        type="text"
-                        value={form.city}
-                        onChange={(e) => setField("city", e.target.value)}
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Estado (UF)</label>
-                      <input
-                        type="text"
-                        maxLength={2}
-                        value={form.state}
-                        onChange={(e) => setField("state", e.target.value.toUpperCase())}
-                        placeholder="SP"
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Equipe</label>
-                      <input
-                        type="text"
-                        value={form.teamName}
-                        onChange={(e) => setField("teamName", e.target.value)}
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Camiseta</label>
-                      <select
-                        value={form.preferredShirtSize}
-                        onChange={(e) => setField("preferredShirtSize", e.target.value)}
-                        className="input-field"
-                      >
-                        <option value="">Selecione</option>
-                        {SHIRT_SIZES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {mode === "edit-account" && (
+                      <>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Cidade</label>
+                          <input
+                            type="text"
+                            value={form.city}
+                            onChange={(e) => setField("city", e.target.value)}
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Estado (UF)</label>
+                          <input
+                            type="text"
+                            maxLength={2}
+                            value={form.state}
+                            onChange={(e) => setField("state", e.target.value.toUpperCase())}
+                            placeholder="SP"
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Equipe</label>
+                          <input
+                            type="text"
+                            value={form.teamName}
+                            onChange={(e) => setField("teamName", e.target.value)}
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Camiseta</label>
+                          <select
+                            value={form.preferredShirtSize}
+                            onChange={(e) => setField("preferredShirtSize", e.target.value)}
+                            className="input-field"
+                          >
+                            <option value="">Selecione</option>
+                            {SHIRT_SIZES.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {error && (

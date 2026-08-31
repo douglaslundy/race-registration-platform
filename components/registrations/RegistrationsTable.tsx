@@ -24,6 +24,12 @@ export interface RegistrationRow {
   cancellationRequestedAt: Date | null;
   teamName: string | null;
   notes: string | null;
+  participantName: string;
+  participantEmail: string;
+  participantCpf: string | null;
+  participantPhone: string | null;
+  participantBirthDate: Date | null;
+  participantGender: string | null;
   athlete: {
     id: string;
     name: string;
@@ -56,10 +62,14 @@ export default function RegistrationsTable({
   registrations,
   renderActions,
   editEndpoint,
+  participantEditEndpoint,
 }: {
   registrations: RegistrationRow[];
   renderActions?: (registration: RegistrationRow) => ReactNode;
+  /** Endpoint da CONTA do atleta (`User`/`AthleteProfile`). */
   editEndpoint?: (registration: RegistrationRow) => string;
+  /** Endpoint do SNAPSHOT da inscrição (colunas `participant*`). */
+  participantEditEndpoint?: (registration: RegistrationRow) => string;
 }) {
   return (
     <div className="card overflow-x-auto print:overflow-visible print:shadow-none print:border-0 print:p-0">
@@ -94,13 +104,22 @@ export default function RegistrationsTable({
             return (
               <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                 <td className="py-2 pr-3 max-w-[10rem]">
-                  <p className="font-medium truncate" title={r.athlete.name}>{r.athlete.name}</p>
-                  <p className="text-gray-500 truncate" title={r.athlete.email}>{r.athlete.email}</p>
+                  <p className="font-medium truncate" title={r.participantName}>{r.participantName}</p>
+                  <p className="text-gray-500 truncate" title={r.participantEmail}>{r.participantEmail}</p>
                   <AthleteDetailsModal
                     athleteName={r.athlete.name}
                     athleteEmail={r.athlete.email}
                     profile={r.athlete.athleteProfile}
+                    participant={{
+                      name: r.participantName,
+                      email: r.participantEmail,
+                      cpf: r.participantCpf,
+                      birthDate: r.participantBirthDate,
+                      phone: r.participantPhone,
+                      gender: r.participantGender,
+                    }}
                     editEndpoint={editEndpoint?.(r)}
+                    participantEditEndpoint={participantEditEndpoint?.(r)}
                     registrationId={r.id}
                     registrationContext={{
                       status: r.status,
@@ -118,8 +137,8 @@ export default function RegistrationsTable({
                     }}
                   />
                 </td>
-                <td className="py-2 pr-3 text-gray-700">{r.athlete.athleteProfile?.cpf ?? "—"}</td>
-                <td className="py-2 pr-3 text-gray-700">{r.athlete.athleteProfile?.phone ?? "—"}</td>
+                <td className="py-2 pr-3 text-gray-700">{r.participantCpf ?? "—"}</td>
+                <td className="py-2 pr-3 text-gray-700">{r.participantPhone ?? "—"}</td>
                 <td className="py-2 pr-3 text-gray-700">
                   <p>{r.route?.name ?? "—"}</p>
                   <p className="text-gray-500">{r.category?.name ?? "—"}</p>
@@ -149,7 +168,7 @@ export default function RegistrationsTable({
                   {r.cancellationReason && (
                     <div className="mt-1">
                       <CancellationReasonModal
-                        athleteName={r.athlete.name}
+                        athleteName={r.participantName}
                         reason={r.cancellationReason}
                         requestedAt={r.cancellationRequestedAt}
                       />

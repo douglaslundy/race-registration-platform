@@ -335,6 +335,7 @@ export default async function InscritosPage({
           <RegistrationsTable
             registrations={registrationsWithPayment}
             editEndpoint={(r) => `/api/organizer/registrations/${r.id}/athlete`}
+            participantEditEndpoint={(r) => `/api/organizer/registrations/${r.id}`}
             renderActions={(r) => {
               const payment = r.order.payments[0];
               return (
