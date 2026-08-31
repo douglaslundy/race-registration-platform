@@ -159,21 +159,13 @@ export async function POST(req: NextRequest) {
       installments,
     });
   } catch (payErr) {
-    let msg = "Erro no gateway de pagamento";
-    if (payErr instanceof Error) {
-      msg = payErr.message;
-    } else if (payErr && typeof payErr === "object") {
-      const obj = payErr as Record<string, unknown>;
-      if (typeof obj.message === "string" && obj.message) {
-        msg = obj.message;
-      } else if (typeof obj.error === "string" && obj.error) {
-        msg = obj.error;
-      } else {
-        try { msg = JSON.stringify(obj).slice(0, 300); } catch { /* keep default */ }
-      }
-    }
+    // L4: nunca devolver texto cru do gateway ao cliente — pode vazar internals/tokens
+    // embutidos no objeto de erro. Detalhe só no log do servidor; cliente recebe msg fixa.
     console.error("[checkout] payment gateway error:", payErr);
-    return NextResponse.json({ error: msg }, { status: 502 });
+    return NextResponse.json(
+      { error: "Não foi possível processar o pagamento no momento. Tente novamente em alguns instantes." },
+      { status: 502 },
+    );
   }
 
   if (paymentResult.status === "CANCELLED") {
