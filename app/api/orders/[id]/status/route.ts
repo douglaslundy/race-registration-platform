@@ -40,7 +40,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           payment.provider === "mercadopago" && payment.paymentAccountId
             ? await getPaymentAccountById(payment.paymentAccountId).catch(() => null)
             : null;
-        const mpStatus = await checkMPPaymentStatus(payment.providerPaymentId, acc?.accessToken);
+        const mpStatus = await checkMPPaymentStatus(payment.providerPaymentId, {
+          expectedOrderId: order.id,
+          expectedAmount: order.totalAmount,
+          accessToken: acc?.accessToken,
+        });
         if (mpStatus === "PAID" && payment.status !== "PAID") {
           const result = await db.$transaction((tx) =>
             applyGatewayStatus(tx, payment, order, order.registrations, "PAID", "status_poll", { paidAt: new Date() }),

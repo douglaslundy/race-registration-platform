@@ -62,7 +62,7 @@ describe("order status route alert hook", () => {
     });
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ status: "approved" }),
+      json: async () => ({ status: "approved", external_reference: "order-1", transaction_amount: 100 }),
     });
 
     await GET(
@@ -83,7 +83,7 @@ describe("order status route alert hook", () => {
     });
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ status: "approved" }),
+      json: async () => ({ status: "approved", external_reference: "order-1", transaction_amount: 100 }),
     });
 
     await GET(
