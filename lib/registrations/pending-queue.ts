@@ -5,7 +5,8 @@ export interface PendingCancellation {
   createdAt: Date;
   cancellationReason: string | null;
   cancellationRequestedAt: Date | null;
-  athlete: { name: string; email: string };
+  participantName: string;
+  participantEmail: string;
   event: { id: string; title: string };
   hasPaidPayment: boolean;
 }
@@ -31,7 +32,8 @@ export async function listPendingCancellations(organizerUserId?: string): Promis
       createdAt: true,
       cancellationReason: true,
       cancellationRequestedAt: true,
-      athlete: { select: { name: true, email: true } },
+      participantName: true,
+      participantEmail: true,
       event: { select: { id: true, title: true } },
       order: { select: { payments: { where: { status: "PAID" }, take: 1, select: { id: true } } } },
     },

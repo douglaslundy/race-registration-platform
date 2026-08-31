@@ -73,7 +73,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const registrations = await db.registration.findMany({
     where,
     include: {
-      athlete: { select: { name: true, email: true, athleteProfile: { select: { cpf: true, phone: true } } } },
       route: { select: { name: true } },
       category: { select: { name: true } },
       ticketBatch: { select: { name: true } },

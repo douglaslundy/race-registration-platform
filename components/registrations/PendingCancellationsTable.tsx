@@ -33,15 +33,15 @@ export default function PendingCancellationsTable({
             <tr key={item.id} className="border-b dark:border-gray-700 last:border-0">
               <td className="py-2 pr-3">{item.event.title}</td>
               <td className="py-2 pr-3">
-                <p className="font-medium">{item.athlete.name}</p>
-                <p className="text-gray-500">{item.athlete.email}</p>
+                <p className="font-medium">{item.participantName}</p>
+                <p className="text-gray-500">{item.participantEmail}</p>
               </td>
               <td className="py-2 pr-3 text-gray-700">
                 {item.cancellationRequestedAt ? formatDate(item.cancellationRequestedAt, "dd/MM/yy HH:mm") : "—"}
               </td>
               <td className="py-2 pr-3">
                 <CancellationReasonModal
-                  athleteName={item.athlete.name}
+                  athleteName={item.participantName}
                   reason={item.cancellationReason ?? ""}
                   requestedAt={item.cancellationRequestedAt}
                 />

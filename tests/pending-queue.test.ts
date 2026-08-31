@@ -14,7 +14,8 @@ describe("listPendingCancellations", () => {
         createdAt: new Date(),
         cancellationReason: null,
         cancellationRequestedAt: new Date(),
-        athlete: { name: "Atleta", email: "atleta@example.com" },
+        participantName: "Atleta",
+        participantEmail: "atleta@example.com",
         event: { id: "event-1", title: "Corrida" },
         order: { payments: [{ id: "payment-1" }] },
       },
@@ -31,6 +32,7 @@ describe("listPendingCancellations", () => {
       }),
     );
     expect(result[0].hasPaidPayment).toBe(true);
+    expect(result[0].participantName).toBe("Atleta");
   });
 
   it("com organizerUserId, escopa por eventos daquele organizador", async () => {
@@ -40,7 +42,8 @@ describe("listPendingCancellations", () => {
         createdAt: new Date(),
         cancellationReason: null,
         cancellationRequestedAt: new Date(),
-        athlete: { name: "Atleta", email: "atleta@example.com" },
+        participantName: "Atleta",
+        participantEmail: "atleta@example.com",
         event: { id: "event-1", title: "Corrida" },
         order: { payments: [] },
       },

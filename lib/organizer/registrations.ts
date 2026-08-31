@@ -25,7 +25,7 @@ export function buildRegistrationOrderBy(
   const normalizedDir: SortDirection = dir === "desc" ? "desc" : "asc";
 
   if (sort === "name") {
-    return { orderBy: { athlete: { name: normalizedDir } }, normalizedSort: "name", normalizedDir };
+    return { orderBy: { participantName: normalizedDir }, normalizedSort: "name", normalizedDir };
   }
   return { orderBy: { createdAt: normalizedDir }, normalizedSort: "date", normalizedDir };
 }
@@ -92,10 +92,10 @@ export function buildRegistrationWhere(
       ? {
           OR: [
             { orderId: { contains: query, mode: "insensitive" as const } },
-            { athlete: { name: { contains: query, mode: "insensitive" as const } } },
-            { athlete: { email: { contains: query, mode: "insensitive" as const } } },
+            { participantName: { contains: query, mode: "insensitive" as const } },
+            { participantEmail: { contains: query, mode: "insensitive" as const } },
             ...(normalizedCpf
-              ? [{ athlete: { athleteProfile: { cpf: { contains: normalizedCpf } } } }]
+              ? [{ participantCpf: { contains: normalizedCpf } }]
               : []),
           ],
         }
