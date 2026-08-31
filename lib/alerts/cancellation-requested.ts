@@ -24,7 +24,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
       select: {
         cancellationReason: true,
         cancellationRequestedAt: true,
-        athlete: { select: { name: true } },
+        participantName: true,
         event: {
           select: {
             id: true,
@@ -62,7 +62,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
           try {
             await sendCancellationRequestedEmail({
               to: recipient.email,
-              athleteName: registration.athlete.name,
+              athleteName: registration.participantName,
               eventTitle: registration.event.title,
               eventId: registration.event.id,
               reason,
@@ -91,7 +91,7 @@ export async function notifyCancellationRequested(registrationId: string): Promi
           const text = renderTemplate(
             template.body,
             {
-              nome_atleta: registration.athlete.name,
+              nome_atleta: registration.participantName,
               nome_evento: registration.event.title,
               motivo_cancelamento: reason,
             },

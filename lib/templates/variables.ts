@@ -8,12 +8,12 @@ export interface VariableDefinition {
 
 export const ALL_VARIABLES: VariableDefinition[] = [
   // Atleta
-  { name: "nome_atleta", label: "Nome do atleta", category: "Atleta", description: "Registration.athlete.name (User.name).", sample: "Maria Exemplo" },
+  { name: "nome_atleta", label: "Nome do atleta", category: "Atleta", description: "Registration.participantName — nome do participante no momento da inscrição.", sample: "Maria Exemplo" },
   { name: "primeiro_nome_atleta", label: "Primeiro nome do atleta", category: "Atleta", description: "Primeira palavra de nome_atleta.", sample: "Maria" },
-  { name: "email_atleta", label: "E-mail do atleta", category: "Atleta", description: "User.email.", sample: "maria@exemplo.com" },
-  { name: "telefone_atleta", label: "Telefone do atleta", category: "Atleta", description: "AthleteProfile.phone. Pode ser vazio.", sample: "(11) 98888-8888" },
-  { name: "documento_atleta", label: "CPF do atleta", category: "Atleta", description: "AthleteProfile.cpf. Pode ser vazio.", sample: "123.456.789-00" },
-  { name: "data_nascimento_atleta", label: "Data de nascimento", category: "Atleta", description: "AthleteProfile.birthDate, formatada dd/mm/aaaa.", sample: "15/03/1990" },
+  { name: "email_atleta", label: "E-mail do atleta", category: "Atleta", description: "Registration.participantEmail — e-mail do participante no momento da inscrição.", sample: "maria@exemplo.com" },
+  { name: "telefone_atleta", label: "Telefone do atleta", category: "Atleta", description: "Registration.participantPhone. Pode ser vazio.", sample: "(11) 98888-8888" },
+  { name: "documento_atleta", label: "CPF do atleta", category: "Atleta", description: "Registration.participantCpf. Pode ser vazio.", sample: "123.456.789-00" },
+  { name: "data_nascimento_atleta", label: "Data de nascimento", category: "Atleta", description: "Registration.participantBirthDate, formatada dd/mm/aaaa.", sample: "15/03/1990" },
   { name: "equipe_atleta", label: "Equipe do atleta", category: "Atleta", description: "AthleteProfile.teamName. Pode ser vazio.", sample: "Equipe Exemplo Corrida" },
   { name: "categoria_inscricao", label: "Categoria da inscrição", category: "Atleta", description: "EventCategory.name da inscrição (não é campo do atleta).", sample: "Masculino 30-34" },
 

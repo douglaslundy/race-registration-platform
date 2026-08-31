@@ -116,13 +116,13 @@ export async function notifyOrderConfirmed(
             id: true,
             notes: true,
             athleteUserId: true,
-            proxyAthleteDisplayName: true,
+            participantName: true,
+            participantCpf: true,
             athlete: {
               select: {
-                name: true,
                 email: true,
                 receiveEventMessages: true,
-                athleteProfile: { select: { phone: true, cpf: true } },
+                athleteProfile: { select: { phone: true } },
               },
             },
           },
@@ -136,9 +136,10 @@ export async function notifyOrderConfirmed(
 
     const kitQrCodePng = await generateKitQrCodePng(registration.id);
     const kitQrCodeBase64 = kitQrCodePng.toString("base64");
-    // Nome + CPF do atleta abaixo da legenda: permite localizar a inscrição no balcão de retirada
-    // (busca por nome/CPF em lib/kit-delivery.ts) quando não há leitor de QR code disponível.
-    const kitQrCaption = `Apresente este QR code na retirada do kit\nNome: ${registration.proxyAthleteDisplayName ?? registration.athlete.name}\nCPF: ${registration.athlete.athleteProfile?.cpf ?? "não informado"}`;
+    // Nome + CPF do participante (snapshot da inscrição) abaixo da legenda: permite localizar a
+    // inscrição no balcão de retirada (busca por nome/CPF em lib/kit-delivery.ts) quando não há
+    // leitor de QR code disponível.
+    const kitQrCaption = `Apresente este QR code na retirada do kit\nNome: ${registration.participantName}\nCPF: ${registration.participantCpf ?? "não informado"}`;
 
     const sponsorPromo = await getSponsorPromoText(order.event?.id ?? "");
 
@@ -206,7 +207,7 @@ export async function notifyOrderConfirmed(
       "BUYER",
       order.buyer.receiveEventMessages,
       {
-        nome_atleta: registration.proxyAthleteDisplayName ?? registration.athlete.name,
+        nome_atleta: registration.participantName,
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,
         link_evento: detailsUrl,
@@ -232,7 +233,7 @@ export async function notifyOrderConfirmed(
           if (athleteEmailClaimed) {
             await sendRegistrationConfirmationEmail({
               to: registration.athlete.email,
-              name: registration.athlete.name,
+              name: registration.participantName,
               registrationId: registration.id,
               orderId,
               eventTitle: order.event?.title,
@@ -260,7 +261,7 @@ export async function notifyOrderConfirmed(
       "ATHLETE",
       registration.athlete.receiveEventMessages,
       {
-        nome_atleta: registration.proxyAthleteDisplayName ?? registration.athlete.name,
+        nome_atleta: registration.participantName,
         nome_comprador: order.buyer.name,
         nome_evento: order.event?.title ?? "",
         codigo_confirmacao: orderId,

@@ -22,9 +22,9 @@ export async function notifyRegistrationCancelledByStaff(registrationId: string)
       where: { id: registrationId },
       select: {
         cancellationReason: true,
+        participantName: true,
         athlete: {
           select: {
-            name: true,
             email: true,
             receiveEventMessages: true,
             athleteProfile: { select: { phone: true } },
@@ -45,7 +45,7 @@ export async function notifyRegistrationCancelledByStaff(registrationId: string)
       try {
         await sendRegistrationCancelledByStaffEmail({
           to: registration.athlete.email,
-          athleteName: registration.athlete.name,
+          athleteName: registration.participantName,
           eventTitle: registration.event.title,
           eventId: registration.event.id,
           reason,
@@ -66,7 +66,7 @@ export async function notifyRegistrationCancelledByStaff(registrationId: string)
         );
         const text = renderTemplate(
           template.body,
-          { nome_atleta: registration.athlete.name, nome_evento: registration.event.title, motivo_cancelamento: reason },
+          { nome_atleta: registration.participantName, nome_evento: registration.event.title, motivo_cancelamento: reason },
           "WHATSAPP",
         );
         await sendWhatsAppMessage(phone, text, "REGISTRATION_CANCELLED_BY_STAFF", { appendPreferencesFooter: true });

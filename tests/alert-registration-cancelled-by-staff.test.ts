@@ -16,8 +16,8 @@ const dbMock = db as any;
 
 const registrationFixture = {
   cancellationReason: "Pedido da comissão organizadora",
+  participantName: "Atleta Teste",
   athlete: {
-    name: "Atleta Teste",
     email: "atleta@example.com",
     receiveEventMessages: true,
     athleteProfile: { phone: "5511999998888" },

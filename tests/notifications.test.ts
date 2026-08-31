@@ -57,6 +57,8 @@ const orderFixture = {
       id: "reg-1",
       notes: "Chegarei atrasado",
       athleteUserId: "user-1",
+      participantName: "Atleta Teste",
+      participantCpf: "11122233344",
       athlete: {
         name: "Atleta Teste",
         email: "atleta@example.com",
@@ -96,6 +98,41 @@ describe("notifyOrderConfirmed", () => {
       where: { id: "order-1" },
       data: { confirmationEmailSentAt: expect.any(Date) },
     });
+  });
+
+  it("conteúdo usa participantName/participantCpf do snapshot da inscrição; e-mail vai pro comprador", async () => {
+    dbMock.order.findUnique.mockResolvedValueOnce({
+      ...orderFixture,
+      buyer: { ...orderFixture.buyer, email: "buyer@x", name: "Comprador X" },
+      registrations: [
+        {
+          ...orderFixture.registrations[0],
+          participantName: "Snap",
+          participantCpf: "99988877766",
+          athlete: {
+            ...orderFixture.registrations[0].athlete,
+            name: "Nome Da Conta",
+            email: "buyer@x",
+          },
+        },
+      ],
+    });
+    mockWhatsAppReady(true);
+
+    await notifyOrderConfirmed("order-1");
+
+    // e-mail: destinatário é o comprador (conta), saudação é o nome do comprador
+    expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "buyer@x", name: "Comprador X" }),
+    );
+    // conteúdo exibido (legenda do QR + variável do WhatsApp) usa o snapshot da inscrição
+    expect(sendWhatsAppDocument).toHaveBeenCalledWith(
+      "5511999999999",
+      expect.any(String),
+      "qrcode-retirada-kit.png",
+      "Apresente este QR code na retirada do kit\nNome: Snap\nCPF: 99988877766",
+      expect.anything(),
+    );
   });
 
   it("envia notes como undefined quando a inscrição não tem observação", async () => {
@@ -170,7 +207,7 @@ describe("notifyOrderConfirmed", () => {
       registrations: [
         {
           ...orderFixture.registrations[0],
-          athlete: { ...orderFixture.registrations[0].athlete, athleteProfile: { phone: "5511999999999", cpf: null } },
+          participantCpf: null,
         },
       ],
     });
@@ -283,7 +320,8 @@ describe("notifyOrderConfirmed", () => {
         id: "reg-1",
         notes: null,
         athleteUserId: "athlete-1",
-        proxyAthleteDisplayName: "Nome Digitado Pelo Comprador",
+        participantName: "Nome Digitado Pelo Comprador",
+        participantCpf: null,
         athlete: { name: "Atleta Convidado", email: "atleta-convidado@example.com", athleteProfile: { phone: "5511888888888" } },
       },
     ],
@@ -313,7 +351,7 @@ describe("notifyOrderConfirmed", () => {
     await notifyOrderConfirmed("order-1");
 
     expect(sendRegistrationConfirmationEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "atleta-convidado@example.com", name: "Atleta Convidado" }),
+      expect.objectContaining({ to: "atleta-convidado@example.com", name: "Nome Digitado Pelo Comprador" }),
     );
     expect(sendWhatsAppMessage).toHaveBeenCalledWith(
       "5511888888888",
