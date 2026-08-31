@@ -2,7 +2,50 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
+
+// L10 (auditoria 2026-08-31): antes as linhas do backup eram mapeadas direto pro createMany
+// com enums castados sem checar. Validação mínima de shape das tabelas mais sensíveis + garantia
+// de que cada chave de tabela é um array. Schemas zod por-tabela completos ficam DEFERIDOS
+// (ver report) — o import já é ADMIN + 2FA, risco residual é sessão de admin comprometida.
+const USER_ROLES = ["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER", "ASSISTANT", "ADVERTISER"] as const;
+
+const userRowSchema = z
+  .object({
+    id: z.string().min(1),
+    email: z.string().min(1),
+    name: z.string(),
+    role: z.enum(USER_ROLES),
+  })
+  .passthrough();
+
+const paymentAccountRowSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string(),
+    accessToken: z.string(),
+  })
+  .passthrough();
+
+function validateRows(backup: Record<string, unknown>): string | null {
+  for (const key of TABLE_KEYS) {
+    if (key in backup && !Array.isArray(backup[key])) {
+      return `A tabela "${key}" do backup não é uma lista`;
+    }
+  }
+  for (const [i, row] of ((backup.users as unknown[]) ?? []).entries()) {
+    if (!userRowSchema.safeParse(row).success) {
+      return `Linha ${i} de "users" inválida (id/email/role obrigatórios, role precisa ser um papel conhecido)`;
+    }
+  }
+  for (const [i, row] of ((backup.paymentAccounts as unknown[]) ?? []).entries()) {
+    if (!paymentAccountRowSchema.safeParse(row).success) {
+      return `Linha ${i} de "paymentAccounts" inválida`;
+    }
+  }
+  return null;
+}
 
 export const maxDuration = 120;
 
@@ -401,6 +444,11 @@ export async function POST(req: NextRequest) {
   const hasAnyKnownKey = TABLE_KEYS.some((k) => fileKeys.includes(k));
   if (!hasAnyKnownKey) {
     return NextResponse.json({ error: "Arquivo não parece ser um backup válido deste sistema" }, { status: 400 });
+  }
+
+  const rowError = validateRows(backup);
+  if (rowError) {
+    return NextResponse.json({ error: rowError }, { status: 400 });
   }
 
   // 2FA obrigatório antes de qualquer operação destrutiva.

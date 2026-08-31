@@ -84,6 +84,21 @@ describe("admin backup import api", () => {
     expect((await res.json()).error).toMatch(/inválido ou corrompido/i);
   });
 
+  it("L10 — rejeita user row com role desconhecido, sem consumir 2FA nem apagar nada", async () => {
+    const res = await POST(makeRequest({
+      users: [{ id: "u1", email: "e@x.com", name: "N", role: "SUPERADMIN" }],
+    }));
+    expect(res.status).toBe(400);
+    expect(verifyCodeMock).not.toHaveBeenCalled();
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("L10 — rejeita quando uma chave de tabela não é lista", async () => {
+    const res = await POST(makeRequest({ users: ({ not: "an array" } as unknown) as unknown[] }));
+    expect(res.status).toBe(400);
+    expect(dbMock.$transaction).not.toHaveBeenCalled();
+  });
+
   it("rejects a file with none of the expected table keys", async () => {
     const res = await POST(makeRequest({ somethingElse: [] }));
     expect(res.status).toBe(400);
