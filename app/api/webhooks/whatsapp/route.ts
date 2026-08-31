@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { updateMessageLogStatusByProviderMessageId } from "@/lib/message-logs";
 import { updateCampaignRecipientStatusByProviderMessageId } from "@/lib/campaigns/delivery-status";
 
@@ -7,12 +8,21 @@ const ACK_STATUS_MAP: Record<string, "DELIVERED" | "READ"> = {
   READ: "READ",
 };
 
-export async function POST(req: NextRequest) {
-  const url = new URL(req.url);
-  const secret = url.searchParams.get("secret");
-  const expected = process.env.WHATSAPP_WEBHOOK_SECRET;
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
 
-  if (!expected || secret !== expected) {
+export async function POST(req: NextRequest) {
+  const expected = process.env.WHATSAPP_WEBHOOK_SECRET;
+  // L2: preferir o header (não vaza em log de proxy / Referer). A query string continua aceita
+  // só como fallback pro período de transição até o webhook ser re-registrado com o header.
+  const headerSecret = req.headers.get("x-webhook-secret");
+  const querySecret = new URL(req.url).searchParams.get("secret");
+  const provided = headerSecret ?? querySecret ?? "";
+
+  if (!expected || !safeEqual(provided, expected)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 

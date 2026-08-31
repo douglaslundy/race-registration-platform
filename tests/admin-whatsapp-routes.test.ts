@@ -179,7 +179,8 @@ describe("admin whatsapp routes", () => {
 
       expect(setWebhook).toHaveBeenCalledWith(
         configMock,
-        "https://app.example.com/api/webhooks/whatsapp?secret=shh",
+        "https://app.example.com/api/webhooks/whatsapp",
+        { "x-webhook-secret": "shh" },
       );
     });
 

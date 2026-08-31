@@ -14,7 +14,8 @@ async function registerWebhookBestEffort(config: WhatsAppConfig): Promise<void> 
   if (!secret || !baseUrl) return;
 
   try {
-    await setWebhook(config, `${baseUrl}/api/webhooks/whatsapp?secret=${secret}`);
+    // L2: segredo vai no header, não na query string (evita vazamento em logs de proxy).
+    await setWebhook(config, `${baseUrl}/api/webhooks/whatsapp`, { "x-webhook-secret": secret });
   } catch {
     // Best-effort — não deve quebrar a checagem de status.
   }

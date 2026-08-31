@@ -154,10 +154,17 @@ export async function sendMediaMessage(
   return { providerMessageId: null };
 }
 
-export async function setWebhook(config: WhatsAppConfig, url: string): Promise<void> {
+export async function setWebhook(
+  config: WhatsAppConfig,
+  url: string,
+  headers?: Record<string, string>,
+): Promise<void> {
+  const webhook: Record<string, unknown> = { url, enabled: true, events: ["MESSAGES_UPDATE"] };
+  // L2: manda o segredo do webhook como header (não na query string) quando suportado.
+  if (headers && Object.keys(headers).length > 0) webhook.headers = headers;
   const { status, body } = await evolutionFetch(config, `/webhook/set/${config.instanceName}`, {
     method: "POST",
-    body: { webhook: { url, enabled: true, events: ["MESSAGES_UPDATE"] } },
+    body: { webhook },
   });
 
   if (status >= 400) {

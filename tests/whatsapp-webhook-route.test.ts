@@ -71,6 +71,27 @@ describe("POST /api/webhooks/whatsapp", () => {
     expect(updateCampaignRecipientStatusByProviderMessageId).not.toHaveBeenCalled();
   });
 
+  it("L2 — aceita o secret pelo header x-webhook-secret", async () => {
+    const req = new Request("http://localhost/api/webhooks/whatsapp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-webhook-secret": "shh" },
+      body: JSON.stringify({ data: { keyId: "wamid.h", status: "READ" } }),
+    }) as any;
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(updateMessageLogStatusByProviderMessageId).toHaveBeenCalledWith("wamid.h", "READ");
+  });
+
+  it("L2 — header errado → 401 (comparação constante)", async () => {
+    const req = new Request("http://localhost/api/webhooks/whatsapp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-webhook-secret": "nope" },
+      body: JSON.stringify({}),
+    }) as any;
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
   it("corpo malformado (sem data.keyId) retorna 200 sem chamar nenhum update", async () => {
     const res = await POST(makeRequest("shh", { event: "messages.update" }));
     expect(res.status).toBe(200);
