@@ -18,7 +18,63 @@ Datas de nascimento são datas de calendário guardadas como meia-noite UTC (`19
 
 ---
 
-## Sub-projeto C — snapshot de dados da inscrição — CONCLUÍDO (não deployado)
+## Última atualização (2026-08-31 — Página pública de resultados (PDFs) — CONCLUÍDA (não deployada))
+
+Branch `feat/pagina-resultados-pdf` (9 tasks, subagent-driven). Spec:
+`docs/superpowers/specs/2026-08-31-pagina-resultados-pdf-design.md`.
+Verificação final: **`npx vitest run` 297 arquivos / 2330 testes verdes**, **`npx tsc --noEmit`
+limpo**, build ✓ (confirmado por task e pelo reviewer).
+
+### O que faz
+- O organizador pode publicar resultados de corrida como **PDFs** (nome de exibição + upload),
+  sem substituir o import de CSV — os dois convivem. Cada PDF cadastrado vira um **botão** na
+  página pública de resultados, com o **banner do evento** no topo (modelo em `modelo_classificacao/`).
+- `Event.resultsSubtitle` (opcional) = o texto de destaque abaixo do banner (ex.: "5KM").
+- Página pública `/eventos/[slug]/resultados`: `RESULTADOS` + banner + subtítulo + grid de botões
+  navy (um por PDF) + **abaixo**, a tabela pesquisável do CSV quando há import publicado.
+- Página pública do evento: botão **"🏆 Resultado"** no card lateral "Inscrições", só quando o
+  evento tem ≥1 PDF **ou** um `ResultImport` publicado (`lib/events/has-results.ts`).
+
+### Arquivos principais
+- Schema: `EventResultFile` (label/fileUrl/fileName/createdById) + `Event.resultsSubtitle` +
+  migração `prisma/migrations/20260831010000_event_result_files`.
+- `app/api/upload/route.ts` — purpose `result_pdf` (PDF, magic-bytes já existia).
+- `app/api/events/[id]/result-files/route.ts` (POST cria PDF + PATCH grava subtítulo) e
+  `.../result-files/[fileId]/route.ts` (DELETE) — todas sob `results.import` + checagem anti-IDOR.
+- `components/organizer/EventResultFilesManager.tsx` (novo) + `app/organizador/eventos/[id]/resultados/page.tsx`
+  vira server component; `ResultadosClient.tsx` perde o "chrome" externo (fica só a seção de CSV).
+- `app/(public)/eventos/[slug]/resultados/page.tsx` (banner+botões+tabela), `lib/events.ts`
+  (`getEventBySlug` include `resultFiles`/`resultImports`), `app/(public)/eventos/[slug]/page.tsx` (botão).
+
+### Decisões não óbvias
+- CSV e PDF **convivem** (decisão do usuário) — nada do fluxo de CSV foi removido.
+- PDF fica público **assim que salvo** (sem toggle de publicação); remoção via `ConfirmModal`.
+- Toda gestão de resultados sob **`results.import`** (inclusive o subtítulo — rota dedicada
+  `PATCH /result-files`, não `PATCH /api/events/[id]`), pra um assistente só-de-resultados
+  conseguir tudo.
+- `EventResultFilesManager` não guarda estado local da lista — usa `initialFiles` do server +
+  `router.refresh()` após cada mutação.
+
+### Minor deferido (registrado, não bloqueia)
+- Page gate é `results.import` OR `results.publish`, mas as rotas exigem `results.import` — um
+  ASSISTANT só com `results.publish` abre o manager mas toda mutação dá 403. Ajustar o gate da
+  page pra só `results.import` se incomodar.
+
+### Incidente durante a execução
+- Outra sessão do Claude commitou um fix não relacionado (`d42e140` dashboard/export) em cima
+  desta branch por engano; salvo em `salvage/dashboard-export-fix`, branch resetada. O commit
+  espera decisão (cherry-pick pra `main`).
+
+### PRÓXIMA TAREFA
+1. Revisão whole-branch → merge (usuário escolhe).
+2. Deploy: `git pull` no VPS → `docker build` → **`prisma db push`** (aditivo: tabela
+   `event_result_files` + coluna `events.resultsSubtitle`) → restart. **Sem backfill.**
+3. Conferir na produção: aba de resultados do organizador (subir PDF + salvar "5KM"); página
+   pública com banner + botões; botão "Resultado" no card de inscrições.
+
+---
+
+## Última atualização (2026-08-31 — Sub-projeto C — snapshot de dados da inscrição — CONCLUÍDO (não deployado))
 
 Branch `feat/snapshot-dados-inscricao` (15 tasks, subagent-driven). Verificação final (Task 15):
 **`npx vitest run` 289 arquivos / 2234 testes verdes**, **`npx tsc --noEmit` limpo**, **`npm run
