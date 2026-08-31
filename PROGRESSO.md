@@ -18,12 +18,15 @@ Datas de nascimento são datas de calendário guardadas como meia-noite UTC (`19
 
 ---
 
-## Última atualização (2026-08-31 — Página pública de resultados (PDFs) — CONCLUÍDA (não deployada))
+## Última atualização (2026-08-31 — Página pública de resultados (PDFs) — DEPLOYADA)
 
-Branch `feat/pagina-resultados-pdf` (9 tasks, subagent-driven). Spec:
-`docs/superpowers/specs/2026-08-31-pagina-resultados-pdf-design.md`.
-Verificação final: **`npx vitest run` 297 arquivos / 2330 testes verdes**, **`npx tsc --noEmit`
-limpo**, build ✓ (confirmado por task e pelo reviewer).
+SDD 9 tasks + fix wave + whole-branch review (Opus, "Ready to merge") + re-review PASS. PR #1
+mergeado em `main` (`1fa7230`) e **DEPLOYADO em produção 2026-08-31 ~18:31**: `git pull` no VPS →
+`docker build` → `prisma db push` (aditivo, 1.26s: tabela `event_result_files` + coluna
+`events.resultsSubtitle`) → restart. Backup `pre-resultados-20260831-180555.dump`. Home/eventos/
+resultados 200, sem erros no log. O mesmo deploy carregou junto a aba "Todos os inscritos" da
+entrega de kits (`83f18fe`) e o fix de dashboard/export da outra sessão (`d42e140`).
+Suíte na árvore integrada: 2341 testes verdes, tsc/build ok.
 
 ### O que faz
 - O organizador pode publicar resultados de corrida como **PDFs** (nome de exibição + upload),
@@ -60,17 +63,16 @@ limpo**, build ✓ (confirmado por task e pelo reviewer).
   ASSISTANT só com `results.publish` abre o manager mas toda mutação dá 403. Ajustar o gate da
   page pra só `results.import` se incomodar.
 
-### Incidente durante a execução
-- Outra sessão do Claude commitou um fix não relacionado (`d42e140` dashboard/export) em cima
-  desta branch por engano; salvo em `salvage/dashboard-export-fix`, branch resetada. O commit
-  espera decisão (cherry-pick pra `main`).
+### Incidente durante a execução (resolvido)
+- Outra sessão do Claude commitou `d42e140` (dashboard/export) em cima desta branch por engano;
+  salvo em `salvage/dashboard-export-fix` (já deletada), branch resetada. `d42e140` acabou em
+  `main` e a feature rebaseou em cima — foi ao ar neste deploy.
 
 ### PRÓXIMA TAREFA
-1. Revisão whole-branch → merge (usuário escolhe).
-2. Deploy: `git pull` no VPS → `docker build` → **`prisma db push`** (aditivo: tabela
-   `event_result_files` + coluna `events.resultsSubtitle`) → restart. **Sem backfill.**
-3. Conferir na produção: aba de resultados do organizador (subir PDF + salvar "5KM"); página
-   pública com banner + botões; botão "Resultado" no card de inscrições.
+Nada pendente desta frente. Conferir na produção quando puder: aba de resultados do organizador
+(subir PDF + salvar "5KM"), página pública com banner + botões, botão "Resultado" no card de
+inscrições. Passo manual ainda aberto de deploys anteriores: configurar webhook da conta MP no
+painel do Mercado Pago (`/api/webhooks/payment/mp/cmthg3gqz0000w97126t5ggpp`).
 
 ---
 
