@@ -120,3 +120,10 @@ export function buildAdminUserOrderBy(
 export function escapeCsvValue(value: unknown): string {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
+
+/**
+ * I-2: `targetId` do código 2FA para a CRIAÇÃO de usuário (`POST /api/admin/users`).
+ * Não há id de usuário ainda, então usamos um sentinela fixo — o mesmo em `request-code`
+ * e na verificação, para o `verifySensitiveActionCode` casar `record.targetId`.
+ */
+export const USER_CREATE_2FA_TARGET_ID = "__create__";

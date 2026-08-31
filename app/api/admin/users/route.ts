@@ -3,7 +3,13 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { buildAdminUserOrderBy, buildAdminUserWhere, escapeCsvValue } from "@/lib/admin/users";
+import {
+  buildAdminUserOrderBy,
+  buildAdminUserWhere,
+  escapeCsvValue,
+  USER_CREATE_2FA_TARGET_ID,
+} from "@/lib/admin/users";
+import { verify2faBody } from "@/lib/security/verify-2fa-body";
 
 const roleSchema = z.enum(["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"]);
 
@@ -97,6 +103,19 @@ export async function POST(req: NextRequest) {
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    // I-2: criar usuário com papel elevado (role != ATHLETE) + senha é a mesma escalação
+    // que o M1 fecha no PATCH — exige 2FA. Criar atleta comum (fluxo do organizador
+    // cadastrando inscrito) segue sem código.
+    if (parsed.data.role !== "ATHLETE") {
+      const verified = await verify2faBody(
+        session,
+        "USER_SECURITY_CHANGE",
+        USER_CREATE_2FA_TARGET_ID,
+        body,
+      );
+      if (!verified.ok) return verified.response;
     }
 
     const email = parsed.data.email.toLowerCase();

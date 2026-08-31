@@ -3,6 +3,7 @@ import { GET, POST } from "@/app/api/admin/users/route";
 import { GET as GETUserExport } from "@/app/api/admin/users/[id]/export/route";
 import { DELETE, PATCH } from "@/app/api/admin/users/[id]/route";
 import { POST as REQUEST_USER_CODE } from "@/app/api/admin/users/[id]/request-code/route";
+import { POST as REQUEST_CREATE_CODE } from "@/app/api/admin/users/request-code/route";
 import { PATCH as PATCHUserPreferences } from "@/app/api/me/preferences/route";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -82,6 +83,86 @@ describe("admin users API", () => {
         }),
       }),
     );
+  });
+
+  it("I-2 — cria usuário ATHLETE sem exigir 2FA", async () => {
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+    dbMock.user.create.mockResolvedValueOnce({
+      id: "user-2", name: "Atleta", email: "atleta@exemplo.com",
+      role: "ATHLETE", active: true, createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Atleta", email: "atleta@exemplo.com", password: "12345678", role: "ATHLETE",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(201);
+    expect(verifyMock).not.toHaveBeenCalled();
+    expect(dbMock.user.create).toHaveBeenCalled();
+  });
+
+  it("I-2 — cria usuário ADMIN sem código 2FA → 400 e nada é gravado", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Novo Admin", email: "admin2@exemplo.com", password: "12345678", role: "ADMIN",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.user.create).not.toHaveBeenCalled();
+  });
+
+  it("I-2 — cria usuário ADMIN com código 2FA válido → 201", async () => {
+    verifyMock.mockResolvedValueOnce({ ok: true });
+    dbMock.user.findUnique.mockResolvedValueOnce(null);
+    dbMock.user.create.mockResolvedValueOnce({
+      id: "user-3", name: "Novo Admin", email: "admin2@exemplo.com",
+      role: "ADMIN", active: true, createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Novo Admin", email: "admin2@exemplo.com", password: "12345678", role: "ADMIN",
+          verificationId: "v-1", code: "123456",
+        }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(201);
+    expect(verifyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actionType: "USER_SECURITY_CHANGE", targetId: "__create__", userId: "admin-1" }),
+    );
+    expect(dbMock.user.create).toHaveBeenCalled();
+  });
+
+  it("I-2 — request-code de criação exige admin e delega para requestSensitiveActionCode", async () => {
+    requestCodeMock.mockResolvedValueOnce({ ok: true, verificationId: "v-create" });
+    const res = await REQUEST_CREATE_CODE(
+      new Request("http://localhost/api/admin/users/request-code", { method: "POST" }) as any,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ verificationId: "v-create" });
+    expect(requestCodeMock).toHaveBeenCalledWith({
+      userId: "admin-1",
+      actionType: "USER_SECURITY_CHANGE",
+      targetId: "__create__",
+    });
+
+    authMock.mockResolvedValueOnce({ user: { id: "o-1", role: "ORGANIZER" } } as any);
+    const forbidden = await REQUEST_CREATE_CODE(
+      new Request("http://localhost/api/admin/users/request-code", { method: "POST" }) as any,
+    );
+    expect(forbidden.status).toBe(403);
   });
 
   it("exports filtered users as csv", async () => {

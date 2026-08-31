@@ -60,9 +60,11 @@ export default function UserForm({
   const isEdit = mode === "edit";
 
   const verification = useSensitiveActionVerification({
-    requestCodeEndpoint: `/api/admin/users/${initialUser?.id}/request-code`,
-    confirmEndpoint: `/api/admin/users/${initialUser?.id}`,
-    confirmMethod: "PATCH",
+    requestCodeEndpoint: isEdit
+      ? `/api/admin/users/${initialUser?.id}/request-code`
+      : "/api/admin/users/request-code",
+    confirmEndpoint: isEdit ? `/api/admin/users/${initialUser?.id}` : "/api/admin/users",
+    confirmMethod: isEdit ? "PATCH" : "POST",
   });
 
   function buildPayload(): Record<string, unknown> {
@@ -90,8 +92,10 @@ export default function UserForm({
   }
 
   // M1: mudança de perfil / status / senha num usuário existente exige 2FA.
+  // I-2: criar usuário com papel elevado (role != ATHLETE) também exige 2FA.
   function securityFieldsChanged(): boolean {
-    if (!isEdit || !initialUser) return false;
+    if (!isEdit) return role !== "ATHLETE";
+    if (!initialUser) return false;
     return (
       role !== initialUser.role ||
       active !== initialUser.active ||
