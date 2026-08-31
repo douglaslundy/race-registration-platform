@@ -166,6 +166,7 @@ model User {
   messageLogs             MessageLog[]
   updatedMessageTemplates MessageTemplate[]
   kitDeliveriesPerformed  KitDelivery[]
+  createdResultFiles      EventResultFile[]
 
   @@index([createdAt])
   @@map("users")
@@ -279,6 +280,7 @@ model Event {
   listBannerUrl                String?
   regulationUrl                String?
   regulationText               String?       @db.Text
+  resultsSubtitle              String?       @db.VarChar(120)
   metaTitle                    String?       @db.VarChar(70)
   metaDescription              String?       @db.VarChar(160)
   organizerContact             String?
@@ -314,6 +316,7 @@ model Event {
   sponsors               EventSponsor[]
   campaigns              Campaign[]
   resultImports          ResultImport[]
+  resultFiles            EventResultFile[]
   fileAssets             FileAsset[]
   payouts                TransferPayout[]
   messageTemplates       MessageTemplate[]
@@ -686,6 +689,22 @@ model RaceResult {
   @@index([eventId, bibNumber])
   @@index([eventId, athleteName])
   @@map("race_results")
+}
+
+model EventResultFile {
+  id          String   @id @default(cuid())
+  eventId     String
+  label       String
+  fileUrl     String   @db.Text
+  fileName    String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id])
+
+  @@index([eventId])
+  @@map("event_result_files")
 }
 
 // ─── Audit & Files ────────────────────────────────────────────────────────────
