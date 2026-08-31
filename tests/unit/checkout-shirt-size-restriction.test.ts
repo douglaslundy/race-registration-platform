@@ -26,6 +26,9 @@ describe("createCheckout — restrição de tamanho de camiseta por data", () =>
     event: {
       findUnique: vi.fn().mockResolvedValue(event),
     },
+    user: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
     eventRoute: {
       count: vi.fn().mockResolvedValue(0),
       findFirst: vi.fn().mockResolvedValue(null),

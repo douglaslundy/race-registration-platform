@@ -22,6 +22,7 @@ function makeTx(eventOverrides: Record<string, unknown> = {}) {
       update: vi.fn().mockResolvedValue({}),
     },
     event: { findUnique: vi.fn().mockResolvedValue(event) },
+    user: { findUnique: vi.fn().mockResolvedValue(null) },
     eventRoute: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn() },
     eventCategory: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn() },
     coupon: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },

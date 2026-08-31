@@ -4,6 +4,7 @@ import { getSetting } from "./settings";
 import { isBatchAvailable } from "./batch-status";
 import { normalizeCpf } from "./cpf";
 import { generatePlaceholderEmail } from "./proxy-athlete";
+import { resolveParticipantIdentity, participantSnapshotData } from "./registrations/participant-identity";
 import { getAllowedShirtSizes } from "./shirt-size-restriction";
 import type { ShirtSize } from "@prisma/client";
 
@@ -206,8 +207,11 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       },
     });
 
+    const participantIdentity = await resolveParticipantIdentity(tx, input, athleteUserId);
+
     const registration = await tx.registration.create({
       data: {
+        ...participantSnapshotData(participantIdentity),
         eventId: input.eventId,
         athleteUserId,
         routeId: input.routeId,
