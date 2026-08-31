@@ -29,6 +29,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
         cancellationContactPhone: true, cancellationContactEmail: true,
         allowProxyRegistration: true,
         shirtSizeRestrictionDate: true, shirtSizeRestrictionSizes: true,
+        registrationEditDeadline: true,
       },
     }),
     getCancellationPolicyEnabled(),

@@ -111,6 +111,51 @@ describe("event update api", () => {
     expect(dbMock.event.update).not.toHaveBeenCalled();
   });
 
+  it("aceita registrationEditDeadline (ISO) e persiste como Date", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+
+    const res = await PATCH(
+      makeRequest({ registrationEditDeadline: "2026-12-01T00:00:00.000Z" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          registrationEditDeadline: new Date("2026-12-01T00:00:00.000Z"),
+        }),
+      }),
+    );
+  });
+
+  it("aceita registrationEditDeadline null (limpa o prazo)", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+
+    const res = await PATCH(
+      makeRequest({ registrationEditDeadline: null }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    const call = dbMock.event.update.mock.calls[0][0];
+    expect(call.data.registrationEditDeadline).toBeNull();
+  });
+
+  it("rejeita registrationEditDeadline não-ISO com 400", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
+
+    const res = await PATCH(
+      makeRequest({ registrationEditDeadline: "01/12/2026" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.event.update).not.toHaveBeenCalled();
+  });
+
   it("aceita e persiste allowProxyRegistration", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });

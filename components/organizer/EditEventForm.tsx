@@ -33,6 +33,7 @@ const schema = z.object({
   allowProxyRegistration: z.boolean().optional(),
   shirtSizeRestrictionDate: z.string().optional(),
   shirtSizeRestrictionSizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XGG"])).optional(),
+  registrationEditDeadline: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -86,6 +87,7 @@ type EventData = {
   allowProxyRegistration?: boolean;
   shirtSizeRestrictionDate?: Date | string | null;
   shirtSizeRestrictionSizes?: string[];
+  registrationEditDeadline?: Date | string | null;
 };
 
 async function generateEventText(eventId: string, field: "metaTitle" | "metaDescription"): Promise<string> {
@@ -140,6 +142,7 @@ export default function EditEventForm({
       allowProxyRegistration: event.allowProxyRegistration ?? false,
       shirtSizeRestrictionDate: event.shirtSizeRestrictionDate ? toDatetimeLocal(event.shirtSizeRestrictionDate) : "",
       shirtSizeRestrictionSizes: (event.shirtSizeRestrictionSizes ?? []) as FormData["shirtSizeRestrictionSizes"],
+      registrationEditDeadline: event.registrationEditDeadline ? toDatetimeLocal(event.registrationEditDeadline) : "",
     },
   });
 
@@ -190,6 +193,7 @@ export default function EditEventForm({
         cancellationContactEmail: data.cancellationContactEmail || null,
         shirtSizeRestrictionDate: data.shirtSizeRestrictionDate ? new Date(data.shirtSizeRestrictionDate).toISOString() : null,
         shirtSizeRestrictionSizes: data.shirtSizeRestrictionDate ? (data.shirtSizeRestrictionSizes ?? []) : [],
+        registrationEditDeadline: data.registrationEditDeadline ? new Date(data.registrationEditDeadline).toISOString() : null,
       }),
     });
 
@@ -429,6 +433,19 @@ export default function EditEventForm({
               {size}
             </label>
           ))}
+        </div>
+      </div>
+
+      <div className="border-t pt-5 dark:border-gray-700 space-y-3">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">Edição da inscrição pelo atleta</h3>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Prazo para o atleta editar a inscrição
+          </label>
+          <input type="datetime-local" {...register("registrationEditDeadline")} className="input w-full" />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Deixe em branco para que só o organizador possa editar os dados de uma inscrição.
+          </p>
         </div>
       </div>
 

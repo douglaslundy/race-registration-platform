@@ -34,6 +34,7 @@ const updateEventSchema = z.object({
   allowProxyRegistration: z.boolean().optional(),
   shirtSizeRestrictionDate: z.string().datetime().optional().nullable(),
   shirtSizeRestrictionSizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XGG"])).optional(),
+  registrationEditDeadline: z.string().datetime().optional().nullable(),
 });
 
 async function getEventAndVerifyOwnerByOrganizerId(eventId: string, organizerId: string) {
@@ -70,6 +71,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(parsed.data.kitPickupAt !== undefined ? { kitPickupAt: parsed.data.kitPickupAt ? new Date(parsed.data.kitPickupAt) : null } : {}),
       ...(parsed.data.cancellationDeadline !== undefined ? { cancellationDeadline: parsed.data.cancellationDeadline ? new Date(parsed.data.cancellationDeadline) : null } : {}),
       ...(parsed.data.shirtSizeRestrictionDate !== undefined ? { shirtSizeRestrictionDate: parsed.data.shirtSizeRestrictionDate ? new Date(parsed.data.shirtSizeRestrictionDate) : null } : {}),
+      ...(parsed.data.registrationEditDeadline !== undefined
+        ? { registrationEditDeadline: parsed.data.registrationEditDeadline ? new Date(parsed.data.registrationEditDeadline) : null }
+        : {}),
     },
   });
 
