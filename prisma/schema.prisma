@@ -295,6 +295,7 @@ model Event {
   allowProxyRegistration       Boolean     @default(false)
   shirtSizeRestrictionDate     DateTime?
   shirtSizeRestrictionSizes    ShirtSize[]
+  registrationEditDeadline     DateTime?
 
   organizerNameOverride        String?
   organizerDescriptionOverride String? @db.Text
@@ -391,6 +392,12 @@ model Registration {
   medicalNotes            String?
   notes                   String?
   proxyAthleteDisplayName String?
+  participantName         String    @default("")
+  participantEmail        String    @default("")
+  participantPhone        String?
+  participantBirthDate    DateTime?
+  participantGender       String?
+  participantCpf          String?
   status                  RegistrationStatus @default(PENDING_PAYMENT)
   acceptedTermsAt         DateTime?
   cancellationReason      String?
