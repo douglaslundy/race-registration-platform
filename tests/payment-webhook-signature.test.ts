@@ -66,17 +66,43 @@ describe("MercadoPagoProvider.verifyWebhookSignature", () => {
     expect(result).toBe(false);
   });
 
-  it("rejeita quando o header x-request-id está ausente (manifesto não bate)", async () => {
+  it("aceita quando o header x-request-id está ausente e o manifesto SEM o segmento request-id bate (fallback do MP)", async () => {
     const secret = "super-secreto";
     mockGetMPSecret.mockResolvedValueOnce(secret);
     const payload = JSON.stringify({ data: { id: "123" } });
     const ts = "1700000000";
-    const manifest = `id:123;request-id:req-abc-123;ts:${ts};`;
+    const manifest = `id:123;ts:${ts};`;
     const v1 = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
 
     const provider = new MercadoPagoProvider();
     const result = await provider.verifyWebhookSignature(payload, `ts=${ts},v1=${v1}`);
+    expect(result).toBe(true);
+  });
+
+  it("rejeita quando o header x-request-id está ausente e nenhum manifesto candidato bate", async () => {
+    const secret = "super-secreto";
+    mockGetMPSecret.mockResolvedValueOnce(secret);
+    const payload = JSON.stringify({ data: { id: "123" } });
+    const ts = "1700000000";
+    const bogus = crypto.createHmac("sha256", secret).update("id:999;ts:0;").digest("hex");
+
+    const provider = new MercadoPagoProvider();
+    const result = await provider.verifyWebhookSignature(payload, `ts=${ts},v1=${bogus}`);
     expect(result).toBe(false);
+  });
+
+  it("aceita quando o header x-signature vem com espaço após a vírgula (ts=...,  v1=...)", async () => {
+    const secret = "super-secreto";
+    mockGetMPSecret.mockResolvedValueOnce(secret);
+    const payload = JSON.stringify({ data: { id: "123" } });
+    const ts = "1700000000";
+    const requestId = "req-abc-123";
+    const manifest = `id:123;request-id:${requestId};ts:${ts};`;
+    const v1 = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+
+    const provider = new MercadoPagoProvider();
+    const result = await provider.verifyWebhookSignature(payload, `ts=${ts},  v1=${v1}`, requestId);
+    expect(result).toBe(true);
   });
 
   it("retorna false (sem lançar) quando o corpo não é JSON", async () => {

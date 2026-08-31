@@ -242,9 +242,10 @@ export class MercadoPagoProvider implements PaymentProvider {
     // verificação — isso permitiria forjar confirmações de pagamento).
     if (!secret) return false;
 
-    // MP signature format: ts=<timestamp>,v1=<hash>
+    // MP signature format: ts=<timestamp>,v1=<hash>  (o header pode vir com espaço após a
+    // vírgula: "ts=...,  v1=..." — sem o trim a chave viraria " v1" e todo webhook daria 401).
     const parts = Object.fromEntries(
-      signature.split(",").map((p) => p.split("=") as [string, string])
+      signature.split(",").map((p) => p.split("=").map((s) => s.trim()) as [string, string])
     );
     if (!parts.ts || !parts.v1) return false;
 
@@ -257,19 +258,26 @@ export class MercadoPagoProvider implements PaymentProvider {
       return false;
     }
 
-    // Manifesto exatamente no formato documentado pelo Mercado Pago:
-    // id:<data.id>;request-id:<x-request-id header>;ts:<ts>;  (com o ";" final)
-    const manifest = `id:${dataId};request-id:${requestId ?? ""};ts:${parts.ts};`;
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(manifest)
-      .digest("hex");
-    const expectedBuf = Buffer.from(expected);
+    // Manifesto no formato documentado pelo Mercado Pago:
+    // id:<data.id>;request-id:<x-request-id header>;ts:<ts>;  (com o ";" final).
+    // Quando a notificação NÃO traz `x-request-id`, o MP manda remover o segmento inteiro
+    // (não deixar `request-id:;`). Aceitamos se QUALQUER manifesto candidato bater o HMAC.
+    const candidates = requestId
+      ? [`id:${dataId};request-id:${requestId};ts:${parts.ts};`]
+      : [
+          `id:${dataId};ts:${parts.ts};`,
+          `id:${dataId};request-id:;ts:${parts.ts};`,
+        ];
+
     const providedBuf = Buffer.from(parts.v1);
-    // Assinatura com formato/comprimento inválido: rejeita sem lançar
-    // (timingSafeEqual joga RangeError se os buffers tiverem tamanhos diferentes).
-    if (expectedBuf.length !== providedBuf.length) return false;
-    return crypto.timingSafeEqual(expectedBuf, providedBuf);
+    return candidates.some((manifest) => {
+      const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+      const expectedBuf = Buffer.from(expected);
+      // Assinatura com formato/comprimento inválido: rejeita sem lançar
+      // (timingSafeEqual joga RangeError se os buffers tiverem tamanhos diferentes).
+      if (expectedBuf.length !== providedBuf.length) return false;
+      return crypto.timingSafeEqual(expectedBuf, providedBuf);
+    });
   }
 
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload {
