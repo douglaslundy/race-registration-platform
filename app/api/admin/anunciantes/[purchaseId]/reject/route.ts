@@ -6,7 +6,7 @@ import { refundPayment } from "@/lib/payment/refund-service";
 import { sendAdvertiserRequestRejectedEmail } from "@/lib/email";
 import { verifySensitiveActionCode } from "@/lib/security/sensitive-action-verification";
 
-const schema = z.object({ reason: z.string().min(1) });
+const schema = z.object({ reason: z.string().min(1).max(1000) }); // L9
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ purchaseId: string }> }) {
   const session = await auth();

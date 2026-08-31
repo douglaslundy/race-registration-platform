@@ -11,7 +11,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
-  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+  // L9: limita o texto livre (evita pressão de tamanho de linha no banco).
+  const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 1000) : "";
 
   const registration = await db.registration.findFirst({
     where: {

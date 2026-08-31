@@ -41,7 +41,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const body = await req.json().catch(() => ({}));
-  const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : undefined;
+  const reason =
+    typeof body.reason === "string" && body.reason.trim()
+      ? body.reason.trim().slice(0, 1000) // L9: cap no texto livre
+      : undefined;
 
   const { verificationId, code } = body;
   if (typeof verificationId !== "string" || typeof code !== "string") {

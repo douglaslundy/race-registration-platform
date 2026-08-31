@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 
 const schema = z.object({
-  reason: z.string(),
+  reason: z.string().max(1000), // L9
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

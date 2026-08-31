@@ -5,9 +5,9 @@ import { z } from "zod";
 
 const schema = z
   .object({
-    name: z.string().min(1, "Nome é obrigatório"),
+    name: z.string().min(1, "Nome é obrigatório").max(120), // L9
     type: z.enum(["EMAIL", "WHATSAPP"]),
-    value: z.string().min(1, "Valor é obrigatório"),
+    value: z.string().min(1, "Valor é obrigatório").max(320),
   })
   .superRefine((data, ctx) => {
     if (data.type === "EMAIL") {
