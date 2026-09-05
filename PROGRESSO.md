@@ -1,8 +1,11 @@
 # Progresso do Projeto
 
-## Última atualização (2026-09-05 — Filtros + ordenação + impressão em PDF na aba "Todos os inscritos" da entrega de kits)
+## Última atualização (2026-09-05 — Filtros + ordenação + impressão em PDF na aba "Todos os inscritos" da entrega de kits — DEPLOYADO)
 
-**Não commitado** (working tree). `npx tsc --noEmit` limpo · `npx vitest run` 300 arq / 2365 testes verdes · `npx next build` exit 0.
+`main` = `399b88e`. `npx tsc --noEmit` limpo · `npx vitest run` 300 arq / 2365 testes verdes · `npx next build` exit 0.
+**Deployado em produção 2026-09-05 ~13:27** via `deploy.sh` (git pull → docker build → restart);
+`prisma db push --skip-generate` = "already in sync" (sem mudança de schema). Home 200, rota
+`/api/events/[id]/kit-deliveries/list/pdf` responde 401 sem auth (carrega ok), sem erros no log.
 
 ### O que foi feito
 Na aba "Todos os inscritos" da tela de entrega de kits (organizador + admin, componente compartilhado `components/organizer/KitDeliveryFullList.tsx`):
