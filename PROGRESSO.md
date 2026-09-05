@@ -1,8 +1,11 @@
 # Progresso do Projeto
 
-## Última atualização (2026-09-05 — URL de webhook por conta visível na lista de contas de pagamento)
+## Última atualização (2026-09-05 — URL de webhook por conta visível na lista de contas de pagamento — DEPLOYADO)
 
-`npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
+`main` = `984c99c`. `npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
+**Deployado 2026-09-05 ~14:28** (o `deploy.sh` foi executado no VPS; o processo local caiu por falta
+de memória mas o build/restart remoto concluiu — `prod HEAD = 984c99c`, container `Up`, home 200,
+`/admin/configuracoes` 307→login, sem erros novos no log). Sem mudança de schema.
 
 ### O que foi feito
 Na tela `/admin/configuracoes` (contas Mercado Pago), a **URL de webhook de cada conta** (`.../api/webhooks/payment/mp/{id}`) agora aparece direto na lista, com botão **Copiar** — antes só dava pra ver abrindo "Editar". Ajuda no fluxo de cadastrar conta nova: cria a conta → copia a URL de lá → cola no painel do MP daquela conta.
