@@ -132,7 +132,7 @@ export default function EventResultFilesManager({ eventId, slug, initialSubtitle
           <ul className="divide-y dark:divide-gray-700 border dark:border-gray-700 rounded-lg">
             {initialFiles.map((f) => (
               <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <a href={f.fileUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline truncate">
+                <a href={`/api/result-files/${f.id}`} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline truncate">
                   {f.label}
                 </a>
                 <button

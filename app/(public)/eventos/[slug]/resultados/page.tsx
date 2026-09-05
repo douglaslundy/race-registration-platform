@@ -27,7 +27,7 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
       resultsSubtitle: true,
       resultFiles: {
         orderBy: { createdAt: "asc" },
-        select: { id: true, label: true, fileUrl: true },
+        select: { id: true, label: true },
       },
     },
   });
@@ -65,7 +65,8 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
       })
     : [];
 
-  const bannerUrl = event.bannerUrl ?? event.listBannerUrl;
+  // Página de resultados usa o banner quadrado (listBannerUrl); cai no horizontal só se não houver.
+  const bannerUrl = event.listBannerUrl ?? event.bannerUrl;
   const hasPdfs = event.resultFiles.length > 0;
   const hasAnything = hasPdfs || Boolean(latestImport);
 
@@ -76,7 +77,7 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
       </h1>
 
       {bannerUrl ? (
-        <div className="relative w-full max-w-md mx-auto aspect-[3/1] mb-6">
+        <div className="relative w-full max-w-[280px] mx-auto aspect-square mb-6">
           <img src={bannerUrl} alt={event.title} className="w-full h-full object-contain" />
         </div>
       ) : (
@@ -94,7 +95,7 @@ export default async function ResultadosPage({ params, searchParams }: Props) {
           {event.resultFiles.map((f) => (
             <a
               key={f.id}
-              href={f.fileUrl}
+              href={`/api/result-files/${f.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-2xl bg-slate-800 text-white shadow-lg px-4 py-6 text-center font-bold uppercase underline hover:bg-slate-700 transition-colors"

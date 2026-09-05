@@ -1,5 +1,26 @@
 # Progresso do Projeto
 
+## Última atualização (2026-09-05 — 2 correções na página pública de resultados)
+
+`npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
+
+### O que foi feito
+1. **Banner quadrado** — `app/(public)/eventos/[slug]/resultados/page.tsx` passou a priorizar `listBannerUrl` (1:1) em vez de `bannerUrl` (3:1); container virou `aspect-square` `max-w-[280px]`.
+2. **Link do PDF pelo domínio da plataforma** — os PDFs de resultado estão no storage em `https://supabase.circuitodascorridas.com.br/...` (subdomínio de infra, não deve aparecer pro público). Nova rota `GET /api/result-files/[fileId]` faz proxy do arquivo pelo domínio principal (público, `Content-Type: application/pdf` inline, guarda anti-SSRF: só serve URLs do `SUPABASE_URL/storage/v1/object/public/`). Página de resultados e o manager do organizador agora linkam `/api/result-files/{id}` em vez de `f.fileUrl`. Não precisa migração — o link é derivado do `id`.
+
+### Arquivos
+- `app/api/result-files/[fileId]/route.ts` (novo) + `tests/result-files-proxy-route.test.ts` (novo)
+- `app/(public)/eventos/[slug]/resultados/page.tsx` (banner + link + select sem `fileUrl`)
+- `components/organizer/EventResultFilesManager.tsx` (link)
+
+### Fora de escopo (registrado)
+- `regulationUrl` (PDF de regulamento na página do evento) tem o mesmo subdomínio de infra no link — não foi tocado (usuário pediu só resultados).
+
+### PRÓXIMA TAREFA
+Deploy destas 2 correções (pedir confirmação). Pendente separado: apontar webhook MP pra URL por conta (usuário confirmou que quer que eu faça pelo navegador — precisa estar logado no painel do MP).
+
+---
+
 ## Última atualização (2026-09-05 — Filtros + ordenação + impressão em PDF na aba "Todos os inscritos" da entrega de kits — DEPLOYADO)
 
 `main` = `399b88e`. `npx tsc --noEmit` limpo · `npx vitest run` 300 arq / 2365 testes verdes · `npx next build` exit 0.
