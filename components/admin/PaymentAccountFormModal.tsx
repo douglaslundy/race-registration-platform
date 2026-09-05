@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { PaymentAccountDto } from "@/lib/payment/payment-accounts";
+import WebhookUrlField from "./WebhookUrlField";
 
 export interface PaymentAccountFormValues {
   label: string;
@@ -29,7 +30,6 @@ export default function PaymentAccountFormModal({
   const [accessToken, setAccessToken] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
   const [publicKey, setPublicKey] = useState("");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -37,7 +37,6 @@ export default function PaymentAccountFormModal({
       setAccessToken("");
       setWebhookSecret("");
       setPublicKey("");
-      setCopied(false);
     }
   }, [open, account]);
 
@@ -47,17 +46,6 @@ export default function PaymentAccountFormModal({
   const canSubmit =
     label.trim().length > 0 &&
     (isEdit || (accessToken.trim().length > 0 && webhookSecret.trim().length > 0));
-
-  async function copyWebhookUrl() {
-    if (!account) return;
-    try {
-      await navigator.clipboard.writeText(account.webhookUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -126,19 +114,8 @@ export default function PaymentAccountFormModal({
 
           {isEdit && account && (
             <div className="rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-950/40 p-3">
-              <p className="text-xs font-medium text-primary-800 dark:text-primary-300">URL do webhook desta conta</p>
-              <div className="mt-1 flex items-center gap-2">
-                <code className="text-xs break-all text-primary-900 dark:text-primary-200 flex-1">
-                  {account.webhookUrl}
-                </code>
-                <button
-                  type="button"
-                  onClick={copyWebhookUrl}
-                  className="text-xs px-2 py-1 rounded border border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900 shrink-0"
-                >
-                  {copied ? "Copiado!" : "Copiar"}
-                </button>
-              </div>
+              <p className="text-xs font-medium text-primary-800 dark:text-primary-300 mb-1">URL do webhook desta conta</p>
+              <WebhookUrlField url={account.webhookUrl} />
             </div>
           )}
         </div>

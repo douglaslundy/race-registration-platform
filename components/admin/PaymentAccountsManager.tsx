@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ErrorModal from "@/components/ui/ErrorModal";
@@ -8,6 +8,7 @@ import CodeVerificationModal from "@/components/ui/CodeVerificationModal";
 import { useSensitiveActionVerification } from "@/lib/hooks/use-sensitive-action-verification";
 import type { PaymentAccountDto } from "@/lib/payment/payment-accounts";
 import PaymentAccountFormModal, { type PaymentAccountFormValues } from "./PaymentAccountFormModal";
+import WebhookUrlField from "./WebhookUrlField";
 
 type PendingAction =
   | { kind: "create" }
@@ -160,66 +161,78 @@ export default function PaymentAccountsManager({ accounts }: { accounts: Payment
             </thead>
             <tbody>
               {accounts.map((acc) => (
-                <tr key={acc.id} className="border-b dark:border-gray-800 last:border-0 align-top">
-                  <td className="py-3 pr-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{acc.label}</span>
-                      {acc.isDefault && (
-                        <span className="text-xs" title="Conta padrão">
-                          ⭐
-                        </span>
-                      )}
-                      {acc.archivedAt && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-500">
-                          Arquivada
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 pr-3 text-xs text-gray-500">
-                    Token {acc.hasAccessToken ? "✓" : "—"} / Webhook {acc.hasWebhookSecret ? "✓" : "—"} / Public key{" "}
-                    {acc.hasPublicKey ? "✓" : "—"}
-                  </td>
-                  <td className="py-3 pr-3">
-                    <div className="flex justify-end gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(acc)}
-                        className="text-xs text-primary-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      {!acc.isDefault && !acc.archivedAt && (
+                <Fragment key={acc.id}>
+                  <tr className="border-t dark:border-gray-800 align-top">
+                    <td className="py-3 pr-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{acc.label}</span>
+                        {acc.isDefault && (
+                          <span className="text-xs" title="Conta padrão">
+                            ⭐
+                          </span>
+                        )}
+                        {acc.archivedAt && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-500">
+                            Arquivada
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 pr-3 text-xs text-gray-500">
+                      Token {acc.hasAccessToken ? "✓" : "—"} / Webhook {acc.hasWebhookSecret ? "✓" : "—"} / Public key{" "}
+                      {acc.hasPublicKey ? "✓" : "—"}
+                    </td>
+                    <td className="py-3 pr-3">
+                      <div className="flex justify-end gap-2 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => openMakeDefault(acc)}
+                          onClick={() => openEdit(acc)}
                           className="text-xs text-primary-600 hover:underline"
                         >
-                          Tornar padrão
+                          Editar
                         </button>
-                      )}
-                      {acc.archivedAt ? (
-                        <button
-                          type="button"
-                          onClick={() => openArchive(acc, false)}
-                          className="text-xs text-primary-600 hover:underline"
-                        >
-                          Desarquivar
-                        </button>
-                      ) : (
-                        !acc.isDefault && (
+                        {!acc.isDefault && !acc.archivedAt && (
                           <button
                             type="button"
-                            onClick={() => openArchive(acc, true)}
-                            className="text-xs text-red-600 hover:underline"
+                            onClick={() => openMakeDefault(acc)}
+                            className="text-xs text-primary-600 hover:underline"
                           >
-                            Arquivar
+                            Tornar padrão
                           </button>
-                        )
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                        )}
+                        {acc.archivedAt ? (
+                          <button
+                            type="button"
+                            onClick={() => openArchive(acc, false)}
+                            className="text-xs text-primary-600 hover:underline"
+                          >
+                            Desarquivar
+                          </button>
+                        ) : (
+                          !acc.isDefault && (
+                            <button
+                              type="button"
+                              onClick={() => openArchive(acc, true)}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              Arquivar
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={3} className="pb-3 pr-3">
+                      <div className="rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-950/40 p-2">
+                        <p className="text-[11px] font-medium text-primary-800 dark:text-primary-300 mb-1">
+                          URL de webhook desta conta — cadastre no painel do Mercado Pago desta conta
+                        </p>
+                        <WebhookUrlField url={acc.webhookUrl} />
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

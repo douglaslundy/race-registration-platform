@@ -1,5 +1,19 @@
 # Progresso do Projeto
 
+## Última atualização (2026-09-05 — URL de webhook por conta visível na lista de contas de pagamento)
+
+`npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
+
+### O que foi feito
+Na tela `/admin/configuracoes` (contas Mercado Pago), a **URL de webhook de cada conta** (`.../api/webhooks/payment/mp/{id}`) agora aparece direto na lista, com botão **Copiar** — antes só dava pra ver abrindo "Editar". Ajuda no fluxo de cadastrar conta nova: cria a conta → copia a URL de lá → cola no painel do MP daquela conta.
+- `webhookUrl` já vinha no `PaymentAccountDto` (`lib/payment/payment-accounts.ts`) — foi só exibir.
+- Novo `components/admin/WebhookUrlField.tsx` (code + botão Copiar, estado próprio); usado na lista (`PaymentAccountsManager.tsx`, linha extra por conta) e no modal de edição (`PaymentAccountFormModal.tsx`, que perdeu a duplicação do copy/copied).
+
+### PRÓXIMA TAREFA
+Deploy (pedir confirmação). Webhook MP no painel segue pendente do lado do usuário (fazer o QR de verificação).
+
+---
+
 ## Última atualização (2026-09-05 — 2 correções na página pública de resultados — DEPLOYADO)
 
 `main` = `974857d`. `npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
