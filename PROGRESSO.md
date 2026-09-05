@@ -1,8 +1,11 @@
 # Progresso do Projeto
 
-## Última atualização (2026-09-05 — 2 correções na página pública de resultados)
+## Última atualização (2026-09-05 — 2 correções na página pública de resultados — DEPLOYADO)
 
-`npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
+`main` = `974857d`. `npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.
+**Deployado 2026-09-05 ~13:52** via `deploy.sh` (sem mudança de schema). Verificado em produção:
+página de resultados 200 e com `aspect-square` + banner `list_banner/*`; os 4 links de PDF agora
+são `/api/result-files/{id}` e a rota responde 200 `application/pdf` pelo domínio principal.
 
 ### O que foi feito
 1. **Banner quadrado** — `app/(public)/eventos/[slug]/resultados/page.tsx` passou a priorizar `listBannerUrl` (1:1) em vez de `bannerUrl` (3:1); container virou `aspect-square` `max-w-[280px]`.
