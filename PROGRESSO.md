@@ -1,5 +1,34 @@
 # Progresso do Projeto
 
+## Última atualização (2026-09-05 — Filtros + ordenação + impressão em PDF na aba "Todos os inscritos" da entrega de kits)
+
+**Não commitado** (working tree). `npx tsc --noEmit` limpo · `npx vitest run` 300 arq / 2365 testes verdes · `npx next build` exit 0.
+
+### O que foi feito
+Na aba "Todos os inscritos" da tela de entrega de kits (organizador + admin, componente compartilhado `components/organizer/KitDeliveryFullList.tsx`):
+- Filtro por **assistente que entregou** (`<select>` com nomes distintos de `deliveredByName`; desabilitado quando o filtro de status = "Pendentes").
+- **Ordenação** "Entregues em cima" (padrão) / "Pendentes em cima"; dentro de cada grupo, alfabético por nome.
+- Botão **"🖨️ Imprimir em PDF"**: abre `/api/events/[id]/kit-deliveries/list/pdf` em nova aba com os filtros atuais na query — PDF `inline` (A4 paisagem, tabela) pra mandar pra impressora.
+- Filtro/ordenação/busca extraídos pra módulo puro compartilhado entre cliente e a rota de PDF.
+
+### Arquivos criados/alterados
+- `lib/kit-delivery/list-view.ts` (novo) — `filterKitDeliveryItems` / `sortKitDeliveryItems` / `kitDeliveryAssistantNames` / `parseKitDeliveryListParams` / `summarizeKitDeliveryFilters`.
+- `lib/kit-delivery/list-pdf.tsx` (novo) — `generateKitDeliveryListPdf` (@react-pdf/renderer, mesmo padrão de `lib/ads/generate-ad-report-pdf.tsx`).
+- `app/api/events/[id]/kit-deliveries/list/pdf/route.ts` (novo) — mesma auth da rota `list` (`kits.view`/`kits.deliver` + escopo do evento).
+- `components/organizer/KitDeliveryFullList.tsx` — usa o módulo puro; UI de filtros + botão.
+- Testes: `tests/lib-kit-delivery-list-view.test.ts`, `tests/lib-kit-delivery-list-pdf.test.ts`, `tests/events-kit-deliveries-list-pdf-route.test.ts`.
+
+### Decisões não óbvias
+- `lib/kit-delivery.ts` (arquivo) e `lib/kit-delivery/` (pasta) coexistem — mesmo padrão de `lib/events.ts` + `lib/events/`.
+- Rota de PDF **re-deriva** o filtro no servidor a partir da query (não recebe lista de IDs) usando as mesmas funções puras do cliente — cliente e servidor concordam por construção.
+- Botão de impressão é um `<a target="_blank">` (não `window.open`) — abre o PDF inline; usuário imprime pelo visualizador do navegador. Sem `alert/confirm`.
+- `req.url` + `new URL()` em vez de `req.nextUrl` na rota (testes passam `Request` puro, padrão do repo).
+
+### PRÓXIMA TAREFA
+Nada pendente desta frente. Falta só o deploy (pedir confirmação). Passo manual ainda aberto de deploys anteriores: webhook da conta MP no painel do Mercado Pago.
+
+---
+
 ## Última atualização (2026-08-31 — 2 bugs corrigidos: receita do dashboard + data de nascimento na exportação)
 
 **Não commitado** (working tree). `npx tsc --noEmit` limpo · `npx vitest run` 294 arq / 2322 testes verdes · `npx next build` exit 0.

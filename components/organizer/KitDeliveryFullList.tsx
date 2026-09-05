@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { normalizeCpf } from "@/lib/cpf";
+import {
+  filterKitDeliveryItems,
+  kitDeliveryAssistantNames,
+  sortKitDeliveryItems,
+  type KitDeliverySortOrder,
+  type KitDeliveryStatusFilter,
+} from "@/lib/kit-delivery/list-view";
 
 interface Item {
   id: string;
@@ -18,8 +24,6 @@ interface Item {
   receivedByDocument: string | null;
 }
 
-type Filter = "all" | "delivered" | "pending";
-
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   const d = new Date(value);
@@ -28,14 +32,17 @@ function formatDateTime(value: string | null): string {
 
 /**
  * Aba "Todos os inscritos" da tela de entrega de kits — visualização (sem ação de entrega).
- * Carrega a lista completa de inscritos CONFIRMED do evento; filtro entregues/pendentes e busca
- * por nome/CPF são no cliente. Remontar o componente (troca de aba) recarrega os dados.
+ * Carrega a lista completa de inscritos CONFIRMED do evento; filtro (status/assistente/busca) e
+ * ordenação são no cliente, usando as mesmas funções puras da rota de PDF
+ * (`lib/kit-delivery/list-view`). Remontar o componente (troca de aba) recarrega os dados.
  */
 export default function KitDeliveryFullList({ eventId }: { eventId: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [status, setStatus] = useState<KitDeliveryStatusFilter>("all");
+  const [assistant, setAssistant] = useState<string>("");
+  const [sort, setSort] = useState<KitDeliverySortOrder>("delivered-first");
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -61,26 +68,29 @@ export default function KitDeliveryFullList({ eventId }: { eventId: string }) {
 
   const deliveredCount = useMemo(() => items.filter((i) => i.delivered).length, [items]);
   const pendingCount = items.length - deliveredCount;
+  const assistantNames = useMemo(() => kitDeliveryAssistantNames(items), [items]);
+
+  const assistantDisabled = status === "pending";
+  const effectiveAssistant = assistantDisabled ? null : assistant || null;
 
   const visible = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    const digits = normalizeCpf(q);
-    return items.filter((i) => {
-      if (filter === "delivered" && !i.delivered) return false;
-      if (filter === "pending" && i.delivered) return false;
-      if (!term) return true;
-      const nameHit = i.participantName.toLowerCase().includes(term);
-      const cpfHit = digits.length > 0 && (i.participantCpf ?? "").includes(digits);
-      return nameHit || cpfHit;
-    });
-  }, [items, filter, q]);
+    const filtered = filterKitDeliveryItems(items, { status, assistant: effectiveAssistant, q });
+    return sortKitDeliveryItems(filtered, sort);
+  }, [items, status, effectiveAssistant, q, sort]);
 
-  const filterButton = (value: Filter, label: string, count: number) => (
+  const pdfUrl = useMemo(() => {
+    const sp = new URLSearchParams({ status, sort });
+    if (effectiveAssistant) sp.set("assistant", effectiveAssistant);
+    if (q.trim()) sp.set("q", q.trim());
+    return `/api/events/${eventId}/kit-deliveries/list/pdf?${sp.toString()}`;
+  }, [eventId, status, sort, effectiveAssistant, q]);
+
+  const filterButton = (value: KitDeliveryStatusFilter, label: string, count: number) => (
     <button
       type="button"
-      onClick={() => setFilter(value)}
+      onClick={() => setStatus(value)}
       className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-        filter === value
+        status === value
           ? "border-primary-500 text-primary-600 bg-primary-50 dark:bg-primary-900/20"
           : "border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
       }`}
@@ -95,6 +105,50 @@ export default function KitDeliveryFullList({ eventId }: { eventId: string }) {
         {filterButton("all", "Todos", items.length)}
         {filterButton("delivered", "Entregues", deliveredCount)}
         {filterButton("pending", "Pendentes", pendingCount)}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          <span className="block text-xs text-gray-500 mb-1">Assistente que entregou</span>
+          <select
+            value={assistantDisabled ? "" : assistant}
+            onChange={(e) => setAssistant(e.target.value)}
+            disabled={assistantDisabled || assistantNames.length === 0}
+            className="input w-auto"
+          >
+            <option value="">Todos os assistentes</option>
+            {assistantNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="block text-xs text-gray-500 mb-1">Ordenar</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as KitDeliverySortOrder)}
+            className="input w-auto"
+          >
+            <option value="delivered-first">Entregues em cima</option>
+            <option value="pending-first">Pendentes em cima</option>
+          </select>
+        </label>
+
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-secondary text-sm"
+          aria-disabled={loading || items.length === 0}
+          onClick={(e) => {
+            if (loading || items.length === 0) e.preventDefault();
+          }}
+        >
+          🖨️ Imprimir em PDF
+        </a>
       </div>
 
       <input
