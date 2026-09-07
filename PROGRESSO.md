@@ -23,7 +23,8 @@ Sem migração e **sem ajuste no banco** (usuário confirmou: só 1 evento final
 `canRegister` na página pública do evento gateia só em lote ACTIVE, não na data do evento — um lote com `endAt` mal configurado além da data da corrida deixaria inscrever num evento passado. Não afeta este evento (lote fechado). Endurecer separado, se quiser.
 
 ### PRÓXIMA TAREFA
-Deploy (pedir confirmação).
+**Deploy adiado por decisão do usuário (07/09): juntar com a próxima alteração.** `main` = `e041ab8`
+pushado mas NÃO deployado; produção ainda em `984c99c`. Quando for deployar, esta correção vai junto.
 
 ---
 
