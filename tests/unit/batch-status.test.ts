@@ -154,6 +154,30 @@ describe("getEventDisplayStatus", () => {
     expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [])).toBe("REGISTRATIONS_OPEN");
   });
 
+  it("reinterpreta REGISTRATIONS_OPEN como REGISTRATIONS_CLOSED quando a data do evento já passou, mesmo com lote ACTIVE", () => {
+    const active = makeBatch({ activationMode: "MANUAL", active: true });
+    const startAt = new Date(now.getTime() - 24 * HOUR);
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [active], startAt)).toBe("REGISTRATIONS_CLOSED");
+  });
+
+  it("reinterpreta REGISTRATIONS_OPEN como REGISTRATIONS_CLOSED por data mesmo sem nenhum lote", () => {
+    const startAt = new Date(now.getTime() - HOUR);
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [], startAt)).toBe("REGISTRATIONS_CLOSED");
+  });
+
+  it("mantém REGISTRATIONS_OPEN quando a data do evento ainda é futura", () => {
+    const active = makeBatch({ activationMode: "MANUAL", active: true });
+    const startAt = new Date(now.getTime() + 24 * HOUR);
+    expect(getEventDisplayStatus("REGISTRATIONS_OPEN", [active], startAt)).toBe("REGISTRATIONS_OPEN");
+  });
+
+  it("não reinterpreta por data um status que não seja REGISTRATIONS_OPEN", () => {
+    const past = new Date(now.getTime() - HOUR);
+    expect(getEventDisplayStatus("PUBLISHED", [], past)).toBe("PUBLISHED");
+    expect(getEventDisplayStatus("DRAFT", [], past)).toBe("DRAFT");
+    expect(getEventDisplayStatus("CANCELLED", [], past)).toBe("CANCELLED");
+  });
+
   it("não mexe em status que não seja REGISTRATIONS_OPEN, mesmo com lotes esgotados", () => {
     const soldOut = makeBatch({ soldCount: 100, capacity: 100 });
     expect(getEventDisplayStatus("SOLD_OUT", [soldOut])).toBe("SOLD_OUT");

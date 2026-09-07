@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { formatCurrency } from "@/lib/format";
 import DeleteEventButton from "@/components/organizer/DeleteEventButton";
 import { BADGE } from "@/lib/badge-colors";
+import { getEventDisplayStatus } from "@/lib/batch-status";
 import PrintButton from "@/components/ui/PrintButton";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 import { parseDateInput } from "@/lib/admin/audit";
@@ -61,6 +62,9 @@ export default async function OrganizerDashboard({
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {
+          ticketBatches: {
+            select: { id: true, soldCount: true, capacity: true, startAt: true, endAt: true, active: true, activationMode: true },
+          },
           orders: {
             // Mesma regra da receita do topo da página: subtotalAmount (não totalAmount, que
             // inclui taxas da plataforma) e filtrado por quando o pagamento foi confirmado
@@ -223,7 +227,11 @@ export default async function OrganizerDashboard({
                 <tr key={event.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                   <td className="py-3 font-medium">{event.title}</td>
                   <td className="py-3">
-                    {(() => { const s = EVENT_STATUS[event.status] ?? { label: event.status, cls: BADGE.gray }; return (
+                    {(() => {
+                      // Status efetivo (reconcilia event.status persistido com lotes + data do evento).
+                      const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches, event.startAt);
+                      const s = EVENT_STATUS[displayStatus] ?? { label: displayStatus, cls: BADGE.gray };
+                      return (
                       <span className={`text-xs px-2 py-1 rounded font-medium ${s.cls}`}>{s.label}</span>
                     ); })()}
                   </td>

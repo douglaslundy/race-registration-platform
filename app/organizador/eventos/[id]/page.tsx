@@ -27,6 +27,7 @@ export const metadata: Metadata = { title: "Gerenciar Evento" };
 export const dynamic = "force-dynamic";
 
 import { BADGE } from "@/lib/badge-colors";
+import { getEventDisplayStatus } from "@/lib/batch-status";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   DRAFT:                { label: "Rascunho", color: BADGE.gray },
@@ -142,7 +143,10 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
     gatewayFeeAmount: paymentsAgg._sum.gatewayFeeAmount,
   });
   const revenue = revenueBreakdown.eventRevenue;
-  const statusInfo = STATUS_LABEL[event.status] ?? STATUS_LABEL.DRAFT;
+  // Badge = status EFETIVO (reconcilia event.status persistido com lotes + data do evento).
+  // Ações abaixo (publicar/arquivar/excluir) continuam olhando event.status cru.
+  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches, event.startAt);
+  const statusInfo = STATUS_LABEL[displayStatus] ?? STATUS_LABEL.DRAFT;
   const canPublish = event.status === "DRAFT";
   const canDelete = ["DRAFT", "CANCELLED"].includes(event.status);
 

@@ -116,7 +116,7 @@ export default async function EventoPage({ params }: Props) {
     (b) => getBatchStatus(b, event.ticketBatches) === "UPCOMING"
   );
   const canRegister = event.status === "REGISTRATIONS_OPEN" && hasActiveBatch;
-  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches);
+  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches, event.startAt);
   const availableBatches = event.ticketBatches.filter((b) => b.soldCount < b.capacity);
   const heroBannerUrl = event.bannerUrl ?? event.listBannerUrl;
   const hasResults = eventHasResults({

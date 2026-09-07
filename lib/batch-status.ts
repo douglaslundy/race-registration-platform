@@ -60,12 +60,21 @@ export function isBatchAvailable(batch: BatchForStatus, allBatches: BatchForStat
  * DRAFT, UNDER_REVIEW, PUBLISHED, REGISTRATIONS_CLOSED, COMPLETED, CANCELLED — já são explícitos e
  * não dependem do estado dos lotes). A badge e o botão de CTA devem sempre consultar ESTE valor, e
  * nunca `event.status` cru, pra nunca mais divergirem entre si.
+ *
+ * `startAt` (opcional): quando a data do evento já passou, não há inscrição possível — o evento
+ * está encerrado, independente do que os lotes digam ou de um `endAt` de lote mal configurado
+ * além da data da corrida. Sem isso, um evento com `status=REGISTRATIONS_OPEN` gravado continua
+ * aparecendo como "Inscrições abertas" pra sempre depois da corrida (o campo persistido nunca é
+ * recalculado sozinho).
  */
 export function getEventDisplayStatus(
   status: EventStatus,
   batches: BatchForStatus[],
+  startAt?: Date,
 ): EventStatus {
   if (status !== "REGISTRATIONS_OPEN") return status;
+
+  if (startAt && startAt.getTime() <= Date.now()) return "REGISTRATIONS_CLOSED";
   if (batches.length === 0) return status;
 
   const statuses = batches.map((b) => getBatchStatus(b, batches));

@@ -57,7 +57,7 @@ export default function EventCard({ event }: EventCardProps) {
   // disponibilidade real dos lotes, pra badge e botão nunca mostrarem mensagens contraditórias
   // (ex.: "Inscrições abertas" + "Inscrições fechadas" juntas quando os lotes esgotam mas o campo
   // de status do evento continua REGISTRATIONS_OPEN). Ver lib/batch-status.ts.
-  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches);
+  const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches, event.startAt);
   const badge = STATUS_BADGE[displayStatus];
   const lowestBatch = event.ticketBatches[0];
   const days = daysUntilEvent(event.startAt);

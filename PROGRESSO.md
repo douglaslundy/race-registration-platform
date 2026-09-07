@@ -1,5 +1,32 @@
 # Progresso do Projeto
 
+## Última atualização (2026-09-07 — evento realizado aparecia como "Inscrições abertas" no admin/organizador)
+
+`npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2373 testes verdes · `npx next build` exit 0.
+
+### Bug
+`3º Corrida Saúde em Movimento` (`startAt` 30/08, único lote fechou 21/08) mostrava **"Inscrições abertas"** no `/admin/eventos`, no dashboard do organizador e na página do evento no organizador — enquanto a página pública já mostrava "Encerrado".
+
+### Causa raiz
+`Event.status` é campo persistido e **nunca é recalculado sozinho** (não há cron que encerre evento por data). Admin/organizador exibiam o `event.status` **cru**; só o card público reconciliava via `getEventDisplayStatus()`. E `getEventDisplayStatus()` só olhava os lotes, **ignorava `event.startAt`** (o `daily-summary.ts` tinha uma gambiarra local `startAt < dayStart` justamente por isso).
+
+### Correção
+- `lib/batch-status.ts`: `getEventDisplayStatus(status, batches, startAt?)` — se `status===REGISTRATIONS_OPEN` e `startAt` já passou → `REGISTRATIONS_CLOSED`. Param opcional (não quebra chamadas existentes).
+- Passam a exibir o status EFETIVO (via `getEventDisplayStatus` + `startAt`): `app/admin/eventos/page.tsx` (+ `ticketBatches` na query), `app/organizador/page.tsx` (+ `ticketBatches`), `app/organizador/eventos/[id]/page.tsx` (já tinha os lotes). Ações (publicar/aprovar/arquivar/excluir) continuam no status cru.
+- Os 2 callers públicos (`EventCard`, página do evento) passam a mandar `startAt` também — consistência.
+- `daily-summary.ts` NÃO foi tocado (a gambiarra dele usa `dayStart`, não `now` — necessária pro backfill de dias passados).
+- 4 testes novos em `tests/unit/batch-status.test.ts`.
+
+Sem migração e **sem ajuste no banco** (usuário confirmou: só 1 evento finalizado; a exibição agora se corrige sozinha).
+
+### Fora de escopo (registrado)
+`canRegister` na página pública do evento gateia só em lote ACTIVE, não na data do evento — um lote com `endAt` mal configurado além da data da corrida deixaria inscrever num evento passado. Não afeta este evento (lote fechado). Endurecer separado, se quiser.
+
+### PRÓXIMA TAREFA
+Deploy (pedir confirmação).
+
+---
+
 ## Última atualização (2026-09-05 — URL de webhook por conta visível na lista de contas de pagamento — DEPLOYADO)
 
 `main` = `984c99c`. `npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2369 testes verdes · `npx next build` exit 0.

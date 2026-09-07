@@ -7,6 +7,7 @@ import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import UserDensityToggle from "@/components/admin/UserDensityToggle";
 import { buildAdminEventOrderBy, buildAdminEventWhere } from "@/lib/admin/events";
 import { EVENT_STATUS_LABEL } from "@/lib/admin/labels";
+import { getEventDisplayStatus } from "@/lib/batch-status";
 import PrintButton from "@/components/ui/PrintButton";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 
@@ -104,6 +105,9 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
     take: pageSize,
     include: {
       organizer: { include: { user: { select: { name: true, email: true } } } },
+      ticketBatches: {
+        select: { id: true, soldCount: true, capacity: true, startAt: true, endAt: true, active: true, activationMode: true },
+      },
     },
   });
 
@@ -282,7 +286,14 @@ export default async function AdminEventosPage({ searchParams }: { searchParams:
                     </div>
                   </td>
                   <td className={cellPadding}>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200">{EVENT_STATUS_LABEL[event.status] ?? event.status}</span>
+                    {(() => {
+                      // Status efetivo: reconcilia event.status persistido com lotes + data do evento
+                      // (o mesmo que o card público mostra). O botão "Aprovar" abaixo segue no status cru.
+                      const displayStatus = getEventDisplayStatus(event.status, event.ticketBatches, event.startAt);
+                      return (
+                        <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 dark:text-gray-200">{EVENT_STATUS_LABEL[displayStatus] ?? displayStatus}</span>
+                      );
+                    })()}
                   </td>
                   <td className={cellPadding + " text-center"}>
                     <div>{breakdown.paid} confirmadas</div>
