@@ -4217,11 +4217,128 @@ editando, agora impossível de confundir com o badge.
 **Pendência real**: usuário ainda vai testar de novo com o badge visível pra confirmar que agora
 funciona — próximo passo real ao retomar é ler a resposta dele.
 
+## Tamanho de camiseta obrigatório na inscrição (2026-09-29)
+
+Bug reportado: era possível concluir uma inscrição sem escolher tamanho de camiseta — mesmo quando o
+atleta já tinha um tamanho salvo no perfil (`AthleteProfile.preferredShirtSize`), bastava não tocar
+no campo (ele já vinha vazio se o perfil não tivesse um tamanho permitido) e o `<select>` era
+opcional em todas as camadas.
+
+**Causa raiz** (systematic-debugging): `shirtSize` era opcional em 3 lugares ao mesmo tempo —
+schema zod do formulário (`CheckoutForm.tsx`, via `optionalEnumField`), schema zod da API
+(`app/api/checkout/route.ts`) e a checagem de negócio em `lib/checkout.ts` (`if (input.shirtSize) {
+... }` só validava tamanho *quando informado*, nunca exigia que fosse informado).
+
+**Corrigido em profundidade (defesa em 3 camadas + o modal de procuração)**:
+1. `lib/checkout-validation.ts`: `optionalEnumField` (ficou sem nenhum outro uso) virou
+   `requiredEnumField(values, message)` — preprocessa `""` → `undefined` e falha com mensagem
+   customizada via `errorMap` quando ausente/inválido.
+2. `components/checkout/CheckoutForm.tsx`: campo `shirtSize` do schema agora usa
+   `requiredEnumField(..., "Selecione o tamanho de camiseta")`; label ganhou `*`; erro inline abaixo
+   do `<select>`. O pré-preenchimento a partir de `athleteProfile.preferredShirtSize` **já existia**
+   e continua funcionando (só dispara quando o tamanho salvo ainda está em `allowedShirtSizes`).
+3. `app/api/checkout/route.ts`: mesmo `requiredEnumField` no `checkoutSchema` (defesa server-side,
+   não dá pra confiar só no client).
+4. `lib/checkout.ts`: `CheckoutInput.shirtSize` deixou de ser opcional (`ShirtSize` em vez de
+   `ShirtSize | undefined`) e a checagem virou incondicional — lança "Selecione o tamanho de
+   camiseta para concluir a inscrição" antes mesmo de checar se o tamanho está na lista permitida
+   pela restrição por data.
+5. `components/checkout/ProxyAthleteModal.tsx` (inscrição "para outro atleta" — reusa os mesmos
+   campos do formulário principal): mesma exigência adicionada em `handleSave` (`if
+   (!form.shirtSize) return setError(...)`), já que esse modal não passa pelo zod do form principal.
+
+**Não mexido, mas é o mesmo buraco em outro lugar (mencionado ao usuário, sem pedido explícito
+ainda)**: `EditMyRegistrationButton.tsx` + `PATCH /api/athlete/registrations/[id]` permitem o atleta
+**apagar** o tamanho de uma inscrição já criada (campo `.nullable()` no schema da rota). Se o usuário
+quiser, dá pra bloquear isso numa tarefa separada.
+
+**Testes**: TDD — escrito primeiro o teste que reproduz o bug (`rejeita a inscrição quando nenhum
+tamanho de camiseta é informado`, em `tests/unit/checkout-shirt-size-restriction.test.ts`), confirmado
+que falhava, só depois a correção. Como `shirtSize` virou obrigatório na assinatura de
+`createCheckout`, precisou adicionar `shirtSize: "M"` em ~24 chamadas de teste que não testavam esse
+campo (`checkout-coupon`, `checkout-pix-discount`, `checkout-notes`,
+`checkout-participant-snapshot-wiring`, `checkout-proxy-athlete`) e no corpo das requisições de
+`tests/checkout-route.test.ts` / `tests/checkout-payment-account.test.ts` (a API agora rejeita com
+400 sem o campo). `checkout-validation.test.ts` reescrito para testar `requiredEnumField` em vez do
+helper removido.
+
+Arquivos alterados: `lib/checkout-validation.ts`, `lib/checkout.ts`, `app/api/checkout/route.ts`,
+`components/checkout/CheckoutForm.tsx`, `components/checkout/ProxyAthleteModal.tsx`, mais os 7
+arquivos de teste citados acima.
+
+Suite completa: **2376/2376 passando**, `tsc --noEmit` limpo, `next build` limpo.
+**Pendência real**: nada visto no navegador (extensão do Chrome não foi usada nesta sessão) — só
+verificado via testes/build. Ainda não deployado.
+
+## Quota de camiseta por tamanho + lote sem camiseta (2026-09-29)
+
+Duas entregas pedidas em seguida pelo usuário depois da correção acima, implementadas juntas via
+plano formal (`docs/superpowers/specs/2026-09-29-quota-camiseta-lote-sem-camiseta-design.md` +
+`docs/superpowers/plans/2026-09-29-quota-camiseta-lote-sem-camiseta.md`, 7 tarefas, execução
+inline/nativa nesta mesma sessão, TDD em cada uma):
+
+1. **Quota de camiseta por tamanho** — organizador define, por evento (global, soma todos os lotes
+   com camiseta), quantas unidades de cada tamanho existem. Sem quota configurada = ilimitado
+   (comportamento de hoje). Tamanho que atinge a quota some do `<select>` da inscrição.
+2. **Lote sem camiseta** — novo campo `TicketBatch.hasShirt` (`default(true)`, nenhum lote
+   existente muda de comportamento). Quando `false`, o campo de camiseta nem aparece nem é exigido
+   — nem na inscrição nova, nem na edição de uma inscrição já existente.
+
+**Isso reverteu parte da correção anterior**: como a obrigatoriedade do tamanho agora depende do
+lote (não é mais incondicional), `shirtSize` voltou a ser opcional no schema zod do form/API
+(`optionalEnumField`, desfazendo o `requiredEnumField` da entrega anterior) — a obrigatoriedade
+real passou a ser checada dentro de `createCheckout`/`onSubmit`, condicionada a `batch.hasShirt`.
+
+**Decisão de arquitetura**: quota é checada por **contagem ao vivo**
+(`Registration.count`/`groupBy` excluindo `CANCELLED`), nunca um contador denormalizado tipo
+`TicketBatch.soldCount`. Motivo: `soldCount` é decrementado em ~5 lugares diferentes (cancelamento,
+reembolso, expiração de pedido...) — replicar isso pra quota de camiseta multiplicaria o risco de
+um decremento esquecido travar um tamanho pra sempre. Contagem ao vivo fica automaticamente certa
+em qualquer fluxo que já muda o `status` de uma inscrição, sem lógica extra.
+
+**Fecha o gap que tinha ficado pendente**: `EditMyRegistrationButton.tsx` +
+`PATCH /api/athlete/registrations/[id]` agora também respeitam `hasShirt` e a quota (com
+grandfathering — manter o mesmo tamanho nunca falha por quota, só trocar pra um tamanho esgotado).
+
+**Pendência real e importante — migration não aplicada ao banco**: `npx prisma migrate dev` não
+rodou nesta sessão porque o DNS de `db.usgslzpuovvrkvvrhljt.supabase.co` não resolveu neste
+ambiente (confirmado até com sandbox desabilitado) e o conector MCP do Supabase respondeu com erro
+de OAuth — sem caminho pra alcançar o banco real daqui. A migration foi escrita à mão em
+`prisma/migrations/20260929000000_add_shirt_hasshirt_and_size_quota/migration.sql`, replicando o
+estilo exato de 3 migrations já existentes que usam o mesmo enum `ShirtSize`/padrão de FK cascade —
+mas **alguém com acesso real ao banco precisa rodar `npx prisma migrate deploy` (revisando o SQL
+antes) antes do deploy**, ou o app vai quebrar em produção (colunas/tabela não existem lá ainda).
+`npx prisma generate` rodou normalmente (não precisa de conexão), então o código todo já compila e
+os testes (100% mockados) passam sem o banco real.
+
+Arquivos alterados/criados: `prisma/schema.prisma` + nova migration, `lib/shirt-size-quota.ts`
+(novo), `lib/checkout.ts`, `lib/checkout-validation.ts`, `app/api/checkout/route.ts`,
+`app/api/events/[id]/batches/route.ts` e `[batchId]/route.ts`,
+`app/api/events/[id]/shirt-quotas/route.ts` (novo), `app/api/athlete/registrations/[id]/route.ts`,
+`components/checkout/CheckoutForm.tsx`, `components/checkout/ProxyAthleteModal.tsx`,
+`components/organizer/ShirtSizeQuotaManager.tsx` (novo), `LotesClient.tsx`,
+`app/organizador/eventos/[id]/editar/page.tsx`, `app/(public)/inscricao/[slug]/page.tsx`,
+`app/dashboard/inscricoes/[id]/page.tsx`, `EditMyRegistrationButton.tsx`, mais ~10 arquivos de
+teste (novos e atualizados). Suite completa: **2394/2394 passando**, `tsc --noEmit` limpo,
+`next build` limpo.
+
+**Pendência real (igual sempre)**: nada visto no navegador nesta sessão — só testes/build. Sem
+tela de admin separada (admin já reaproveita `/lotes` e `/editar` do organizador via
+`actingAsAdmin`, confirmado, nada a fazer ali).
+
 ## Próxima tarefa
 
-Aguardar confirmação do usuário de que o teste de WhatsApp agora funciona (badge de canal deployado
-— ver seção acima). Depois disso, todas as correções pedidas até agora estarão completas. Perguntar
-o que vem a seguir. Etapa 4 (novos alertas recomendados) e Etapa 5 (auditoria/log de envio mais
-completo, hoje parcial) continuam pendentes, sem pedido explícito ainda. Etapas 9/10 (kits, rating)
-continuam bloqueadas até 1-8 estarem 100% concluídas, testadas e deployadas — e até pedido explícito
-do usuário.
+1. Rodar `npx prisma migrate deploy` (ou `migrate dev`) de um ambiente com acesso real ao banco —
+   revisar o SQL em `prisma/migrations/20260929000000_add_shirt_hasshirt_and_size_quota/migration.sql`
+   antes de aplicar, já que foi escrito à mão sem o diff engine do Prisma confirmar.
+2. Depois da migration aplicada, perguntar ao usuário se quer testar de verdade (criar um lote sem
+   camiseta, configurar uma quota baixa e esgotar um tamanho) antes de considerar encerrado.
+3. Nada foi commitado além do que já está no histórico local — perguntar antes de `git push`.
+
+### Contexto necessário
+- `docs/superpowers/plans/2026-09-29-quota-camiseta-lote-sem-camiseta.md` — plano completo, já
+  100% executado (ledger em `.superpowers/sdd/2026-09-29-quota-camiseta-lote-sem-camiseta/progress.md`).
+- `prisma/migrations/20260929000000_add_shirt_hasshirt_and_size_quota/migration.sql` — migration
+  pendente de aplicação real.
+- `lib/checkout.ts` (`createCheckout`) e `app/api/athlete/registrations/[id]/route.ts` — onde
+  `hasShirt`/quota são enforced de verdade.
