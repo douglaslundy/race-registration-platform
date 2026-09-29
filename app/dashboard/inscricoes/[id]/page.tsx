@@ -9,7 +9,7 @@ import EditMyRegistrationButton from "@/components/dashboard/EditMyRegistrationB
 import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
 import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
-import { getSoldOutShirtSizes } from "@/lib/shirt-size-quota";
+import { getShirtSizeAvailability } from "@/lib/shirt-size-quota";
 import QRCode from "react-qr-code";
 import type { Metadata } from "next";
 
@@ -66,7 +66,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
 
   if (!registration) notFound();
 
-  // getSoldOutShirtSizes faz 2 consultas ao banco — só vale a pena rodar quando o botão de
+  // getShirtSizeAvailability faz 2 consultas ao banco — só vale a pena rodar quando o botão de
   // editar realmente vai aparecer (mesma condição que EditMyRegistrationButton usa pra decidir
   // se renderiza ou não: dono da inscrição, prazo aberto, lote com camiseta).
   const canEditRegistrationNow =
@@ -75,9 +75,16 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
     new Date(registration.event.registrationEditDeadline!) > new Date() &&
     registration.ticketBatch.hasShirt;
 
+  const shirtSizeAvailability = canEditRegistrationNow ? await getShirtSizeAvailability(registration.eventId) : [];
+  const soldOutSizes = shirtSizeAvailability.filter((a) => a.remaining === 0).map((a) => a.size);
+  const shirtSizeRemaining = Object.fromEntries(
+    shirtSizeAvailability
+      .filter((a) => a.remaining !== null && a.remaining > 0 && a.remaining < 20)
+      .map((a) => [a.size, a.remaining as number]),
+  );
+
   const availableShirtSizes = canEditRegistrationNow
-    ? await (async () => {
-        const soldOutSizes = await getSoldOutShirtSizes(registration.eventId);
+    ? (() => {
         const dateAllowedSizes = getAllowedShirtSizes(
           {
             shirtSizeRestrictionDate: registration.event.shirtSizeRestrictionDate,
@@ -319,6 +326,7 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           emergencyContactPhone={registration.emergencyContactPhone}
           hasShirt={registration.ticketBatch.hasShirt}
           availableShirtSizes={availableShirtSizes}
+          shirtSizeRemaining={shirtSizeRemaining}
         />
         {canCancel && (
           <CancelRegistrationButton registrationId={registration.id} requiresApproval={requiresApproval} />

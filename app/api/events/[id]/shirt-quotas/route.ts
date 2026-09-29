@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { zodErrorResponse } from "@/lib/http/zod-error";
-import { ALL_SHIRT_SIZES } from "@/lib/shirt-size-restriction";
+import { getShirtSizeAvailability } from "@/lib/shirt-size-quota";
 
 const putSchema = z.object({
   quotas: z
@@ -25,25 +25,8 @@ async function getOwnedEvent(eventId: string, organizerId: string | null, acting
 }
 
 async function getQuotasWithUsage(eventId: string) {
-  const [quotas, usage] = await Promise.all([
-    db.eventShirtSizeQuota.findMany({ where: { eventId }, select: { size: true, quantity: true } }),
-    db.registration.groupBy({
-      by: ["shirtSize"],
-      where: { eventId, shirtSize: { not: null }, status: { not: "CANCELLED" } },
-      _count: { _all: true },
-    }),
-  ]);
-
-  const quotaBySize = new Map<string, number>(quotas.map((q) => [q.size as string, q.quantity]));
-  const usedBySize = new Map<string, number>(
-    usage.filter((u) => u.shirtSize !== null).map((u) => [u.shirtSize as string, u._count._all]),
-  );
-
-  return ALL_SHIRT_SIZES.map((size) => ({
-    size,
-    quantity: quotaBySize.get(size) ?? null,
-    usedCount: usedBySize.get(size) ?? 0,
-  }));
+  const availability = await getShirtSizeAvailability(eventId);
+  return availability.map(({ size, quantity, usedCount }) => ({ size, quantity, usedCount }));
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

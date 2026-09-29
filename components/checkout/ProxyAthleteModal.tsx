@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
+import { formatShirtSizeLabel } from "@/lib/shirt-size-quota";
 
 export interface ProxyAthleteData {
   name: string;
@@ -23,6 +24,7 @@ export default function ProxyAthleteModal({
   routes,
   categories,
   allowedShirtSizes,
+  shirtSizeRemaining = {},
   hasShirt,
   onSave,
   onCancel,
@@ -31,6 +33,7 @@ export default function ProxyAthleteModal({
   routes: { id: string; name: string; distanceKm: number }[];
   categories: { id: string; name: string }[];
   allowedShirtSizes: string[];
+  shirtSizeRemaining?: Record<string, number>;
   hasShirt: boolean;
   onSave: (data: ProxyAthleteData) => void;
   onCancel: () => void;
@@ -134,7 +137,7 @@ export default function ProxyAthleteModal({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta *</label>
               <select value={form.shirtSize ?? ""} onChange={(e) => set("shirtSize", e.target.value)} className="input-field">
                 <option value="">Selecione</option>
-                {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                {allowedShirtSizes.map((s) => <option key={s} value={s}>{formatShirtSizeLabel(s, shirtSizeRemaining[s])}</option>)}
               </select>
             </div>
           )}

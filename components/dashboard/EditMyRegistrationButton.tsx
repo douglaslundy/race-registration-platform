@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ErrorModal from "@/components/ui/ErrorModal";
+import { formatShirtSizeLabel } from "@/lib/shirt-size-quota";
 
 const GENDERS = [
   { value: "M", label: "Masculino" },
@@ -25,6 +26,7 @@ interface EditMyRegistrationButtonProps {
   emergencyContactPhone: string | null;
   hasShirt: boolean;
   availableShirtSizes: string[];
+  shirtSizeRemaining?: Record<string, number>;
 }
 
 interface FormState {
@@ -58,6 +60,7 @@ export default function EditMyRegistrationButton({
   emergencyContactPhone,
   hasShirt,
   availableShirtSizes,
+  shirtSizeRemaining = {},
 }: EditMyRegistrationButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -232,7 +235,7 @@ export default function EditMyRegistrationButton({
                   >
                     <option value="">Selecione</option>
                     {availableShirtSizes.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>{formatShirtSizeLabel(s, shirtSizeRemaining[s])}</option>
                     ))}
                   </select>
                 </div>

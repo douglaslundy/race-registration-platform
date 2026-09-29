@@ -10,6 +10,7 @@ import { computeOrderAmounts } from "@/lib/fees";
 import { emptyStringToUndefined, extractApiErrorMessage, optionalEnumField, opaqueIdField, optionalOpaqueIdField } from "@/lib/checkout-validation";
 import { PAYMENT_METHOD_LABELS, type CheckoutPaymentMethod } from "@/lib/payment-methods";
 import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
+import { formatShirtSizeLabel } from "@/lib/shirt-size-quota";
 import type { MPCardFormHandle } from "./MPCardForm";
 import type { PagarMeCardFormHandle } from "./PagarMeCardForm";
 import EventDisclaimer from "@/components/events/EventDisclaimer";
@@ -89,6 +90,7 @@ export default function CheckoutForm({
   appName,
   allowProxyRegistration,
   soldOutShirtSizes = [],
+  shirtSizeRemaining = {},
 }: {
   event: EventData;
   batches: Batch[];
@@ -103,6 +105,7 @@ export default function CheckoutForm({
   appName?: string;
   allowProxyRegistration?: boolean;
   soldOutShirtSizes?: string[];
+  shirtSizeRemaining?: Record<string, number>;
 }) {
   const dateAllowedShirtSizes = getAllowedShirtSizes(
     {
@@ -382,6 +385,7 @@ export default function CheckoutForm({
         routes={event.routes}
         categories={event.categories}
         allowedShirtSizes={allowedShirtSizes}
+        shirtSizeRemaining={shirtSizeRemaining}
         hasShirt={showShirtSize}
         onSave={(saved) => {
           // ProxyAthleteData junta 2 tipos de campo num só formulário (UX de uma tela só): os de
@@ -497,7 +501,7 @@ export default function CheckoutForm({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta <span className="text-red-500">*</span></label>
               <select {...register("shirtSize")} className="input-field">
                 <option value="">Selecione</option>
-                {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                {allowedShirtSizes.map((s) => <option key={s} value={s}>{formatShirtSizeLabel(s, shirtSizeRemaining[s])}</option>)}
               </select>
               {shirtSizeRestricted && event.shirtSizeRestrictionDate && (
                 <p className="text-xs text-gray-500 mt-1">
