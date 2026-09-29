@@ -19,6 +19,7 @@ describe("createCheckout proxy athlete handling", () => {
     soldCount: 0,
     capacity: 10,
     priceAmount: 20000,
+    hasShirt: true,
   };
 
   const event = {
@@ -58,6 +59,7 @@ describe("createCheckout proxy athlete handling", () => {
         count: vi.fn().mockResolvedValue(0),
         findFirst: vi.fn().mockResolvedValue(null),
       },
+      eventShirtSizeQuota: { findUnique: vi.fn().mockResolvedValue(null) },
       coupon: {
         findFirst: vi.fn().mockResolvedValue(null),
         update: vi.fn().mockResolvedValue({}),
@@ -88,6 +90,7 @@ describe("createCheckout proxy athlete handling", () => {
         ticketBatchId: "batch-1",
         buyerUserId: "buyer-1",
         athleteUserId: "buyer-1",
+        shirtSize: "M" as any,
         proxyAthlete: proxyAthleteInput,
       }),
     ).rejects.toThrow("Inscrição por procuração não está habilitada para este evento");
@@ -104,6 +107,7 @@ describe("createCheckout proxy athlete handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "buyer-1",
       athleteUserId: "buyer-1",
+      shirtSize: "M" as any,
       proxyAthlete: proxyAthleteInput,
     });
 
@@ -136,6 +140,7 @@ describe("createCheckout proxy athlete handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "buyer-1",
       athleteUserId: "buyer-1",
+      shirtSize: "M" as any,
       proxyAthlete: proxyAthleteInput,
     });
 
@@ -160,6 +165,7 @@ describe("createCheckout proxy athlete handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "buyer-1",
       athleteUserId: "buyer-1",
+      shirtSize: "M" as any,
       proxyAthlete: { ...proxyAthleteInput, email: "maria@example.com" },
     });
 
@@ -184,6 +190,7 @@ describe("createCheckout proxy athlete handling", () => {
         ticketBatchId: "batch-1",
         buyerUserId: "buyer-1",
         athleteUserId: "buyer-1",
+        shirtSize: "M" as any,
         proxyAthlete: { ...proxyAthleteInput, email: "jatem@example.com" },
       }),
     ).rejects.toThrow("Este e-mail já está em uso por outra conta");
@@ -199,6 +206,7 @@ describe("createCheckout proxy athlete handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "buyer-1",
       athleteUserId: "buyer-1",
+      shirtSize: "M" as any,
       proxyAthlete: proxyAthleteInput,
     });
 
@@ -216,6 +224,7 @@ describe("createCheckout proxy athlete handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "buyer-1",
       athleteUserId: "buyer-1",
+      shirtSize: "M" as any,
     });
 
     expect(tx.athleteProfile.findFirst).not.toHaveBeenCalled();

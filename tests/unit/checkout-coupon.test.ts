@@ -15,6 +15,7 @@ describe("createCheckout coupon handling", () => {
     soldCount: 0,
     capacity: 10,
     priceAmount: 20000,
+    hasShirt: true,
   };
 
   const event = {
@@ -43,6 +44,7 @@ describe("createCheckout coupon handling", () => {
       count: vi.fn().mockResolvedValue(0),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    eventShirtSizeQuota: { findUnique: vi.fn().mockResolvedValue(null) },
     coupon: {
       findFirst: vi.fn().mockResolvedValue(coupon),
       update: vi.fn().mockResolvedValue({}),
@@ -73,6 +75,7 @@ describe("createCheckout coupon handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "user-1",
       athleteUserId: "user-1",
+      shirtSize: "M" as any,
       couponCode: "  welcome10  ",
     });
 
@@ -104,6 +107,7 @@ describe("createCheckout coupon handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "user-1",
       athleteUserId: "user-1",
+      shirtSize: "M" as any,
       couponCode: "EVIL",
     });
 
@@ -124,6 +128,7 @@ describe("createCheckout coupon handling", () => {
         ticketBatchId: "batch-1",
         buyerUserId: "user-1",
         athleteUserId: "user-1",
+        shirtSize: "M" as any,
       }),
     ).rejects.toThrow("Selecione um percurso");
   });
@@ -141,6 +146,7 @@ describe("createCheckout coupon handling", () => {
         routeId: "route-1",
         buyerUserId: "user-1",
         athleteUserId: "user-1",
+        shirtSize: "M" as any,
       }),
     ).rejects.toThrow("Selecione uma categoria");
   });
@@ -156,6 +162,7 @@ describe("createCheckout coupon handling", () => {
         ticketBatchId: "batch-1",
         buyerUserId: "user-1",
         athleteUserId: "user-1",
+        shirtSize: "M" as any,
         couponCode: "INVALID",
       }),
     ).rejects.toThrow("Cupom inválido");
@@ -180,6 +187,7 @@ describe("createCheckout coupon handling", () => {
         ticketBatchId: "batch-1",
         buyerUserId: "user-1",
         athleteUserId: "user-1",
+        shirtSize: "M" as any,
         couponCode: "EXPIRED10",
       }),
     ).rejects.toThrow("Cupom vencido");
@@ -206,6 +214,7 @@ describe("createCheckout coupon handling", () => {
         ticketBatchId: "batch-1",
         buyerUserId: "user-1",
         athleteUserId: "user-1",
+        shirtSize: "M" as any,
         couponCode: "OFFCODE",
       }),
     ).rejects.toThrow("Cupom inválido");

@@ -15,6 +15,7 @@ describe("createCheckout — restrição de tamanho de camiseta por data", () =>
     soldCount: 0,
     capacity: 10,
     priceAmount: 20000,
+    hasShirt: true,
   };
 
   const createTx = (event: any) => ({
@@ -37,6 +38,7 @@ describe("createCheckout — restrição de tamanho de camiseta por data", () =>
       count: vi.fn().mockResolvedValue(0),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    eventShirtSizeQuota: { findUnique: vi.fn().mockResolvedValue(null) },
     coupon: {
       findFirst: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
@@ -46,6 +48,7 @@ describe("createCheckout — restrição de tamanho de camiseta por data", () =>
     },
     registration: {
       create: vi.fn().mockResolvedValue({ id: "reg-1" }),
+      count: vi.fn().mockResolvedValue(0),
     },
   });
 
@@ -112,6 +115,106 @@ describe("createCheckout — restrição de tamanho de camiseta por data", () =>
         athleteUserId: "user-1",
         shirtSize: "G" as any,
       }),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejeita a inscrição quando nenhum tamanho de camiseta é informado", async () => {
+    const event = {
+      id: "event-1",
+      status: "REGISTRATIONS_OPEN",
+      platformFeePercent: 1100,
+      shirtSizeRestrictionDate: null,
+      shirtSizeRestrictionSizes: [],
+    };
+    const tx = createTx(event);
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+      } as any),
+    ).rejects.toThrow("Selecione o tamanho de camiseta");
+    expect(tx.order.create).not.toHaveBeenCalled();
+  });
+
+  it("não exige nem grava tamanho de camiseta quando o lote não inclui camiseta", async () => {
+    const event = {
+      id: "event-1",
+      status: "REGISTRATIONS_OPEN",
+      platformFeePercent: 1100,
+      shirtSizeRestrictionDate: null,
+      shirtSizeRestrictionSizes: [],
+    };
+    const tx = createTx(event);
+    tx.ticketBatch.findUnique.mockResolvedValue({ ...ticketBatch, hasShirt: false });
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    const result = await createCheckout({
+      eventId: "event-1",
+      ticketBatchId: "batch-1",
+      buyerUserId: "user-1",
+      athleteUserId: "user-1",
+      shirtSize: "G" as any, // enviado mesmo assim — deve ser ignorado
+    } as any);
+
+    expect(result).toBeDefined();
+    expect(tx.registration.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ shirtSize: undefined }) }),
+    );
+  });
+
+  it("rejeita quando o tamanho escolhido já atingiu a quota configurada para o evento", async () => {
+    const event = {
+      id: "event-1",
+      status: "REGISTRATIONS_OPEN",
+      platformFeePercent: 1100,
+      shirtSizeRestrictionDate: null,
+      shirtSizeRestrictionSizes: [],
+    };
+    const tx = createTx(event);
+    tx.eventShirtSizeQuota.findUnique.mockResolvedValueOnce({ id: "q1", eventId: "event-1", size: "M", quantity: 5 });
+    tx.registration.count.mockResolvedValueOnce(5);
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+        shirtSize: "M" as any,
+      } as any),
+    ).rejects.toThrow("Tamanho de camiseta esgotado para este evento");
+    expect(tx.order.create).not.toHaveBeenCalled();
+    expect(tx.registration.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: { not: "CANCELLED" } }) }),
+    );
+  });
+
+  it("aceita quando o tamanho escolhido tem quota configurada mas ainda não esgotou", async () => {
+    const event = {
+      id: "event-1",
+      status: "REGISTRATIONS_OPEN",
+      platformFeePercent: 1100,
+      shirtSizeRestrictionDate: null,
+      shirtSizeRestrictionSizes: [],
+    };
+    const tx = createTx(event);
+    tx.eventShirtSizeQuota.findUnique.mockResolvedValueOnce({ id: "q1", eventId: "event-1", size: "M", quantity: 5 });
+    tx.registration.count.mockResolvedValueOnce(4);
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+        shirtSize: "M" as any,
+      } as any),
     ).resolves.toBeDefined();
   });
 });

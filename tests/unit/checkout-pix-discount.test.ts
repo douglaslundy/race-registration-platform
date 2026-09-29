@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 
 const dbMock = db as any;
 
-const ticketBatch = { id: "batch-1", active: true, soldCount: 0, capacity: 10, priceAmount: 10000 };
+const ticketBatch = { id: "batch-1", active: true, soldCount: 0, capacity: 10, priceAmount: 10000, hasShirt: true };
 
 function makeTx(eventOverrides: Record<string, unknown> = {}) {
   const event = {
@@ -25,6 +25,7 @@ function makeTx(eventOverrides: Record<string, unknown> = {}) {
     user: { findUnique: vi.fn().mockResolvedValue(null) },
     eventRoute: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn() },
     eventCategory: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn() },
+    eventShirtSizeQuota: { findUnique: vi.fn().mockResolvedValue(null) },
     coupon: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
     order: { create: vi.fn().mockImplementation(async ({ data }: any) => ({ id: "order-1", ...data })) },
     registration: { create: vi.fn().mockResolvedValue({ id: "reg-1" }) },
@@ -55,6 +56,7 @@ describe("createCheckout — desconto PIX sobre a Taxa de Serviço", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "u1",
       athleteUserId: "u1",
+      shirtSize: "M" as any,
       isPix: true,
     });
 
@@ -78,6 +80,7 @@ describe("createCheckout — desconto PIX sobre a Taxa de Serviço", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "u1",
       athleteUserId: "u1",
+      shirtSize: "M" as any,
       isPix: false,
     });
 
@@ -99,6 +102,7 @@ describe("createCheckout — desconto PIX sobre a Taxa de Serviço", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "u1",
       athleteUserId: "u1",
+      shirtSize: "M" as any,
       isPix: true,
     });
 
@@ -116,6 +120,7 @@ describe("createCheckout — desconto PIX sobre a Taxa de Serviço", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "u1",
       athleteUserId: "u1",
+      shirtSize: "M" as any,
       isPix: true,
     });
 

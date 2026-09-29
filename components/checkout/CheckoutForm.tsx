@@ -383,12 +383,9 @@ export default function CheckoutForm({
           // proxyAthlete como identidade (name/birthDate/cpf/phone/email), nada mais.
           setValue("routeId", saved.routeId ?? "", { shouldValidate: true });
           setValue("categoryId", saved.categoryId ?? "", { shouldValidate: true });
-          setValue(
-            "shirtSize",
-            allowedShirtSizes.includes(saved.shirtSize ?? "")
-              ? (saved.shirtSize as FormData["shirtSize"])
-              : undefined,
-          );
+          // ProxyAthleteModal já exige um tamanho válido (dentre allowedShirtSizes) antes de
+          // chamar onSave, então saved.shirtSize nunca chega vazio/indisponível aqui.
+          setValue("shirtSize", saved.shirtSize as FormData["shirtSize"], { shouldValidate: true });
           setValue("teamName", saved.teamName ?? "");
           setValue("emergencyContactName", saved.emergencyContactName, { shouldValidate: true });
           setValue("emergencyContactPhone", saved.emergencyContactPhone, { shouldValidate: true });
@@ -486,11 +483,12 @@ export default function CheckoutForm({
         <h3 className="font-semibold">Dados complementares</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta <span className="text-red-500">*</span></label>
             <select {...register("shirtSize")} className="input-field">
               <option value="">Selecione</option>
               {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
+            {errors.shirtSize && <p className="text-red-500 text-xs mt-1">{errors.shirtSize.message}</p>}
             {shirtSizeRestricted && event.shirtSizeRestrictionDate && (
               <p className="text-xs text-gray-500 mt-1">
                 Alguns tamanhos deixaram de estar disponíveis a partir de{" "}

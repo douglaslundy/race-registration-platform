@@ -67,10 +67,24 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
     const event = await tx.event.findUnique({ where: { id: input.eventId } });
     if (!event || event.status !== "REGISTRATIONS_OPEN") throw new Error("Inscrições não abertas");
 
-    if (input.shirtSize) {
+    if (batch.hasShirt) {
+      if (!input.shirtSize) {
+        throw new Error("Selecione o tamanho de camiseta para concluir a inscrição");
+      }
       const allowedSizes = getAllowedShirtSizes(event, new Date());
       if (!allowedSizes.includes(input.shirtSize)) {
         throw new Error("Tamanho de camiseta indisponível para este evento");
+      }
+      const quota = await tx.eventShirtSizeQuota.findUnique({
+        where: { eventId_size: { eventId: input.eventId, size: input.shirtSize } },
+      });
+      if (quota) {
+        const usedCount = await tx.registration.count({
+          where: { eventId: input.eventId, shirtSize: input.shirtSize, status: { not: "CANCELLED" } },
+        });
+        if (usedCount >= quota.quantity) {
+          throw new Error("Tamanho de camiseta esgotado para este evento");
+        }
       }
     }
 
@@ -221,7 +235,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         categoryId: input.categoryId,
         ticketBatchId: input.ticketBatchId,
         orderId: order.id,
-        shirtSize: input.shirtSize,
+        shirtSize: batch.hasShirt ? input.shirtSize : undefined,
         teamName: input.teamName,
         emergencyContactName: input.emergencyContactName,
         emergencyContactPhone: input.emergencyContactPhone,

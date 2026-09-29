@@ -15,6 +15,7 @@ describe("createCheckout notes handling", () => {
     soldCount: 0,
     capacity: 10,
     priceAmount: 20000,
+    hasShirt: true,
   };
 
   const event = {
@@ -43,6 +44,7 @@ describe("createCheckout notes handling", () => {
       count: vi.fn().mockResolvedValue(0),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    eventShirtSizeQuota: { findUnique: vi.fn().mockResolvedValue(null) },
     coupon: {
       findFirst: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
@@ -64,6 +66,7 @@ describe("createCheckout notes handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "user-1",
       athleteUserId: "user-1",
+      shirtSize: "M" as any,
       notes: "Chegarei um pouco atrasado na retirada do kit",
     });
 
@@ -83,6 +86,7 @@ describe("createCheckout notes handling", () => {
       ticketBatchId: "batch-1",
       buyerUserId: "user-1",
       athleteUserId: "user-1",
+      shirtSize: "M" as any,
     });
 
     expect(tx.registration.create).toHaveBeenCalledWith(
