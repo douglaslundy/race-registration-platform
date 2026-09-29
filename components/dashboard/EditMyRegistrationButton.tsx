@@ -11,8 +11,6 @@ const GENDERS = [
   { value: "OTHER", label: "Prefiro não informar" },
 ];
 
-const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
-
 interface EditMyRegistrationButtonProps {
   registrationId: string;
   deadline: string | null;
@@ -25,6 +23,8 @@ interface EditMyRegistrationButtonProps {
   teamName: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
+  hasShirt: boolean;
+  availableShirtSizes: string[];
 }
 
 interface FormState {
@@ -56,6 +56,8 @@ export default function EditMyRegistrationButton({
   teamName,
   emergencyContactName,
   emergencyContactPhone,
+  hasShirt,
+  availableShirtSizes,
 }: EditMyRegistrationButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -100,6 +102,11 @@ export default function EditMyRegistrationButton({
         return;
       }
       body.name = trimmedName;
+    }
+
+    if (hasShirt && form.shirtSize.trim() === "") {
+      setInlineError("Selecione o tamanho de camiseta.");
+      return;
     }
 
     const optional: {
@@ -211,19 +218,21 @@ export default function EditMyRegistrationButton({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Camiseta</label>
-                <select
-                  value={form.shirtSize}
-                  onChange={(e) => setField("shirtSize", e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Selecione</option>
-                  {SHIRT_SIZES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
+              {hasShirt && (
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Camiseta</label>
+                  <select
+                    value={form.shirtSize}
+                    onChange={(e) => setField("shirtSize", e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Selecione</option>
+                    {availableShirtSizes.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="block text-xs text-gray-500 mb-1">Equipe</label>
                 <input

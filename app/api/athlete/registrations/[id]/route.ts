@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { pickParticipantChanges } from "@/lib/registrations/participant-identity";
+import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
 import { Prisma } from "@prisma/client";
 
 const schema = z
@@ -33,13 +34,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id },
     select: {
       athleteUserId: true,
+      eventId: true,
+      shirtSize: true,
       participantName: true,
       participantEmail: true,
       participantPhone: true,
       participantBirthDate: true,
       participantGender: true,
       participantCpf: true,
-      event: { select: { registrationEditDeadline: true } },
+      ticketBatch: { select: { hasShirt: true } },
+      event: {
+        select: {
+          registrationEditDeadline: true,
+          shirtSizeRestrictionDate: true,
+          shirtSizeRestrictionSizes: true,
+        },
+      },
     },
   });
   if (!reg || reg.athleteUserId !== session.user.id) {
@@ -73,7 +83,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.participantBirthDate = d;
     }
   }
-  if (b.shirtSize !== undefined) data.shirtSize = b.shirtSize;
+  if (b.shirtSize !== undefined) {
+    if (!reg.ticketBatch.hasShirt) {
+      // Lote não inclui camiseta — ignora qualquer valor enviado, defesa em profundidade
+      // já que a UI nem mostra o campo nesse caso.
+    } else if (b.shirtSize === null) {
+      return NextResponse.json({ error: "Selecione o tamanho de camiseta." }, { status: 400 });
+    } else {
+      const allowedSizes = getAllowedShirtSizes(reg.event, new Date());
+      if (!allowedSizes.includes(b.shirtSize)) {
+        return NextResponse.json({ error: "Tamanho de camiseta indisponível para este evento" }, { status: 400 });
+      }
+      if (b.shirtSize !== reg.shirtSize) {
+        const quota = await db.eventShirtSizeQuota.findUnique({
+          where: { eventId_size: { eventId: reg.eventId, size: b.shirtSize } },
+        });
+        if (quota) {
+          const usedCount = await db.registration.count({
+            where: { eventId: reg.eventId, shirtSize: b.shirtSize, status: { not: "CANCELLED" } },
+          });
+          if (usedCount >= quota.quantity) {
+            return NextResponse.json({ error: "Tamanho de camiseta esgotado para este evento" }, { status: 400 });
+          }
+        }
+      }
+      data.shirtSize = b.shirtSize;
+    }
+  }
   if (b.teamName !== undefined) data.teamName = b.teamName;
   if (b.emergencyContactName !== undefined) data.emergencyContactName = b.emergencyContactName;
   if (b.emergencyContactPhone !== undefined) data.emergencyContactPhone = b.emergencyContactPhone;

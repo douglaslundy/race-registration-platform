@@ -8,6 +8,8 @@ import CancelRegistrationButton from "@/components/dashboard/CancelRegistrationB
 import EditMyRegistrationButton from "@/components/dashboard/EditMyRegistrationButton";
 import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
+import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
+import { getSoldOutShirtSizes } from "@/lib/shirt-size-quota";
 import QRCode from "react-qr-code";
 import type { Metadata } from "next";
 
@@ -40,11 +42,12 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           venueName: true, addressLine: true, city: true, state: true,
           organizerContact: true, cancellationDeadline: true, cancellationRequiresApproval: true,
           registrationEditDeadline: true,
+          shirtSizeRestrictionDate: true, shirtSizeRestrictionSizes: true,
         },
       },
       route: { select: { name: true, distanceKm: true } },
       category: { select: { name: true } },
-      ticketBatch: { select: { name: true, priceAmount: true } },
+      ticketBatch: { select: { name: true, priceAmount: true, hasShirt: true } },
       order: {
         select: {
           id: true,
@@ -62,6 +65,21 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
   });
 
   if (!registration) notFound();
+
+  const soldOutSizes = await getSoldOutShirtSizes(registration.eventId);
+  const dateAllowedSizes = getAllowedShirtSizes(
+    {
+      shirtSizeRestrictionDate: registration.event.shirtSizeRestrictionDate,
+      shirtSizeRestrictionSizes: registration.event.shirtSizeRestrictionSizes,
+    },
+    new Date(),
+  );
+  const availableShirtSizes = Array.from(
+    new Set([
+      ...dateAllowedSizes.filter((s) => !soldOutSizes.includes(s)),
+      ...(registration.shirtSize ? [registration.shirtSize] : []),
+    ]),
+  );
 
   const createdByMeForOther = registration.order.buyerUserId === session.user.id && registration.athleteUserId !== session.user.id;
 
@@ -286,6 +304,8 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
           teamName={registration.teamName}
           emergencyContactName={registration.emergencyContactName}
           emergencyContactPhone={registration.emergencyContactPhone}
+          hasShirt={registration.ticketBatch.hasShirt}
+          availableShirtSizes={availableShirtSizes}
         />
         {canCancel && (
           <CancelRegistrationButton registrationId={registration.id} requiresApproval={requiresApproval} />

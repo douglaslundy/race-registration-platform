@@ -22,6 +22,7 @@ const PAST = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
 const REG = {
   athleteUserId: "athlete-1",
+  eventId: "event-1",
   participantName: "Nome Antigo",
   participantEmail: "antigo@exemplo.com",
   participantPhone: "11900000000",
@@ -32,6 +33,7 @@ const REG = {
   teamName: null,
   emergencyContactName: null,
   emergencyContactPhone: null,
+  ticketBatch: { hasShirt: true },
 };
 
 describe("PATCH /api/athlete/registrations/[id]", () => {
@@ -40,7 +42,7 @@ describe("PATCH /api/athlete/registrations/[id]", () => {
     authMock.mockResolvedValue({ user: { id: "athlete-1" } });
     dbMock.registration.findUnique.mockResolvedValue({
       ...REG,
-      event: { registrationEditDeadline: FUTURE },
+      event: { registrationEditDeadline: FUTURE, shirtSizeRestrictionDate: null, shirtSizeRestrictionSizes: [] },
     });
     dbMock.registration.update.mockResolvedValue({ id: "reg-1" });
     dbMock.auditLog.create.mockResolvedValue({ id: "audit-1" });
@@ -198,6 +200,68 @@ describe("PATCH /api/athlete/registrations/[id]", () => {
         emergencyContactName: "Fulano",
         emergencyContactPhone: "11970000000",
       },
+    });
+  });
+
+  it("rejeita apagar o tamanho de camiseta quando o lote inclui camiseta", async () => {
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      ...REG,
+      event: { registrationEditDeadline: FUTURE, shirtSizeRestrictionDate: null, shirtSizeRestrictionSizes: [] },
+    });
+
+    const res = await PATCH(makeRequest({ shirtSize: null }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.registration.update).not.toHaveBeenCalled();
+  });
+
+  it("ignora o tamanho de camiseta enviado quando o lote não inclui camiseta", async () => {
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      ...REG,
+      ticketBatch: { hasShirt: false },
+      event: { registrationEditDeadline: FUTURE, shirtSizeRestrictionDate: null, shirtSizeRestrictionSizes: [] },
+    });
+
+    const res = await PATCH(makeRequest({ shirtSize: "G" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(200);
+    expect(dbMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: {} });
+  });
+
+  it("rejeita trocar para um tamanho que já atingiu a quota do evento", async () => {
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      ...REG,
+      shirtSize: "P",
+      event: { registrationEditDeadline: FUTURE, shirtSizeRestrictionDate: null, shirtSizeRestrictionSizes: [] },
+    });
+    dbMock.eventShirtSizeQuota.findUnique.mockResolvedValueOnce({ id: "q1", eventId: "event-1", size: "M", quantity: 5 });
+    dbMock.registration.count.mockResolvedValueOnce(5);
+
+    const res = await PATCH(makeRequest({ shirtSize: "M" }), { params: Promise.resolve({ id: "reg-1" }) });
+
+    expect(res.status).toBe(400);
+    expect(dbMock.registration.update).not.toHaveBeenCalled();
+    expect(dbMock.registration.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: { not: "CANCELLED" } }) }),
+    );
+  });
+
+  it("permite manter o mesmo tamanho mesmo se o evento já esgotou a quota daquele tamanho", async () => {
+    dbMock.registration.findUnique.mockResolvedValueOnce({
+      ...REG,
+      event: { registrationEditDeadline: FUTURE, shirtSizeRestrictionDate: null, shirtSizeRestrictionSizes: [] },
+    });
+
+    const res = await PATCH(
+      makeRequest({ shirtSize: "M", teamName: "Nova equipe" }),
+      { params: Promise.resolve({ id: "reg-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.eventShirtSizeQuota.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.registration.update).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { shirtSize: "M", teamName: "Nova equipe" },
     });
   });
 });
