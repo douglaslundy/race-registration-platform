@@ -23,6 +23,7 @@ export default function ProxyAthleteModal({
   routes,
   categories,
   allowedShirtSizes,
+  hasShirt,
   onSave,
   onCancel,
 }: {
@@ -30,6 +31,7 @@ export default function ProxyAthleteModal({
   routes: { id: string; name: string; distanceKm: number }[];
   categories: { id: string; name: string }[];
   allowedShirtSizes: string[];
+  hasShirt: boolean;
   onSave: (data: ProxyAthleteData) => void;
   onCancel: () => void;
 }) {
@@ -52,6 +54,7 @@ export default function ProxyAthleteModal({
     if (categories.length > 0 && !form.categoryId) return setError("Selecione uma categoria.");
     if (!form.emergencyContactName) return setError("Informe o contato de emergência.");
     if (!form.emergencyContactPhone) return setError("Informe o telefone de emergência.");
+    if (hasShirt && !form.shirtSize) return setError("Selecione o tamanho de camiseta.");
 
     onSave({
       name: form.name.trim(),
@@ -126,13 +129,15 @@ export default function ProxyAthleteModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone emergência *</label>
             <input value={form.emergencyContactPhone ?? ""} onChange={(e) => set("emergencyContactPhone", e.target.value)} placeholder="(11) 99999-9999" className="input-field" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta</label>
-            <select value={form.shirtSize ?? ""} onChange={(e) => set("shirtSize", e.target.value)} className="input-field">
-              <option value="">Selecione</option>
-              {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          {hasShirt && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta *</label>
+              <select value={form.shirtSize ?? ""} onChange={(e) => set("shirtSize", e.target.value)} className="input-field">
+                <option value="">Selecione</option>
+                {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipe / Assessoria</label>
             <input value={form.teamName ?? ""} onChange={(e) => set("teamName", e.target.value)} placeholder="Opcional" className="input-field" />

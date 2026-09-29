@@ -8,6 +8,7 @@ import { isBatchAvailable } from "@/lib/batch-status";
 import { getDefaultPlatformFee, getServiceFeePercent, getServiceFeeMin, getPixServiceFeeDiscountPercent, getAppName } from "@/lib/settings";
 import { resolveEffectivePixDiscountPercent } from "@/lib/fees";
 import { getMissingAthleteProfileFields } from "@/lib/auth/profile-completion";
+import { getSoldOutShirtSizes } from "@/lib/shirt-size-quota";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
 interface Props {
@@ -72,7 +73,7 @@ export default async function InscricaoPage({ params }: Props) {
     );
   }
 
-  const [athleteProfile, paymentMethods, defaultPlatformFee, serviceFeePercent, serviceFeeMin, globalPixDiscount, appName] = await Promise.all([
+  const [athleteProfile, paymentMethods, defaultPlatformFee, serviceFeePercent, serviceFeeMin, globalPixDiscount, appName, soldOutShirtSizes] = await Promise.all([
     db.athleteProfile.findUnique({
       where: { userId: session.user.id },
       select: { preferredShirtSize: true, teamName: true, emergencyName: true, emergencyPhone: true, medicalNotes: true, cpf: true },
@@ -83,6 +84,7 @@ export default async function InscricaoPage({ params }: Props) {
     getServiceFeeMin(),
     getPixServiceFeeDiscountPercent(),
     getAppName(),
+    getSoldOutShirtSizes(event.id),
   ]);
 
   const pixServiceFeeDiscountPercent = resolveEffectivePixDiscountPercent(
@@ -107,6 +109,7 @@ export default async function InscricaoPage({ params }: Props) {
         pixServiceFeeDiscountPercent={pixServiceFeeDiscountPercent}
         appName={appName}
         allowProxyRegistration={event.allowProxyRegistration}
+        soldOutShirtSizes={soldOutShirtSizes}
       />
     </main>
   );

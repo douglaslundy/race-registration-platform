@@ -42,6 +42,7 @@ interface Batch {
   priceAmount: number;
   capacity: number;
   soldCount: number;
+  hasShirt: boolean;
 }
 
 interface EventData {
@@ -87,6 +88,7 @@ export default function CheckoutForm({
   pixServiceFeeDiscountPercent = 0,
   appName,
   allowProxyRegistration,
+  soldOutShirtSizes = [],
 }: {
   event: EventData;
   batches: Batch[];
@@ -100,6 +102,7 @@ export default function CheckoutForm({
   pixServiceFeeDiscountPercent?: number;
   appName?: string;
   allowProxyRegistration?: boolean;
+  soldOutShirtSizes?: string[];
 }) {
   const allowedShirtSizes = getAllowedShirtSizes(
     {
@@ -107,7 +110,7 @@ export default function CheckoutForm({
       shirtSizeRestrictionSizes: event.shirtSizeRestrictionSizes ?? [],
     },
     new Date(),
-  );
+  ).filter((s) => !soldOutShirtSizes.includes(s));
   const shirtSizeRestricted = allowedShirtSizes.length < 6;
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +151,7 @@ export default function CheckoutForm({
   const selectedPaymentMethod = watch("paymentMethod");
   const selectedBatch = batches.find((b) => b.id === selectedBatchId) ?? batches[0];
   const selectedCouponCode = (couponCode ?? "").trim().toUpperCase();
+  const showShirtSize = selectedBatch?.hasShirt !== false;
 
   useEffect(() => {
     fetch(`/api/checkout/card-config?eventId=${event.id}`)
@@ -236,6 +240,10 @@ export default function CheckoutForm({
     }
     if (event.categories.length > 0 && !emptyStringToUndefined(data.categoryId)) {
       setError("Selecione uma categoria para concluir a inscrição.");
+      return;
+    }
+    if (showShirtSize && !emptyStringToUndefined(data.shirtSize)) {
+      setError("Selecione o tamanho de camiseta para concluir a inscrição.");
       return;
     }
     if (registeringFor === "other" && !proxyAthlete) {
@@ -373,6 +381,7 @@ export default function CheckoutForm({
         routes={event.routes}
         categories={event.categories}
         allowedShirtSizes={allowedShirtSizes}
+        hasShirt={showShirtSize}
         onSave={(saved) => {
           // ProxyAthleteData junta 2 tipos de campo num só formulário (UX de uma tela só): os de
           // IDENTIDADE (nome/nascimento/CPF/telefone/e-mail — viram o objeto proxyAthlete enviado
@@ -482,20 +491,24 @@ export default function CheckoutForm({
       <div className="card space-y-4">
         <h3 className="font-semibold">Dados complementares</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta <span className="text-red-500">*</span></label>
-            <select {...register("shirtSize")} className="input-field">
-              <option value="">Selecione</option>
-              {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {errors.shirtSize && <p className="text-red-500 text-xs mt-1">{errors.shirtSize.message}</p>}
-            {shirtSizeRestricted && event.shirtSizeRestrictionDate && (
-              <p className="text-xs text-gray-500 mt-1">
-                Alguns tamanhos deixaram de estar disponíveis a partir de{" "}
-                {new Date(event.shirtSizeRestrictionDate).toLocaleDateString("pt-BR")}.
-              </p>
-            )}
-          </div>
+          {showShirtSize && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camiseta <span className="text-red-500">*</span></label>
+              <select {...register("shirtSize")} className="input-field">
+                <option value="">Selecione</option>
+                {allowedShirtSizes.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              {shirtSizeRestricted && event.shirtSizeRestrictionDate && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Alguns tamanhos deixaram de estar disponíveis a partir de{" "}
+                  {new Date(event.shirtSizeRestrictionDate).toLocaleDateString("pt-BR")}.
+                </p>
+              )}
+              {soldOutShirtSizes.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">Alguns tamanhos estão esgotados.</p>
+              )}
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Equipe / Assessoria</label>
             <input {...register("teamName")} className="input-field" placeholder="Opcional" />
