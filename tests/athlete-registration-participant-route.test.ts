@@ -225,7 +225,9 @@ describe("PATCH /api/athlete/registrations/[id]", () => {
     const res = await PATCH(makeRequest({ shirtSize: "G" }), { params: Promise.resolve({ id: "reg-1" }) });
 
     expect(res.status).toBe(200);
-    expect(dbMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: {} });
+    // Nada realmente mudou (o valor foi ignorado) — não deve gravar update nem auditoria vazios.
+    expect(dbMock.registration.update).not.toHaveBeenCalled();
+    expect(dbMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("rejeita trocar para um tamanho que já atingiu a quota do evento", async () => {
@@ -262,6 +264,20 @@ describe("PATCH /api/athlete/registrations/[id]", () => {
     expect(dbMock.registration.update).toHaveBeenCalledWith({
       where: { id: "reg-1" },
       data: { shirtSize: "M", teamName: "Nova equipe" },
+    });
+  });
+
+  it("editar um campo não relacionado nunca consulta a quota de camiseta", async () => {
+    const res = await PATCH(
+      makeRequest({ teamName: "Nova equipe" }),
+      { params: Promise.resolve({ id: "reg-1" }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(dbMock.eventShirtSizeQuota.findUnique).not.toHaveBeenCalled();
+    expect(dbMock.registration.update).toHaveBeenCalledWith({
+      where: { id: "reg-1" },
+      data: { teamName: "Nova equipe" },
     });
   });
 });

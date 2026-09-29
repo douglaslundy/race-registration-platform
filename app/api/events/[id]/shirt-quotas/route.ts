@@ -6,12 +6,16 @@ import { zodErrorResponse } from "@/lib/http/zod-error";
 import { ALL_SHIRT_SIZES } from "@/lib/shirt-size-restriction";
 
 const putSchema = z.object({
-  quotas: z.array(
-    z.object({
-      size: z.enum(["PP", "P", "M", "G", "GG", "XGG"]),
-      quantity: z.number().int().min(0).nullable(),
+  quotas: z
+    .array(
+      z.object({
+        size: z.enum(["PP", "P", "M", "G", "GG", "XGG"]),
+        quantity: z.number().int().min(0).nullable(),
+      }),
+    )
+    .refine((quotas) => new Set(quotas.map((q) => q.size)).size === quotas.length, {
+      message: "Tamanho duplicado na lista de quotas",
     }),
-  ),
 });
 
 async function getOwnedEvent(eventId: string, organizerId: string | null, actingAsAdmin: boolean) {

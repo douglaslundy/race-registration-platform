@@ -90,11 +90,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     } else if (b.shirtSize === null) {
       return NextResponse.json({ error: "Selecione o tamanho de camiseta." }, { status: 400 });
     } else {
-      const allowedSizes = getAllowedShirtSizes(reg.event, new Date());
-      if (!allowedSizes.includes(b.shirtSize)) {
-        return NextResponse.json({ error: "Tamanho de camiseta indisponível para este evento" }, { status: 400 });
-      }
+      // Só valida restrição por data e quota quando o tamanho realmente muda — manter o
+      // tamanho atual nunca falha, mesmo que o evento tenha restringido/esgotado esse tamanho
+      // depois que a inscrição foi feita (grandfathering, igual já valia só pra quota antes).
       if (b.shirtSize !== reg.shirtSize) {
+        const allowedSizes = getAllowedShirtSizes(reg.event, new Date());
+        if (!allowedSizes.includes(b.shirtSize)) {
+          return NextResponse.json({ error: "Tamanho de camiseta indisponível para este evento" }, { status: 400 });
+        }
         const quota = await db.eventShirtSizeQuota.findUnique({
           where: { eventId_size: { eventId: reg.eventId, size: b.shirtSize } },
         });
@@ -113,6 +116,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (b.teamName !== undefined) data.teamName = b.teamName;
   if (b.emergencyContactName !== undefined) data.emergencyContactName = b.emergencyContactName;
   if (b.emergencyContactPhone !== undefined) data.emergencyContactPhone = b.emergencyContactPhone;
+
+  if (Object.keys(data).length === 0) {
+    // Ex.: só veio shirtSize num lote sem camiseta, ignorado acima — nada realmente muda,
+    // então não grava update nem auditoria vazios.
+    return NextResponse.json({ ok: true });
+  }
 
   const changes = pickParticipantChanges(reg as Record<string, unknown>, { ...reg, ...data });
 

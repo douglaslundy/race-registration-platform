@@ -66,20 +66,33 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
 
   if (!registration) notFound();
 
-  const soldOutSizes = await getSoldOutShirtSizes(registration.eventId);
-  const dateAllowedSizes = getAllowedShirtSizes(
-    {
-      shirtSizeRestrictionDate: registration.event.shirtSizeRestrictionDate,
-      shirtSizeRestrictionSizes: registration.event.shirtSizeRestrictionSizes,
-    },
-    new Date(),
-  );
-  const availableShirtSizes = Array.from(
-    new Set([
-      ...dateAllowedSizes.filter((s) => !soldOutSizes.includes(s)),
-      ...(registration.shirtSize ? [registration.shirtSize] : []),
-    ]),
-  );
+  // getSoldOutShirtSizes faz 2 consultas ao banco — só vale a pena rodar quando o botão de
+  // editar realmente vai aparecer (mesma condição que EditMyRegistrationButton usa pra decidir
+  // se renderiza ou não: dono da inscrição, prazo aberto, lote com camiseta).
+  const canEditRegistrationNow =
+    registration.athleteUserId === session.user.id &&
+    Boolean(registration.event.registrationEditDeadline) &&
+    new Date(registration.event.registrationEditDeadline!) > new Date() &&
+    registration.ticketBatch.hasShirt;
+
+  const availableShirtSizes = canEditRegistrationNow
+    ? await (async () => {
+        const soldOutSizes = await getSoldOutShirtSizes(registration.eventId);
+        const dateAllowedSizes = getAllowedShirtSizes(
+          {
+            shirtSizeRestrictionDate: registration.event.shirtSizeRestrictionDate,
+            shirtSizeRestrictionSizes: registration.event.shirtSizeRestrictionSizes,
+          },
+          new Date(),
+        );
+        return Array.from(
+          new Set([
+            ...dateAllowedSizes.filter((s) => !soldOutSizes.includes(s)),
+            ...(registration.shirtSize ? [registration.shirtSize] : []),
+          ]),
+        );
+      })()
+    : [];
 
   const createdByMeForOther = registration.order.buyerUserId === session.user.id && registration.athleteUserId !== session.user.id;
 

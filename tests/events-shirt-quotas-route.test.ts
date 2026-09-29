@@ -91,4 +91,32 @@ describe("GET/PUT /api/events/[id]/shirt-quotas", () => {
     expect(res.status).toBe(404);
     expect(dbMock.eventShirtSizeQuota.deleteMany).not.toHaveBeenCalled();
   });
+
+  it("PUT retorna 400 quando o corpo tem um tamanho duplicado", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+
+    const res = await PUT(
+      makePutRequest({ quotas: [{ size: "M", quantity: 10 }, { size: "M", quantity: 20 }] }),
+      makeContext("ev-1"),
+    );
+
+    expect(res.status).toBe(400);
+    expect(dbMock.eventShirtSizeQuota.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("GET exclui inscrições canceladas da contagem de uso", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.eventShirtSizeQuota.findMany.mockResolvedValueOnce([]);
+    dbMock.registration.groupBy.mockResolvedValueOnce([]);
+
+    await GET(new Request("http://localhost/api/events/ev-1/shirt-quotas") as any, makeContext("ev-1"));
+
+    expect(dbMock.registration.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: { not: "CANCELLED" } }) }),
+    );
+  });
 });

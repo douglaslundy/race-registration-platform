@@ -217,4 +217,29 @@ describe("createCheckout — restrição de tamanho de camiseta por data", () =>
       } as any),
     ).resolves.toBeDefined();
   });
+
+  it("rejeita imediatamente um tamanho com quota configurada como 0 (esgotado desde já)", async () => {
+    const event = {
+      id: "event-1",
+      status: "REGISTRATIONS_OPEN",
+      platformFeePercent: 1100,
+      shirtSizeRestrictionDate: null,
+      shirtSizeRestrictionSizes: [],
+    };
+    const tx = createTx(event);
+    tx.eventShirtSizeQuota.findUnique.mockResolvedValueOnce({ id: "q1", eventId: "event-1", size: "PP", quantity: 0 });
+    tx.registration.count.mockResolvedValueOnce(0);
+    dbMock.$transaction.mockImplementationOnce(async (fn: any) => fn(tx));
+
+    await expect(
+      createCheckout({
+        eventId: "event-1",
+        ticketBatchId: "batch-1",
+        buyerUserId: "user-1",
+        athleteUserId: "user-1",
+        shirtSize: "PP" as any,
+      } as any),
+    ).rejects.toThrow("Tamanho de camiseta esgotado para este evento");
+    expect(tx.order.create).not.toHaveBeenCalled();
+  });
 });

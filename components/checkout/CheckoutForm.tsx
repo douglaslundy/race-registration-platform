@@ -104,14 +104,15 @@ export default function CheckoutForm({
   allowProxyRegistration?: boolean;
   soldOutShirtSizes?: string[];
 }) {
-  const allowedShirtSizes = getAllowedShirtSizes(
+  const dateAllowedShirtSizes = getAllowedShirtSizes(
     {
       shirtSizeRestrictionDate: event.shirtSizeRestrictionDate ? new Date(event.shirtSizeRestrictionDate) : null,
       shirtSizeRestrictionSizes: event.shirtSizeRestrictionSizes ?? [],
     },
     new Date(),
-  ).filter((s) => !soldOutShirtSizes.includes(s));
-  const shirtSizeRestricted = allowedShirtSizes.length < 6;
+  );
+  const allowedShirtSizes = dateAllowedShirtSizes.filter((s) => !soldOutShirtSizes.includes(s));
+  const shirtSizeRestricted = dateAllowedShirtSizes.length < 6;
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [cpf, setCpf] = useState(athleteProfile?.cpf ?? "");
@@ -276,7 +277,7 @@ export default function CheckoutForm({
         ...data,
         routeId: emptyStringToUndefined(data.routeId),
         categoryId: emptyStringToUndefined(data.categoryId),
-        shirtSize: emptyStringToUndefined(data.shirtSize),
+        shirtSize: showShirtSize ? emptyStringToUndefined(data.shirtSize) : undefined,
         couponCode: emptyStringToUndefined(data.couponCode)?.toString().trim().toUpperCase(),
         cpf: cpf || undefined,
         cardToken,

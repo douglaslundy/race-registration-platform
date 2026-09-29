@@ -268,7 +268,7 @@ export default function LotesPage() {
               onChange={(e) => setForm({ ...form, hasShirt: e.target.checked })}
               className="h-4 w-4"
             />
-            <label htmlFor="hasShirt" className="text-sm text-gray-700">Este lote inclui camiseta?</label>
+            <label htmlFor="hasShirt" className="text-sm text-gray-700 dark:text-gray-300">Este lote inclui camiseta?</label>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
