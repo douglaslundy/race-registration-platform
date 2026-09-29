@@ -317,6 +317,7 @@ model Event {
   campaigns              Campaign[]
   resultImports          ResultImport[]
   resultFiles            EventResultFile[]
+  shirtSizeQuotas        EventShirtSizeQuota[]
   fileAssets             FileAsset[]
   payouts                TransferPayout[]
   messageTemplates       MessageTemplate[]
@@ -366,6 +367,7 @@ model TicketBatch {
   priceAmount    Int // centavos
   capacity       Int
   soldCount      Int      @default(0)
+  hasShirt       Boolean  @default(true)
   startAt        DateTime
   endAt          DateTime
   active         Boolean  @default(true)
@@ -376,6 +378,18 @@ model TicketBatch {
   registrations Registration[]
 
   @@map("ticket_batches")
+}
+
+model EventShirtSizeQuota {
+  id       String    @id @default(cuid())
+  eventId  String
+  size     ShirtSize
+  quantity Int
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, size])
+  @@map("event_shirt_size_quotas")
 }
 
 // ─── Registrations ────────────────────────────────────────────────────────────

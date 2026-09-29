@@ -59,6 +59,7 @@ vi.mock("@/lib/db", () => ({
     eventSocialLink: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     eventSponsor: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     socialLinkSend: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
+    eventShirtSizeQuota: { findMany: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn() },
     // Suporta as duas formas: `$transaction(async (tx) => ...)` (callback) e
     // `$transaction([p1, p2, ...])` (array de promises). Testes que precisam de controle fino
     // continuam podendo sobrescrever com mockImplementation/mockResolvedValue.
