@@ -115,7 +115,7 @@ describe("checkout — congela a conta de pagamento", () => {
     primeHappyPath();
 
     const res = await POST(
-      makeRequest({ eventId: "event-99", ticketBatchId: "batch-1", paymentMethod: "PIX" }),
+      makeRequest({ eventId: "event-99", ticketBatchId: "batch-1", paymentMethod: "PIX", shirtSize: "M" }),
     );
 
     expect(res.status).toBe(200);
@@ -144,7 +144,7 @@ describe("checkout — congela a conta de pagamento", () => {
     resolveAccountMock.mockRejectedValueOnce(new NoPaymentAccountError());
 
     const res = await POST(
-      makeRequest({ eventId: "event-99", ticketBatchId: "batch-1", paymentMethod: "PIX" }),
+      makeRequest({ eventId: "event-99", ticketBatchId: "batch-1", paymentMethod: "PIX", shirtSize: "M" }),
     );
 
     expect(res.status).toBe(503);

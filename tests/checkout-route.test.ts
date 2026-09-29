@@ -119,6 +119,7 @@ describe("checkout api", () => {
           eventId: "event-1",
           ticketBatchId: "batch-1",
           paymentMethod: "PIX",
+          shirtSize: "M",
         }),
       }) as any,
     );
@@ -156,6 +157,7 @@ describe("checkout api", () => {
           eventId: "event-1",
           ticketBatchId: "batch-1",
           paymentMethod: "PIX",
+          shirtSize: "M",
         }),
       }) as any,
     );
@@ -212,6 +214,7 @@ describe("checkout api", () => {
           ticketBatchId: "batch-1",
           paymentMethod: "PIX",
           notes: "Chegarei atrasado",
+          shirtSize: "M",
         }),
       }) as any,
     );
@@ -259,6 +262,7 @@ describe("checkout api", () => {
           paymentMethod: "CREDIT_CARD",
           cardToken: "tok-1",
           cardBrand: "visa",
+          shirtSize: "M",
         }),
       }) as any,
     );
@@ -309,6 +313,7 @@ describe("checkout api", () => {
           eventId: "event-1",
           ticketBatchId: "batch-1",
           paymentMethod: "PIX",
+          shirtSize: "M",
           proxyAthlete: {
             name: "Maria Atleta",
             birthDate: "1995-05-20",
@@ -352,7 +357,7 @@ describe("checkout api", () => {
     const res = await POST(
       new Request("http://localhost/api/checkout", {
         method: "POST",
-        body: JSON.stringify({ eventId: "event-1", ticketBatchId: "batch-1", paymentMethod: "PIX" }),
+        body: JSON.stringify({ eventId: "event-1", ticketBatchId: "batch-1", paymentMethod: "PIX", shirtSize: "M" }),
       }) as any,
     );
 
@@ -408,7 +413,7 @@ describe("checkout api", () => {
     const res = await POST(
       new Request("http://localhost/api/checkout", {
         method: "POST",
-        body: JSON.stringify({ eventId: "event-1", ticketBatchId: "batch-1", paymentMethod: "PIX" }),
+        body: JSON.stringify({ eventId: "event-1", ticketBatchId: "batch-1", paymentMethod: "PIX", shirtSize: "M" }),
       }) as any,
     );
 

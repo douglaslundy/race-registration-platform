@@ -13,8 +13,12 @@ export default function ShirtSizeQuotaManager({ eventId }: { eventId: string }) 
 
   useEffect(() => {
     fetch(`/api/events/${eventId}/shirt-quotas`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("load failed");
+        return res.json();
+      })
       .then(({ quotas }) => setRows(quotas ?? []))
+      .catch(() => setError("Não foi possível carregar a quota de camisetas. Recarregue a página."))
       .finally(() => setLoading(false));
   }, [eventId]);
 
@@ -72,7 +76,7 @@ export default function ShirtSizeQuotaManager({ eventId }: { eventId: string }) 
         ))}
       </div>
 
-      <button type="button" onClick={handleSave} disabled={saving} className="btn-secondary text-sm">
+      <button type="button" onClick={handleSave} disabled={saving || rows.length === 0} className="btn-secondary text-sm">
         {saving ? "Salvando..." : "Salvar quota"}
       </button>
 

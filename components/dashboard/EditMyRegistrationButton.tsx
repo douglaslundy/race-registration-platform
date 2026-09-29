@@ -104,11 +104,6 @@ export default function EditMyRegistrationButton({
       body.name = trimmedName;
     }
 
-    if (hasShirt && form.shirtSize.trim() === "") {
-      setInlineError("Selecione o tamanho de camiseta.");
-      return;
-    }
-
     const optional: {
       key: keyof FormState;
       apiKey: string;
@@ -127,6 +122,15 @@ export default function EditMyRegistrationButton({
       if (current !== initial.trim()) {
         body[apiKey] = current === "" ? null : current;
       }
+    }
+
+    // Só bloqueia quando a mudança em si resulta em tamanho vazio (o atleta está tentando
+    // apagar/trocar pra vazio agora) — nunca quando o campo já estava vazio e nem foi tocado
+    // (inscrições antigas, de antes do tamanho virar obrigatório, não podem ficar travadas pra
+    // editar qualquer outro campo só por causa de um shirtSize legado nulo).
+    if (hasShirt && body.shirtSize === null) {
+      setInlineError("Selecione o tamanho de camiseta.");
+      return;
     }
 
     if (form.birthDate !== initialForm.birthDate) {
