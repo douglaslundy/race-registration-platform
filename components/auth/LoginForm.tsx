@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { isSafeRedirectPath } from "@/lib/auth/safe-redirect";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const schema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -48,7 +49,7 @@ export default function LoginForm() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha</label>
-        <input type="password" {...register("password")} className="input-field" placeholder="••••••••" />
+        <PasswordInput {...register("password")} className="input-field" placeholder="••••••••" />
         {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
       </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import CodeVerificationModal from "@/components/ui/CodeVerificationModal";
 import { useSensitiveActionVerification } from "@/lib/hooks/use-sensitive-action-verification";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const ROLES: UserRole[] = ["ATHLETE", "ORGANIZER", "ADMIN", "SUPPORT", "PARTNER"];
 
@@ -239,8 +240,7 @@ export default function UserForm({
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {isEdit ? "Nova senha" : "Senha inicial"}
         </label>
-        <input
-          type="password"
+        <PasswordInput
           className="input-field"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

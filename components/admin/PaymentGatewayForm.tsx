@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PaymentProviderKey } from "@/lib/payment-settings";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 interface PaymentGatewayFormProps {
   currentProvider: PaymentProviderKey;
@@ -101,8 +102,7 @@ export default function PaymentGatewayForm({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 API Key (backend)
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={pagarmeApiKey}
                 onChange={(e) => setPagarmeApiKey(e.target.value)}
                 className="input-field w-full"
@@ -115,8 +115,7 @@ export default function PaymentGatewayForm({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Public Key (frontend)
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={pagarmePublicKey}
                 onChange={(e) => setPagarmePublicKey(e.target.value)}
                 className="input-field w-full"
@@ -131,8 +130,7 @@ export default function PaymentGatewayForm({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Senha do Webhook
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={pagarmeWebhookPassword}
               onChange={(e) => setPagarmeWebhookPassword(e.target.value)}
               className="input-field w-full md:w-96"

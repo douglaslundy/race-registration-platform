@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { isValidCpf } from "@/lib/cpf";
 import { isValidCep, fetchAddressByCep } from "@/lib/cep";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const schema = z
   .object({
@@ -168,7 +169,7 @@ export default function RegisterForm() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
-        <input type="password" {...register("password")} className="input-field" placeholder="Mínimo 8 caracteres" />
+        <PasswordInput {...register("password")} className="input-field" placeholder="Mínimo 8 caracteres" />
         {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
       </div>
 

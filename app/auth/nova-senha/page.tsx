@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 function NovaSenhaForm() {
   const searchParams = useSearchParams();
@@ -54,8 +55,7 @@ function NovaSenhaForm() {
     <form onSubmit={handleSubmit} className="card space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
-        <input
-          type="password"
+        <PasswordInput
           required
           minLength={8}
           value={password}
@@ -66,8 +66,7 @@ function NovaSenhaForm() {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar senha</label>
-        <input
-          type="password"
+        <PasswordInput
           required
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PaymentAccountDto } from "@/lib/payment/payment-accounts";
 import WebhookUrlField from "./WebhookUrlField";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 export interface PaymentAccountFormValues {
   label: string;
@@ -74,8 +75,7 @@ export default function PaymentAccountFormModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Access Token (backend)
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={accessToken}
               onChange={(e) => setAccessToken(e.target.value)}
               className="input-field w-full"
@@ -88,8 +88,7 @@ export default function PaymentAccountFormModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Webhook Secret
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={webhookSecret}
               onChange={(e) => setWebhookSecret(e.target.value)}
               className="input-field w-full"
@@ -102,8 +101,7 @@ export default function PaymentAccountFormModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Public Key (frontend)
             </label>
-            <input
-              type="password"
+            <PasswordInput
               value={publicKey}
               onChange={(e) => setPublicKey(e.target.value)}
               className="input-field w-full"

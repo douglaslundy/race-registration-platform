@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 interface SmtpSettingsFormProps {
   hostConfigured: boolean;
@@ -137,7 +138,7 @@ export default function SmtpSettingsForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha</label>
-            <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} className="input-field w-full" placeholder="Deixe em branco para manter a atual" autoComplete="new-password" />
+            <PasswordInput value={pass} onChange={(e) => setPass(e.target.value)} className="input-field w-full" placeholder="Deixe em branco para manter a atual" autoComplete="new-password" />
           </div>
         </div>
 

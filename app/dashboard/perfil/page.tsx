@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { fetchAddressByCep } from "@/lib/cep";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
 const GENDERS = [
@@ -301,8 +302,7 @@ export default function PerfilPage() {
         )}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha atual</label>
-          <input
-            type="password"
+          <PasswordInput
             value={pwForm.current}
             onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))}
             className="input w-full"
@@ -312,8 +312,7 @@ export default function PerfilPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nova senha</label>
-          <input
-            type="password"
+          <PasswordInput
             value={pwForm.next}
             onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))}
             className="input w-full"
@@ -324,8 +323,7 @@ export default function PerfilPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar nova senha</label>
-          <input
-            type="password"
+          <PasswordInput
             value={pwForm.confirm}
             onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))}
             className="input w-full"

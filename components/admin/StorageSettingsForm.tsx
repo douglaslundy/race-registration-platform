@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 type StorageProvider = "supabase" | "custom";
 
@@ -181,8 +182,7 @@ export default function StorageSettingsForm({
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {provider === "supabase" ? "S3 Access Key ID" : "Access Key"}
           </label>
-          <input
-            type="password"
+          <PasswordInput
             value={accessKey}
             onChange={(e) => setAccessKey(e.target.value)}
             className="input-field w-full"
@@ -196,8 +196,7 @@ export default function StorageSettingsForm({
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {provider === "supabase" ? "S3 Secret Access Key" : "Secret Key"}
           </label>
-          <input
-            type="password"
+          <PasswordInput
             value={secretKey}
             onChange={(e) => setSecretKey(e.target.value)}
             className="input-field w-full"

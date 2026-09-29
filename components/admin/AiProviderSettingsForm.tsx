@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 type AiProviderKey = "CLAUDE" | "OPENAI" | "GOOGLE";
 
@@ -84,8 +85,7 @@ export default function AiProviderSettingsForm({
       <div className="grid gap-4 md:grid-cols-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chave da API — Claude</label>
-          <input
-            type="password"
+          <PasswordInput
             value={claudeKey}
             onChange={(e) => setClaudeKey(e.target.value)}
             className="input-field w-full"
@@ -95,8 +95,7 @@ export default function AiProviderSettingsForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chave da API — OpenAI</label>
-          <input
-            type="password"
+          <PasswordInput
             value={openaiKey}
             onChange={(e) => setOpenaiKey(e.target.value)}
             className="input-field w-full"
@@ -106,8 +105,7 @@ export default function AiProviderSettingsForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chave da API — Google</label>
-          <input
-            type="password"
+          <PasswordInput
             value={googleKey}
             onChange={(e) => setGoogleKey(e.target.value)}
             className="input-field w-full"

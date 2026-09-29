@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 interface TwilioCredentialsFormProps {
   accountSidConfigured: boolean;
@@ -104,8 +105,7 @@ export default function TwilioCredentialsForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Auth Token</label>
-        <input
-          type="password"
+        <PasswordInput
           value={authToken}
           onChange={(e) => setAuthToken(e.target.value)}
           className="input-field w-full"

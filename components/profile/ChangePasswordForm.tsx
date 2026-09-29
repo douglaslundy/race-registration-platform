@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function ChangePasswordForm() {
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
@@ -51,8 +52,7 @@ export default function ChangePasswordForm() {
       )}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha atual</label>
-        <input
-          type="password"
+        <PasswordInput
           value={pwForm.current}
           onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))}
           className="input w-full"
@@ -62,8 +62,7 @@ export default function ChangePasswordForm() {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nova senha</label>
-        <input
-          type="password"
+        <PasswordInput
           value={pwForm.next}
           onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))}
           className="input w-full"
@@ -74,8 +73,7 @@ export default function ChangePasswordForm() {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar nova senha</label>
-        <input
-          type="password"
+        <PasswordInput
           value={pwForm.confirm}
           onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))}
           className="input w-full"

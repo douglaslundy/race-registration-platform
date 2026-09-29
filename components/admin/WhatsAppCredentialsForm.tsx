@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 interface WhatsAppCredentialsFormProps {
   urlConfigured: boolean;
@@ -95,8 +96,7 @@ export default function WhatsAppCredentialsForm({
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API key (global)</label>
-          <input
-            type="password"
+          <PasswordInput
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="input-field w-full"
