@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import EditEventForm from "@/components/organizer/EditEventForm";
+import ShirtSizeQuotaManager from "@/components/organizer/ShirtSizeQuotaManager";
 import EventDailySummaryRecipientsManager from "@/components/organizer/EventDailySummaryRecipientsManager";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
 import type { Metadata } from "next";
@@ -44,6 +45,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
       </div>
       <h1 className="text-2xl font-bold">Editar evento</h1>
       <EditEventForm event={event} cancellationPolicyEnabled={cancellationPolicyEnabled} />
+      <ShirtSizeQuotaManager eventId={id} />
       <EventDailySummaryRecipientsManager eventId={id} />
     </div>
   );

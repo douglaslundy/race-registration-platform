@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
+import { zodErrorResponse } from "@/lib/http/zod-error";
+import { ALL_SHIRT_SIZES } from "@/lib/shirt-size-restriction";
+
+const putSchema = z.object({
+  quotas: z.array(
+    z.object({
+      size: z.enum(["PP", "P", "M", "G", "GG", "XGG"]),
+      quantity: z.number().int().min(0).nullable(),
+    }),
+  ),
+});
+
+async function getOwnedEvent(eventId: string, organizerId: string | null, actingAsAdmin: boolean) {
+  return actingAsAdmin
+    ? db.event.findUnique({ where: { id: eventId } })
+    : db.event.findFirst({ where: { id: eventId, organizerId: organizerId ?? "__none__" } });
+}
+
+async function getQuotasWithUsage(eventId: string) {
+  const [quotas, usage] = await Promise.all([
+    db.eventShirtSizeQuota.findMany({ where: { eventId }, select: { size: true, quantity: true } }),
+    db.registration.groupBy({
+      by: ["shirtSize"],
+      where: { eventId, shirtSize: { not: null }, status: { not: "CANCELLED" } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const quotaBySize = new Map<string, number>(quotas.map((q) => [q.size as string, q.quantity]));
+  const usedBySize = new Map<string, number>(
+    usage.filter((u) => u.shirtSize !== null).map((u) => [u.shirtSize as string, u._count._all]),
+  );
+
+  return ALL_SHIRT_SIZES.map((size) => ({
+    size,
+    quantity: quotaBySize.get(size) ?? null,
+    usedCount: usedBySize.get(size) ?? 0,
+  }));
+}
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: eventId } = await params;
+  const check = await checkApiPermission("events.edit", { eventId });
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  const scope = await resolveActingScope(session);
+  const event = await getOwnedEvent(eventId, scope.organizerId ?? null, scope.actingAsAdmin);
+  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  return NextResponse.json({ quotas: await getQuotasWithUsage(eventId) });
+}
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: eventId } = await params;
+  const check = await checkApiPermission("events.edit", { eventId });
+  if (!check.allowed) return check.response;
+  const { session } = check;
+
+  const scope = await resolveActingScope(session);
+  const event = await getOwnedEvent(eventId, scope.organizerId ?? null, scope.actingAsAdmin);
+  if (!event) return NextResponse.json({ error: "Evento não encontrado" }, { status: 404 });
+
+  const parsed = putSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) return zodErrorResponse(parsed.error);
+
+  const rowsToCreate = parsed.data.quotas
+    .filter((q) => q.quantity !== null)
+    .map((q) => ({ eventId, size: q.size, quantity: q.quantity as number }));
+
+  await db.$transaction([
+    db.eventShirtSizeQuota.deleteMany({ where: { eventId } }),
+    db.eventShirtSizeQuota.createMany({ data: rowsToCreate }),
+  ]);
+
+  return NextResponse.json({ quotas: await getQuotasWithUsage(eventId) });
+}
