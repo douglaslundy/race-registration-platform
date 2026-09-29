@@ -12,6 +12,7 @@ const patchSchema = z.object({
   activationMode: z.enum(["MANUAL", "DATE", "AFTER_PREVIOUS"]).optional(),
   startAt: z.string().optional(),
   endAt: z.string().optional(),
+  hasShirt: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; batchId: string }> }) {

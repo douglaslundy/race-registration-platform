@@ -53,6 +53,20 @@ describe("POST /api/events/[id]/batches", () => {
     expect(res.status).toBe(201);
   });
 
+  it("aceita hasShirt: false e repassa pro create", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.create.mockResolvedValueOnce({ id: "batch-5", ...validBody, hasShirt: false });
+
+    const res = await POST(makeRequest({ ...validBody, hasShirt: false }), makeContext("ev-1"));
+
+    expect(dbMock.ticketBatch.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ hasShirt: false }) }),
+    );
+    expect(res.status).toBe(201);
+  });
+
   it("organizador titular recebe 404 ao tentar criar lote em evento de outro organizador", async () => {
     authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });

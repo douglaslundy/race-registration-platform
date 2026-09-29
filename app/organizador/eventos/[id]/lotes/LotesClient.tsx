@@ -17,6 +17,7 @@ type Batch = {
   active: boolean;
   activationMode: string;
   status: string;
+  hasShirt: boolean;
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -46,11 +47,11 @@ export default function LotesPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", priceAmount: "", capacity: "", startAt: "", endAt: "" });
+  const [editForm, setEditForm] = useState({ name: "", priceAmount: "", capacity: "", startAt: "", endAt: "", hasShirt: true });
   const [editSaving, setEditSaving] = useState(false);
   const [form, setForm] = useState({
     name: "", priceAmount: "", capacity: "", startAt: "", endAt: "",
-    activationMode: "MANUAL",
+    activationMode: "MANUAL", hasShirt: true,
   });
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export default function LotesPage() {
         startAt: new Date(form.startAt).toISOString(),
         endAt: new Date(form.endAt).toISOString(),
         activationMode: form.activationMode,
+        hasShirt: form.hasShirt,
       }),
     });
     setSaving(false);
@@ -87,7 +89,7 @@ export default function LotesPage() {
       return;
     }
     setShowForm(false);
-    setForm({ name: "", priceAmount: "", capacity: "", startAt: "", endAt: "", activationMode: "MANUAL" });
+    setForm({ name: "", priceAmount: "", capacity: "", startAt: "", endAt: "", activationMode: "MANUAL", hasShirt: true });
     const reload = await fetch(`/api/events/${id}/batches`);
     const data = await reload.json();
     setBatches(data.batches ?? []);
@@ -112,6 +114,7 @@ export default function LotesPage() {
       capacity: String(b.capacity),
       startAt: b.startAt.slice(0, 16),
       endAt: b.endAt.slice(0, 16),
+      hasShirt: b.hasShirt,
     });
   }
 
@@ -129,6 +132,7 @@ export default function LotesPage() {
         capacity: parseInt(editForm.capacity),
         startAt: new Date(editForm.startAt).toISOString(),
         endAt: new Date(editForm.endAt).toISOString(),
+        hasShirt: editForm.hasShirt,
       }),
     });
     setEditSaving(false);
@@ -181,6 +185,16 @@ export default function LotesPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vagas</label>
                 <input required type="number" min="1" value={editForm.capacity} onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })} className="input w-full" />
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="editHasShirt"
+                checked={editForm.hasShirt}
+                onChange={(e) => setEditForm({ ...editForm, hasShirt: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <label htmlFor="editHasShirt" className="text-sm text-gray-700 dark:text-gray-300">Este lote inclui camiseta?</label>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -246,6 +260,17 @@ export default function LotesPage() {
             )}
           </div>
 
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="hasShirt"
+              checked={form.hasShirt}
+              onChange={(e) => setForm({ ...form, hasShirt: e.target.checked })}
+              className="h-4 w-4"
+            />
+            <label htmlFor="hasShirt" className="text-sm text-gray-700">Este lote inclui camiseta?</label>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -279,6 +304,9 @@ export default function LotesPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
                       <span className="text-xs text-gray-400">{ACTIVATION_LABEL[b.activationMode] ?? b.activationMode}</span>
+                      {!b.hasShirt && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">Sem camiseta</span>
+                      )}
                     </div>
                     <p className="font-medium">{b.name}</p>
                     <p className="text-sm text-gray-500">{b.soldCount}/{b.capacity} inscrições · {formatCurrency(b.priceAmount)}</p>

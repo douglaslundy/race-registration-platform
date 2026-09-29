@@ -12,6 +12,7 @@ const batchSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   activationMode: z.enum(["MANUAL", "DATE", "AFTER_PREVIOUS"]).optional(),
+  hasShirt: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

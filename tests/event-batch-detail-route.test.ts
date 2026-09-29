@@ -50,6 +50,21 @@ describe("PATCH /api/events/[id]/batches/[batchId]", () => {
     expect(res.status).toBe(200);
   });
 
+  it("aceita hasShirt no PATCH e repassa pro update", async () => {
+    authMock.mockResolvedValue({ user: { id: "org-user-1", role: "ORGANIZER" } } as any);
+    dbMock.organizerProfile.findUnique.mockResolvedValueOnce({ id: "org-1" });
+    dbMock.event.findFirst.mockResolvedValueOnce({ id: "ev-1", organizerId: "org-1" });
+    dbMock.ticketBatch.findFirst.mockResolvedValueOnce({ id: "batch-1", eventId: "ev-1" });
+    dbMock.ticketBatch.update.mockResolvedValueOnce({ id: "batch-1", hasShirt: false });
+
+    const res = await PATCH(makePatchRequest({ hasShirt: false }), makeContext("ev-1", "batch-1"));
+
+    expect(dbMock.ticketBatch.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ hasShirt: false }) }),
+    );
+    expect(res.status).toBe(200);
+  });
+
   it("admin titular recebe 404 ao tentar editar lote de qualquer evento (SEM bypass — batches.edit não tem)", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
     dbMock.organizerProfile.findUnique.mockResolvedValueOnce(null);
