@@ -10,6 +10,7 @@ import PixPaymentCard from "@/components/dashboard/PixPaymentCard";
 import { getCancellationPolicyEnabled } from "@/lib/settings";
 import { getAllowedShirtSizes } from "@/lib/shirt-size-restriction";
 import { getShirtSizeAvailability } from "@/lib/shirt-size-quota";
+import { getRegistrationDisplayStatusKey } from "@/lib/registration-status";
 import QRCode from "react-qr-code";
 import type { Metadata } from "next";
 
@@ -24,6 +25,7 @@ const STATUS_INFO: Record<string, { label: string; color: string; icon: string }
   TRANSFERRED:     { label: "Inscrição transferida", color: `${BADGE.blue} border border-blue-200 dark:border-blue-800`, icon: "🔄" },
   WAITLISTED:      { label: "Lista de espera", color: `${BADGE.gray} border border-gray-200 dark:border-gray-600`, icon: "🕐" },
   CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: `${BADGE.orange} border border-orange-200 dark:border-orange-800`, icon: "🕓" },
+  COMPLETED:       { label: "Inscrição concluída", color: `${BADGE.purple} border border-purple-200 dark:border-purple-800`, icon: "🏁" },
 };
 
 export default async function InscricaoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
@@ -109,7 +111,9 @@ export default async function InscricaoDetalhePage({ params }: { params: Promise
     select: { id: true, method: true, status: true, pixQrCodeText: true, boletoUrl: true, expiresAt: true, paidAt: true },
   });
 
-  const statusInfo = STATUS_INFO[registration.status] ?? STATUS_INFO.PENDING_PAYMENT;
+  const statusInfo =
+    STATUS_INFO[getRegistrationDisplayStatusKey(registration.status, registration.event.startAt)] ??
+    STATUS_INFO.PENDING_PAYMENT;
   const isPending = registration.status === "PENDING_PAYMENT";
   const isConfirmed = registration.status === "CONFIRMED";
   const policyEnabled = await getCancellationPolicyEnabled();

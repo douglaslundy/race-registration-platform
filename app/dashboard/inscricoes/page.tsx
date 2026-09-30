@@ -2,17 +2,7 @@ import { requireAuth } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
-import type { RegistrationStatus } from "@prisma/client";
-import { BADGE } from "@/lib/badge-colors";
-
-const STATUS_LABEL: Record<RegistrationStatus, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
-  CONFIRMED:       { label: "Confirmada", color: BADGE.green },
-  CANCELLED:       { label: "Cancelada", color: BADGE.red },
-  TRANSFERRED:     { label: "Transferida", color: BADGE.blue },
-  WAITLISTED:      { label: "Lista de espera", color: BADGE.gray },
-  CANCELLATION_REQUESTED: { label: "Cancelamento solicitado", color: BADGE.orange },
-};
+import { REGISTRATION_STATUS, getRegistrationDisplayStatusKey } from "@/lib/registration-status";
 
 export default async function InscricoesPage() {
   const session = await requireAuth();
@@ -50,7 +40,7 @@ export default async function InscricoesPage() {
       ) : (
         <div className="space-y-3">
           {registrations.map((r) => {
-            const badge = STATUS_LABEL[r.status];
+            const badge = REGISTRATION_STATUS[getRegistrationDisplayStatusKey(r.status, r.event.startAt)];
             const createdByMeForOther = r.order.buyerUserId === session.user.id && r.athleteUserId !== session.user.id;
             return (
               <Link
