@@ -31,7 +31,7 @@ describe("POST /api/organizer/reconciliation", () => {
 
     await POST();
 
-    expect(reconcilePayments).toHaveBeenCalledWith({ organizerUserId: "org-1" });
+    expect(reconcilePayments).toHaveBeenCalledWith({ organizerUserId: "org-1", force: true });
   });
 
   it("dispara o alerta para o admin quando encontra divergências", async () => {
@@ -52,7 +52,7 @@ describe("POST /api/organizer/reconciliation", () => {
 
     const res = await POST();
 
-    expect(reconcilePayments).toHaveBeenCalledWith({ organizerUserId: "org-1" });
+    expect(reconcilePayments).toHaveBeenCalledWith({ organizerUserId: "org-1", force: true });
     expect(res.status).toBe(200);
   });
 

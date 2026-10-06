@@ -18,7 +18,7 @@ export async function POST() {
     organizerUserId = assistant?.createdByUserId ?? "__none__";
   }
 
-  const result = await reconcilePayments({ organizerUserId });
+  const result = await reconcilePayments({ organizerUserId, force: true });
   if (result.mismatches.length > 0) {
     void notifyReconciliationMismatches(result.mismatches);
   }

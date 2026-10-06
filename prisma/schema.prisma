@@ -509,6 +509,7 @@ model Payment {
   expiresAt         DateTime?
   paidAt            DateTime?
   refundedAt        DateTime?
+  reconciledAt      DateTime? // última conferência da conciliação com o gateway (ou tentativa agendada p/ retry)
   gatewayFeeAmount  Int? // centavos - comissao cobrada pelo gateway (ex: Mercado Pago)
   rawPayload        Json?
   idempotencyKey    String        @unique
@@ -524,7 +525,18 @@ model Payment {
   @@index([orderId])
   @@index([status, expiresAt])
   @@index([paymentAccountId])
+  @@index([status, reconciledAt])
   @@map("payments")
+}
+
+/// Lease anti-execução-simultânea de jobs (ex.: conciliação). Uma linha por job; `lockedUntil` expira
+/// sozinho, então um processo que morreu no meio não trava o job para sempre.
+model JobLease {
+  key         String   @id
+  lockedUntil DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@map("job_leases")
 }
 
 enum RefundStatus {

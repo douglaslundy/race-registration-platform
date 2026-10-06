@@ -1,5 +1,23 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-06 — Conciliação: passo 2 (escalonamento + lease) — NÃO deployado)
+
+`tsc` limpo · `vitest` 305 arq / 2420 testes verdes · `next build` exit 0. **Exige `prisma db push`** no deploy (aditivo: `payments.reconciled_at` + índice + tabela `job_leases`).
+
+### O que foi feito
+- `Payment.reconciledAt` + `@@index([status, reconciledAt])`; novo model `JobLease` (`lib/job-lease.ts`: acquire por updateMany/create+P2002, release; TTL 10 min, expira sozinho).
+- `reconcilePayments` agora: lease global (cron/admin; organizador não usa) → `skipped:true` se ocupado; seleciona só pagamentos "vencidos" por faixa de idade (PENDING 5min/1h/12h; PAID 6h/1d/7d/30d; tardia 30min/6h), `take` 500/300/200, ordem `reconciledAt NULLS FIRST`; concorrência 5; marca `reconciledAt` ao fim (falha → retry em ~5min). `force:true` (botões admin/organizador) ignora escalonamento de PENDING/tardia, mantém o de PAID.
+- Decisão: `reconciledAt` é gravado devolvendo `updatedAt` antigo quando nada mudou, porque a janela de aprovação tardia (7d) usa `updatedAt`.
+- Ordem das chamadas agora é paralela (5): testes não dependem de ordem.
+
+### Arquivos
+`prisma/schema.prisma`, `lib/job-lease.ts`, `lib/payment/reconciliation.ts`, rotas admin/organizer (force), `tests/setup.ts`, `tests/job-lease.test.ts`, testes de reconciliation/rotas.
+
+### PRÓXIMA TAREFA
+Passo 3 (regras de domínio): aprovação tardia sem vaga (não dar `soldCount+1` acima da capacidade → NEEDS_REVIEW + alerta), estorno parcial, `in_mediation`/`in_process` no mapa MP, pendentes sem `providerPaymentId`, alerta quando `failed>0`. Passo 4: busca em lote por delta (`payments/search`).
+
+---
+
 ## Última atualização (2026-10-06 — Conciliação: passo 1 (corrida + falha explícita) — NÃO commitado/deployado)
 
 `npx tsc --noEmit` limpo · `npx vitest run` 304 arq / 2408 testes verdes.

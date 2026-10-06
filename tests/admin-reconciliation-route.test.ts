@@ -30,7 +30,7 @@ describe("POST /api/admin/reconciliation", () => {
     const res = await POST();
     const body = await res.json();
 
-    expect(reconcilePayments).toHaveBeenCalledWith();
+    expect(reconcilePayments).toHaveBeenCalledWith({ force: true });
     expect(body).toEqual({ checked: 5, failed: 0, mismatches: [] });
   });
 

@@ -6,6 +6,6 @@ export async function POST() {
   const check = await checkAdminOnlyApiPermission("payments.reconciliation-any");
   if (!check.allowed) return check.response;
 
-  const result = await reconcilePayments();
+  const result = await reconcilePayments({ force: true });
   return NextResponse.json(result);
 }

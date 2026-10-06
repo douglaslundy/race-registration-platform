@@ -4,6 +4,7 @@ import { getPaymentProvider } from "@/lib/payment";
 
 vi.mock("@/lib/payment", () => ({ getPaymentProvider: vi.fn() }));
 vi.mock("@/lib/alerts/alert-settings", () => ({ getReconciliationAlertSettings: vi.fn() }));
+vi.mock("@/lib/job-lease", () => ({ acquireJobLease: vi.fn(), releaseJobLease: vi.fn() }));
 vi.mock("@/lib/notifications", () => ({ notifyOrderConfirmed: vi.fn() }));
 // Mock parcial: preserva o comportamento real de applyGatewayStatus (usado pelos testes já
 // existentes, que dependem da lógica real de transição para gravar payment/order/registration no
@@ -20,6 +21,7 @@ import { reconcilePayments } from "@/lib/payment/reconciliation";
 import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
+import { acquireJobLease, releaseJobLease } from "@/lib/job-lease";
 
 const dbMock = db as any;
 
@@ -66,6 +68,7 @@ describe("reconcilePayments", () => {
     vi.clearAllMocks();
     vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 15 });
     dbMock.$transaction.mockImplementation(async (fn: any) => fn(dbMock));
+    vi.mocked(acquireJobLease).mockResolvedValue(true);
   });
 
   it("consulta pagamentos PENDING mais antigos que o limiar", async () => {
@@ -296,6 +299,88 @@ describe("reconcilePayments", () => {
 
     expect(checkPaymentStatus).toHaveBeenCalledTimes(1);
     expect(result.failed).toBe(1);
+  });
+
+  it("não faz nada (skipped) quando outra conciliação global já está em andamento", async () => {
+    vi.mocked(acquireJobLease).mockResolvedValueOnce(false);
+
+    const result = await reconcilePayments();
+
+    expect(result).toEqual({ checked: 0, failed: 0, mismatches: [], skipped: true });
+    expect(dbMock.payment.findMany).not.toHaveBeenCalled();
+    expect(releaseJobLease).not.toHaveBeenCalled();
+  });
+
+  it("libera o lease ao final, mesmo quando a execução lança", async () => {
+    vi.mocked(getReconciliationAlertSettings).mockRejectedValueOnce(new Error("db down"));
+
+    await expect(reconcilePayments()).rejects.toThrow("db down");
+
+    expect(releaseJobLease).toHaveBeenCalledTimes(1);
+  });
+
+  it("execução do organizador não usa lease", async () => {
+    dbMock.payment.findMany.mockResolvedValue([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus: vi.fn() } as any);
+
+    await reconcilePayments({ organizerUserId: "org-1" });
+
+    expect(acquireJobLease).not.toHaveBeenCalled();
+  });
+
+  it("seleciona só pagamentos vencidos pelo escalonamento, com limite e ordem por reconciledAt", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus: vi.fn() } as any);
+
+    await reconcilePayments();
+
+    for (const call of dbMock.payment.findMany.mock.calls) {
+      expect(call[0].where.AND).toHaveLength(1);
+      expect(call[0].where.AND[0].OR.length).toBeGreaterThanOrEqual(2);
+      expect(call[0].take).toBeGreaterThan(0);
+      expect(call[0].orderBy[0]).toEqual({ reconciledAt: { sort: "asc", nulls: "first" } });
+    }
+  });
+
+  it("execução manual (force) ignora o escalonamento de PENDING e aprovação tardia, mas mantém o de PAID", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus: vi.fn() } as any);
+
+    await reconcilePayments({ force: true });
+
+    const [pendingCall, paidCall, lateCall] = dbMock.payment.findMany.mock.calls;
+    expect(pendingCall[0].where.AND).toBeUndefined();
+    expect(paidCall[0].where.AND).toHaveLength(1);
+    expect(lateCall[0].where.AND).toBeUndefined();
+  });
+
+  it("marca reconciledAt sem mexer em updatedAt quando nada mudou", async () => {
+    const updatedAt = new Date("2026-10-01T00:00:00.000Z");
+    dbMock.payment.findMany.mockResolvedValueOnce([{ ...pendingFixture, createdAt: new Date(), updatedAt }]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus: vi.fn().mockResolvedValue({ status: "PENDING" }) } as any);
+
+    await reconcilePayments();
+
+    expect(dbMock.payment.update).toHaveBeenCalledWith({
+      where: { id: "payment-1" },
+      data: { reconciledAt: expect.any(Date), updatedAt },
+    });
+  });
+
+  it("agenda retry curto em reconciledAt quando a consulta falha (não espera o intervalo inteiro)", async () => {
+    const createdAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // faixa 12h
+    dbMock.payment.findMany.mockResolvedValueOnce([{ ...pendingFixture, createdAt }]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const checkPaymentStatus = vi.fn().mockRejectedValue(Object.assign(new Error("nf"), { status: 404 }));
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
+
+    const before = Date.now();
+    await reconcilePayments();
+
+    const data = dbMock.payment.update.mock.calls[0][0].data;
+    // vencido de novo em ~5 min: reconciledAt = agora - (12h - 5min)
+    const dueInMs = data.reconciledAt.getTime() + 12 * 60 * 60 * 1000 - before;
+    expect(dueInMs).toBeGreaterThan(4 * 60 * 1000);
+    expect(dueInMs).toBeLessThan(6 * 60 * 1000);
   });
 
   it("corrige automaticamente um PAID que o gateway diz estar REFUNDED", async () => {
