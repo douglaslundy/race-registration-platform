@@ -10,6 +10,8 @@ import type {
   RefundPaymentInput,
   RefundPaymentResult,
   PaymentStatusResult,
+  GatewaySearchResult,
+  GatewayPaymentSummary,
 } from "./types";
 
 interface MPFeeDetail {
@@ -29,6 +31,18 @@ export function extractGatewayFeeAmount(res: unknown): number | undefined {
     .reduce((sum, f) => sum + (f.amount ?? 0), 0);
   return totalBRL > 0 ? Math.round(totalBRL * 100) : undefined;
 }
+
+const SEARCH_PAGE_SIZE = 100;
+const SEARCH_MAX_PAGES = 20;
+
+const MP_STATUS_MAP: Record<string, PaymentStatusResult["status"]> = {
+  approved: "PAID",
+  cancelled: "CANCELLED",
+  rejected: "CANCELLED",
+  refunded: "REFUNDED",
+  charged_back: "CHARGEBACK",
+  expired: "EXPIRED",
+};
 
 export class MercadoPagoProvider implements PaymentProvider {
   constructor(private account?: ResolvedPaymentAccount) {}
@@ -301,18 +315,47 @@ export class MercadoPagoProvider implements PaymentProvider {
     };
   }
 
+  async searchUpdatedSince(since: Date): Promise<GatewaySearchResult> {
+    const client = await this.getClient();
+    const paymentApi = new Payment(client);
+    const payments: GatewayPaymentSummary[] = [];
+    let truncated = false;
+    for (let page = 0; ; page++) {
+      if (page >= SEARCH_MAX_PAGES) {
+        truncated = true;
+        break;
+      }
+      const res = await paymentApi.search({
+        options: {
+          sort: "date_last_updated",
+          criteria: "asc",
+          range: "date_last_updated",
+          begin_date: since.toISOString(),
+          end_date: "NOW",
+          limit: SEARCH_PAGE_SIZE,
+          offset: page * SEARCH_PAGE_SIZE,
+        },
+      });
+      const results = res.results ?? [];
+      for (const r of results) {
+        if (r.id === undefined || r.id === null) continue;
+        payments.push({
+          providerPaymentId: String(r.id),
+          status: MP_STATUS_MAP[String(r.status)] ?? "PENDING",
+          externalReference: r.external_reference || undefined,
+          updatedAt: r.date_last_updated,
+        });
+      }
+      if (results.length < SEARCH_PAGE_SIZE) break;
+    }
+    return { payments, truncated };
+  }
+
   async checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusResult> {
     const client = await this.getClient();
     const paymentApi = new Payment(client);
     const res = await paymentApi.get({ id: providerPaymentId });
-    const statusMap: Record<string, PaymentStatusResult["status"]> = {
-      approved: "PAID",
-      cancelled: "CANCELLED",
-      rejected: "CANCELLED",
-      refunded: "REFUNDED",
-      charged_back: "CHARGEBACK",
-      expired: "EXPIRED",
-    };
+    const statusMap: Record<string, PaymentStatusResult["status"]> = MP_STATUS_MAP;
     const status = statusMap[String(res.status)] ?? "PENDING";
     return {
       status,

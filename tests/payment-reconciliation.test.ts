@@ -4,6 +4,7 @@ import { getPaymentProvider } from "@/lib/payment";
 
 vi.mock("@/lib/payment", () => ({ getPaymentProvider: vi.fn() }));
 vi.mock("@/lib/alerts/alert-settings", () => ({ getReconciliationAlertSettings: vi.fn() }));
+vi.mock("@/lib/payment/reconciliation-delta", () => ({ reconcileDelta: vi.fn() }));
 vi.mock("@/lib/job-lease", () => ({ acquireJobLease: vi.fn(), releaseJobLease: vi.fn() }));
 vi.mock("@/lib/notifications", () => ({ notifyOrderConfirmed: vi.fn() }));
 // Mock parcial: preserva o comportamento real de applyGatewayStatus (usado pelos testes já
@@ -22,6 +23,7 @@ import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { acquireJobLease, releaseJobLease } from "@/lib/job-lease";
+import { reconcileDelta } from "@/lib/payment/reconciliation-delta";
 
 const dbMock = db as any;
 
@@ -69,6 +71,7 @@ describe("reconcilePayments", () => {
     vi.mocked(getReconciliationAlertSettings).mockResolvedValue({ emailEnabled: true, whatsappEnabled: false, minutesThreshold: 15 });
     dbMock.$transaction.mockImplementation(async (fn: any) => fn(dbMock));
     vi.mocked(acquireJobLease).mockResolvedValue(true);
+    vi.mocked(reconcileDelta).mockResolvedValue({ mismatches: [], failed: 0 });
   });
 
   it("consulta pagamentos PENDING mais antigos que o limiar", async () => {
@@ -430,6 +433,38 @@ describe("reconcilePayments", () => {
     expect(result.mismatches).toEqual([
       { paymentId: "payment-3", orderId: "order-3", eventTitle: "Corrida Expirada", localStatus: "EXPIRED", gatewayStatus: "PAID", corrected: false },
     ]);
+  });
+
+  it("inclui as divergências da busca por delta (execução global) e soma suas falhas", async () => {
+    dbMock.payment.findMany.mockResolvedValue([]);
+    vi.mocked(getPaymentProvider).mockResolvedValue({ checkPaymentStatus: vi.fn() } as any);
+    const orphan = { paymentId: "gateway:99", orderId: "order-9", eventTitle: "X", localStatus: "SEM REGISTRO LOCAL", gatewayStatus: "PAID", corrected: false };
+    vi.mocked(reconcileDelta).mockResolvedValueOnce({ mismatches: [orphan], failed: 1 });
+
+    const result = await reconcilePayments();
+
+    expect(result.failed).toBe(1);
+    expect(result.mismatches[0]).toEqual(orphan);
+  });
+
+  it("não roda a busca por delta na execução do organizador", async () => {
+    dbMock.payment.findMany.mockResolvedValue([]);
+    vi.mocked(getPaymentProvider).mockResolvedValue({ checkPaymentStatus: vi.fn() } as any);
+
+    await reconcilePayments({ organizerUserId: "org-1" });
+
+    expect(reconcileDelta).not.toHaveBeenCalled();
+  });
+
+  it("uma exceção inesperada na busca por delta não derruba a conciliação individual", async () => {
+    dbMock.payment.findMany.mockResolvedValue([]);
+    vi.mocked(getPaymentProvider).mockResolvedValue({ checkPaymentStatus: vi.fn() } as any);
+    vi.mocked(reconcileDelta).mockRejectedValueOnce(new Error("boom"));
+
+    const result = await reconcilePayments();
+
+    expect(result.failed).toBe(1);
+    expect(dbMock.payment.findMany).toHaveBeenCalledTimes(3);
   });
 
   it("corrige automaticamente um PAID que o gateway diz estar REFUNDED", async () => {

@@ -1,5 +1,22 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-06 — Conciliação: passo 4 (busca por delta) + alerta de falha — commitado, NÃO deployado)
+
+`tsc` limpo · `vitest` 307 arq / 2441 testes verdes · `next build` exit 0. Commits locais da conciliação: `0c73cec`, `d319fb7`, `b402753`, `2eb3ab8` + o deste passo. Nada pushado.
+
+### O que foi feito
+- **Alerta `failed>0`**: em execução global vira uma divergência manual sintética (`paymentId = reconciliation-failure-<hora>`) pelo alerta de conciliação já existente (dedupe → no máx. 1 por hora). Organizador não recebe.
+- **Busca por delta** (`lib/payment/reconciliation-delta.ts`, `MercadoPagoProvider.searchUpdatedSince`, `GatewaySearchResult` em `types.ts`): por conta MP (+ global) busca `payments/search` por `date_last_updated` asc, paginado (100 × 20 págs), cursor em `PlatformSetting` (`reconciliation_delta_cursor:<contaId|global>`; 1ª vez = 24h; sobreposição 2 min; só avança em sucesso; truncada → para no último item). Roda ANTES das passadas escalonadas, só em execução global.
+- O delta NÃO aplica transições: (1) status local ≠ gateway → `UPDATE payments SET "reconciledAt"=NULL` (SQL cru p/ não mexer em `updatedAt`) e a conferência individual (já testada) aplica; (2) PAID no gateway sem Payment local cujo `external_reference` é um `Order.id` nosso → divergência manual `gateway:<id>` ("SEM REGISTRO LOCAL"). Ignora o que mudou há <5 min (checkout só grava o Payment depois do gateway responder).
+
+### NÃO validado contra o Mercado Pago real
+A busca (`options`: sort/criteria/range/begin_date/end_date) foi escrita pela tipagem do SDK e testada com mock. Antes de confiar: no 1º deploy acompanhar o log (`[reconcileDelta]`) e a chave `reconciliation_delta_cursor:*` em `platform_settings`.
+
+### PRÓXIMA TAREFA
+Deploy (pedir confirmação): push + `prisma db push` (aditivo: `payments.reconciledAt`, índice, `job_leases`) + junto a correção `e041ab8` (status do evento) que estava adiada. Conferir frequência do cron na VPS.
+
+---
+
 ## Última atualização (2026-10-06 — Conciliação: passo 3 (aprovação tardia sem overbooking) — NÃO deployado)
 
 `tsc` limpo · `vitest` 305 arq / 2423 testes verdes. Sem mudança de schema além do passo 2.

@@ -5,6 +5,7 @@ import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { applyGatewayStatus, NoCapacityError } from "./sync-payment-status";
 import { acquireJobLease, releaseJobLease } from "@/lib/job-lease";
+import { reconcileDelta } from "./reconciliation-delta";
 
 export interface PaymentMismatch {
   paymentId: string;
@@ -154,6 +155,18 @@ async function runReconciliation(options?: { organizerUserId?: string; force?: b
   // resolvidas sob demanda dentro de `providerFor`, uma vez por conta.
   await providerFor({ provider: "", paymentAccountId: null });
 
+  // Busca por delta no gateway (só execução global): põe na frente da fila o que divergiu e acusa
+  // cobranças sem registro local. Falha aqui não derruba a conciliação individual.
+  let delta: Awaited<ReturnType<typeof reconcileDelta>> = { mismatches: [], failed: 0 };
+  if (!options?.organizerUserId) {
+    try {
+      delta = await reconcileDelta(now);
+    } catch (err) {
+      delta = { mismatches: [], failed: 1 };
+      console.error("[reconcilePayments] busca por delta falhou", err);
+    }
+  }
+
   // Execução manual (`force`) ignora o escalonamento de PENDING e aprovação tardia — o usuário
   // clicou pra conferir agora. PAID continua escalonado (varredura de segurança, a mais cara).
   const scheduled = options?.force !== true;
@@ -161,12 +174,12 @@ async function runReconciliation(options?: { organizerUserId?: string; force?: b
   const paid = await checkPaidMismatches(providerFor, organizerFilter, now);
   const lateApproval = await checkLateApprovalMismatches(providerFor, organizerFilter, now, scheduled);
 
-  const failed = pending.failed + paid.failed + lateApproval.failed;
+  const failed = pending.failed + paid.failed + lateApproval.failed + delta.failed;
   if (failed > 0) {
     console.error(`[reconcilePayments] ${failed} pagamento(s) NÃO foram conferidos por falha (gateway/aplicação) — conciliação parcial`);
   }
 
-  const mismatches = [...pending.mismatches, ...paid.mismatches, ...lateApproval.mismatches];
+  const mismatches = [...delta.mismatches, ...pending.mismatches, ...paid.mismatches, ...lateApproval.mismatches];
   // Conciliação parcial vira divergência "manual" sintética pra reaproveitar o alerta de admin
   // (e-mail/WhatsApp, templates e liga/desliga já existentes). Só em execução global — o organizador
   // não deve ver nem disparar alerta de infraestrutura. A chave de dedupe do alerta usa o paymentId,

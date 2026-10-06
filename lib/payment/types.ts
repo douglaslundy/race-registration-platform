@@ -52,6 +52,22 @@ export interface PaymentStatusResult {
   paidAt?: string; // data real de aprovacao no gateway, quando disponivel
 }
 
+/** Resumo de um pagamento do gateway, vindo de uma busca por intervalo de atualização. */
+export interface GatewayPaymentSummary {
+  providerPaymentId: string;
+  status: PaymentStatusCheck;
+  /** Para o Mercado Pago, o `orderId` que enviamos na criação. */
+  externalReference?: string;
+  /** `date_last_updated` do gateway (ISO). */
+  updatedAt?: string;
+}
+
+export interface GatewaySearchResult {
+  payments: GatewayPaymentSummary[];
+  /** true quando o limite de páginas foi atingido — há mais resultados além de `payments`. */
+  truncated: boolean;
+}
+
 export interface PaymentProvider {
   createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   cancelPayment(providerPaymentId: string): Promise<void>;
@@ -59,4 +75,10 @@ export interface PaymentProvider {
   verifyWebhookSignature(payload: string, signature: string, requestId?: string): Promise<boolean>;
   parseWebhookPayload(payload: Record<string, unknown>): PaymentWebhookPayload;
   checkPaymentStatus(providerPaymentId: string): Promise<PaymentStatusResult>;
+  /**
+   * Opcional: lista, em ordem crescente de atualização, os pagamentos do gateway atualizados desde
+   * `since`. Permite conciliar por delta (e achar cobranças sem registro local) em vez de consultar
+   * pagamento por pagamento.
+   */
+  searchUpdatedSince?(since: Date): Promise<GatewaySearchResult>;
 }
