@@ -64,6 +64,7 @@ vi.mock("@/lib/db", () => ({
     // Suporta as duas formas: `$transaction(async (tx) => ...)` (callback) e
     // `$transaction([p1, p2, ...])` (array de promises). Testes que precisam de controle fino
     // continuam podendo sobrescrever com mockImplementation/mockResolvedValue.
+    $executeRaw: vi.fn().mockResolvedValue(1),
     $transaction: vi.fn(async (arg: any) => {
       if (Array.isArray(arg)) return Promise.all(arg);
       return arg({

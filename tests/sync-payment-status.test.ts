@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
+import { applyGatewayStatus, NoCapacityError } from "@/lib/payment/sync-payment-status";
 
 function makeTx() {
   return {
@@ -7,6 +7,7 @@ function makeTx() {
     order: { update: vi.fn() },
     registration: { update: vi.fn() },
     ticketBatch: { update: vi.fn() },
+    $executeRaw: vi.fn().mockResolvedValue(1),
     auditLog: { create: vi.fn() },
   };
 }
@@ -179,7 +180,25 @@ describe("applyGatewayStatus", () => {
 
     expect(tx.order.update).toHaveBeenCalledWith({ where: { id: "ord-1" }, data: { status: "PAID" } });
     expect(tx.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: { status: "CONFIRMED" } });
-    expect(tx.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-1" }, data: { soldCount: { increment: 1 } } });
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.ticketBatch.update).not.toHaveBeenCalled();
+  });
+
+  it("EXPIRED -> PAID sem vaga no lote lança NoCapacityError (a transação inteira deve ser desfeita)", async () => {
+    const tx = makeTx();
+    tx.$executeRaw.mockResolvedValueOnce(0);
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "CANCELLED" as const }];
+
+    await expect(
+      applyGatewayStatus(
+        tx as any,
+        { id: "pay-1", status: "EXPIRED" },
+        { id: "ord-1", status: "CANCELLED" },
+        registrations,
+        "PAID",
+        "reconciliation",
+      ),
+    ).rejects.toBeInstanceOf(NoCapacityError);
   });
 
   it("não libera a vaga de novo para uma inscrição já cancelada individualmente (evita oversell)", async () => {

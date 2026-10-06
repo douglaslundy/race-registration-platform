@@ -383,6 +383,22 @@ describe("reconcilePayments", () => {
     expect(dueInMs).toBeLessThan(6 * 60 * 1000);
   });
 
+  it("aprovação tardia sem vaga: não reativa, não notifica o atleta e reporta divergência NÃO corrigida", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([expiredFixture]);
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({
+      checkPaymentStatus: vi.fn().mockResolvedValue({ status: "PAID" }),
+    } as any);
+    dbMock.$executeRaw.mockResolvedValueOnce(0);
+
+    const result = await reconcilePayments();
+
+    expect(notifyOrderConfirmed).not.toHaveBeenCalled();
+    expect(result.failed).toBe(0);
+    expect(result.mismatches).toEqual([
+      { paymentId: "payment-3", orderId: "order-3", eventTitle: "Corrida Expirada", localStatus: "EXPIRED", gatewayStatus: "PAID", corrected: false },
+    ]);
+  });
+
   it("corrige automaticamente um PAID que o gateway diz estar REFUNDED", async () => {
     dbMock.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([paidFixture]).mockResolvedValueOnce([]);
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({
@@ -437,7 +453,7 @@ describe("reconcilePayments", () => {
     const result = await reconcilePayments();
 
     expect(dbMock.order.update).toHaveBeenCalledWith({ where: { id: "order-3" }, data: { status: "PAID" } });
-    expect(dbMock.ticketBatch.update).toHaveBeenCalledWith({ where: { id: "batch-2" }, data: { soldCount: { increment: 1 } } });
+    expect(dbMock.$executeRaw).toHaveBeenCalledTimes(1);
     expect(dbMock.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: "payment-3" }),

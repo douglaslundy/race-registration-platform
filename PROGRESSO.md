@@ -1,5 +1,24 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-06 — Conciliação: passo 3 (aprovação tardia sem overbooking) — NÃO deployado)
+
+`tsc` limpo · `vitest` 305 arq / 2423 testes verdes. Sem mudança de schema além do passo 2.
+
+### O que foi feito
+- Aprovação tardia (EXPIRED/CANCELLED → PAID) agora reocupa a vaga com `UPDATE ... SET soldCount = soldCount + 1 WHERE soldCount < capacity` (atômico, `$executeRaw`). Sem vaga → `NoCapacityError` dentro da transação → rollback total (payment, order, registration, soldCount intocados).
+- Conciliação e webhook capturam o erro: reportam divergência `corrected:false` (alerta de admin já existente, com dedupe por transição), sem notificar o atleta; webhook responde 200 (MP não reenvia pra sempre).
+- `webhook-handler` passou a incluir `event.title` no `order`.
+
+### Decisões / correções de premissa
+- Estorno parcial NÃO é problema: o MP mantém `approved` e só vira `refunded` no estorno total (o mapa atual já está certo). `in_mediation`/`in_process` caem em "PENDING" e são ignorados — não exigem mudança.
+- "Pendente sem providerPaymentId" não existe: o `Payment` só é criado depois que o gateway devolve o id (`app/api/checkout/route.ts`). Risco real é o inverso (cobrança criada no MP e falha ao gravar local) — fora de escopo, só detectável via busca em lote (passo 4).
+- Não criado alerta próprio para `failed>0`: hoje só `console.error` + campo `failed` na resposta do cron. Fazer exige novo tipo de alerta/template.
+
+### PRÓXIMA TAREFA
+Passo 4 (opcional): busca em lote por delta (`payments/search` do MP por `date_last_updated`, cursor em Setting) — também cobriria cobranças órfãs no gateway. Pendente: alerta próprio para `failed>0`. Deploy dos passos 1–3 exige `prisma db push`.
+
+---
+
 ## Última atualização (2026-10-06 — Conciliação: passo 2 (escalonamento + lease) — NÃO deployado)
 
 `tsc` limpo · `vitest` 305 arq / 2420 testes verdes · `next build` exit 0. **Exige `prisma db push`** no deploy (aditivo: `payments.reconciled_at` + índice + tabela `job_leases`).

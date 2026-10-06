@@ -1,6 +1,19 @@
 import type { Prisma, PaymentStatus, OrderStatus, RegistrationStatus } from "@prisma/client";
 
 export type GatewayPaymentStatus = "PAID" | "EXPIRED" | "CANCELLED" | "REFUNDED" | "CHARGEBACK";
+/**
+ * Aprovação tardia (pagamento EXPIRED/CANCELLED que o gateway diz estar PAID) que não pode reativar
+ * a inscrição porque o lote já esgotou depois que a vaga foi liberada. Lançado de dentro da
+ * transação — o rollback desfaz qualquer escrita parcial. O pagamento fica como estava localmente
+ * e o caso vai para decisão manual (estorno ou ampliar o lote), em vez de causar overbooking.
+ */
+export class NoCapacityError extends Error {
+  constructor(public readonly ticketBatchId: string) {
+    super(`Lote ${ticketBatchId} sem vaga para reativar a inscrição de uma aprovação tardia`);
+    this.name = "NoCapacityError";
+  }
+}
+
 export type SyncSource = "webhook" | "reconciliation" | "refund_check" | "checkout" | "status_poll";
 
 const AUDIT_ACTION: Record<SyncSource, string> = {
@@ -106,7 +119,9 @@ export async function applyGatewayStatus(
   if (shouldRestoreCapacity) {
     for (const r of registrations) {
       if (r.status === "CANCELLED") {
-        await tx.ticketBatch.update({ where: { id: r.ticketBatchId }, data: { soldCount: { increment: 1 } } });
+        // Incremento condicional atômico: só ocupa a vaga se ainda houver (soldCount < capacity).
+        const claimedSeat = await tx.$executeRaw`UPDATE "ticket_batches" SET "soldCount" = "soldCount" + 1 WHERE "id" = ${r.ticketBatchId} AND "soldCount" < "capacity"`;
+        if (claimedSeat === 0) throw new NoCapacityError(r.ticketBatchId);
       }
     }
   }

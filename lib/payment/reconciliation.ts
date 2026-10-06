@@ -3,7 +3,7 @@ import { getPaymentProvider } from "@/lib/payment";
 import { getPaymentAccountById } from "./account-resolver";
 import { getReconciliationAlertSettings } from "@/lib/alerts/alert-settings";
 import { notifyOrderConfirmed } from "@/lib/notifications";
-import { applyGatewayStatus } from "./sync-payment-status";
+import { applyGatewayStatus, NoCapacityError } from "./sync-payment-status";
 import { acquireJobLease, releaseJobLease } from "@/lib/job-lease";
 
 export interface PaymentMismatch {
@@ -430,12 +430,32 @@ async function checkLateApprovalMismatches(
     const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await checkStatusResilient(provider, payment.providerPaymentId as string);
     if (gatewayStatus !== "PAID") return { changed: false };
 
-    const result = await db.$transaction(async (tx) => {
-      return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
-        gatewayFeeAmount,
-        paidAt: paidAt ? new Date(paidAt) : new Date(),
+    let result: { changed: boolean };
+    try {
+      result = await db.$transaction(async (tx) => {
+        return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
+          gatewayFeeAmount,
+          paidAt: paidAt ? new Date(paidAt) : new Date(),
+        });
       });
-    });
+    } catch (err) {
+      if (!(err instanceof NoCapacityError)) throw err;
+      // O lote esgotou depois que a vaga foi liberada: o dinheiro entrou no gateway mas não dá pra
+      // reativar a inscrição sem overbooking. Nada foi gravado (rollback) — sinaliza como divergência
+      // NÃO corrigida pro admin decidir (estornar ou ampliar o lote).
+      console.error("[reconcilePayments] aprovação tardia sem vaga", payment.id, err.message);
+      return {
+        changed: false,
+        mismatch: {
+          paymentId: payment.id,
+          orderId: order.id,
+          eventTitle: order.event.title,
+          localStatus: payment.status,
+          gatewayStatus,
+          corrected: false,
+        },
+      };
+    }
     if (result.changed) {
       void notifyOrderConfirmed(order.id);
     }

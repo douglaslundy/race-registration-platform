@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
+import { applyGatewayStatus, NoCapacityError } from "@/lib/payment/sync-payment-status";
+import { notifyReconciliationMismatches } from "@/lib/alerts/reconciliation";
 import { notifyOrderConfirmed } from "@/lib/notifications";
 import { notifyPaymentError } from "@/lib/alerts/payment-error";
 import { confirmAdPurchasePayment } from "@/lib/ads/ad-purchase-confirmation";
@@ -27,7 +28,7 @@ export async function processPaymentWebhookEvent(
   const payment = await db.payment.findFirst({
     where: { providerPaymentId: event.providerPaymentId },
     include: {
-      order: { include: { registrations: true, buyer: { select: { name: true, email: true } } } },
+      order: { include: { registrations: true, buyer: { select: { name: true, email: true } }, event: { select: { title: true } } } },
       adPurchase: { include: { advertiser: { include: { user: true } }, adPlan: true } },
     },
   });
@@ -81,21 +82,40 @@ export async function processPaymentWebhookEvent(
 
   const newPaymentStatus = event.status;
 
-  const result = await db.$transaction(async (tx) => {
-    return applyGatewayStatus(
-      tx,
-      payment,
-      order,
-      order.registrations,
-      newPaymentStatus,
-      "webhook",
+  let result: { changed: boolean };
+  try {
+    result = await db.$transaction(async (tx) => {
+      return applyGatewayStatus(
+        tx,
+        payment,
+        order,
+        order.registrations,
+        newPaymentStatus,
+        "webhook",
+        {
+          paidAt: event.paidAt ? new Date(event.paidAt) : undefined,
+          gatewayFeeAmount: event.gatewayFeeAmount,
+          rawPayload: event.rawPayload,
+        },
+      );
+    });
+  } catch (err) {
+    if (!(err instanceof NoCapacityError)) throw err;
+    // Aprovação tardia num lote que já esgotou: nada foi gravado (rollback). Responde ok pro gateway
+    // não reenviar o webhook pra sempre e avisa o admin pra decidir (estornar ou ampliar o lote).
+    console.error(`[webhooks/payment] aprovação tardia sem vaga — payment ${payment.id}:`, err.message);
+    void notifyReconciliationMismatches([
       {
-        paidAt: event.paidAt ? new Date(event.paidAt) : undefined,
-        gatewayFeeAmount: event.gatewayFeeAmount,
-        rawPayload: event.rawPayload,
+        paymentId: payment.id,
+        orderId,
+        eventTitle: order.event?.title ?? "",
+        localStatus: payment.status,
+        gatewayStatus: newPaymentStatus,
+        corrected: false,
       },
-    );
-  });
+    ]);
+    return { handled: true };
+  }
 
   if (!result.changed) return { handled: true };
 
