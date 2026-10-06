@@ -245,7 +245,7 @@ describe("checkout api", () => {
 
     const paymentRow = { id: "payment-1", status: "PENDING" };
     const txMock = {
-      payment: { create: vi.fn().mockResolvedValueOnce(paymentRow), update: vi.fn() },
+      payment: { create: vi.fn().mockResolvedValueOnce(paymentRow), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       order: { update: vi.fn() },
       registration: { update: vi.fn() },
       ticketBatch: { update: vi.fn() },

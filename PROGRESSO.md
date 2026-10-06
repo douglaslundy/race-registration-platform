@@ -1,5 +1,24 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-06 — Conciliação: passo 1 (corrida + falha explícita) — NÃO commitado/deployado)
+
+`npx tsc --noEmit` limpo · `npx vitest run` 304 arq / 2408 testes verdes.
+
+### O que foi feito
+1. **Corrida webhook × conciliação** — `applyGatewayStatus` agora faz compare-and-set: `payment.updateMany({ where: { id, status: <lido> } })`; se `count === 0` retorna `{changed:false}` sem tocar order/registration/soldCount/audit. Antes o `update` não condicionava ao status e dois concorrentes decrementavam/incrementavam `soldCount` em dobro.
+2. **Falha explícita** — `reconcilePayments` retorna `{ checked, failed, mismatches }`; `failed` = pagamentos que NÃO foram conferidos. Consulta ao gateway com timeout 15s + 3 tentativas (backoff exp. + jitter) só para 429/5xx/rede; erros definitivos (401/404) não repetem.
+
+### Arquivos
+`lib/payment/sync-payment-status.ts`, `lib/payment/reconciliation.ts`, `tests/setup.ts` (updateMany default `{count:1}`), tests de sync/reconciliation/refund/webhook/checkout/rotas.
+
+### Decisões
+- Lock entre execuções (advisory lock) ficou para o passo 2: sessão pooled do Prisma torna `pg_advisory_lock` de sessão não confiável; vai usar lease em tabela junto com `reconciledAt`.
+
+### PRÓXIMA TAREFA
+Passo 2: `Payment.reconciledAt/reconcileAttempts` + conferência escalonada por idade (LIMIT por execução) + lease anti-execução-simultânea. Depois: regras de domínio (aprovação tardia sem vaga, estorno parcial, `in_mediation`, pendentes sem providerPaymentId) e busca em lote por delta (`payments/search`).
+
+---
+
 ## Última atualização (2026-09-07 — evento realizado aparecia como "Inscrições abertas" no admin/organizador)
 
 `npx tsc --noEmit` limpo · `npx vitest run` 301 arq / 2373 testes verdes · `npx next build` exit 0.

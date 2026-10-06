@@ -25,20 +25,20 @@ describe("POST /api/admin/reconciliation", () => {
 
   it("roda a conciliação sem filtro de organizador e retorna o resultado", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } } as any);
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 5, mismatches: [] });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 5, failed: 0, mismatches: [] });
 
     const res = await POST();
     const body = await res.json();
 
     expect(reconcilePayments).toHaveBeenCalledWith();
-    expect(body).toEqual({ checked: 5, mismatches: [] });
+    expect(body).toEqual({ checked: 5, failed: 0, mismatches: [] });
   });
 
   it("assistente de admin com a permissão concilia a plataforma inteira", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 5, mismatches: [] });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 5, failed: 0, mismatches: [] });
 
     const res = await POST();
 

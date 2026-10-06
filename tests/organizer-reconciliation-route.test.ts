@@ -27,7 +27,7 @@ describe("POST /api/organizer/reconciliation", () => {
 
   it("roda a conciliação escopada ao organizador", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 2, mismatches: [] });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 2, failed: 0, mismatches: [] });
 
     await POST();
 
@@ -37,7 +37,7 @@ describe("POST /api/organizer/reconciliation", () => {
   it("dispara o alerta para o admin quando encontra divergências", async () => {
     authMock.mockResolvedValue({ user: { id: "org-1", role: "ORGANIZER" } } as any);
     const mismatches = [{ paymentId: "p1", orderId: "o1", eventTitle: "Corrida", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false }];
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 1, mismatches });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 1, failed: 0, mismatches });
 
     await POST();
 
@@ -48,7 +48,7 @@ describe("POST /api/organizer/reconciliation", () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
     dbMock.assistantPermission.findFirst.mockResolvedValueOnce({ id: "perm-1" });
     dbMock.user.findUnique.mockResolvedValueOnce({ createdByUserId: "org-1" });
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 0, mismatches: [] });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 0, failed: 0, mismatches: [] });
 
     const res = await POST();
 

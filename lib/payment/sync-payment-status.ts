@@ -68,8 +68,13 @@ export async function applyGatewayStatus(
     : payment.status === "PAID" ? "CONFIRMED"
     : undefined;
 
-  await tx.payment.update({
-    where: { id: payment.id },
+  // Compare-and-set: só transiciona se o pagamento ainda está no status que o chamador leu. Se um
+  // webhook/poller/conciliação concorrente já aplicou a transição (o `payment.status` recebido está
+  // obsoleto), `count` volta 0 e abortamos antes de mexer em pedido, inscrição e vaga — evita
+  // decrementar/incrementar `soldCount` em dobro e notificação duplicada. O UPDATE também trava a
+  // linha até o fim da transação, serializando os concorrentes.
+  const claimed = await tx.payment.updateMany({
+    where: { id: payment.id, status: payment.status },
     data: {
       status: newStatus,
       ...(options?.paidAt ? { paidAt: options.paidAt } : {}),
@@ -78,6 +83,7 @@ export async function applyGatewayStatus(
       ...(options?.rawPayload !== undefined ? { rawPayload: options.rawPayload as Prisma.InputJsonValue } : {}),
     },
   });
+  if (claimed.count === 0) return { changed: false };
 
   await tx.order.update({ where: { id: order.id }, data: { status: newOrderStatus } });
 

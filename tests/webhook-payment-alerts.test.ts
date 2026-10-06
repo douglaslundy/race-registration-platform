@@ -218,8 +218,8 @@ describe("payment webhook refund/chargeback sync", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(dbMock.payment.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "payment-1" }, data: expect.objectContaining({ status: "REFUNDED" }) }),
+    expect(dbMock.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "payment-1" }), data: expect.objectContaining({ status: "REFUNDED" }) }),
     );
     expect(dbMock.order.update).toHaveBeenCalledWith({ where: { id: "order-1" }, data: { status: "REFUNDED" } });
     expect(dbMock.registration.update).toHaveBeenCalledWith({ where: { id: "reg-1" }, data: { status: "CANCELLED" } });
@@ -275,6 +275,6 @@ describe("payment webhook refund/chargeback sync", () => {
       }) as any,
     );
 
-    expect(dbMock.payment.update).not.toHaveBeenCalled();
+    expect(dbMock.payment.updateMany).not.toHaveBeenCalled();
   });
 });

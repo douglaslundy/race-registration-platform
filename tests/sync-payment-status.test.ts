@@ -3,7 +3,7 @@ import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 
 function makeTx() {
   return {
-    payment: { update: vi.fn() },
+    payment: { update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     order: { update: vi.fn() },
     registration: { update: vi.fn() },
     ticketBatch: { update: vi.fn() },
@@ -24,7 +24,7 @@ describe("applyGatewayStatus", () => {
     );
 
     expect(result).toEqual({ changed: false });
-    expect(tx.payment.update).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
   });
 
   it("não faz nada quando o pagamento já está REFUNDED (terminal)", async () => {
@@ -39,7 +39,7 @@ describe("applyGatewayStatus", () => {
     );
 
     expect(result).toEqual({ changed: false });
-    expect(tx.payment.update).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
   });
 
   it("não faz nada quando o pagamento já está CHARGEBACK (terminal)", async () => {
@@ -54,7 +54,31 @@ describe("applyGatewayStatus", () => {
     );
 
     expect(result).toEqual({ changed: false });
-    expect(tx.payment.update).not.toHaveBeenCalled();
+    expect(tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("aborta sem mexer em pedido, inscrição e vaga quando um concorrente já transicionou o pagamento (CAS perdido)", async () => {
+    const tx = makeTx();
+    tx.payment.updateMany.mockResolvedValueOnce({ count: 0 });
+    const registrations = [{ id: "reg-1", ticketBatchId: "batch-1", status: "PENDING_PAYMENT" as const }];
+
+    const result = await applyGatewayStatus(
+      tx as any,
+      { id: "pay-1", status: "PENDING" },
+      { id: "ord-1", status: "PENDING" },
+      registrations,
+      "CANCELLED",
+      "reconciliation",
+    );
+
+    expect(result).toEqual({ changed: false });
+    expect(tx.payment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "pay-1", status: "PENDING" } }),
+    );
+    expect(tx.order.update).not.toHaveBeenCalled();
+    expect(tx.registration.update).not.toHaveBeenCalled();
+    expect(tx.ticketBatch.update).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("PENDING -> PAID confirma a inscrição sem mexer na vaga", async () => {
@@ -108,8 +132,8 @@ describe("applyGatewayStatus", () => {
     );
 
     expect(result).toEqual({ changed: true });
-    expect(tx.payment.update).toHaveBeenCalledWith({
-      where: { id: "pay-1" },
+    expect(tx.payment.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "pay-1" }),
       data: expect.objectContaining({ status: "REFUNDED", refundedAt: expect.any(Date) }),
     });
     expect(tx.order.update).toHaveBeenCalledWith({ where: { id: "ord-1" }, data: { status: "REFUNDED" } });
@@ -189,8 +213,8 @@ describe("applyGatewayStatus", () => {
       { rawPayload: { foo: "bar" } },
     );
 
-    expect(tx.payment.update).toHaveBeenCalledWith({
-      where: { id: "pay-1" },
+    expect(tx.payment.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "pay-1" }),
       data: expect.objectContaining({ rawPayload: { foo: "bar" } }),
     });
   });

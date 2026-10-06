@@ -15,6 +15,9 @@ export interface PaymentMismatch {
 }
 
 const PAID_LOOKBACK_DAYS = 90;
+const GATEWAY_TIMEOUT_MS = 15_000;
+const GATEWAY_MAX_ATTEMPTS = 3;
+const GATEWAY_RETRY_BASE_MS = 500;
 const LATE_APPROVAL_LOOKBACK_DAYS = 7;
 
 type Provider = Awaited<ReturnType<typeof getPaymentProvider>>;
@@ -38,7 +41,52 @@ function makeProviderFor(): ProviderFor {
   };
 }
 
-export async function reconcilePayments(options?: { organizerUserId?: string }): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
+export interface ReconciliationResult {
+  /** Pagamentos selecionados para conferência (não significa que a consulta ao gateway deu certo). */
+  checked: number;
+  /** Pagamentos cuja consulta ao gateway ou aplicação local falhou — NÃO foram conferidos. */
+  failed: number;
+  mismatches: PaymentMismatch[];
+}
+
+type SectionResult = { checked: number; failed: number; mismatches: PaymentMismatch[] };
+
+function isTransientGatewayError(err: unknown): boolean {
+  const e = err as { status?: number; statusCode?: number; name?: string; code?: string } | null;
+  const status = e?.status ?? e?.statusCode;
+  if (typeof status === "number") return status === 429 || status >= 500;
+  // Sem status HTTP: erro de rede/timeout (fetch failed, ECONNRESET, nossa própria TimeoutError).
+  return true;
+}
+
+/**
+ * Consulta o gateway com timeout e retry (backoff exponencial + jitter) só para falhas transitórias
+ * (429, 5xx, rede, timeout). Erros definitivos (404, 401…) propagam de imediato.
+ */
+async function checkStatusResilient(provider: Provider, providerPaymentId: string) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= GATEWAY_MAX_ATTEMPTS; attempt++) {
+    try {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error("gateway timeout"), { name: "TimeoutError" })), GATEWAY_TIMEOUT_MS);
+      });
+      try {
+        return await Promise.race([provider.checkPaymentStatus(providerPaymentId), timeout]);
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (err) {
+      lastError = err;
+      if (attempt === GATEWAY_MAX_ATTEMPTS || !isTransientGatewayError(err)) break;
+      const delay = GATEWAY_RETRY_BASE_MS * 2 ** (attempt - 1) * (0.5 + Math.random());
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
+
+export async function reconcilePayments(options?: { organizerUserId?: string }): Promise<ReconciliationResult> {
   const settings = await getReconciliationAlertSettings();
   const cutoff = new Date(Date.now() - settings.minutesThreshold * 60 * 1000);
   const organizerFilter = options?.organizerUserId
@@ -55,8 +103,14 @@ export async function reconcilePayments(options?: { organizerUserId?: string }):
   const paid = await checkPaidMismatches(providerFor, organizerFilter);
   const lateApproval = await checkLateApprovalMismatches(providerFor, organizerFilter);
 
+  const failed = pending.failed + paid.failed + lateApproval.failed;
+  if (failed > 0) {
+    console.error(`[reconcilePayments] ${failed} pagamento(s) NÃO foram conferidos por falha (gateway/aplicação) — conciliação parcial`);
+  }
+
   return {
     checked: pending.checked + paid.checked + lateApproval.checked,
+    failed,
     mismatches: [...pending.mismatches, ...paid.mismatches, ...lateApproval.mismatches],
   };
 }
@@ -65,7 +119,7 @@ async function checkPendingMismatches(
   providerFor: ProviderFor,
   cutoff: Date,
   organizerFilter: Record<string, unknown>,
-): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
+): Promise<SectionResult> {
   const payments = await db.payment.findMany({
     where: {
       status: "PENDING",
@@ -91,6 +145,7 @@ async function checkPendingMismatches(
   });
 
   const mismatches: PaymentMismatch[] = [];
+  let failed = 0;
   for (const payment of payments) {
     try {
       if (!payment.order) {
@@ -100,7 +155,7 @@ async function checkPendingMismatches(
       }
       const order = payment.order;
       const provider = await providerFor(payment);
-      const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await checkStatusResilient(provider, payment.providerPaymentId as string);
       if (gatewayStatus === payment.status || gatewayStatus === "PENDING") continue;
 
       // Aplica a transição de verdade pra qualquer status terminal que o gateway reportar — não só
@@ -125,17 +180,18 @@ async function checkPendingMismatches(
         corrected: result.changed,
       });
     } catch (err) {
+      failed++;
       console.error("[reconcilePayments] failed to check pending payment", payment.id, err);
     }
   }
 
-  return { checked: payments.length, mismatches };
+  return { checked: payments.length, failed, mismatches };
 }
 
 async function checkPaidMismatches(
   providerFor: ProviderFor,
   organizerFilter: Record<string, unknown>,
-): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
+): Promise<SectionResult> {
   const cutoff = new Date(Date.now() - PAID_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
   const payments = await db.payment.findMany({
     where: {
@@ -163,6 +219,7 @@ async function checkPaidMismatches(
   });
 
   const mismatches: PaymentMismatch[] = [];
+  let failed = 0;
   for (const payment of payments) {
     try {
       if (!payment.order) {
@@ -172,7 +229,7 @@ async function checkPaidMismatches(
       }
       const order = payment.order;
       const provider = await providerFor(payment);
-      const { status: gatewayStatus } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus } = await checkStatusResilient(provider, payment.providerPaymentId as string);
       if (gatewayStatus === "REFUNDED" || gatewayStatus === "CHARGEBACK") {
         await db.$transaction(async (tx) => {
           await applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation");
@@ -187,17 +244,18 @@ async function checkPaidMismatches(
         });
       }
     } catch (err) {
+      failed++;
       console.error("[reconcilePayments] failed to check paid payment", payment.id, err);
     }
   }
 
-  return { checked: payments.length, mismatches };
+  return { checked: payments.length, failed, mismatches };
 }
 
 async function checkLateApprovalMismatches(
   providerFor: ProviderFor,
   organizerFilter: Record<string, unknown>,
-): Promise<{ checked: number; mismatches: PaymentMismatch[] }> {
+): Promise<SectionResult> {
   const cutoff = new Date(Date.now() - LATE_APPROVAL_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
   const payments = await db.payment.findMany({
     where: {
@@ -225,6 +283,7 @@ async function checkLateApprovalMismatches(
   });
 
   const mismatches: PaymentMismatch[] = [];
+  let failed = 0;
   for (const payment of payments) {
     try {
       if (!payment.order) {
@@ -234,7 +293,7 @@ async function checkLateApprovalMismatches(
       }
       const order = payment.order;
       const provider = await providerFor(payment);
-      const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await provider.checkPaymentStatus(payment.providerPaymentId as string);
+      const { status: gatewayStatus, gatewayFeeAmount, paidAt } = await checkStatusResilient(provider, payment.providerPaymentId as string);
       if (gatewayStatus === "PAID") {
         const result = await db.$transaction(async (tx) => {
           return applyGatewayStatus(tx, payment, order, order.registrations, gatewayStatus, "reconciliation", {
@@ -255,9 +314,10 @@ async function checkLateApprovalMismatches(
         });
       }
     } catch (err) {
+      failed++;
       console.error("[reconcilePayments] failed to check late-approval payment", payment.id, err);
     }
   }
 
-  return { checked: payments.length, mismatches };
+  return { checked: payments.length, failed, mismatches };
 }

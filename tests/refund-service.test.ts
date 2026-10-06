@@ -173,10 +173,10 @@ describe("refundPayment", () => {
       refundPayment: refundPaymentGateway,
     } as any);
 
-    const txPaymentUpdate = vi.fn();
+    const txPaymentUpdate = vi.fn().mockResolvedValue({ count: 1 });
     dbMock.$transaction.mockImplementationOnce(async (fn: any) =>
       fn({
-        payment: { update: txPaymentUpdate },
+        payment: { updateMany: txPaymentUpdate },
         order: { update: vi.fn() },
         registration: { update: vi.fn() },
         ticketBatch: { update: vi.fn() },
@@ -189,7 +189,7 @@ describe("refundPayment", () => {
     expect(result).toEqual({ alreadySynced: true });
     expect(refundPaymentGateway).not.toHaveBeenCalled();
     expect(txPaymentUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "pay-1" }, data: expect.objectContaining({ status: "REFUNDED" }) }),
+      expect.objectContaining({ where: expect.objectContaining({ id: "pay-1" }), data: expect.objectContaining({ status: "REFUNDED" }) }),
     );
   });
 

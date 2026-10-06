@@ -30,19 +30,19 @@ describe("POST /api/cron/reconciliation", () => {
   });
 
   it("roda a conciliação e não dispara alerta quando não há divergências", async () => {
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 3, mismatches: [] });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 3, failed: 0, mismatches: [] });
 
     const res = await POST(makeRequest({ "x-cron-secret": "test-secret" }));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ checked: 3, mismatches: [] });
+    expect(body).toEqual({ checked: 3, failed: 0, mismatches: [] });
     expect(notifyReconciliationMismatches).not.toHaveBeenCalled();
   });
 
   it("dispara o alerta quando há divergências", async () => {
     const mismatches = [{ paymentId: "p1", orderId: "o1", eventTitle: "Corrida", localStatus: "PENDING", gatewayStatus: "PAID", corrected: false }];
-    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 1, mismatches });
+    vi.mocked(reconcilePayments).mockResolvedValueOnce({ checked: 1, failed: 0, mismatches });
 
     await POST(makeRequest({ "x-cron-secret": "test-secret" }));
 
