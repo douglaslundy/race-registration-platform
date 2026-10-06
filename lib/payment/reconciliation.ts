@@ -166,10 +166,27 @@ async function runReconciliation(options?: { organizerUserId?: string; force?: b
     console.error(`[reconcilePayments] ${failed} pagamento(s) NÃO foram conferidos por falha (gateway/aplicação) — conciliação parcial`);
   }
 
+  const mismatches = [...pending.mismatches, ...paid.mismatches, ...lateApproval.mismatches];
+  // Conciliação parcial vira divergência "manual" sintética pra reaproveitar o alerta de admin
+  // (e-mail/WhatsApp, templates e liga/desliga já existentes). Só em execução global — o organizador
+  // não deve ver nem disparar alerta de infraestrutura. A chave de dedupe do alerta usa o paymentId,
+  // então ele carrega a hora cheia: no máximo 1 alerta por hora durante uma indisponibilidade, e
+  // uma queda futura volta a alertar.
+  if (failed > 0 && !options?.organizerUserId) {
+    mismatches.push({
+      paymentId: `reconciliation-failure-${new Date(now).toISOString().slice(0, 13)}`,
+      orderId: "-",
+      eventTitle: `Falha na conciliação: ${failed} pagamento(s) não conferidos`,
+      localStatus: "NÃO CONFERIDO",
+      gatewayStatus: "CONSULTA FALHOU",
+      corrected: false,
+    });
+  }
+
   return {
     checked: pending.checked + paid.checked + lateApproval.checked,
     failed,
-    mismatches: [...pending.mismatches, ...paid.mismatches, ...lateApproval.mismatches],
+    mismatches,
   };
 }
 

@@ -241,6 +241,7 @@ describe("reconcilePayments", () => {
       failed: 1,
       mismatches: [
         { paymentId: "payment-4", orderId: "order-1", eventTitle: "Corrida Teste", localStatus: "PENDING", gatewayStatus: "PAID", corrected: true },
+        expect.objectContaining({ gatewayStatus: "CONSULTA FALHOU", corrected: false }),
       ],
     });
     expect(dbMock.payment.updateMany).toHaveBeenCalledWith(
@@ -284,10 +285,42 @@ describe("reconcilePayments", () => {
       const result = await promise;
 
       expect(checkPaymentStatus).toHaveBeenCalledTimes(3);
-      expect(result).toEqual({ checked: 1, failed: 1, mismatches: [] });
+      expect(result).toEqual({
+        checked: 1,
+        failed: 1,
+        mismatches: [expect.objectContaining({ gatewayStatus: "CONSULTA FALHOU", corrected: false })],
+      });
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("falha de consulta em execução global vira divergência manual sintética (alerta de admin, 1 por hora)", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const checkPaymentStatus = vi.fn().mockRejectedValue(Object.assign(new Error("unauthorized"), { status: 401 }));
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
+
+    const result = await reconcilePayments();
+
+    expect(result.failed).toBe(1);
+    expect(result.mismatches).toEqual([
+      expect.objectContaining({
+        paymentId: expect.stringMatching(/^reconciliation-failure-\d{4}-\d{2}-\d{2}T\d{2}$/),
+        eventTitle: "Falha na conciliação: 1 pagamento(s) não conferidos",
+        corrected: false,
+      }),
+    ]);
+  });
+
+  it("execução do organizador não recebe a divergência sintética de falha", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const checkPaymentStatus = vi.fn().mockRejectedValue(Object.assign(new Error("unauthorized"), { status: 401 }));
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
+
+    const result = await reconcilePayments({ organizerUserId: "org-1" });
+
+    expect(result.failed).toBe(1);
+    expect(result.mismatches).toEqual([]);
   });
 
   it("não repete em erro definitivo do gateway (ex.: 401)", async () => {
