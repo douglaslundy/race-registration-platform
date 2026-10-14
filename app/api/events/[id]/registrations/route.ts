@@ -40,7 +40,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where,
       select: {
         bibNumber: true,
-        ticketBatch: { select: { name: true } },
+        shirtSize: true,
+        ticketBatch: { select: { name: true, hasShirt: true } },
         order: {
           select: { payments: { where: { status: "PAID" }, orderBy: { createdAt: "desc" }, take: 1, select: { amount: true } } },
         },

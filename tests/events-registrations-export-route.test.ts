@@ -26,7 +26,8 @@ const fullRegistration = {
   emergencyContactPhone: "11988887777",
   medicalNotes: "Alérgica a dipirona",
   bibNumber: "12",
-  ticketBatch: { name: "Lote 1" },
+  ticketBatch: { name: "Lote 1", hasShirt: true },
+  shirtSize: "M",
   order: { payments: [{ amount: 9990 }] },
 };
 
@@ -53,7 +54,7 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     const csv = await res.text();
 
     expect(csv.split("\r\n")[0]).toBe(
-      '"Nº de Peito","Nome","Data de Nascimento","Idade","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias","Lote","Valor Pago"',
+      '"Nº de Peito","Nome","Data de Nascimento","Idade","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias","Lote","Valor Pago","Camiseta"',
     );
     expect(csv).toContain('"12","Ana Silva","15/03/1990","36","Feminino","Equipe Exemplo","Adulto","São Paulo","10km","Carlos Silva — 11988887777","Alérgica a dipirona","Lote 1"');
     expect(csv).not.toContain("Email");
@@ -74,7 +75,8 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
         emergencyContactPhone: null,
         medicalNotes: null,
         bibNumber: null,
-        ticketBatch: { name: "Lote 2" },
+        ticketBatch: { name: "Lote 2", hasShirt: true },
+  shirtSize: null,
         order: { payments: [] },
       },
     ]);

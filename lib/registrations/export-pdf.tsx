@@ -5,13 +5,14 @@ import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-p
 
 const COLS = [
   { index: 0, label: "Peito", width: "6%" },
-  { index: 1, label: "Nome", width: "22%" },
+  { index: 1, label: "Nome", width: "21%" },
   { index: 2, label: "Nascimento", width: "10%" },
   { index: 3, label: "Idade", width: "5%" },
   { index: 4, label: "Sexo", width: "8%" },
-  { index: 7, label: "Cidade", width: "14%" },
-  { index: 5, label: "Equipe", width: "13%" },
-  { index: 11, label: "Lote", width: "12%" },
+  { index: 7, label: "Cidade", width: "13%" },
+  { index: 5, label: "Equipe", width: "12%" },
+  { index: 13, label: "Camiseta", width: "8%" },
+  { index: 11, label: "Lote", width: "10%" },
   { index: 12, label: "Valor pago", width: "10%" },
 ] as const;
 

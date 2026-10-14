@@ -21,7 +21,8 @@ const fullRegistration = {
   emergencyContactPhone: "11988887777",
   medicalNotes: "Alérgica a dipirona",
   bibNumber: "7",
-  ticketBatch: { name: "Lote 1" },
+  ticketBatch: { name: "Lote 1", hasShirt: true },
+  shirtSize: "M",
   order: { payments: [{ amount: 9990 }] },
 };
 
@@ -37,7 +38,8 @@ const emptyRegistration = {
   emergencyContactPhone: null,
   medicalNotes: null,
   bibNumber: null,
-  ticketBatch: { name: "Lote 2" },
+  ticketBatch: { name: "Lote 2", hasShirt: true },
+  shirtSize: null,
   order: { payments: [] },
 };
 
@@ -60,6 +62,7 @@ describe("buildRegistrationExportRows", () => {
         "Alérgica a dipirona",
         "Lote 1",
         expect.stringMatching(/99,90/),
+        "M",
       ],
     ]);
   });
@@ -91,7 +94,7 @@ describe("buildRegistrationExportRows", () => {
   it("preenche com string vazia (idade incluída) quando os campos são nulos (perfil ausente, sem rota/categoria)", () => {
     const rows = buildRegistrationExportRows([emptyRegistration], eventDate);
 
-    expect(rows).toEqual([["", "Atleta Sem Perfil", "", "", "", "", "", "", "", "", "", "Lote 2", ""]]);
+    expect(rows).toEqual([["", "Atleta Sem Perfil", "", "", "", "", "", "", "", "", "", "Lote 2", "", ""]]);
   });
 
   it("combina só o nome do contato de emergência quando não há telefone", () => {

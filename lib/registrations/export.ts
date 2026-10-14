@@ -15,11 +15,13 @@ export const REGISTRATION_EXPORT_HEADERS = [
   "Alergias",
   "Lote",
   "Valor Pago",
+  "Camiseta",
 ];
 
 export interface RegistrationExportSource {
   bibNumber: string | null;
-  ticketBatch: { name: string };
+  shirtSize: string | null;
+  ticketBatch: { name: string; hasShirt: boolean };
   /** Último pagamento PAID do pedido (vazio = nada pago ainda). */
   order: { payments: { amount: number }[] };
   participantName: string;
@@ -56,6 +58,7 @@ export function buildRegistrationExportRows(registrations: RegistrationExportSou
       r.medicalNotes ?? "",
       r.ticketBatch.name,
       r.order.payments[0] ? formatCurrency(r.order.payments[0].amount) : "",
+      r.ticketBatch.hasShirt ? (r.shirtSize ?? "") : "",
     ];
   });
 }
