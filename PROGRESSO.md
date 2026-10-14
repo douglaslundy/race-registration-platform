@@ -1,5 +1,13 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-13 — Camiseta em lote sem camiseta + número de peito + PDF de inscritos — NÃO commitado/deployado)
+
+### O que foi feito
+- **Bug camiseta**: lote com `hasShirt=false` agora é ignorado na contagem (quota em `getShirtSizeAvailability`/`checkout`, relatório geral e cards de camiseta das páginas de evento organizador/admin). Leitura filtra por lote porque inscrições antigas podem ter `shirtSize` gravado.
+- **Número de peito**: `Event.generateBibNumbers` (checkbox em Editar evento; migration `20261013000000_event_generate_bib_numbers`, exige `prisma migrate deploy`/`db push`). `lib/bib-numbers.ts` + `POST /api/events/[id]/bib-numbers`: só com flag ligado e status REGISTRATIONS_CLOSED/COMPLETED, sem kits entregues; numera CONFIRMED 1..N por `createdAt` (decisão do usuário: cronológica; botão manual) e limpa pendentes/cancelados. Botão na página de entrega de kits do organizador (`BibNumbersGenerator`).
+- **Exportações**: CSV/XLSX de inscritos ganham "Nº de Peito" (1ª coluna), "Lote" e "Valor Pago"; novo `?format=pdf` em `/api/events/[id]/registrations` (`lib/registrations/export-pdf.tsx`) e botão "Exportar inscritos" ao lado de "Ver inscritos" (organizador e admin). Tabelas de inscritos/relatório geral mostram o peito.
+- Não feito: botão de gerar peito na tela admin de entrega de kits; shirtSize em listas de entrega de kit não filtra por `hasShirt`.
+
 ## Última atualização (2026-10-06 — Conciliação: passo 4 (busca por delta) + alerta de falha — commitado, NÃO deployado)
 
 `tsc` limpo · `vitest` 307 arq / 2441 testes verdes · `next build` exit 0. Commits locais da conciliação: `0c73cec`, `d319fb7`, `b402753`, `2eb3ab8` + o deste passo. Nada pushado.

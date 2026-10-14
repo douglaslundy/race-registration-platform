@@ -57,6 +57,7 @@ describe("findRegistrationForKitDelivery", () => {
         shirtSize: "M",
         status: "CONFIRMED",
         category: { name: "Geral" },
+        ticketBatch: { hasShirt: true },
         kitDelivery: null,
         notes: null,
       },
@@ -90,6 +91,7 @@ describe("findRegistrationForKitDelivery", () => {
         shirtSize: "G",
         status: "CONFIRMED",
         category: null,
+        ticketBatch: { hasShirt: true },
         kitDelivery: null,
         notes: "Atleta solicitou retirada por terceiro. Verificar documento.",
       },
@@ -110,6 +112,7 @@ describe("findRegistrationForKitDelivery", () => {
         shirtSize: null,
         status: "CONFIRMED",
         category: null,
+        ticketBatch: { hasShirt: true },
         kitDelivery: {
           deliveredAt,
           receivedByName: "Pedro (amigo)",
@@ -238,6 +241,7 @@ describe("listKitDeliveries", () => {
         shirtSize: "M",
         notes: "Retira por terceiro",
         category: { name: "Geral" },
+        ticketBatch: { hasShirt: true },
         kitDelivery: {
           deliveredAt,
           receivedByName: "Pedro (amigo)",
@@ -253,6 +257,7 @@ describe("listKitDeliveries", () => {
         shirtSize: null,
         notes: null,
         category: null,
+        ticketBatch: { hasShirt: true },
         kitDelivery: null,
       },
     ]);

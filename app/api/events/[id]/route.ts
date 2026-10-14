@@ -33,6 +33,7 @@ const updateEventSchema = z.object({
   cancellationContactPhone: z.string().optional().nullable(),
   cancellationContactEmail: z.string().optional().nullable(),
   allowProxyRegistration: z.boolean().optional(),
+  generateBibNumbers: z.boolean().optional(),
   shirtSizeRestrictionDate: z.string().datetime().optional().nullable(),
   shirtSizeRestrictionSizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XGG"])).optional(),
   registrationEditDeadline: z.string().datetime().optional().nullable(),

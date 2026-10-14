@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkApiPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { buildRegistrationWhere } from "@/lib/organizer/registrations";
+import { generateRegistrationsPdf } from "@/lib/registrations/export-pdf";
 import { buildRegistrationExportRows, buildRegistrationsCsv, buildRegistrationsXlsx } from "@/lib/registrations/export";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -34,10 +35,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     dateTo: searchParams.get("dateTo") ?? undefined,
   });
 
-  if (format === "csv" || format === "xlsx") {
+  if (format === "csv" || format === "xlsx" || format === "pdf") {
     const registrations = await db.registration.findMany({
       where,
       select: {
+        bibNumber: true,
+        ticketBatch: { select: { name: true } },
+        order: {
+          select: { payments: { where: { status: "PAID" }, orderBy: { createdAt: "desc" }, take: 1, select: { amount: true } } },
+        },
         participantName: true,
         participantBirthDate: true,
         participantGender: true,
@@ -49,9 +55,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         emergencyContactPhone: true,
         medicalNotes: true,
       },
-      orderBy: { participantName: "asc" },
+      orderBy: [{ participantName: "asc" }],
     });
     const rows = buildRegistrationExportRows(registrations, event.startAt);
+
+    if (format === "pdf") {
+      const pdf = await generateRegistrationsPdf({ eventTitle: event.title, generatedAt: new Date(), rows });
+      return new NextResponse(new Uint8Array(pdf), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `inline; filename="inscritos-${eventId}.pdf"`,
+        },
+      });
+    }
 
     if (format === "xlsx") {
       const buffer = await buildRegistrationsXlsx(rows);

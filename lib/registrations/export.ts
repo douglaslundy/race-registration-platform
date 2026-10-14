@@ -1,7 +1,8 @@
 import ExcelJS from "exceljs";
-import { calculateAge, formatDateOnly } from "@/lib/format";
+import { calculateAge, formatCurrency, formatDateOnly } from "@/lib/format";
 
 export const REGISTRATION_EXPORT_HEADERS = [
+  "Nº de Peito",
   "Nome",
   "Data de Nascimento",
   "Idade",
@@ -12,9 +13,15 @@ export const REGISTRATION_EXPORT_HEADERS = [
   "Percurso",
   "Contato de Emergência",
   "Alergias",
+  "Lote",
+  "Valor Pago",
 ];
 
 export interface RegistrationExportSource {
+  bibNumber: string | null;
+  ticketBatch: { name: string };
+  /** Último pagamento PAID do pedido (vazio = nada pago ainda). */
+  order: { payments: { amount: number }[] };
   participantName: string;
   participantBirthDate: Date | null;
   participantGender: string | null;
@@ -36,6 +43,7 @@ export function buildRegistrationExportRows(registrations: RegistrationExportSou
   return registrations.map((r) => {
     const birthDate = r.participantBirthDate;
     return [
+      r.bibNumber ?? "",
       r.participantName,
       birthDate ? formatDateOnly(birthDate) : "",
       birthDate ? String(calculateAge(birthDate, eventDate)) : "",
@@ -46,6 +54,8 @@ export function buildRegistrationExportRows(registrations: RegistrationExportSou
       r.route?.name ?? "",
       [r.emergencyContactName, r.emergencyContactPhone].filter(Boolean).join(" — "),
       r.medicalNotes ?? "",
+      r.ticketBatch.name,
+      r.order.payments[0] ? formatCurrency(r.order.payments[0].amount) : "",
     ];
   });
 }

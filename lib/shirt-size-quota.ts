@@ -29,7 +29,7 @@ export async function getShirtSizeAvailability(eventId: string): Promise<ShirtSi
     db.eventShirtSizeQuota.findMany({ where: { eventId }, select: { size: true, quantity: true } }),
     db.registration.groupBy({
       by: ["shirtSize"],
-      where: { eventId, shirtSize: { not: null }, status: { not: "CANCELLED" } },
+      where: { eventId, shirtSize: { not: null }, status: { not: "CANCELLED" }, ticketBatch: { hasShirt: true } },
       _count: { _all: true },
     }),
   ]);

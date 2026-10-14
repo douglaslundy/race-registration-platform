@@ -18,6 +18,7 @@ export function buildGeneralReportOrderBy(sort: string): Prisma.RegistrationOrde
 export interface GeneralReportSourceRow {
   route: { name: string } | null;
   shirtSize: ShirtSize | null;
+  ticketBatch?: { hasShirt: boolean } | null;
   order: { id: string };
 }
 
@@ -69,7 +70,9 @@ export function computeGeneralReportDashboard(
 
   const shirtCounts = new Map<string, number>();
   for (const r of registrations) {
-    if (!r.shirtSize) continue;
+    // Lote sem camiseta nunca entra na contagem, mesmo que a inscrição tenha tamanho gravado
+    // (ex.: o organizador desmarcou "inclui camiseta" depois das vendas).
+    if (!r.shirtSize || r.ticketBatch?.hasShirt === false) continue;
     shirtCounts.set(r.shirtSize, (shirtCounts.get(r.shirtSize) ?? 0) + 1);
   }
   const byShirtSize = SHIRT_SIZE_ORDER.filter((size) => shirtCounts.has(size)).map((size) => ({

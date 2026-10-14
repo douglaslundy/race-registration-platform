@@ -31,6 +31,7 @@ const schema = z.object({
   cancellationContactPhone: z.string().optional(),
   cancellationContactEmail: z.string().optional(),
   allowProxyRegistration: z.boolean().optional(),
+  generateBibNumbers: z.boolean().optional(),
   shirtSizeRestrictionDate: z.string().optional(),
   shirtSizeRestrictionSizes: z.array(z.enum(["PP", "P", "M", "G", "GG", "XGG"])).optional(),
   registrationEditDeadline: z.string().optional(),
@@ -85,6 +86,7 @@ type EventData = {
   cancellationContactPhone?: string | null;
   cancellationContactEmail?: string | null;
   allowProxyRegistration?: boolean;
+  generateBibNumbers?: boolean;
   shirtSizeRestrictionDate?: Date | string | null;
   shirtSizeRestrictionSizes?: string[];
   registrationEditDeadline?: Date | string | null;
@@ -140,6 +142,7 @@ export default function EditEventForm({
       cancellationContactPhone: event.cancellationContactPhone ?? "",
       cancellationContactEmail: event.cancellationContactEmail ?? "",
       allowProxyRegistration: event.allowProxyRegistration ?? false,
+      generateBibNumbers: event.generateBibNumbers ?? false,
       shirtSizeRestrictionDate: event.shirtSizeRestrictionDate ? toDatetimeLocal(event.shirtSizeRestrictionDate) : "",
       shirtSizeRestrictionSizes: (event.shirtSizeRestrictionSizes ?? []) as FormData["shirtSizeRestrictionSizes"],
       registrationEditDeadline: event.registrationEditDeadline ? toDatetimeLocal(event.registrationEditDeadline) : "",
@@ -379,6 +382,10 @@ export default function EditEventForm({
         <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
           <input type="checkbox" {...register("allowProxyRegistration")} className="h-4 w-4" />
           Permitir inscrição por procuração (atleta inscrever outra pessoa)
+        </label>
+        <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+          <input type="checkbox" {...register("generateBibNumbers")} className="h-4 w-4" />
+          Gerar número de peito (numeração gerada após o encerramento das inscrições)
         </label>
       </div>
 

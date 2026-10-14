@@ -80,7 +80,12 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
       });
       if (quota) {
         const usedCount = await tx.registration.count({
-          where: { eventId: input.eventId, shirtSize: input.shirtSize, status: { not: "CANCELLED" } },
+          where: {
+            eventId: input.eventId,
+            shirtSize: input.shirtSize,
+            status: { not: "CANCELLED" },
+            ticketBatch: { hasShirt: true },
+          },
         });
         if (usedCount >= quota.quantity) {
           throw new Error("Tamanho de camiseta esgotado para este evento");

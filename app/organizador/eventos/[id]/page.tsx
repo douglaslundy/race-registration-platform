@@ -124,11 +124,16 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       orderSubtotalAmount: r.order.subtotalAmount,
     })),
   );
+  // Lote sem camiseta nunca conta como camiseta vendida, mesmo com tamanho gravado na inscrição.
+  const noShirtBatchIds = new Set(event.ticketBatches.filter((b) => !b.hasShirt).map((b) => b.id));
   const shirtSizeBreakdown = computeShirtSizeBreakdown(
-    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize })),
+    dimensionRegistrations.map((r) => ({ shirtSize: noShirtBatchIds.has(r.ticketBatchId) ? null : r.shirtSize })),
   );
   const shirtSizeByBatch = computeShirtSizeBreakdownByBatch(
-    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize, ticketBatchId: r.ticketBatchId })),
+    dimensionRegistrations.map((r) => ({
+      shirtSize: noShirtBatchIds.has(r.ticketBatchId) ? null : r.shirtSize,
+      ticketBatchId: r.ticketBatchId,
+    })),
     event.ticketBatches.map((b) => ({ id: b.id, name: b.name })),
   );
   const paymentMethodSummary = buildPaymentMethodSummary(
@@ -418,6 +423,14 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <Link href={`/organizador/eventos/${id}/inscritos`} className="btn-secondary text-center">
           Ver inscritos
         </Link>
+        <a
+          href={`/api/events/${id}/registrations?format=pdf&status=CONFIRMED`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary text-center"
+        >
+          Exportar inscritos
+        </a>
         <Link href={`/organizador/eventos/${id}/relatorio-geral`} className="btn-secondary text-center">
           Relatório Geral
         </Link>

@@ -115,11 +115,16 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   const paymentMethodSummary = buildPaymentMethodSummary(
     paymentGroups.map((g) => ({ method: g.method, count: g._count.id, revenue: g._sum.amount ?? 0 })),
   );
+  // Lote sem camiseta nunca conta como camiseta vendida, mesmo com tamanho gravado na inscrição.
+  const noShirtBatchIds = new Set(event.ticketBatches.filter((b) => !b.hasShirt).map((b) => b.id));
   const shirtSizeBreakdown = computeShirtSizeBreakdown(
-    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize })),
+    dimensionRegistrations.map((r) => ({ shirtSize: noShirtBatchIds.has(r.ticketBatchId) ? null : r.shirtSize })),
   );
   const shirtSizeByBatch = computeShirtSizeBreakdownByBatch(
-    dimensionRegistrations.map((r) => ({ shirtSize: r.shirtSize, ticketBatchId: r.ticketBatchId })),
+    dimensionRegistrations.map((r) => ({
+      shirtSize: noShirtBatchIds.has(r.ticketBatchId) ? null : r.shirtSize,
+      ticketBatchId: r.ticketBatchId,
+    })),
     event.ticketBatches.map((b) => ({ id: b.id, name: b.name })),
   );
 
@@ -316,6 +321,14 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
         <Link href={`/admin/eventos/${event.id}/inscritos`} className="btn-secondary text-sm">
           Ver inscritos
         </Link>
+        <a
+          href={`/api/events/${event.id}/registrations?format=pdf&status=CONFIRMED`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary text-sm"
+        >
+          Exportar inscritos
+        </a>
         <Link href={`/admin/eventos/${event.id}/relatorio-geral`} className="btn-secondary text-sm">
           Relatório Geral
         </Link>

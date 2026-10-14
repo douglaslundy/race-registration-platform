@@ -71,7 +71,7 @@ export default async function RelatorioGeralPage({
     include: {
       route: { select: { name: true } },
       category: { select: { name: true } },
-      ticketBatch: { select: { name: true } },
+      ticketBatch: { select: { name: true, hasShirt: true } },
       order: { select: { id: true, totalAmount: true } },
     },
     orderBy: buildGeneralReportOrderBy(sort),

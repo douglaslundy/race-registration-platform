@@ -25,6 +25,9 @@ const fullRegistration = {
   emergencyContactName: "Carlos Silva",
   emergencyContactPhone: "11988887777",
   medicalNotes: "Alérgica a dipirona",
+  bibNumber: "12",
+  ticketBatch: { name: "Lote 1" },
+  order: { payments: [{ amount: 9990 }] },
 };
 
 // Evento em 2026-09-20 -> Ana (nasc. 15/03/1990) já fez aniversário no ano, então idade = 36.
@@ -38,7 +41,7 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     dbMock.event.findFirst.mockResolvedValue(eventFixture);
   });
 
-  it("CSV: inclui as 10 colunas pedidas (com Idade calculada na data do evento), na ordem certa, com BOM UTF-8", async () => {
+  it("CSV: inclui as 13 colunas pedidas (com Idade calculada na data do evento), na ordem certa, com BOM UTF-8", async () => {
     dbMock.registration.findMany.mockResolvedValueOnce([fullRegistration]);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
@@ -50,9 +53,9 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     const csv = await res.text();
 
     expect(csv.split("\r\n")[0]).toBe(
-      '"Nome","Data de Nascimento","Idade","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias"',
+      '"Nº de Peito","Nome","Data de Nascimento","Idade","Sexo","Equipe","Categoria","Cidade","Percurso","Contato de Emergência","Alergias","Lote","Valor Pago"',
     );
-    expect(csv).toContain('"Ana Silva","15/03/1990","36","Feminino","Equipe Exemplo","Adulto","São Paulo","10km","Carlos Silva — 11988887777","Alérgica a dipirona"');
+    expect(csv).toContain('"12","Ana Silva","15/03/1990","36","Feminino","Equipe Exemplo","Adulto","São Paulo","10km","Carlos Silva — 11988887777","Alérgica a dipirona","Lote 1"');
     expect(csv).not.toContain("Email");
     expect(csv).not.toContain("CPF");
   });
@@ -70,13 +73,16 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
         emergencyContactName: null,
         emergencyContactPhone: null,
         medicalNotes: null,
+        bibNumber: null,
+        ticketBatch: { name: "Lote 2" },
+        order: { payments: [] },
       },
     ]);
 
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "event-1" }) });
     const csv = await res.text();
 
-    expect(csv).toContain('"Bruno Costa","","","","","","","","",""');
+    expect(csv).toContain('"","Bruno Costa","","","","","","","","","","Lote 2",""');
   });
 
   it("XLSX: gera um workbook válido com as mesmas 10 colunas (Idade calculada na data do evento) e o content-type correto", async () => {
@@ -91,11 +97,11 @@ describe("GET /api/events/[id]/registrations (export csv/xlsx)", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = workbook.getWorksheet("Inscritos")!;
-    expect(sheet.getRow(1).getCell(1).value).toBe("Nome");
-    expect(sheet.getRow(1).getCell(3).value).toBe("Idade");
-    expect(sheet.getRow(2).getCell(1).value).toBe("Ana Silva");
-    expect(sheet.getRow(2).getCell(3).value).toBe("36");
-    expect(sheet.getRow(2).getCell(7).value).toBe("São Paulo");
+    expect(sheet.getRow(1).getCell(2).value).toBe("Nome");
+    expect(sheet.getRow(1).getCell(4).value).toBe("Idade");
+    expect(sheet.getRow(2).getCell(2).value).toBe("Ana Silva");
+    expect(sheet.getRow(2).getCell(4).value).toBe("36");
+    expect(sheet.getRow(2).getCell(8).value).toBe("São Paulo");
   });
 
   it("retorna 403 sem a permissão", async () => {

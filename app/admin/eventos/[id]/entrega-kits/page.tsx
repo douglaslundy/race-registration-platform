@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { requireAnyPermission, resolveActingScope } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { getKitDeliveryProgress } from "@/lib/kit-delivery";
+import BibNumbersGenerator from "@/components/organizer/BibNumbersGenerator";
 import EntregaKitsAdminClient from "./EntregaKitsAdminClient";
 
 export const metadata: Metadata = { title: "Entrega de kits — Admin" };
@@ -14,10 +15,10 @@ export default async function AdminEntregaKitsPage({ params }: { params: Promise
 
   const scope = await resolveActingScope(session);
   const event = scope.actingAsAdmin
-    ? await db.event.findUnique({ where: { id }, select: { id: true, title: true } })
+    ? await db.event.findUnique({ where: { id }, select: { id: true, title: true, generateBibNumbers: true, status: true } })
     : await db.event.findFirst({
         where: { id, organizerId: scope.organizerId ?? "__none__" },
-        select: { id: true, title: true },
+        select: { id: true, title: true, generateBibNumbers: true, status: true },
       });
   if (!event) notFound();
 
@@ -32,6 +33,13 @@ export default async function AdminEntregaKitsPage({ params }: { params: Promise
         <h1 className="text-xl font-bold mt-1">Entrega de kits — {event.title}</h1>
         <p className="text-sm text-gray-500">Acompanhamento só leitura — a confirmação de entrega é feita pelo organizador.</p>
       </div>
+
+      {event.generateBibNumbers && (event.status === "REGISTRATIONS_CLOSED" || event.status === "COMPLETED") && (
+        <BibNumbersGenerator
+          eventId={id}
+          hasNumbers={(await db.registration.count({ where: { eventId: id, bibNumber: { not: null } } })) > 0}
+        />
+      )}
 
       <EntregaKitsAdminClient
         eventId={id}

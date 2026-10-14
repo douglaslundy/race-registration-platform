@@ -8,6 +8,7 @@ export interface GeneralReportRow {
   emergencyContactPhone: string | null;
   medicalNotes: string | null;
   participantName: string;
+  bibNumber?: string | null;
   participantEmail: string;
   participantCpf: string | null;
   participantPhone: string | null;
@@ -50,6 +51,7 @@ export default function GeneralReportTable({
             <tr key={r.id} className="border-b dark:border-gray-700 last:border-0">
               <td className="py-2 pr-3">
                 <p className="font-medium">{r.participantName}</p>
+                {r.bibNumber && <p className="text-gray-500">Peito nº {r.bibNumber}</p>}
                 <p className="text-gray-500">{r.participantEmail}</p>
               </td>
               <td className="py-2 pr-3 text-gray-700 dark:text-gray-300">

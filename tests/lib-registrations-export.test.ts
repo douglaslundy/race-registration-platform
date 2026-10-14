@@ -20,6 +20,9 @@ const fullRegistration = {
   emergencyContactName: "João Exemplo",
   emergencyContactPhone: "11988887777",
   medicalNotes: "Alérgica a dipirona",
+  bibNumber: "7",
+  ticketBatch: { name: "Lote 1" },
+  order: { payments: [{ amount: 9990 }] },
 };
 
 const emptyRegistration = {
@@ -33,14 +36,18 @@ const emptyRegistration = {
   emergencyContactName: null,
   emergencyContactPhone: null,
   medicalNotes: null,
+  bibNumber: null,
+  ticketBatch: { name: "Lote 2" },
+  order: { payments: [] },
 };
 
 describe("buildRegistrationExportRows", () => {
-  it("monta a linha completa nas 10 colunas, na ordem certa, com idade calculada na data do evento", () => {
+  it("monta a linha completa nas 13 colunas, na ordem certa, com idade calculada na data do evento", () => {
     const rows = buildRegistrationExportRows([fullRegistration], eventDate);
 
     expect(rows).toEqual([
       [
+        "7",
         "Maria Exemplo",
         "15/03/1990",
         "36",
@@ -51,6 +58,8 @@ describe("buildRegistrationExportRows", () => {
         "10km",
         "João Exemplo — 11988887777",
         "Alérgica a dipirona",
+        "Lote 1",
+        expect.stringMatching(/99,90/),
       ],
     ]);
   });
@@ -62,7 +71,7 @@ describe("buildRegistrationExportRows", () => {
       // participantBirthDate como o Prisma devolve pra uma data-calendário: meia-noite UTC.
       const reg = { ...fullRegistration, participantBirthDate: new Date("1986-09-08T00:00:00.000Z") };
       const rows = buildRegistrationExportRows([reg], eventDate);
-      expect(rows[0][1]).toBe("08/09/1986");
+      expect(rows[0][2]).toBe("08/09/1986");
     } finally {
       process.env.TZ = originalTZ;
     }
@@ -76,13 +85,13 @@ describe("buildRegistrationExportRows", () => {
 
     const rows = buildRegistrationExportRows([fullRegistration], eventBeforeBirthdayThisYear);
 
-    expect(rows[0][2]).toBe("35");
+    expect(rows[0][3]).toBe("35");
   });
 
   it("preenche com string vazia (idade incluída) quando os campos são nulos (perfil ausente, sem rota/categoria)", () => {
     const rows = buildRegistrationExportRows([emptyRegistration], eventDate);
 
-    expect(rows).toEqual([["Atleta Sem Perfil", "", "", "", "", "", "", "", "", ""]]);
+    expect(rows).toEqual([["", "Atleta Sem Perfil", "", "", "", "", "", "", "", "", "", "Lote 2", ""]]);
   });
 
   it("combina só o nome do contato de emergência quando não há telefone", () => {
@@ -91,7 +100,7 @@ describe("buildRegistrationExportRows", () => {
       eventDate,
     );
 
-    expect(rows[0][8]).toBe("João Exemplo");
+    expect(rows[0][9]).toBe("João Exemplo");
   });
 });
 
@@ -103,10 +112,11 @@ describe("buildRegistrationsCsv", () => {
   });
 
   it("inclui o cabeçalho (com Idade logo após Data de Nascimento) e escapa aspas internas", () => {
-    const csv = buildRegistrationsCsv([["Nome \"Apelido\"", "", "", "", "", "", "", "", "", ""]]);
+    const csv = buildRegistrationsCsv([["", "Nome \"Apelido\"", "", "", "", "", "", "", "", "", "", "", ""]]);
 
-    expect(REGISTRATION_EXPORT_HEADERS[1]).toBe("Data de Nascimento");
-    expect(REGISTRATION_EXPORT_HEADERS[2]).toBe("Idade");
+    expect(REGISTRATION_EXPORT_HEADERS[0]).toBe("Nº de Peito");
+    expect(REGISTRATION_EXPORT_HEADERS[2]).toBe("Data de Nascimento");
+    expect(REGISTRATION_EXPORT_HEADERS[3]).toBe("Idade");
     expect(csv).toContain(REGISTRATION_EXPORT_HEADERS.map((h) => `"${h}"`).join(","));
     expect(csv).toContain('"Nome ""Apelido"""');
   });
@@ -132,11 +142,11 @@ describe("buildRegistrationsXlsx", () => {
     await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = workbook.getWorksheet("Inscritos");
     expect(sheet).toBeDefined();
-    expect(sheet!.getRow(1).getCell(1).value).toBe("Nome");
-    expect(sheet!.getRow(1).getCell(3).value).toBe("Idade");
+    expect(sheet!.getRow(1).getCell(2).value).toBe("Nome");
+    expect(sheet!.getRow(1).getCell(4).value).toBe("Idade");
     expect(sheet!.getRow(1).font?.bold).toBe(true);
-    expect(sheet!.getRow(2).getCell(1).value).toBe("Maria Exemplo");
-    expect(sheet!.getRow(2).getCell(3).value).toBe("36");
-    expect(sheet!.getRow(2).getCell(7).value).toBe("São Paulo");
+    expect(sheet!.getRow(2).getCell(2).value).toBe("Maria Exemplo");
+    expect(sheet!.getRow(2).getCell(4).value).toBe("36");
+    expect(sheet!.getRow(2).getCell(8).value).toBe("São Paulo");
   });
 });

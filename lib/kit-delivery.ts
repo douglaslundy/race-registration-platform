@@ -61,6 +61,7 @@ export async function listKitDeliveries(eventId: string): Promise<KitDeliveryLis
       shirtSize: true,
       notes: true,
       category: { select: { name: true } },
+      ticketBatch: { select: { hasShirt: true } },
       kitDelivery: {
         select: {
           deliveredAt: true,
@@ -77,7 +78,7 @@ export async function listKitDeliveries(eventId: string): Promise<KitDeliveryLis
     participantName: r.participantName,
     participantCpf: r.participantCpf,
     bibNumber: r.bibNumber,
-    shirtSize: r.shirtSize,
+    shirtSize: r.ticketBatch.hasShirt ? r.shirtSize : null,
     categoryName: r.category?.name ?? null,
     notes: r.notes,
     delivered: r.kitDelivery !== null,
@@ -117,6 +118,7 @@ export async function findRegistrationForKitDelivery(
     orderBy: { participantName: "asc" },
     include: {
       category: { select: { name: true } },
+      ticketBatch: { select: { hasShirt: true } },
       kitDelivery: { include: { deliveredBy: { select: { name: true } } } },
     },
   });
@@ -125,7 +127,7 @@ export async function findRegistrationForKitDelivery(
     id: r.id,
     athleteName: r.participantName,
     bibNumber: r.bibNumber,
-    shirtSize: r.shirtSize,
+    shirtSize: r.ticketBatch.hasShirt ? r.shirtSize : null,
     categoryName: r.category?.name ?? null,
     status: r.status,
     delivered: r.kitDelivery !== null,

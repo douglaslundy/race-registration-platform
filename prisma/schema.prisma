@@ -296,6 +296,7 @@ model Event {
   cancellationContactPhone     String?
   cancellationContactEmail     String?
   allowProxyRegistration       Boolean     @default(false)
+  generateBibNumbers           Boolean     @default(false)
   shirtSizeRestrictionDate     DateTime?
   shirtSizeRestrictionSizes    ShirtSize[]
   registrationEditDeadline     DateTime?

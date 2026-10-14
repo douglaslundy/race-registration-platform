@@ -12,7 +12,7 @@ export interface RegistrationExportFilters {
   dateTo?: string;
 }
 
-function buildExportUrl(eventId: string, format: "csv" | "xlsx", filters: RegistrationExportFilters): string {
+function buildExportUrl(eventId: string, format: "csv" | "xlsx" | "pdf", filters: RegistrationExportFilters): string {
   const params = new URLSearchParams({ format });
   for (const [key, value] of Object.entries(filters)) {
     if (value) params.set(key, value);
@@ -37,6 +37,9 @@ export default function RegistrationsExportButtons({
       </a>
       <a href={buildExportUrl(eventId, "xlsx", filters)} className="btn-secondary text-sm">
         Exportar Excel
+      </a>
+      <a href={buildExportUrl(eventId, "pdf", filters)} className="btn-secondary text-sm" target="_blank" rel="noreferrer">
+        Exportar PDF
       </a>
     </>
   );

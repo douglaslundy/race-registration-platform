@@ -25,6 +25,7 @@ export interface RegistrationRow {
   teamName: string | null;
   notes: string | null;
   participantName: string;
+  bibNumber?: string | null;
   participantEmail: string;
   participantCpf: string | null;
   participantPhone: string | null;
@@ -105,6 +106,7 @@ export default function RegistrationsTable({
               <tr key={r.id} className="border-b dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                 <td className="py-2 pr-3 max-w-[10rem]">
                   <p className="font-medium truncate" title={r.participantName}>{r.participantName}</p>
+                  {r.bibNumber && <p className="text-gray-500">Peito nº {r.bibNumber}</p>}
                   <p className="text-gray-500 truncate" title={r.participantEmail}>{r.participantEmail}</p>
                   <AthleteDetailsModal
                     athleteName={r.athlete.name}
