@@ -7,6 +7,9 @@ export interface KitDeliverySearchResult {
   bibNumber: string | null;
   shirtSize: string | null;
   categoryName: string | null;
+  batchName: string;
+  /** Centavos do último pagamento PAID do pedido; null = nada pago. */
+  paidAmount: number | null;
   status: string;
   delivered: boolean;
   deliveredAt: Date | null;
@@ -118,7 +121,10 @@ export async function findRegistrationForKitDelivery(
     orderBy: { participantName: "asc" },
     include: {
       category: { select: { name: true } },
-      ticketBatch: { select: { hasShirt: true } },
+      ticketBatch: { select: { hasShirt: true, name: true } },
+      order: {
+        select: { payments: { where: { status: "PAID" }, orderBy: { createdAt: "desc" }, take: 1, select: { amount: true } } },
+      },
       kitDelivery: { include: { deliveredBy: { select: { name: true } } } },
     },
   });
@@ -129,6 +135,8 @@ export async function findRegistrationForKitDelivery(
     bibNumber: r.bibNumber,
     shirtSize: r.ticketBatch.hasShirt ? r.shirtSize : null,
     categoryName: r.category?.name ?? null,
+    batchName: r.ticketBatch.name,
+    paidAmount: r.order.payments[0]?.amount ?? null,
     status: r.status,
     delivered: r.kitDelivery !== null,
     deliveredAt: r.kitDelivery?.deliveredAt ?? null,

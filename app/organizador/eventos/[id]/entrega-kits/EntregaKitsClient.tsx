@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/format";
 import ErrorModal from "@/components/ui/ErrorModal";
 import QrCameraScanner from "@/components/organizer/QrCameraScanner";
 import KitDeliveryReportCard from "@/components/organizer/KitDeliveryReportCard";
@@ -14,6 +15,8 @@ interface SearchResult {
   bibNumber: string | null;
   shirtSize: string | null;
   categoryName: string | null;
+  batchName: string;
+  paidAmount: number | null;
   status: string;
   delivered: boolean;
   deliveredAt: string | null;
@@ -196,6 +199,10 @@ export default function EntregaKitsClient() {
               <p className="text-sm text-gray-500">
                 {r.categoryName ?? "Sem categoria"} · Camiseta {r.shirtSize ?? "—"} · Peito{" "}
                 {r.bibNumber ?? "—"}
+              </p>
+              <p className="text-sm text-gray-500">
+                Lote: {r.batchName} · Valor pago:{" "}
+                {r.paidAmount !== null ? formatCurrency(r.paidAmount) : "—"}
               </p>
             </div>
 
