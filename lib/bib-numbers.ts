@@ -1,4 +1,6 @@
 import { db } from "./db";
+import { getEventDisplayStatus, type BatchForStatus } from "./batch-status";
+import type { EventStatus } from "@prisma/client";
 
 export class BibNumberError extends Error {
   constructor(
@@ -11,6 +13,19 @@ export class BibNumberError extends Error {
 
 const CLOSED_STATUSES = ["REGISTRATIONS_CLOSED", "COMPLETED"];
 
+/** Usa o status EFETIVO (lotes + data): o `status` persistido continua REGISTRATIONS_OPEN depois
+ * que os lotes acabam ou a data passa, e o evento aparece como "Encerrado" pro organizador. */
+export function areBibNumbersAvailable(event: {
+  generateBibNumbers: boolean;
+  status: EventStatus;
+  startAt: Date;
+  ticketBatches: BatchForStatus[];
+}): boolean {
+  return (
+    event.generateBibNumbers &&
+    CLOSED_STATUSES.includes(getEventDisplayStatus(event.status, event.ticketBatches, event.startAt))
+  );
+}
 /** Numera os inscritos CONFIRMED do evento de 1..N pela ordem cronológica de inscrição
  * (`createdAt`, desempate por id). Pendentes/cancelados ficam sem número. Só roda com o evento
  * marcado para gerar número de peito, com inscrições encerradas e antes de qualquer entrega de
@@ -18,13 +33,13 @@ const CLOSED_STATUSES = ["REGISTRATIONS_CLOSED", "COMPLETED"];
 export async function generateBibNumbers(eventId: string): Promise<{ total: number }> {
   const event = await db.event.findUnique({
     where: { id: eventId },
-    select: { generateBibNumbers: true, status: true },
+    select: { generateBibNumbers: true, status: true, startAt: true, ticketBatches: true },
   });
   if (!event) throw new BibNumberError("Evento não encontrado", 404);
   if (!event.generateBibNumbers) {
     throw new BibNumberError("Este evento não está configurado para gerar número de peito", 409);
   }
-  if (!CLOSED_STATUSES.includes(event.status)) {
+  if (!areBibNumbersAvailable(event)) {
     throw new BibNumberError("Encerre as inscrições do evento antes de gerar os números de peito", 409);
   }
   const delivered = await db.kitDelivery.count({ where: { registration: { eventId } } });

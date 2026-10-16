@@ -28,6 +28,8 @@ export const dynamic = "force-dynamic";
 
 import { BADGE } from "@/lib/badge-colors";
 import { getEventDisplayStatus } from "@/lib/batch-status";
+import { areBibNumbersAvailable } from "@/lib/bib-numbers";
+import BibNumbersGenerator from "@/components/organizer/BibNumbersGenerator";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   DRAFT:                { label: "Rascunho", color: BADGE.gray },
@@ -56,6 +58,10 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
   });
 
   if (!event) notFound();
+
+  const hasBibNumbers =
+    areBibNumbersAvailable(event) &&
+    (await db.registration.count({ where: { eventId: id, bibNumber: { not: null } } })) > 0;
 
   // Coupon usage stats grouped by couponId, plus registration status breakdown
   const [couponStats, statusCounts, dimensionRegistrations, paymentGroups, paymentsAgg, orderFeeAgg] = await Promise.all([
@@ -451,6 +457,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <Link href={`/organizador/eventos/${id}/entrega-kits`} className="btn-secondary text-center">
           Entrega de kits
         </Link>
+        {areBibNumbersAvailable(event) && <BibNumbersGenerator eventId={id} hasNumbers={hasBibNumbers} />}
       </div>
     </div>
   );

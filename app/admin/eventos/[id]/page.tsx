@@ -5,6 +5,8 @@ import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import ApproveEventButton from "@/components/admin/ApproveEventButton";
 import GeneratePayoutButton from "@/components/admin/GeneratePayoutButton";
+import BibNumbersGenerator from "@/components/organizer/BibNumbersGenerator";
+import { areBibNumbersAvailable } from "@/lib/bib-numbers";
 import EventDailySummaryRecipientsManager from "@/components/organizer/EventDailySummaryRecipientsManager";
 import EventPaymentAccountSelect from "@/components/admin/EventPaymentAccountSelect";
 import { listPaymentAccounts } from "@/lib/payment/payment-accounts";
@@ -41,6 +43,10 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   });
 
   if (!event) notFound();
+
+  const hasBibNumbers =
+    areBibNumbersAvailable(event) &&
+    (await db.registration.count({ where: { eventId: id, bibNumber: { not: null } } })) > 0;
 
   const paymentAccounts = await listPaymentAccounts();
   const defaultAccountLabel = paymentAccounts.find((a) => a.isDefault)?.label ?? "nenhuma conta padrão";
@@ -335,6 +341,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
         <Link href={`/admin/eventos/${event.id}/entrega-kits`} className="btn-secondary text-sm">
           Entrega de kits
         </Link>
+        {areBibNumbersAvailable(event) && (
+          <BibNumbersGenerator eventId={event.id} hasNumbers={hasBibNumbers} className="btn-secondary text-sm" />
+        )}
         <Link href={`/admin/eventos/${event.id}/campanhas`} className="btn-secondary text-sm">
           Campanhas de WhatsApp
         </Link>

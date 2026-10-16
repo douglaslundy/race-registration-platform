@@ -7,7 +7,15 @@ import ErrorModal from "@/components/ui/ErrorModal";
 
 /** Botão que (re)gera os números de peito do evento — só renderizado quando o evento está
  * configurado para isso e com as inscrições encerradas (decidido pela página servidor). */
-export default function BibNumbersGenerator({ eventId, hasNumbers }: { eventId: string; hasNumbers: boolean }) {
+export default function BibNumbersGenerator({
+  eventId,
+  hasNumbers,
+  className = "btn-secondary text-center",
+}: {
+  eventId: string;
+  hasNumbers: boolean;
+  className?: string;
+}) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,17 +37,10 @@ export default function BibNumbersGenerator({ eventId, hasNumbers }: { eventId: 
   }
 
   return (
-    <div className="card flex flex-wrap items-center justify-between gap-3">
-      <div className="text-sm">
-        <p className="font-medium">Números de peito</p>
-        <p className="text-gray-500">
-          {done !== null
-            ? `${done} número(s) gerado(s).`
-            : "Gerados em ordem de inscrição, só para inscritos confirmados."}
-        </p>
-      </div>
-      <button type="button" className="btn-primary text-sm" onClick={() => setConfirming(true)}>
-        {hasNumbers ? "Regerar números de peito" : "Gerar números de peito"}
+    <>
+      <button type="button" className={className} onClick={() => setConfirming(true)}>
+        {hasNumbers || done !== null ? "Regerar números de peito" : "Gerar números de peito"}
+        {done !== null && ` (${done} gerado(s))`}
       </button>
       <ConfirmModal
         open={confirming}
@@ -51,6 +52,6 @@ export default function BibNumbersGenerator({ eventId, hasNumbers }: { eventId: 
         onCancel={() => setConfirming(false)}
       />
       <ErrorModal message={error} onClose={() => setError(null)} />
-    </div>
+    </>
   );
 }
