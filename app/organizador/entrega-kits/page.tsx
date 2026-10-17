@@ -15,16 +15,18 @@ export default async function OrganizerKitDeliveryPage() {
   const scope = await resolveActingScope(session);
 
   // Assistente confinado a eventos específicos só enxerga esses; `null` = permissão global (todos).
+  // Vale também para assistente de admin: ele só vê os eventos liberados pra ele.
   const allowedEventIds =
-    session.user.role === "ASSISTANT" && !scope.actingAsAdmin
-      ? await assistantPermittedEventIds(session.user.id, KIT_ACTIONS)
-      : null;
+    session.user.role === "ASSISTANT" ? await assistantPermittedEventIds(session.user.id, KIT_ACTIONS) : null;
 
   // Escopo do organizador (ou assistente dele): só os eventos do próprio organizerId. Assistente de
-  // admin cai no branch actingAsAdmin e vê todos os eventos ativos/recentes.
+  // admin cai no branch actingAsAdmin e vê os eventos ativos/recentes (filtrados por allowedEventIds).
   const events = scope.actingAsAdmin
     ? await db.event.findMany({
-        where: { status: { notIn: ["CANCELLED"] } },
+        where: {
+          status: { notIn: ["CANCELLED"] },
+          ...(allowedEventIds ? { id: { in: allowedEventIds } } : {}),
+        },
         orderBy: { startAt: "desc" },
         take: 50,
         select: { id: true, title: true, startAt: true, city: true, state: true, status: true },
