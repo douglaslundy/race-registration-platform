@@ -5,7 +5,7 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 const dbMock = db as any;
 
-import { adminNavHrefs, resolveAdminAccess } from "@/lib/auth/admin-access";
+import { adminAssistantItems, adminNavHrefs, resolveAdminAccess } from "@/lib/auth/admin-access";
 
 const ADMIN = { user: { id: "adm-1", role: "ADMIN" } } as any;
 const ASSISTANT = { user: { id: "as-1", role: "ASSISTANT" } } as any;
@@ -54,5 +54,12 @@ describe("adminNavHrefs", () => {
   it("assistente só de kits vê só Entrega de kits", async () => {
     kitsOnly();
     expect(await adminNavHrefs(ASSISTANT)).toEqual(["/admin/entrega-kits"]);
+  });
+});
+
+describe("adminAssistantItems", () => {
+  it("devolve href + rótulo só do que o assistente pode", async () => {
+    kitsOnly();
+    expect(await adminAssistantItems(ASSISTANT)).toEqual([{ href: "/admin/entrega-kits", label: "Entrega de kits" }]);
   });
 });

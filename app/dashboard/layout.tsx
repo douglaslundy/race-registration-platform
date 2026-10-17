@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/rbac";
 import { organizerNavItems } from "@/lib/auth/organizer-access";
+import { adminAssistantItems } from "@/lib/auth/admin-access";
 import { getAppName } from "@/lib/settings";
 import {
   getMissingAthleteProfileFields,
@@ -29,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   else if (session.user.role === "ORGANIZER") staffArea = "/organizador";
   else if (session.user.role === "ASSISTANT") {
     // Assistente vê só o atalho da 1ª função que ele de fato tem (ex.: "Entrega de kits"), nunca "Admin".
-    const first = (await organizerNavItems(session))[0];
+    const first = (await organizerNavItems(session))[0] ?? (await adminAssistantItems(session))[0];
     staffArea = first?.href ?? null;
     staffLabel = first?.label;
   }

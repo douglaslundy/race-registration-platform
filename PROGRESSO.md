@@ -1,5 +1,23 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-17 — Assistente de admin sem acesso total + botão de peito na página do evento — DEPLOYADO)
+
+Commits `379440c` (peito) e `bf4442a` (RBAC) em `main`; deploy na VPS `144.91.92.70` (`/opt/corridas/deploy.sh`, roda `git pull` em `/opt/corridas/src` + `docker build` + `docker compose up -d --no-deps app`; sem `prisma db push`).
+
+### O que foi feito
+- **Botão "Gerar números de peito"** saiu da tela de entrega de kits e fica na página do evento (organizador e admin), ao lado de "Entrega de kits". Disponibilidade usa o status EFETIVO (`areBibNumbersAvailable` em `lib/bib-numbers.ts`): o `status` gravado fica `REGISTRATIONS_OPEN` após lotes esgotados/data passada (causa provável de não aparecer no Trail São Judas — não confirmado no banco).
+- **RBAC do assistente de admin** (`createdBy` ADMIN => `actingAsAdmin`): antes passava em tudo. Agora `requireAdmin()` é só ADMIN; `/admin` filtra por permissão (`lib/auth/admin-access.ts`: entrega-kits, campanhas, mensagens); `organizer-access.ts` sem atalho `actingAsAdmin`; botão do dashboard mostra só a função do assistente. `POST kit-deliveries` trata `actingAsAdmin` (dava "Evento não encontrado").
+- Limpeza: IP antigo `2.25.150.248` removido de `deploy/.env.production.example` e de `.claude/settings.local.json` (arquivo ignorado pelo git; tinha senha root em texto puro — trocar a senha se ainda valer).
+
+### Decisões
+- Assistente de admin entrega kit pela área `/organizador` (a tela `/admin/eventos/[id]/entrega-kits` é só leitura).
+- Páginas `/admin/*` sem regra em `admin-access.ts` ficam só do ADMIN (fail-safe).
+
+### PRÓXIMA TAREFA
+Pedir ao Jean-Carl que saia e entre de novo e validar em produção: botão "Entrega de kits" (não "Admin"), confirmar entrega, `/admin/usuarios` => acesso negado.
+
+---
+
 ## Última atualização (2026-10-13 — Camiseta em lote sem camiseta + número de peito + PDF de inscritos — NÃO commitado/deployado)
 
 ### O que foi feito
