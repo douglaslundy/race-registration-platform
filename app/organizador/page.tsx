@@ -1,4 +1,4 @@
-import { requireOrganizer, resolveActingScope } from "@/lib/auth/rbac";
+import { requireOrganizer } from "@/lib/auth/rbac";
 import { organizerNavItems } from "@/lib/auth/organizer-access";
 import { db } from "@/lib/db";
 import Link from "next/link";
@@ -38,11 +38,8 @@ export default async function OrganizerDashboard({
   // "meus eventos") não é dele. Manda pro primeiro item que ele de fato pode acessar; se não tiver
   // nenhuma permissão, /acesso-negado (assistente sem função não deveria existir).
   if (session.user.role === "ASSISTANT") {
-    const scope = await resolveActingScope(session);
-    if (!scope.actingAsAdmin) {
-      const items = await organizerNavItems(session);
-      redirect(items[0]?.href ?? "/acesso-negado");
-    }
+    const items = await organizerNavItems(session);
+    redirect(items[0]?.href ?? "/acesso-negado");
   }
 
   const { de, ate, eventId } = await searchParams;

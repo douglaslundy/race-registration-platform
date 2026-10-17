@@ -269,16 +269,14 @@ describe("requireAdmin", () => {
     expect(dbMock.user.findUnique).not.toHaveBeenCalled();
   });
 
-  it("ASSISTANT criado por ADMIN passa", async () => {
+  it("ASSISTANT criado por ADMIN é redirecionado (só o ADMIN titular passa)", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-1", role: "ASSISTANT" } } as any);
-    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ADMIN", organizerProfile: null } });
-    const session = await requireAdmin();
-    expect(session.user.id).toBe("assistant-1");
+    await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirect).toHaveBeenCalledWith("/acesso-negado");
   });
 
   it("ASSISTANT criado por ORGANIZER é redirecionado", async () => {
     authMock.mockResolvedValue({ user: { id: "assistant-2", role: "ASSISTANT" } } as any);
-    dbMock.user.findUnique.mockResolvedValueOnce({ createdBy: { role: "ORGANIZER", organizerProfile: { id: "org-1" } } });
     await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/acesso-negado");
   });

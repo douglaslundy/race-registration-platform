@@ -14,8 +14,8 @@ import {
  * As rotas de API já barram as *ações* (checkApiPermission), mas várias páginas leem o banco
  * direto — então a página em si precisa ser barrada.
  *
- * ADMIN / ORGANIZER titulares e ASSISTANT de admin (`actingAsAdmin`) passam sempre.
- * ASSISTANT de organizador passa só se tiver a AssistantPermission da rota (global ou do evento).
+ * ADMIN / ORGANIZER titulares passam sempre.
+ * ASSISTANT (de organizador OU de admin) passa só se tiver a AssistantPermission da rota (global ou do evento).
  */
 
 export type OrganizerNavItem = {
@@ -98,7 +98,7 @@ function normalizePath(pathname: string): string {
 }
 
 /**
- * Um ASSISTANT de organizador pode acessar `pathname`? ADMIN/ORGANIZER/assistente-de-admin: sempre.
+ * Um ASSISTANT pode acessar `pathname`? ADMIN/ORGANIZER titulares: sempre.
  * Rota desconhecida sob `/organizador/` → nega (fail-safe). `pathname` vazio (header ausente) →
  * nega pra assistente, o que é seguro: derruba pra /acesso-negado em vez de vazar.
  */
@@ -108,8 +108,7 @@ export async function resolveOrganizerAccess(session: Session, pathname: string)
   if (role !== "ASSISTANT") return false;
 
   const scope = await resolveActingScope(session);
-  if (scope.actingAsAdmin) return true;
-  if (!scope.organizerId) return false;
+  if (!scope.actingAsAdmin && !scope.organizerId) return false;
 
   const path = normalizePath(pathname);
   if (!path.startsWith("/organizador")) return false;
@@ -123,15 +122,14 @@ export async function resolveOrganizerAccess(session: Session, pathname: string)
   return assistantHasAnyPermission(session.user.id, rule.keys, eventId, rule.anyScope);
 }
 
-/** Itens de nav que a sessão pode ver. Titular / assistente-de-admin: todos. */
+/** Itens de nav que a sessão pode ver. Titular: todos. Assistente: só os que tem permissão. */
 export async function organizerNavItems(session: Session): Promise<OrganizerNavItem[]> {
   const role = session.user.role;
   if (role === "ADMIN" || role === "ORGANIZER") return ORGANIZER_NAV;
   if (role !== "ASSISTANT") return [];
 
   const scope = await resolveActingScope(session);
-  if (scope.actingAsAdmin) return ORGANIZER_NAV;
-  if (!scope.organizerId) return [];
+  if (!scope.actingAsAdmin && !scope.organizerId) return [];
 
   const items: OrganizerNavItem[] = [];
   for (const item of ORGANIZER_NAV) {

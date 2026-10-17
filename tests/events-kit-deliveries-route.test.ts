@@ -99,6 +99,21 @@ describe("POST /api/events/[id]/kit-deliveries", () => {
     dbMock.kitDelivery = { create: vi.fn() };
   });
 
+  it("assistente de admin (actingAsAdmin, sem organizerId) confirma a entrega", async () => {
+    resolveScopeMock.mockResolvedValue({ organizerId: null, actingAsAdmin: true } as any);
+    dbMock.event.findUnique.mockResolvedValueOnce({ id: "event-1" });
+    dbMock.registration.findFirst.mockResolvedValueOnce({ id: "reg-1", eventId: "event-1", status: "CONFIRMED" });
+    dbMock.kitDelivery.create.mockResolvedValueOnce({ id: "kd-1" });
+
+    const res = await POST(
+      makePostRequest({ registrationId: "reg-1", receivedByName: "Jean" }),
+      { params: Promise.resolve({ id: "event-1" }) },
+    );
+
+    expect(res.status).toBe(201);
+    expect(dbMock.event.findUnique).toHaveBeenCalledWith({ where: { id: "event-1" } });
+  });
+
   it("confirma a entrega com sucesso", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce({ id: "reg-1", eventId: "event-1", status: "CONFIRMED" });
     dbMock.kitDelivery.create.mockResolvedValueOnce({ id: "kd-1" });

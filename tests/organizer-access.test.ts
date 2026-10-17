@@ -94,9 +94,12 @@ describe("resolveOrganizerAccess", () => {
     expect(await resolveOrganizerAccess(ASSISTANT, "")).toBe(false);
   });
 
-  it("ASSISTANT de admin (actingAsAdmin) passa em tudo", async () => {
+  it("ASSISTANT de admin (actingAsAdmin) segue as permissões, não passa em tudo", async () => {
     dbMock.user.findUnique.mockResolvedValue({ createdBy: { role: "ADMIN", organizerProfile: null } });
-    expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/assistentes")).toBe(true);
+    expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/assistentes")).toBe(false);
+    expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/relatorio")).toBe(false);
+    dbMock.assistantPermission.findFirst.mockResolvedValue({ id: "p1" });
+    expect(await resolveOrganizerAccess(ASSISTANT, "/organizador/eventos/e1/entrega-kits")).toBe(true);
   });
 
   it("dashboard raiz: qualquer staff de organizador entra (é redirecionado na página)", async () => {

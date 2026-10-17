@@ -206,11 +206,9 @@ export async function checkAdvertiserApiPermission(): Promise<AdvertiserPermissi
 
 export async function requireAdmin() {
   const session = await requireAuth();
+  // Só o ADMIN titular: assistente (mesmo criado por admin) entra na área /admin apenas pelas
+  // rotas liberadas por permissão em `admin-access.ts`, nunca por este guard.
   if (session.user.role === "ADMIN") return session;
-  if (session.user.role === "ASSISTANT") {
-    const scope = await resolveActingScope(session);
-    if (scope.actingAsAdmin) return session;
-  }
   redirect("/acesso-negado");
 }
 

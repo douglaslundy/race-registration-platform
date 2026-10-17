@@ -36,7 +36,7 @@ export default async function AdminKitDeliveryPage() {
           Escolha o evento para buscar inscrições e confirmar a retirada de kits.
         </p>
       </div>
-      <KitDeliveryEventList events={events} basePath="/admin" />
+      <KitDeliveryEventList events={events} basePath={session.user.role === "ASSISTANT" ? "/organizador" : "/admin"} />
     </div>
   );
 }

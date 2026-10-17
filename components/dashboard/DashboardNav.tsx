@@ -17,17 +17,19 @@ export default function DashboardNav({
   userRole,
   appName,
   staffArea,
+  staffLabel,
 }: {
   userName: string;
   userRole: string;
   appName: string;
   /** "/admin" ou "/organizador" quando o usuário tem acesso a uma área administrativa (inclui
    * ASSISTANT, cujo papel não diz sozinho para onde ir). null para atleta puro. */
-  staffArea?: "/admin" | "/organizador" | null;
+  staffArea?: string | null;
+  staffLabel?: string;
 }) {
   const areaHref =
     staffArea ?? (userRole === "ADMIN" ? "/admin" : userRole === "ORGANIZER" ? "/organizador" : null);
-  const areaLabel = areaHref === "/admin" ? "Admin" : "Organizador";
+  const areaLabel = staffLabel ?? (areaHref === "/admin" ? "Admin" : "Organizador");
   const pathname = usePathname();
 
   return (
