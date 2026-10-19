@@ -21,6 +21,7 @@ import {
 import { computeRevenueBreakdown } from "@/lib/revenue-breakdown";
 import { PAYMENT_METHOD_LABEL } from "@/components/registrations/RegistrationsTable";
 import RevenueBreakdownCard from "@/components/ui/RevenueBreakdownCard";
+import PrintButton from "@/components/ui/PrintButton";
 import ShirtSizeReportCard from "@/components/ui/ShirtSizeReportCard";
 import type { Metadata } from "next";
 
@@ -135,8 +136,9 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
   );
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+    <div className="space-y-6 max-w-3xl mx-auto print:max-w-none">
+      <style>{"@page { size: A4 portrait; margin: 10mm; }"}</style>
+      <div className="flex items-center gap-2 text-sm text-gray-500 print:hidden">
         <Link href="/admin/eventos" className="hover:text-primary-600">← Eventos</Link>
       </div>
 
@@ -146,7 +148,8 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
           <p className="text-sm text-gray-500 mt-1">{MODALITY_LABEL[event.modality] ?? event.modality} · {formatDate(event.startAt)} · {event.city}/{event.state}</p>
           <span className="text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded mt-1 inline-block">{EVENT_STATUS_LABEL[event.status] ?? event.status}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end print:hidden">
+          <PrintButton label="Imprimir relatório completo" />
           <GeneratePayoutButton eventId={event.id} />
           {event.status === "UNDER_REVIEW" && (
             <ApproveEventButton eventId={event.id} />
@@ -323,7 +326,7 @@ export default async function AdminEventDetailPage({ params }: { params: Promise
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap print:hidden">
         <Link href={`/admin/eventos/${event.id}/inscritos`} className="btn-secondary text-sm">
           Ver inscritos
         </Link>

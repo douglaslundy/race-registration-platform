@@ -4441,3 +4441,8 @@ tela de admin separada (admin já reaproveita `/lotes` e `/editar` do organizado
   pendente de aplicação real.
 - `lib/checkout.ts` (`createCheckout`) e `app/api/athlete/registrations/[id]/route.ts` — onde
   `hasShirt`/quota são enforced de verdade.
+
+## PDF relatório completo (eventos) — 2026-10-19
+- Botão "Imprimir relatório completo" no topo de `/admin|organizador/eventos/[id]` e `/relatorio-geral`; KPIs do relatório geral agora saem no PDF.
+- CSS de impressão em `app/globals.css` (fundo claro, cards sem quebra); `PrintButton` tira a classe `dark` durante a impressão; `@page` A4 (retrato nas páginas do evento, paisagem no relatório geral).
+- Arquivos: globals.css, PrintButton, GeneralReportDashboard, 4 páginas de evento/relatório. Não commitado/deployado.

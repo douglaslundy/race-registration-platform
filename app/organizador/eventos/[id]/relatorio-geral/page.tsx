@@ -115,6 +115,7 @@ export default async function RelatorioGeralPage({
 
   return (
     <div className="space-y-6">
+      <style>{"@page { size: A4 landscape; margin: 10mm; }"}</style>
       <div className="flex items-center justify-between gap-4">
         <div>
           <Link href={`/organizador/eventos/${id}`} className="text-sm text-gray-500 hover:text-primary-600 print:hidden">← Voltar ao evento</Link>
@@ -123,11 +124,11 @@ export default async function RelatorioGeralPage({
         </div>
         <div className="flex gap-2 print:hidden">
           <RegistrationsExportButtons eventId={id} filters={{ status: "CONFIRMED", q, categoryId, routeId }} />
-          <PrintButton label="Imprimir PDF" />
+          <PrintButton label="Imprimir relatório completo" />
         </div>
       </div>
 
-      {!printMode && <GeneralReportDashboard dashboard={dashboard} />}
+      <GeneralReportDashboard dashboard={dashboard} />
 
       {!printMode && (
         <div className="card space-y-3 print:hidden">

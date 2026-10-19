@@ -3,7 +3,7 @@ import type { GeneralReportDashboard as GeneralReportDashboardData } from "@/lib
 
 export default function GeneralReportDashboard({ dashboard }: { dashboard: GeneralReportDashboardData }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-3 print:hidden">
+    <div className="grid gap-4 sm:grid-cols-3 print:grid-cols-3">
       <div className="card">
         <p className="text-xs text-gray-500">Inscrições</p>
         <p className="text-3xl font-bold mt-1">{dashboard.totalRegistrations}</p>

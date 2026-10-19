@@ -162,12 +162,13 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
   const canDelete = ["DRAFT", "CANCELLED"].includes(event.status);
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto print:max-w-none">
+      <style>{"@page { size: A4 portrait; margin: 10mm; }"}</style>
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-            <Link href="/organizador" className="hover:text-primary-600">← Dashboard</Link>
+            <Link href="/organizador" className="hover:text-primary-600 print:hidden">← Dashboard</Link>
           </div>
           <h1 className="text-2xl font-bold">{event.title}</h1>
           <div className="flex items-center gap-2 mt-1">
@@ -177,7 +178,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
             <span className="text-sm text-gray-500">{formatDate(event.startAt)}</span>
           </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end print:hidden">
           <Link href={`/organizador/eventos/${id}/editar`} className="btn-secondary text-sm">
             Editar evento
           </Link>
@@ -185,7 +186,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
           <DuplicateEventButton eventId={id} />
           {!["COMPLETED", "CANCELLED"].includes(event.status) && <ArchiveEventButton eventId={id} />}
           {canDelete && <DeleteEventButton eventId={id} />}
-          <PrintButton label="PDF" />
+          <PrintButton label="Imprimir relatório completo" />
           <Link href={`/eventos/${event.slug}`} target="_blank" className="btn-secondary text-sm">
             Ver página →
           </Link>
@@ -224,7 +225,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
             <h2 className="font-semibold">Uso de cupons</h2>
             <Link
               href={`/organizador/eventos/${id}/cupons/relatorio`}
-              className="text-xs text-primary-600 hover:underline"
+              className="text-xs text-primary-600 hover:underline print:hidden"
             >
               Ver relatório completo →
             </Link>
@@ -310,7 +311,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Lotes de inscrição</h2>
-            <Link href={`/organizador/eventos/${id}/lotes`} className="text-xs text-primary-600 hover:underline">
+            <Link href={`/organizador/eventos/${id}/lotes`} className="text-xs text-primary-600 hover:underline print:hidden">
               Gerenciar
             </Link>
           </div>
@@ -335,7 +336,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Percursos</h2>
-            <Link href={`/organizador/eventos/${id}/percursos`} className="text-xs text-primary-600 hover:underline">
+            <Link href={`/organizador/eventos/${id}/percursos`} className="text-xs text-primary-600 hover:underline print:hidden">
               Gerenciar
             </Link>
           </div>
@@ -363,7 +364,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Categorias</h2>
-            <Link href={`/organizador/eventos/${id}/categorias`} className="text-xs text-primary-600 hover:underline">
+            <Link href={`/organizador/eventos/${id}/categorias`} className="text-xs text-primary-600 hover:underline print:hidden">
               Gerenciar
             </Link>
           </div>
@@ -388,7 +389,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Cupons de desconto</h2>
-            <Link href={`/organizador/eventos/${id}/cupons`} className="text-xs text-primary-600 hover:underline">
+            <Link href={`/organizador/eventos/${id}/cupons`} className="text-xs text-primary-600 hover:underline print:hidden">
               Gerenciar
             </Link>
           </div>
@@ -425,7 +426,7 @@ export default async function OrganizerEventPage({ params }: { params: Promise<{
       </div>
 
       {/* Ações */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
         <Link href={`/organizador/eventos/${id}/inscritos`} className="btn-secondary text-center">
           Ver inscritos
         </Link>

@@ -64,3 +64,26 @@
            dark:bg-gray-900 dark:border-gray-700;
   }
 }
+
+/* Impressão/PDF: sempre em tema claro, sem sombras e sem quebrar cards no meio da página. */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .card {
+    background: #fff !important;
+    box-shadow: none !important;
+    border-color: #d1d5db !important;
+    break-inside: avoid;
+  }
+  tr {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+}
