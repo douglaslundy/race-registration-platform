@@ -75,7 +75,8 @@ export default function EventCard({ event }: EventCardProps) {
       {/* Overlay link — makes whole card click to event page */}
       <Link href={`/eventos/${event.slug}`} className="absolute inset-0 z-0" aria-label={`Ver evento ${event.title}`} />
 
-      <div className={`relative bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 ${bannerSrc ? "aspect-square" : "h-40"}`}>
+      {/* pointer-events-none: o banner é posicionado e ficava por cima do overlay link, bloqueando o clique */}
+      <div className={`relative pointer-events-none bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 ${bannerSrc ? "aspect-square" : "h-40"}`}>
         {bannerSrc ? (
           <div className="absolute inset-2">
             <Image
