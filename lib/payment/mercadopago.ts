@@ -142,9 +142,11 @@ export class MercadoPagoProvider implements PaymentProvider {
     if (!input.cardToken) throw new Error("Token do cartão não fornecido");
     if (amountBRL < 1) throw new Error("Valor mínimo para pagamento com cartão é R$1,00");
 
-    // Resolve payment_method_id: prefer what the frontend sent; fallback to card token lookup
-    let paymentMethodId = input.cardBrand || undefined;
-    if (!paymentMethodId) {
+    // Resolve payment_method_id: o token é a fonte autoritativa. O valor do binChange do navegador
+    // pode vir inválido (MP 3028 "Invalid payment_method_id") e derrubava todo pagamento com cartão,
+    // então ele só entra como fallback se a consulta ao token não identificar a bandeira.
+    let paymentMethodId: string | undefined;
+    {
       const accessToken = await this.accessToken();
       const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens/${input.cardToken}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -186,7 +188,9 @@ export class MercadoPagoProvider implements PaymentProvider {
         }
       }
     }
+    paymentMethodId ||= input.cardBrand || undefined;
     if (!paymentMethodId) throw new Error("Não foi possível identificar a bandeira do cartão");
+    console.log("[mp] card payment_method_id=%s (frontend=%s)", paymentMethodId, input.cardBrand ?? "-");
 
     const paymentApiCC = new Payment(client);
     const payerCC: Record<string, unknown> = {

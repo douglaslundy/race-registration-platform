@@ -56,6 +56,9 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fields: any[] = [];
 
+    // Os campos do MP vivem em iframes (fora do alcance do CSS/Tailwind): a cor do texto vai pela opção style.
+    const fieldStyle = { color: document.documentElement.classList.contains("dark") ? "#f3f4f6" : "#111827" };
+
     const script = document.createElement("script");
     script.src = "https://sdk.mercadopago.com/js/v2";
     script.onload = () => {
@@ -64,7 +67,7 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
         const mp = new window.MercadoPago(publicKey, { locale: "pt-BR" });
         mpRef.current = mp;
 
-        const cardNumber = mp.fields.create("cardNumber", { placeholder: "0000 0000 0000 0000" });
+        const cardNumber = mp.fields.create("cardNumber", { placeholder: "0000 0000 0000 0000", style: fieldStyle });
         cardNumber.mount("mp-card-number");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cardNumber.on("binChange", (data: any) => {
@@ -73,11 +76,11 @@ const MPCardForm = forwardRef<MPCardFormHandle, Props>(({ publicKey, amount }, r
         });
         fields.push(cardNumber);
 
-        const expirationDate = mp.fields.create("expirationDate", { placeholder: "MM/AA" });
+        const expirationDate = mp.fields.create("expirationDate", { placeholder: "MM/AA", style: fieldStyle });
         expirationDate.mount("mp-expiration-date");
         fields.push(expirationDate);
 
-        const securityCode = mp.fields.create("securityCode", { placeholder: "CVV" });
+        const securityCode = mp.fields.create("securityCode", { placeholder: "CVV", style: fieldStyle });
         securityCode.mount("mp-security-code");
         fields.push(securityCode);
 

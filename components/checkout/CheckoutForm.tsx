@@ -345,7 +345,7 @@ export default function CheckoutForm({
       <input type="hidden" {...register("ticketBatchId")} />
       <input type="hidden" {...register("paymentMethod")} />
       {error && (
-        <div className="card border border-red-200 bg-red-50 text-red-700 text-sm">
+        <div className="card border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
           {error}
         </div>
       )}
@@ -719,7 +719,7 @@ export default function CheckoutForm({
         })()}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
         )}
 
         <button type="submit" className="btn-primary w-full text-lg" disabled={isSubmitting}>
