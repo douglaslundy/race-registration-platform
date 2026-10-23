@@ -13,6 +13,7 @@ import type {
   GatewaySearchResult,
   GatewayPaymentSummary,
 } from "./types";
+import { UserFacingPaymentError } from "./types";
 
 interface MPFeeDetail {
   type?: string;
@@ -157,35 +158,28 @@ export class MercadoPagoProvider implements PaymentProvider {
         bin_attributes?: { brand?: { code?: string } };
       };
 
-      // Newer token responses put brand info in bin_attributes instead of payment_method_id
-      const brandCode = tokenData.payment_method_id
-        || tokenData.bin_attributes?.brand?.code;
-
-      const brandMap: Record<string, string> = {
-        mastercard: "master",
-        visa: "visa",
-        amex: "amex",
-        american_express: "amex",
-        elo: "elo",
-        hipercard: "hipercard",
-        diners: "diners",
-        discover: "discover",
-        aura: "aura",
-      };
-      paymentMethodId = brandCode
-        ? (brandMap[brandCode.toLowerCase()] ?? brandCode.toLowerCase())
-        : undefined;
-
-      // Last resort: search by BIN
-      if (!paymentMethodId && tokenData.first_six_digits) {
+      // O BIN é a fonte autoritativa: o mesmo "master" do token é inválido (MP 3028) em cartão de
+      // débito/pré-pago, então só vale o método de crédito que o MP lista para aquele BIN.
+      if (tokenData.first_six_digits) {
         const pmRes = await fetch(
           `https://api.mercadopago.com/v1/payment_methods/search?bin=${tokenData.first_six_digits}&site_id=MLB`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         if (pmRes.ok) {
           const pmData = await pmRes.json() as { results?: Array<{ id: string; payment_type_id: string }> };
-          paymentMethodId = pmData.results?.find((r) => r.payment_type_id === "credit_card")?.id;
+          const results = pmData.results ?? [];
+          paymentMethodId = results.find((r) => r.payment_type_id === "credit_card")?.id;
+          if (!paymentMethodId && results.length > 0) {
+            throw new UserFacingPaymentError("Este cartão não aceita crédito (débito/pré-pago). Use outro cartão de crédito ou PIX.");
+          }
         }
+      }
+
+      // Fallback: bandeira informada pelo token (respostas novas trazem em bin_attributes)
+      const brandCode = tokenData.payment_method_id || tokenData.bin_attributes?.brand?.code;
+      if (!paymentMethodId && brandCode) {
+        const brandMap: Record<string, string> = { mastercard: "master", american_express: "amex" };
+        paymentMethodId = brandMap[brandCode.toLowerCase()] ?? brandCode.toLowerCase();
       }
     }
     paymentMethodId ||= input.cardBrand || undefined;

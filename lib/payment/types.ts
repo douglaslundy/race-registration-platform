@@ -82,3 +82,6 @@ export interface PaymentProvider {
    */
   searchUpdatedSince?(since: Date): Promise<GatewaySearchResult>;
 }
+
+/** Erro cuja mensagem é segura para exibir ao comprador (as demais viram msg genérica no checkout). */
+export class UserFacingPaymentError extends Error {}

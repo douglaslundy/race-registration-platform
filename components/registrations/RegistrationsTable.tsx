@@ -167,6 +167,11 @@ export default function RegistrationsTable({
                   <span className={`px-2 py-0.5 rounded-full ${statusInfo?.color ?? ""}`}>
                     {statusInfo?.label ?? r.status}
                   </span>
+                  {r.status === "PENDING_PAYMENT" && payment?.status === "CANCELLED" && !payment.providerPaymentId && (
+                    <p className="mt-1 text-red-600 font-medium" title="O gateway recusou a tentativa de pagamento; não é pagamento pendente de confirmação.">
+                      Erro no pagamento
+                    </p>
+                  )}
                   {r.cancellationReason && (
                     <div className="mt-1">
                       <CancellationReasonModal

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
+import { UserFacingPaymentError } from "@/lib/payment/types";
 import { resolveEventPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
 import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
 import { getPaymentProviderSetting, getPagarMeApiKey } from "@/lib/payment-settings";
@@ -162,8 +163,28 @@ export async function POST(req: NextRequest) {
     // L4: nunca devolver texto cru do gateway ao cliente — pode vazar internals/tokens
     // embutidos no objeto de erro. Detalhe só no log do servidor; cliente recebe msg fixa.
     console.error("[checkout] payment gateway error:", payErr);
+    // Registra a falha para a lista de inscrições mostrar "Erro no pagamento" (sem providerPaymentId).
+    await db.payment
+      .create({
+        data: {
+          orderId: checkout.orderId,
+          provider: providerKey,
+          method: paymentMethod as PaymentMethod,
+          status: "CANCELLED",
+          amount: checkout.totalAmount,
+          idempotencyKey,
+          paymentAccountId: account?.id ?? null,
+          rawPayload: { gatewayError: payErr instanceof Error ? payErr.message : String(payErr) },
+        },
+      })
+      .catch((e) => console.error("[checkout] falha ao registrar erro de pagamento:", e));
     return NextResponse.json(
-      { error: "Não foi possível processar o pagamento no momento. Tente novamente em alguns instantes." },
+      {
+        error:
+          payErr instanceof UserFacingPaymentError
+            ? payErr.message
+            : "Não foi possível processar o pagamento no momento. Tente novamente em alguns instantes.",
+      },
       { status: 502 },
     );
   }
