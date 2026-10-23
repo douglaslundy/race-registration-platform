@@ -9,6 +9,7 @@ type OrgProfileData = {
   companyName?: string | null;
   cnpj?: string | null;
   phone?: string | null;
+  paymentAlertPhone?: string | null;
   website?: string | null;
   bio?: string | null;
 };
@@ -169,6 +170,11 @@ export default function OrganizerPerfilPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Telefone comercial</label>
             <input type="tel" value={orgForm.phone ?? ""} onChange={(e) => set("phone", e.target.value)} className="input w-full" placeholder="(11) 99999-9999" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp para alertas de pagamento</label>
+            <input type="tel" value={orgForm.paymentAlertPhone ?? ""} onChange={(e) => set("paymentAlertPhone", e.target.value)} className="input w-full" placeholder="(11) 99999-9999" />
+            <p className="text-xs text-gray-500 mt-1">Recebe um aviso no WhatsApp sempre que um pagamento dos seus eventos der erro ou o cartão for recusado.</p>
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Site</label>

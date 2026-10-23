@@ -247,6 +247,7 @@ model OrganizerProfile {
   bio              String?
   verified         Boolean  @default(false)
   campaignsEnabled Boolean  @default(false)
+  paymentAlertPhone String? // WhatsApp que recebe aviso de erro/recusa de pagamento dos eventos do organizador
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

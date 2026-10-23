@@ -10,6 +10,9 @@ import {
   getCancellationAlertSettings,
   getAdvertiserRequestAlertSettings,
 } from "@/lib/alerts/alert-settings";
+import PaymentFailurePhoneCard from "@/components/admin/PaymentFailurePhoneCard";
+import { getSetting } from "@/lib/settings";
+import { PAYMENT_FAILURE_PHONE_KEY } from "@/lib/alerts/payment-failure-staff";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Alertas — Admin" };
@@ -70,6 +73,8 @@ export default async function AdminAlertasPage() {
         currentEmailEnabled={paymentError.emailEnabled}
         currentWhatsappEnabled={paymentError.whatsappEnabled}
       />
+
+      <PaymentFailurePhoneCard settingKey={PAYMENT_FAILURE_PHONE_KEY} currentPhone={(await getSetting(PAYMENT_FAILURE_PHONE_KEY)) ?? ""} />
 
       <AlertConfigCard
         title="Divergência de conciliação"

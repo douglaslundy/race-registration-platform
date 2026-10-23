@@ -6,6 +6,7 @@ import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
 import { UserFacingPaymentError } from "@/lib/payment/types";
+import { notifyPaymentFailureStaff } from "@/lib/alerts/payment-failure-staff";
 import { resolveEventPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
 import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
 import { getPaymentProviderSetting, getPagarMeApiKey } from "@/lib/payment-settings";
@@ -178,6 +179,12 @@ export async function POST(req: NextRequest) {
         },
       })
       .catch((e) => console.error("[checkout] falha ao registrar erro de pagamento:", e));
+    void notifyPaymentFailureStaff({
+      orderId: checkout.orderId,
+      method: paymentMethod,
+      kind: "ERROR",
+      detail: payErr instanceof Error ? payErr.message : String(payErr),
+    });
     return NextResponse.json(
       {
         error:
@@ -212,6 +219,8 @@ export async function POST(req: NextRequest) {
         "checkout",
       );
     });
+
+    void notifyPaymentFailureStaff({ orderId: checkout.orderId, method: paymentMethod, kind: "DECLINED" });
 
     return NextResponse.json(
       { error: "Pagamento recusado pela operadora do cartão. Verifique os dados ou tente outro cartão." },

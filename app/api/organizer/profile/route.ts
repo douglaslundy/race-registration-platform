@@ -7,6 +7,7 @@ const profileSchema = z.object({
   companyName: z.string().optional().nullable(),
   cnpj: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  paymentAlertPhone: z.string().max(20).optional().nullable(),
   website: z.string().url().optional().nullable().or(z.literal("")),
   bio: z.string().optional().nullable(),
 });
