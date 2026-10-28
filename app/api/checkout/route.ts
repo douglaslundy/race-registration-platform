@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
-import { UserFacingPaymentError } from "@/lib/payment/types";
+import { UserFacingPaymentError, describeGatewayError } from "@/lib/payment/types";
 import { notifyPaymentFailureStaff } from "@/lib/alerts/payment-failure-staff";
 import { resolveEventPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
 import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
           amount: checkout.totalAmount,
           idempotencyKey,
           paymentAccountId: account?.id ?? null,
-          rawPayload: { gatewayError: payErr instanceof Error ? payErr.message : String(payErr) },
+          rawPayload: { gatewayError: describeGatewayError(payErr) },
         },
       })
       .catch((e) => console.error("[checkout] falha ao registrar erro de pagamento:", e));
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       orderId: checkout.orderId,
       method: paymentMethod,
       kind: "ERROR",
-      detail: payErr instanceof Error ? payErr.message : String(payErr),
+      detail: describeGatewayError(payErr),
     });
     return NextResponse.json(
       {

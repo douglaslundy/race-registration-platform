@@ -85,3 +85,23 @@ export interface PaymentProvider {
 
 /** Erro cuja mensagem é segura para exibir ao comprador (as demais viram msg genérica no checkout). */
 export class UserFacingPaymentError extends Error {}
+
+/** Texto legível de um erro de gateway: o SDK do Mercado Pago lança objetos simples (não `Error`). */
+export function describeGatewayError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const e = err as { message?: unknown; cause?: unknown };
+    const causes = Array.isArray(e.cause)
+      ? e.cause.map((c: { code?: unknown; description?: unknown }) => `${c.code ?? ""} ${c.description ?? ""}`.trim()).filter(Boolean)
+      : [];
+    const base = typeof e.message === "string" ? e.message : JSON.stringify(err);
+    return causes.length ? `${base} (${causes.join("; ")})` : base;
+  }
+  return String(err);
+}
+
+/** Erro 3028 do MP: payment_method_id rejeitado (a cobrança nem chegou a ser processada). */
+export function isInvalidPaymentMethodError(err: unknown): boolean {
+  const cause = (err as { cause?: unknown } | null)?.cause;
+  return Array.isArray(cause) && cause.some((c: { code?: unknown }) => Number(c?.code) === 3028);
+}

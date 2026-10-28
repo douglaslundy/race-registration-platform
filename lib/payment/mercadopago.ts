@@ -13,7 +13,7 @@ import type {
   GatewaySearchResult,
   GatewayPaymentSummary,
 } from "./types";
-import { UserFacingPaymentError } from "./types";
+import { UserFacingPaymentError, isInvalidPaymentMethodError } from "./types";
 
 interface MPFeeDetail {
   type?: string;
@@ -147,6 +147,8 @@ export class MercadoPagoProvider implements PaymentProvider {
     // pode vir inválido (MP 3028 "Invalid payment_method_id") e derrubava todo pagamento com cartão,
     // então ele só entra como fallback se a consulta ao token não identificar a bandeira.
     let paymentMethodId: string | undefined;
+    // Demais bandeiras plausíveis, tentadas em ordem se o MP rejeitar o payment_method_id (3028).
+    const fallbackMethodIds: string[] = [];
     {
       const accessToken = await this.accessToken();
       const tokenRes = await fetch(`https://api.mercadopago.com/v1/card_tokens/${input.cardToken}`, {
@@ -168,7 +170,9 @@ export class MercadoPagoProvider implements PaymentProvider {
         if (pmRes.ok) {
           const pmData = await pmRes.json() as { results?: Array<{ id: string; payment_type_id: string }> };
           const results = pmData.results ?? [];
-          paymentMethodId = results.find((r) => r.payment_type_id === "credit_card")?.id;
+          const credits = results.filter((r) => r.payment_type_id === "credit_card").map((r) => r.id);
+          paymentMethodId = credits[0];
+          fallbackMethodIds.push(...credits.slice(1));
           if (!paymentMethodId && results.length > 0) {
             throw new UserFacingPaymentError("Este cartão não aceita crédito (débito/pré-pago). Use outro cartão de crédito ou PIX.");
           }
@@ -177,13 +181,15 @@ export class MercadoPagoProvider implements PaymentProvider {
 
       // Fallback: bandeira informada pelo token (respostas novas trazem em bin_attributes)
       const brandCode = tokenData.payment_method_id || tokenData.bin_attributes?.brand?.code;
-      if (!paymentMethodId && brandCode) {
+      if (brandCode) {
         const brandMap: Record<string, string> = { mastercard: "master", american_express: "amex" };
-        paymentMethodId = brandMap[brandCode.toLowerCase()] ?? brandCode.toLowerCase();
+        const fromToken = brandMap[brandCode.toLowerCase()] ?? brandCode.toLowerCase();
+        if (paymentMethodId) fallbackMethodIds.push(fromToken);
+        else paymentMethodId = fromToken;
       }
+      console.log("[mp] card bin=%s brand=%s methodId=%s", tokenData.first_six_digits ?? "-", brandCode ?? "-", paymentMethodId ?? "-");
     }
     paymentMethodId ||= input.cardBrand || undefined;
-    if (!paymentMethodId) throw new Error("Não foi possível identificar a bandeira do cartão");
     console.log("[mp] card payment_method_id=%s (frontend=%s)", paymentMethodId, input.cardBrand ?? "-");
 
     const paymentApiCC = new Payment(client);
@@ -196,19 +202,33 @@ export class MercadoPagoProvider implements PaymentProvider {
       payerCC.identification = { type: "CPF", number: input.cpf.replace(/\D/g, "") };
     }
 
-    const resCC = await paymentApiCC.create({
-      body: {
-        transaction_amount: amountBRL,
-        token: input.cardToken,
-        payment_method_id: paymentMethodId,
-        installments: input.installments ?? 1,
-        description: input.description,
-        payer: payerCC,
-        external_reference: input.orderId,
-        statement_descriptor: "CORRIDAS APP",
-      },
-      requestOptions: { idempotencyKey: input.idempotencyKey },
-    });
+    // 3028 é rejeição de validação (nada foi cobrado): tenta as outras bandeiras plausíveis e, por
+    // último, sem payment_method_id (o MP deduz do token). Chave de idempotência própria por tentativa.
+    const attempts: (string | undefined)[] = [...new Set([paymentMethodId, ...fallbackMethodIds, input.cardBrand || undefined])];
+    if (!attempts.includes(undefined)) attempts.push(undefined);
+    let resCC: Awaited<ReturnType<typeof paymentApiCC.create>> | undefined;
+    for (let i = 0; i < attempts.length; i++) {
+      try {
+        resCC = await paymentApiCC.create({
+          body: {
+            transaction_amount: amountBRL,
+            token: input.cardToken,
+            ...(attempts[i] ? { payment_method_id: attempts[i] } : {}),
+            installments: input.installments ?? 1,
+            description: input.description,
+            payer: payerCC,
+            external_reference: input.orderId,
+            statement_descriptor: "CORRIDAS APP",
+          },
+          requestOptions: { idempotencyKey: i === 0 ? input.idempotencyKey : `${input.idempotencyKey}-m${i}` },
+        });
+        break;
+      } catch (err) {
+        if (!isInvalidPaymentMethodError(err) || i === attempts.length - 1) throw err;
+        console.warn("[mp] payment_method_id=%s rejeitado (3028), tentando próximo", attempts[i] ?? "(omitido)");
+      }
+    }
+    if (!resCC) throw new Error("Pagamento com cartão não retornou resposta");
 
     const CARD_CREATE_FALLBACK_EXPIRY_MS = 48 * 3600 * 1000; // 48h — pending_contingency/pending_review_manual resolvem "em até 2 dias úteis" por doc oficial da MP
 

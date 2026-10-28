@@ -1,5 +1,16 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-28 — Erro de cartão 3028 + conciliação com falha diária — NÃO commitado/deployado)
+- Alerta "Detalhe: [object Object]": erro do SDK do MP é objeto, não `Error`. Novo `describeGatewayError` e `isInvalidPaymentMethodError` em `lib/payment/types.ts`; usado em `app/api/checkout/route.ts`.
+- Cartão: logs da VPS mostram MP 3028 com `payment_method_id=master` mesmo após consulta por BIN. `mercadopago.ts` agora loga BIN/bandeira e, em 3028, tenta as outras opções (outras bandeiras de crédito do BIN, bandeira do token, do front) e por fim sem `payment_method_id` (MP deduz do token). Idempotency key `-mN` por tentativa. Causa real do 3028 ainda não confirmada: conferir o log `[mp] card bin=...` após deploy.
+- Conciliação: ~129 pagamentos PAID antigos (ids 17xxxx, até ~31/08) dão 404 "Payment not found" no token atual (conta MP antiga trocada; backfill apontou todos p/ conta `cmthg3g…`). `runBatch` em `lib/payment/reconciliation.ts` agora trata 404 como "não conferível" (warn, sem `failed`), seguindo o intervalo normal da faixa. Antes: alerta sintético de falha todo dia.
+- Testes: `payment-reconciliation`, `payment-mercadopago-create` verdes; `tsc` limpo.
+
+### PRÓXIMA TAREFA
+Deploy (pedir confirmação) e checar `docker logs corridas-app | grep "\[mp\] card bin"` no próximo pagamento com cartão.
+
+---
+
 ## Última atualização (2026-10-17 — Assistente de admin sem acesso total + botão de peito na página do evento — DEPLOYADO)
 
 Commits `379440c` (peito) e `bf4442a` (RBAC) em `main`; deploy na VPS `144.91.92.70` (`/opt/corridas/deploy.sh`, roda `git pull` em `/opt/corridas/src` + `docker build` + `docker compose up -d --no-deps app`; sem `prisma db push`).

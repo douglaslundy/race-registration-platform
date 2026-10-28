@@ -270,9 +270,16 @@ async function runBatch<P extends BatchPayment>(
       changed = outcome.changed;
       if (outcome.mismatch) mismatches.push(outcome.mismatch);
     } catch (err) {
-      failed++;
-      reconciledAt = new Date(now - Math.max(0, interval - FAILURE_RETRY_MS));
-      console.error("[reconcilePayments] failed to check payment", payment.id, err);
+      if ((err as { status?: number } | null)?.status === 404) {
+        // Cobrança inexistente para o token da conta (ex.: feita antes da troca de conta Mercado
+        // Pago): não há como conferir e repetir não resolve, então não conta como falha nem
+        // reaparece a cada ciclo — segue o intervalo normal da faixa.
+        console.warn("[reconcilePayments] pagamento não encontrado no gateway, ignorado:", payment.id);
+      } else {
+        failed++;
+        reconciledAt = new Date(now - Math.max(0, interval - FAILURE_RETRY_MS));
+        console.error("[reconcilePayments] failed to check payment", payment.id, err);
+      }
     }
     try {
       await db.payment.update({

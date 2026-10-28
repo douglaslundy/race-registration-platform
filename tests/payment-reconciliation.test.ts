@@ -232,7 +232,7 @@ describe("reconcilePayments", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     const checkPaymentStatus = vi.fn()
-      .mockRejectedValueOnce(Object.assign(new Error("not found"), { status: 404 }))
+      .mockRejectedValueOnce(Object.assign(new Error("unauthorized"), { status: 401 }))
       .mockResolvedValueOnce({ status: "PAID" });
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
 
@@ -406,7 +406,7 @@ describe("reconcilePayments", () => {
   it("agenda retry curto em reconciledAt quando a consulta falha (não espera o intervalo inteiro)", async () => {
     const createdAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // faixa 12h
     dbMock.payment.findMany.mockResolvedValueOnce([{ ...pendingFixture, createdAt }]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-    const checkPaymentStatus = vi.fn().mockRejectedValue(Object.assign(new Error("nf"), { status: 404 }));
+    const checkPaymentStatus = vi.fn().mockRejectedValue(Object.assign(new Error("unauthorized"), { status: 401 }));
     vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
 
     const before = Date.now();
@@ -417,6 +417,17 @@ describe("reconcilePayments", () => {
     const dueInMs = data.reconciledAt.getTime() + 12 * 60 * 60 * 1000 - before;
     expect(dueInMs).toBeGreaterThan(4 * 60 * 1000);
     expect(dueInMs).toBeLessThan(6 * 60 * 1000);
+  });
+
+  it("404 do gateway (cobrança de outra conta) não conta como falha", async () => {
+    dbMock.payment.findMany.mockResolvedValueOnce([pendingFixture]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const checkPaymentStatus = vi.fn().mockRejectedValue({ message: "Payment not found", status: 404 });
+    vi.mocked(getPaymentProvider).mockResolvedValueOnce({ checkPaymentStatus } as any);
+
+    const result = await reconcilePayments();
+
+    expect(result.failed).toBe(0);
+    expect(checkPaymentStatus).toHaveBeenCalledTimes(1);
   });
 
   it("aprovação tardia sem vaga: não reativa, não notifica o atleta e reporta divergência NÃO corrigida", async () => {

@@ -46,6 +46,16 @@ describe("MercadoPagoProvider.createPayment (cartão)", () => {
     expect(result.expiresAt).toBeUndefined();
   });
 
+  it("3028 (payment_method_id inválido) cai para a chamada sem payment_method_id", async () => {
+    const err3028 = { message: "Invalid payment_method_id", status: 400, cause: [{ code: 3028 }] };
+    createMock.mockRejectedValueOnce(err3028).mockResolvedValueOnce({ id: 200, status: "approved" });
+    const result = await new MercadoPagoProvider().createPayment(baseInput);
+    expect(result.status).toBe("PAID");
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(createMock.mock.calls[1][0].body).not.toHaveProperty("payment_method_id");
+    expect(createMock.mock.calls[1][0].requestOptions.idempotencyKey).toBe("idem-1-m1");
+  });
+
   it("mapeia 'rejected' para CANCELLED, sem expiresAt", async () => {
     createMock.mockResolvedValueOnce({ id: 124, status: "rejected" });
     const provider = new MercadoPagoProvider();
