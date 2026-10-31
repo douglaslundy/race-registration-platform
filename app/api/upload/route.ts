@@ -15,7 +15,7 @@ const ALLOWED_MIME: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
-const ALLOWED_PURPOSES = new Set(["banner", "list_banner", "regulation", "kit_info", "result_pdf"]);
+const ALLOWED_PURPOSES = new Set(["avatar", "banner", "list_banner", "regulation", "kit_info", "result_pdf"]);
 const MAX_SIZE = 10 * 1024 * 1024;
 
 // Confere os bytes reais do arquivo contra a assinatura do formato — o Content-Type do FormData
@@ -85,7 +85,9 @@ function getSupabaseConfig() {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (!UPLOAD_ROLES.has(session.user.role)) {
+  const isStaff = UPLOAD_ROLES.has(session.user.role);
+  // Qualquer usuário logado pode subir só a própria foto de perfil (purpose "avatar", só imagem).
+  if (!isStaff && session.user.role !== "ATHLETE") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
@@ -116,6 +118,12 @@ export async function POST(req: NextRequest) {
   }
   if (!ALLOWED_PURPOSES.has(purpose)) {
     return NextResponse.json({ error: "Purpose inválido" }, { status: 400 });
+  }
+  if (!isStaff && (purpose !== "avatar" || !file.type.startsWith("image/"))) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  }
+  if (purpose === "avatar" && !file.type.startsWith("image/")) {
+    return NextResponse.json({ error: "A foto de perfil deve ser uma imagem" }, { status: 400 });
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: "Arquivo muito grande (máx 10 MB)" }, { status: 400 });

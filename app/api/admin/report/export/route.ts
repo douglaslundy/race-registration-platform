@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     ["Receita do evento", formatCurrency(eventRevenue)],
     ["Taxa da plataforma", formatCurrency(platformFeeActual)],
     ["Taxa de serviço (original)", formatCurrency(serviceFeeOriginal)],
-    ["Desconto PIX concedido", `-${formatCurrency(pixDiscountTotal)}`],
+    ["Desconto PIX concedido", pixDiscountTotal > 0 ? `-${formatCurrency(pixDiscountTotal)}` : formatCurrency(0)],
     ["Taxa de serviço (líquida)", formatCurrency(serviceFeeActual)],
     ["Comissão do gateway", formatCurrency(gatewayFeeActual)],
     ["Receita bruta", formatCurrency(grossRevenue)],

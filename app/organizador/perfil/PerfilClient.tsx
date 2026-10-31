@@ -1,5 +1,6 @@
 "use client";
 
+import ProfileRatingCard from "@/components/dashboard/ProfileRatingCard";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import ChangePasswordForm from "@/components/profile/ChangePasswordForm";
@@ -106,6 +107,8 @@ export default function OrganizerPerfilPage() {
   return (
     <div className="max-w-2xl space-y-6 mx-auto">
       <h1 className="text-2xl font-bold">Meus Dados</h1>
+
+      <ProfileRatingCard name={session?.user?.name ?? ""} />
 
       <form onSubmit={handleAccountSubmit} className="card space-y-4">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dados pessoais</h2>

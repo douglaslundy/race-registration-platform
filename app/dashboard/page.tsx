@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BADGE } from "@/lib/badge-colors";
+import ProfileRatingCard from "@/components/dashboard/ProfileRatingCard";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   PENDING_PAYMENT: { label: "Aguardando pagamento", color: BADGE.yellow },
@@ -34,6 +35,8 @@ export default async function DashboardHome() {
         <h1 className="text-2xl font-bold">Olá, {session.user.name.split(" ")[0]}!</h1>
         <p className="text-gray-500 text-sm mt-1">Bem-vindo ao seu painel de atleta</p>
       </div>
+
+      <ProfileRatingCard name={session.user.name} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card text-center">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { fetchAddressByCep } from "@/lib/cep";
+import ProfileRatingCard from "@/components/dashboard/ProfileRatingCard";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 const SHIRT_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
@@ -131,6 +132,8 @@ export default function PerfilPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Meus Dados</h1>
+
+      <ProfileRatingCard name={session?.user?.name ?? ""} />
 
       <div className="card">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Dados da conta</h2>

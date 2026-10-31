@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { isValidCpf, normalizeCpf } from "@/lib/cpf";
 import { normalizeCep } from "@/lib/cep";
+import { syncRatingSafe } from "@/lib/rating";
 
 const profileSchema = z.object({
   birthDate: z.string().optional().nullable(),
@@ -81,6 +82,7 @@ export async function PUT(req: NextRequest) {
       update: data,
     });
 
+    syncRatingSafe(session.user.id);
     return NextResponse.json({ profile });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

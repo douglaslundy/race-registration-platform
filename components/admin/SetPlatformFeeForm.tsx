@@ -33,14 +33,19 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
     setSaving(true);
     setSaved(false);
     setFeeError(null);
-    const res = await fetch(`/api/admin/events/${event.id}/fee`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ platformFeePercent: value }),
-    });
-    if (res.ok) setSaved(true);
-    else setFeeError("Erro ao salvar");
-    setSaving(false);
+    try {
+      const res = await fetch(`/api/admin/events/${event.id}/fee`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platformFeePercent: value }),
+      });
+      if (res.ok) setSaved(true);
+      else setFeeError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Erro ao salvar");
+    } catch {
+      setFeeError("Erro de conexão ao salvar");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSavePix() {
@@ -52,14 +57,19 @@ export default function SetPlatformFeeForm({ event }: { event: EventFee }) {
     setSavingPix(true);
     setSavedPix(false);
     setPixError(null);
-    const res = await fetch(`/api/admin/events/${event.id}/fee`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pixServiceFeeDiscountPercent: parsed }),
-    });
-    if (res.ok) setSavedPix(true);
-    else setPixError("Erro ao salvar");
-    setSavingPix(false);
+    try {
+      const res = await fetch(`/api/admin/events/${event.id}/fee`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pixServiceFeeDiscountPercent: parsed }),
+      });
+      if (res.ok) setSavedPix(true);
+      else setPixError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Erro ao salvar");
+    } catch {
+      setPixError("Erro de conexão ao salvar");
+    } finally {
+      setSavingPix(false);
+    }
   }
 
   return (

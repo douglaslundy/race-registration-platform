@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import type { SuggestedAthleteField } from "@/lib/auth/profile-completion";
 
 export const PROFILE_NUDGE_DISMISS_KEY = "profile-nudge-dismissed";
 
@@ -14,23 +13,10 @@ export function signOutAndClearNudge() {
   signOut({ callbackUrl: "/" });
 }
 
-const FIELD_LABELS: Record<SuggestedAthleteField, string> = {
-  gender: "Gênero",
-  preferredShirtSize: "Tamanho de camiseta",
-};
+export type PendingRatingItem = { label: string; points: number };
 
-function buildSuggestionLabel(fields: SuggestedAthleteField[]): string {
-  const labels: string[] = [];
-  if (fields.includes("gender")) labels.push(FIELD_LABELS.gender);
-  if (fields.includes("preferredShirtSize")) labels.push(FIELD_LABELS.preferredShirtSize);
-  return labels.join(", ");
-}
-
-export default function ProfileCompletionNudge({
-  suggestedFields,
-}: {
-  suggestedFields: SuggestedAthleteField[];
-}) {
+export default function ProfileCompletionNudge({ pending }: { pending: PendingRatingItem[] }) {
+  const totalPoints = pending.reduce((sum, i) => sum + i.points, 0);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -56,8 +42,16 @@ export default function ProfileCompletionNudge({
       >
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Complete seu cadastro</h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Faltam alguns dados no seu perfil: {buildSuggestionLabel(suggestedFields)}.
+          Complete seu perfil e ganhe até <strong>{totalPoints} pontos</strong> de rating:
         </p>
+        <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          {pending.map((i) => (
+            <li key={i.label} className="flex justify-between">
+              <span>{i.label}</span>
+              <span className="font-medium text-primary-700">+{i.points}</span>
+            </li>
+          ))}
+        </ul>
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"

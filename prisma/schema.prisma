@@ -142,10 +142,13 @@ model User {
   receiveEventMessages        Boolean   @default(true)
   uiDensity                   String    @default("comfortable")
   lastLoginAt                 DateTime?
+  avatarUrl                   String?
+  ratingPoints                Int       @default(0)
   passwordChangedAt           DateTime?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
 
+  ratingEvents            RatingEvent[]
   athleteProfile          AthleteProfile?
   organizerProfile        OrganizerProfile?
   advertiserProfile       AdvertiserProfile?
@@ -753,6 +756,20 @@ model AuditLog {
   @@index([userId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// Pontos de rating: cada linha é uma conquista única (key) por usuário — idempotente e auditável.
+model RatingEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  points    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("rating_events")
 }
 
 model FileAsset {

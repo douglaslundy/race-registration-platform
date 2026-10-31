@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { syncRatingSafe } from "@/lib/rating";
 import { z } from "zod";
 
 const profileSchema = z.object({
@@ -20,6 +21,7 @@ export async function GET() {
     where: { userId: session.user.id },
   });
 
+  syncRatingSafe(session.user.id);
   return NextResponse.json({ profile });
 }
 
@@ -42,5 +44,6 @@ export async function PUT(req: NextRequest) {
     update: data,
   });
 
+  syncRatingSafe(session.user.id);
   return NextResponse.json({ profile });
 }

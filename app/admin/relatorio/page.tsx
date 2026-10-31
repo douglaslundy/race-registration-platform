@@ -175,7 +175,7 @@ export default async function AdminRelatorioPage({
           </div>
           <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
             <span>− Desconto PIX concedido</span>
-            <span>-{formatCurrency(pixDiscountTotal)}</span>
+            <span>{pixDiscountTotal > 0 ? "-" : ""}{formatCurrency(pixDiscountTotal)}</span>
           </div>
           <div className="flex justify-between text-sm border-t dark:border-gray-700 pt-2">
             <span className="font-semibold">= Taxa de serviço (líquida)</span>

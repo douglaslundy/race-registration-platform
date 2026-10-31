@@ -11,6 +11,7 @@ import ToggleUserActiveButton from "@/components/admin/ToggleUserActiveButton";
 import UserDeleteButton from "@/components/admin/UserDeleteButton";
 import AthleteDetailsModal from "@/components/registrations/AthleteDetailsModal";
 import { buildAdminUserOrderBy, buildAdminUserWhere } from "@/lib/admin/users";
+import { athleteProfileItems, organizerProfileItems, completionPercent } from "@/lib/rating";
 import { computeRegistrationStatusBreakdown } from "@/lib/organizer/event-metrics";
 
 export const metadata: Metadata = { title: "Usuários — Admin" };
@@ -115,9 +116,19 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
       active: true,
       createdAt: true,
       lastLoginAt: true,
+      avatarUrl: true,
+      ratingPoints: true,
+      organizerProfile: { select: { companyName: true, cnpj: true, phone: true, website: true, bio: true } },
       _count: { select: { orders: true } },
       athleteProfile: {
         select: {
+          postalCode: true,
+          street: true,
+          number: true,
+          neighborhood: true,
+          emergencyName: true,
+          emergencyPhone: true,
+          medicalNotes: true,
           cpf: true,
           birthDate: true,
           phone: true,
@@ -299,13 +310,14 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
               <th className="pb-2 pr-4">
                 <SortLink label="Último acesso" column="lastLoginAt" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("lastLoginAt")} />
               </th>
+              <th className="pb-2 pr-4">Rating</th>
               <th className="pb-2 pr-4">Ações</th>
             </tr>
           </thead>
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-8 text-center text-sm text-gray-500">
+                <td colSpan={11} className="py-8 text-center text-sm text-gray-500">
                   Nenhum usuário encontrado com os filtros atuais.
                 </td>
               </tr>
@@ -341,6 +353,26 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                   <td className={cellPadding + " text-gray-400 text-xs"}>{u.createdAt.toLocaleDateString("pt-BR")}</td>
                   <td className={cellPadding + " text-gray-400 text-xs"}>
                     {u.lastLoginAt ? formatDate(u.lastLoginAt, "dd/MM/yyyy HH:mm") : "Nunca acessou"}
+                  </td>
+                  <td className={cellPadding + " text-xs whitespace-nowrap"}>
+                    {(() => {
+                      const items =
+                        u.role === "ATHLETE"
+                          ? athleteProfileItems(u.athleteProfile, u.avatarUrl)
+                          : u.role === "ORGANIZER"
+                            ? organizerProfileItems(u.organizerProfile, u.avatarUrl)
+                            : [];
+                      if (items.length === 0) return "—";
+                      const pct = completionPercent(items);
+                      return (
+                        <div className="w-24">
+                          <div className="font-medium">{u.ratingPoints} pts · {pct}%</div>
+                          <div className="mt-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div className="h-full bg-primary-600" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className={cellPadding}>
                     <div className="flex flex-wrap items-center gap-2">
