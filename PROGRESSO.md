@@ -1,5 +1,18 @@
 # Progresso do Projeto
 
+## Última atualização (2026-10-31 — Sistema de rating — DEPLOYADO, commit 1746850)
+- `lib/rating.ts`: pontos únicos por conquista (`RatingEvent @@unique[userId,key]`), nunca diminuem. Atleta: obrigatórios 40, foto 20, emergência 10, gênero/camiseta/médico/equipe 5 cada, +10 inscrição CONFIRMED, +20 resultado (RaceResult por evento+bib). Organizador: foto 20, CNPJ 15, empresa/tel/bio 10, site 5, +30 evento COMPLETED.
+- UI: `ProfileRatingCard` (dashboard, Meus Dados, perfil organizador, upload de avatar via `/api/upload` purpose `avatar`), modal `ProfileCompletionNudge` com pontos, coluna Rating em `/admin/usuarios`. Cron `POST /api/cron/rating-sync` (diário 04:00 na VPS; backfill rodado: 451 usuários).
+- Schema aplicado na VPS por SQL manual (deploy.sh não roda db push): `users.avatarUrl/ratingPoints`, `rating_events`.
+- Mantido o redirect `/completar-cadastro` para obrigatórios (necessários ao pagamento).
+- Não testado em navegador; rating não está no menu (`DashboardNav`); % só na lista admin.
+
+### Pendências restantes
+Estorno parcial MP · IMPLEMENTATION_PLAN etapas 4 e 5 · assistentes de admin (cupons/pagamentos/relatórios) · manuais: webhook MP por conta, senha root VPS, validar Jean-Carl, conferir Trail São Judas.
+(Bloco de patrocínio: já concluído em 2026-08-18, fora da lista.)
+
+---
+
 ## Última atualização (2026-10-28 — Erro de cartão 3028 + conciliação com falha diária — NÃO commitado/deployado)
 - Alerta "Detalhe: [object Object]": erro do SDK do MP é objeto, não `Error`. Novo `describeGatewayError` e `isInvalidPaymentMethodError` em `lib/payment/types.ts`; usado em `app/api/checkout/route.ts`.
 - Cartão: logs da VPS mostram MP 3028 com `payment_method_id=master` mesmo após consulta por BIN. `mercadopago.ts` agora loga BIN/bandeira e, em 3028, tenta as outras opções (outras bandeiras de crédito do BIN, bandeira do token, do front) e por fim sem `payment_method_id` (MP deduz do token). Idempotency key `-mN` por tentativa. Causa real do 3028 ainda não confirmada: conferir o log `[mp] card bin=...` após deploy.
