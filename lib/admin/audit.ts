@@ -25,7 +25,14 @@ export function buildAdminAuditWhere(
   }
 
   if (params.userId) {
-    filters.push({ userId: params.userId });
+    // Aceita o id do usuário ou parte do nome/e-mail.
+    filters.push({
+      OR: [
+        { userId: params.userId },
+        { user: { name: { contains: params.userId, mode: "insensitive" as const } } },
+        { user: { email: { contains: params.userId, mode: "insensitive" as const } } },
+      ],
+    });
   }
 
   const from = parseDateInput(params.dateFrom, false);

@@ -199,8 +199,8 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">User ID</label>
-          <input name="userId" defaultValue={userId} placeholder="cuid..." className="input-field text-sm py-1.5" />
+          <label className="block text-xs text-gray-500 mb-1">Usuário (ID, nome ou e-mail)</label>
+          <input name="userId" defaultValue={userId} placeholder="ID, nome ou e-mail" className="input-field text-sm py-1.5" />
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1">De</label>

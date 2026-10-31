@@ -40,7 +40,7 @@ describe("admin audit export", () => {
           AND: expect.arrayContaining([
             expect.objectContaining({ action: expect.objectContaining({ contains: "USER_CREATED" }) }),
             expect.objectContaining({ entityType: "User" }),
-            expect.objectContaining({ userId: "user-1" }),
+            expect.objectContaining({ OR: expect.arrayContaining([{ userId: "user-1" }]) }),
           ]),
         }),
       }),

@@ -277,6 +277,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
               <th className="pb-2 pr-4">
                 <SortLink label="Nome" column="name" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("name")} />
               </th>
+              <th className="pb-2 pr-4">ID</th>
               <th className="pb-2 pr-4">
                 <SortLink label="Email" column="email" currentSort={sortConfig.normalizedSort} currentDir={sortConfig.normalizedDir} href={sortHeader("email")} />
               </th>
@@ -304,7 +305,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-8 text-center text-sm text-gray-500">
+                <td colSpan={10} className="py-8 text-center text-sm text-gray-500">
                   Nenhum usuário encontrado com os filtros atuais.
                 </td>
               </tr>
@@ -314,6 +315,7 @@ export default async function AdminUsuariosPage({ searchParams }: { searchParams
                 return (
                 <tr key={u.id} className={rowClass}>
                   <td className={cellPadding + " font-medium"}>{u.name}</td>
+                  <td className={cellPadding + " text-gray-400 text-xs font-mono select-all"}>{u.id}</td>
                   <td className={cellPadding + " text-gray-500 text-xs"}>{u.email}</td>
                   <td className={cellPadding}>
                     <span className={`text-xs px-2 py-0.5 rounded ${ROLE_COLOR[u.role]}`}>
