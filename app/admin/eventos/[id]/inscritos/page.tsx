@@ -134,6 +134,8 @@ export default async function AdminInscritosPage({
           id: true,
           name: true,
           email: true,
+          ratingPoints: true,
+          ratingPercent: true,
           athleteProfile: {
             select: {
               cpf: true,

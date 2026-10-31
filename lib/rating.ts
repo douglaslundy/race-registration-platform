@@ -91,7 +91,8 @@ export async function syncRating(userId: string): Promise<number> {
   if (!user) return 0;
 
   const earned = new Map<string, number>();
-  for (const item of await getProfileItems(userId, user.role)) {
+  const profileItems = await getProfileItems(userId, user.role);
+  for (const item of profileItems) {
     if (item.done) earned.set(item.key, item.points);
   }
 
@@ -126,7 +127,9 @@ export async function syncRating(userId: string): Promise<number> {
   }
   const sum = await db.ratingEvent.aggregate({ where: { userId }, _sum: { points: true } });
   const total = sum._sum.points ?? 0;
-  await db.user.update({ where: { id: userId }, data: { ratingPoints: total } });
+  // Guarda a % de completude junto (denormalizada) para as listas não precisarem recalcular.
+  const ratingPercent = completionPercent(profileItems);
+  await db.user.update({ where: { id: userId }, data: { ratingPoints: total, ratingPercent } });
   return total;
 }
 

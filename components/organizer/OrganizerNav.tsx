@@ -12,10 +12,12 @@ export default function OrganizerNav({
   userName,
   appName,
   items,
+  ratingPoints,
 }: {
   userName: string;
   appName: string;
   items: OrganizerNavItem[];
+  ratingPoints?: number | null;
 }) {
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 print:hidden">
@@ -29,6 +31,11 @@ export default function OrganizerNav({
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm">
+          {ratingPoints != null && (
+            <Link href="/organizador/perfil" title="Seu rating" className="text-xs font-medium text-primary-700 dark:text-primary-300">
+              ⭐ {ratingPoints} pts
+            </Link>
+          )}
           <span className="text-gray-600 dark:text-gray-400">{userName}</span>
           <Link
             href="/eventos"

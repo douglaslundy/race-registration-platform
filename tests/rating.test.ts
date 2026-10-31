@@ -53,7 +53,7 @@ describe("syncRating", () => {
     expect(Object.fromEntries(data.data.map((d: any) => [d.key, d.points]))).toEqual({
       "profile:required": 40, "reg:r1": 10, "reg:r2": 10, "result:r1": 20,
     });
-    expect(dbMock.user.update).toHaveBeenCalledWith({ where: { id: "u1" }, data: { ratingPoints: 100 } });
+    expect(dbMock.user.update).toHaveBeenCalledWith({ where: { id: "u1" }, data: { ratingPoints: 100, ratingPercent: 44 } });
   });
 
   it("organizador: pontua evento concluído", async () => {

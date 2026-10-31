@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/rbac";
 import { organizerNavItems } from "@/lib/auth/organizer-access";
 import { adminAssistantItems } from "@/lib/auth/admin-access";
+import { db } from "@/lib/db";
 import { getAppName } from "@/lib/settings";
 import { getMissingAthleteProfileFields } from "@/lib/auth/profile-completion";
 import { getProfileItems } from "@/lib/rating";
@@ -20,6 +21,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     pendingRating = (await getProfileItems(session.user.id, "ATHLETE")).filter((i) => !i.done);
   }
 
+  const rated = session.user.role === "ATHLETE" || session.user.role === "ORGANIZER";
+  const ratingUser = rated
+    ? await db.user.findUnique({ where: { id: session.user.id }, select: { ratingPoints: true, avatarUrl: true } })
+    : null;
+
   // ASSISTANT não diz sozinho para onde vai — resolve o escopo pra oferecer o link certo da área
   // administrativa (era invisível pra ele, deixando quem só entrega kit sem caminho até a página).
   let staffArea: string | null = null;
@@ -36,7 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <PageViewLogger />
-      <DashboardNav userName={session.user.name} userRole={session.user.role} appName={appName} staffArea={staffArea} staffLabel={staffLabel} />
+      <DashboardNav userName={session.user.name} userRole={session.user.role} appName={appName} staffArea={staffArea} staffLabel={staffLabel} ratingPoints={ratingUser?.ratingPoints ?? null} avatarUrl={ratingUser?.avatarUrl ?? null} />
       {pendingRating.length > 0 && <ProfileCompletionNudge pending={pendingRating} />}
       <div className="max-w-5xl mx-auto px-4 py-8">{children}</div>
     </div>

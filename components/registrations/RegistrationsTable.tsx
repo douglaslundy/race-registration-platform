@@ -35,6 +35,8 @@ export interface RegistrationRow {
     id: string;
     name: string;
     email: string;
+    ratingPoints?: number;
+    ratingPercent?: number;
     athleteProfile: {
       cpf: string | null;
       birthDate: Date | null;
@@ -108,6 +110,11 @@ export default function RegistrationsTable({
                   <p className="font-medium truncate" title={r.participantName}>{r.participantName}</p>
                   {r.bibNumber && <p className="text-gray-500">Peito nº {r.bibNumber}</p>}
                   <p className="text-gray-500 truncate" title={r.participantEmail}>{r.participantEmail}</p>
+                  {r.athlete.ratingPercent != null && (
+                    <p className="text-gray-500" title="Rating da conta e completude do cadastro">
+                      ⭐ {r.athlete.ratingPoints ?? 0} pts · {r.athlete.ratingPercent}%
+                    </p>
+                  )}
                   <AthleteDetailsModal
                     athleteName={r.athlete.name}
                     athleteEmail={r.athlete.email}

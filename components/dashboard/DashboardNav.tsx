@@ -18,6 +18,8 @@ export default function DashboardNav({
   appName,
   staffArea,
   staffLabel,
+  ratingPoints,
+  avatarUrl,
 }: {
   userName: string;
   userRole: string;
@@ -26,6 +28,9 @@ export default function DashboardNav({
    * ASSISTANT, cujo papel não diz sozinho para onde ir). null para atleta puro. */
   staffArea?: string | null;
   staffLabel?: string;
+  /** Rating do usuário (atleta/organizador); null para os demais papéis. */
+  ratingPoints?: number | null;
+  avatarUrl?: string | null;
 }) {
   const areaHref =
     staffArea ?? (userRole === "ADMIN" ? "/admin" : userRole === "ORGANIZER" ? "/organizador" : null);
@@ -58,6 +63,19 @@ export default function DashboardNav({
             </div>
           </div>
           <div className="flex items-center gap-2 text-sm shrink-0">
+            {ratingPoints != null && (
+              <Link
+                href={userRole === "ORGANIZER" ? "/organizador/perfil" : "/dashboard/perfil"}
+                title="Seu rating"
+                className="flex items-center gap-1.5 text-xs font-medium text-primary-700 dark:text-primary-300"
+              >
+                {avatarUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+                )}
+                ⭐ {ratingPoints} pts
+              </Link>
+            )}
             <span className="text-gray-500 dark:text-gray-400 hidden sm:block">{userName}</span>
             {areaHref && (
               <Link
