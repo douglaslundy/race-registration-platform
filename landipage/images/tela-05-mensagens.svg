@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 780" font-family="Inter, Arial, sans-serif">
+  <rect width="1280" height="780" rx="16" fill="#ffffff"/>
+  <rect width="1280" height="40" rx="16" fill="#e5e7eb"/>
+  <circle cx="24" cy="20" r="6" fill="#f87171"/><circle cx="46" cy="20" r="6" fill="#fbbf24"/><circle cx="68" cy="20" r="6" fill="#34d399"/>
+  <rect x="460" y="10" width="360" height="20" rx="10" fill="#ffffff"/>
+  <text x="640" y="24" font-size="12" fill="#6b7280" text-anchor="middle">corridasapp.com.br/organizador/mensagens</text>
+
+  <rect x="0" y="40" width="1280" height="56" fill="#ffffff"/>
+  <rect x="0" y="95" width="1280" height="1" fill="#e5e7eb"/>
+  <text x="32" y="74" font-size="17" font-weight="700" fill="#1d4ed8">Corridas App</text>
+  <text x="200" y="72" font-size="13" fill="#6b7280">Dashboard</text>
+  <text x="292" y="72" font-size="13" fill="#6b7280">Meus Eventos</text>
+  <text x="1000" y="72" font-size="13" fill="#111827" font-weight="600">Mensagens</text>
+
+  <text x="40" y="140" font-size="22" font-weight="700" fill="#111827">Mensagens</text>
+  <text x="40" y="162" font-size="12" fill="#6b7280">248 mensagens encontradas</text>
+
+  <!-- filter form -->
+  <g transform="translate(40,182)">
+    <rect width="1200" height="76" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="20" y="22" font-size="10" fill="#6b7280">BUSCAR</text>
+    <rect x="20" y="28" width="220" height="28" rx="6" fill="#f9fafb" stroke="#d1d5db"/>
+    <text x="30" y="46" font-size="11" fill="#9ca3af">Nome, e-mail ou telefone</text>
+    <text x="260" y="22" font-size="10" fill="#6b7280">CANAL</text>
+    <rect x="260" y="28" width="120" height="28" rx="6" fill="#f9fafb" stroke="#d1d5db"/>
+    <text x="270" y="46" font-size="11" fill="#374151">Todos</text>
+    <text x="400" y="22" font-size="10" fill="#6b7280">TIPO</text>
+    <rect x="400" y="28" width="160" height="28" rx="6" fill="#f9fafb" stroke="#d1d5db"/>
+    <text x="410" y="46" font-size="11" fill="#374151">Todos</text>
+    <text x="580" y="22" font-size="10" fill="#6b7280">STATUS</text>
+    <rect x="580" y="28" width="120" height="28" rx="6" fill="#f9fafb" stroke="#d1d5db"/>
+    <text x="590" y="46" font-size="11" fill="#374151">Todos</text>
+    <text x="720" y="22" font-size="10" fill="#6b7280">DE</text>
+    <rect x="720" y="28" width="110" height="28" rx="6" fill="#f9fafb" stroke="#d1d5db"/>
+    <text x="850" y="22" font-size="10" fill="#6b7280">ATÉ</text>
+    <rect x="850" y="28" width="110" height="28" rx="6" fill="#f9fafb" stroke="#d1d5db"/>
+    <rect x="980" y="28" width="80" height="28" rx="6" fill="#2563eb"/>
+    <text x="1020" y="46" font-size="11" fill="#ffffff" text-anchor="middle">Filtrar</text>
+    <rect x="1070" y="28" width="80" height="28" rx="6" fill="#ffffff" stroke="#d1d5db"/>
+    <text x="1110" y="46" font-size="11" fill="#374151" text-anchor="middle">Limpar</text>
+  </g>
+
+  <!-- MessageLogList table -->
+  <g transform="translate(40,282)">
+    <rect width="1200" height="400" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="20" y="28" font-size="10" font-weight="700" fill="#6b7280">STATUS</text>
+    <text x="90" y="28" font-size="10" font-weight="700" fill="#6b7280">CANAL</text>
+    <text x="220" y="28" font-size="10" font-weight="700" fill="#6b7280">TIPO</text>
+    <text x="380" y="28" font-size="10" font-weight="700" fill="#6b7280">DESTINATÁRIO</text>
+    <text x="620" y="28" font-size="10" font-weight="700" fill="#6b7280">ASSUNTO</text>
+    <text x="980" y="28" font-size="10" font-weight="700" fill="#6b7280">QUANDO</text>
+    <line x1="16" y1="38" x2="1184" y2="38" stroke="#e5e7eb"/>
+
+    <g font-size="12">
+      <g transform="translate(0,62)">
+        <text x="20" y="0" font-weight="700" fill="#3b82f6">✓✓</text>
+        <rect x="90" y="-16" width="86" height="22" rx="5" fill="#dcfce7"/>
+        <text x="133" y="0" font-size="10" fill="#166534" text-anchor="middle">💬 WhatsApp</text>
+        <text x="220" y="0" font-size="11" fill="#6b7280">Pagamento confirmado</text>
+        <text x="380" y="-4" fill="#111827">Marina Silva</text>
+        <text x="380" y="10" font-size="10" fill="#9ca3af">+55 11 98888-0001</text>
+        <text x="620" y="0" font-size="11" fill="#374151">Pagamento confirmado — Corrida da Serra 10K</text>
+        <text x="980" y="0" font-size="10" fill="#9ca3af">há 2 minutos</text>
+        <line x1="0" y1="22" x2="1160" y2="22" stroke="#f3f4f6"/>
+      </g>
+      <g transform="translate(0,114)">
+        <text x="20" y="0" font-weight="700" fill="#9ca3af">✓</text>
+        <rect x="90" y="-16" width="70" height="22" rx="5" fill="#dbeafe"/>
+        <text x="125" y="0" font-size="10" fill="#1d4ed8" text-anchor="middle">📧 E-mail</text>
+        <text x="220" y="0" font-size="11" fill="#6b7280">Lembrete de kit</text>
+        <text x="380" y="-4" fill="#111827">Rafael Costa</text>
+        <text x="380" y="10" font-size="10" fill="#9ca3af">rafael.costa@gmail.com</text>
+        <text x="620" y="0" font-size="11" fill="#374151">Retirada de kit é amanhã — Trail do Vale Verde</text>
+        <text x="980" y="0" font-size="10" fill="#9ca3af">há 18 minutos</text>
+        <line x1="0" y1="22" x2="1160" y2="22" stroke="#f3f4f6"/>
+      </g>
+      <g transform="translate(0,166)">
+        <text x="20" y="0" font-weight="700" fill="#ef4444">✕</text>
+        <rect x="90" y="-16" width="86" height="22" rx="5" fill="#dcfce7"/>
+        <text x="133" y="0" font-size="10" fill="#166534" text-anchor="middle">💬 WhatsApp</text>
+        <text x="220" y="0" font-size="11" fill="#6b7280">Carrinho abandonado</text>
+        <text x="380" y="-4" fill="#111827">João Pereira</text>
+        <text x="380" y="10" font-size="10" fill="#9ca3af">+55 21 97777-0002</text>
+        <text x="620" y="0" font-size="11" fill="#374151">Falha no envio — número inválido</text>
+        <text x="980" y="0" font-size="10" fill="#9ca3af">há 40 minutos</text>
+        <line x1="0" y1="22" x2="1160" y2="22" stroke="#f3f4f6"/>
+      </g>
+      <g transform="translate(0,218)">
+        <text x="20" y="0" font-weight="700" fill="#9ca3af">✓✓</text>
+        <rect x="90" y="-16" width="70" height="22" rx="5" fill="#dbeafe"/>
+        <text x="125" y="0" font-size="10" fill="#1d4ed8" text-anchor="middle">📧 E-mail</text>
+        <text x="220" y="0" font-size="11" fill="#6b7280">Pedido vencendo</text>
+        <text x="380" y="-4" fill="#111827">Ana Beatriz</text>
+        <text x="380" y="10" font-size="10" fill="#9ca3af">ana.beatriz@yahoo.com</text>
+        <text x="620" y="0" font-size="11" fill="#374151">Seu pedido vence em 2 horas — finalize o pagamento</text>
+        <text x="980" y="0" font-size="10" fill="#9ca3af">há 1 hora</text>
+        <line x1="0" y1="22" x2="1160" y2="22" stroke="#f3f4f6"/>
+      </g>
+      <g transform="translate(0,270)">
+        <text x="20" y="0" font-weight="700" fill="#3b82f6">✓✓</text>
+        <rect x="90" y="-16" width="86" height="22" rx="5" fill="#dcfce7"/>
+        <text x="133" y="0" font-size="10" fill="#166534" text-anchor="middle">💬 WhatsApp</text>
+        <text x="220" y="0" font-size="11" fill="#6b7280">Vagas se esgotando</text>
+        <text x="380" y="-4" fill="#111827">Organização Esportiva Exemplo</text>
+        <text x="380" y="10" font-size="10" fill="#9ca3af">+55 11 99999-0000</text>
+        <text x="620" y="0" font-size="11" fill="#374151">Lote 3 do Desafio MTB Serrano já vendeu 90%</text>
+        <text x="980" y="0" font-size="10" fill="#9ca3af">há 3 horas</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(40,700)">
+    <rect x="0" width="34" height="30" rx="6" fill="#2563eb"/>
+    <text x="17" y="20" font-size="11" fill="#ffffff" text-anchor="middle">1</text>
+    <rect x="44" width="34" height="30" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="61" y="20" font-size="11" fill="#374151" text-anchor="middle">2</text>
+    <rect x="88" width="34" height="30" rx="6" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="105" y="20" font-size="11" fill="#374151" text-anchor="middle">3</text>
+  </g>
+</svg>

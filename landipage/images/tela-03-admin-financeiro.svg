@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 900" font-family="Inter, Arial, sans-serif">
+  <rect width="1280" height="900" rx="16" fill="#f9fafb"/>
+  <rect width="1280" height="40" rx="16" fill="#e5e7eb"/>
+  <circle cx="24" cy="20" r="6" fill="#f87171"/><circle cx="46" cy="20" r="6" fill="#fbbf24"/><circle cx="68" cy="20" r="6" fill="#34d399"/>
+  <rect x="490" y="10" width="300" height="20" rx="10" fill="#ffffff"/>
+  <text x="640" y="24" font-size="12" fill="#6b7280" text-anchor="middle">corridasapp.com.br/admin</text>
+
+  <rect x="0" y="40" width="1280" height="48" fill="#111827"/>
+  <text x="32" y="70" font-size="13" font-weight="700" fill="#facc15">Dashboard</text>
+  <text x="130" y="70" font-size="13" fill="#d1d5db">Eventos</text>
+  <text x="208" y="70" font-size="13" fill="#d1d5db">Usuários</text>
+  <text x="290" y="70" font-size="13" fill="#d1d5db">Pagamentos</text>
+  <text x="392" y="70" font-size="13" fill="#d1d5db">Repasses</text>
+  <text x="472" y="70" font-size="13" fill="#d1d5db">Relatório</text>
+  <text x="552" y="70" font-size="13" fill="#d1d5db">Conciliação</text>
+  <text x="652" y="70" font-size="13" fill="#d1d5db">Auditoria</text>
+
+  <text x="40" y="122" font-size="20" font-weight="700" fill="#111827">Dashboard</text>
+
+  <!-- date filter -->
+  <g transform="translate(40,140)" font-size="11" fill="#374151">
+    <text x="0" y="20">De</text>
+    <rect x="22" y="4" width="120" height="26" rx="6" fill="#ffffff" stroke="#d1d5db"/>
+    <text x="30" y="20">29/08/2026</text>
+    <text x="156" y="20">Até</text>
+    <rect x="182" y="4" width="120" height="26" rx="6" fill="#ffffff" stroke="#d1d5db"/>
+    <text x="190" y="20">27/09/2026</text>
+    <text x="330" y="20">Evento</text>
+    <rect x="380" y="4" width="200" height="26" rx="6" fill="#ffffff" stroke="#d1d5db"/>
+    <text x="388" y="20">Todos os eventos</text>
+    <rect x="596" y="4" width="70" height="26" rx="6" fill="#2563eb"/>
+    <text x="631" y="21" fill="#ffffff" text-anchor="middle">Filtrar</text>
+  </g>
+
+  <!-- 4 KPI cards -->
+  <g transform="translate(40,182)">
+    <rect width="284" height="86" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="142" y="36" font-size="26" font-weight="700" fill="#2563eb" text-anchor="middle">318</text>
+    <text x="142" y="58" font-size="11" fill="#6b7280" text-anchor="middle">Novos usuários</text>
+  </g>
+  <g transform="translate(340,182)">
+    <rect width="284" height="86" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="142" y="36" font-size="26" font-weight="700" fill="#1d4ed8" text-anchor="middle">9</text>
+    <text x="142" y="58" font-size="11" fill="#6b7280" text-anchor="middle">Novos eventos</text>
+  </g>
+  <g transform="translate(640,182)">
+    <rect width="284" height="86" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="142" y="36" font-size="26" font-weight="700" fill="#16a34a" text-anchor="middle">1.396</text>
+    <text x="142" y="58" font-size="11" fill="#6b7280" text-anchor="middle">Pedidos pagos no período</text>
+  </g>
+  <g transform="translate(940,182)">
+    <rect width="280" height="86" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="140" y="36" font-size="24" font-weight="700" fill="#7c3aed" text-anchor="middle">R$ 129.888</text>
+    <text x="140" y="58" font-size="11" fill="#6b7280" text-anchor="middle">Receita no período</text>
+  </g>
+
+  <!-- 3 KPI cards -->
+  <g transform="translate(40,282)">
+    <rect width="384" height="72" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="192" y="30" font-size="22" font-weight="700" fill="#16a34a" text-anchor="middle">1.212</text>
+    <text x="192" y="50" font-size="11" fill="#6b7280" text-anchor="middle">Inscrições efetivadas</text>
+  </g>
+  <g transform="translate(440,282)">
+    <rect width="384" height="72" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="192" y="30" font-size="22" font-weight="700" fill="#ca8a04" text-anchor="middle">142</text>
+    <text x="192" y="50" font-size="11" fill="#6b7280" text-anchor="middle">Inscrições pendentes</text>
+  </g>
+  <g transform="translate(840,282)">
+    <rect width="384" height="72" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="192" y="30" font-size="22" font-weight="700" fill="#dc2626" text-anchor="middle">42</text>
+    <text x="192" y="50" font-size="11" fill="#6b7280" text-anchor="middle">Inscrições canceladas</text>
+  </g>
+
+  <!-- pending events banner -->
+  <g transform="translate(40,370)">
+    <rect width="1200" height="48" rx="10" fill="#fefce8" stroke="#fde68a"/>
+    <text x="20" y="30" font-size="13" fill="#854d0e" font-weight="600">3 eventos aguardando aprovação</text>
+    <rect x="1080" y="10" width="100" height="28" rx="6" fill="#2563eb"/>
+    <text x="1130" y="29" font-size="11" fill="#ffffff" text-anchor="middle">Revisar</text>
+  </g>
+
+  <!-- line charts (LineChart.tsx / recharts) -->
+  <g transform="translate(40,434)">
+    <rect width="1200" height="200" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="20" y="28" font-size="12" font-weight="700" fill="#111827">Novos cadastros</text>
+    <g stroke="#e5e7eb"><line x1="20" y1="170" x2="1180" y2="170"/><line x1="20" y1="130" x2="1180" y2="130"/><line x1="20" y1="90" x2="1180" y2="90"/><line x1="20" y1="50" x2="1180" y2="50"/></g>
+    <polyline points="20,140 140,150 260,120 380,135 500,100 620,110 740,80 860,95 980,60 1100,75 1180,50" fill="none" stroke="#7c3aed" stroke-width="2.5"/>
+  </g>
+  <g transform="translate(40,650)">
+    <rect width="1200" height="200" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="20" y="28" font-size="12" font-weight="700" fill="#111827">Inscrições</text>
+    <g stroke="#e5e7eb"><line x1="20" y1="170" x2="1180" y2="170"/><line x1="20" y1="130" x2="1180" y2="130"/><line x1="20" y1="90" x2="1180" y2="90"/><line x1="20" y1="50" x2="1180" y2="50"/></g>
+    <polyline points="20,155 140,140 260,145 380,110 500,120 620,85 740,95 860,60 980,70 1100,45 1180,55" fill="none" stroke="#0ea5e9" stroke-width="2.5"/>
+  </g>
+</svg>

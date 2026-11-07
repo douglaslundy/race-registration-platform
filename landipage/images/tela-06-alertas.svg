@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 900" font-family="Inter, Arial, sans-serif">
+  <rect width="1280" height="900" rx="16" fill="#f9fafb"/>
+  <rect width="1280" height="40" rx="16" fill="#e5e7eb"/>
+  <circle cx="24" cy="20" r="6" fill="#f87171"/><circle cx="46" cy="20" r="6" fill="#fbbf24"/><circle cx="68" cy="20" r="6" fill="#34d399"/>
+  <rect x="470" y="10" width="340" height="20" rx="10" fill="#ffffff"/>
+  <text x="640" y="24" font-size="12" fill="#6b7280" text-anchor="middle">corridasapp.com.br/admin/alertas</text>
+
+  <rect x="0" y="40" width="1280" height="48" fill="#111827"/>
+  <text x="32" y="70" font-size="13" fill="#d1d5db">Dashboard</text>
+  <text x="560" y="70" font-size="13" fill="#d1d5db">WhatsApp</text>
+  <text x="650" y="70" font-size="13" fill="#facc15" font-weight="700">Alertas</text>
+  <text x="730" y="70" font-size="13" fill="#d1d5db">Mensagens</text>
+  <text x="820" y="70" font-size="13" fill="#d1d5db">Campanhas</text>
+
+  <g transform="translate(340,0)">
+    <text x="0" y="128" font-size="20" font-weight="700" fill="#111827">Alertas</text>
+    <text x="0" y="150" font-size="12" fill="#6b7280">Configure quais alertas automáticos são enviados por e-mail e/ou WhatsApp.</text>
+    <text x="0" y="166" font-size="12" fill="#6b7280">Todos vêm desligados por padrão.</text>
+
+    <!-- card 1 -->
+    <g transform="translate(0,190)">
+      <rect width="600" height="150" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#111827">Vagas se esgotando</text>
+      <text x="20" y="50" font-size="11" fill="#6b7280">Avisa o organizador quando um lote atinge o limiar de vendas configurado.</text>
+      <rect x="20" y="66" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="77" font-size="11" fill="#374151">Enviar por e-mail</text>
+      <rect x="20" y="88" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="99" font-size="11" fill="#374151">Enviar por WhatsApp</text>
+      <text x="220" y="99" font-size="11" fill="#374151">Limiar</text>
+      <rect x="260" y="88" width="50" height="20" rx="4" fill="#f9fafb" stroke="#d1d5db"/>
+      <text x="270" y="102" font-size="10" fill="#374151">90</text>
+      <text x="316" y="99" font-size="10" fill="#6b7280">% vendido</text>
+      <rect x="20" y="114" width="80" height="26" rx="6" fill="#2563eb"/>
+      <text x="60" y="131" font-size="11" fill="#ffffff" text-anchor="middle">Salvar</text>
+    </g>
+
+    <!-- card 2 -->
+    <g transform="translate(0,356)">
+      <rect width="600" height="150" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#111827">Carrinho abandonado</text>
+      <text x="20" y="50" font-size="11" fill="#6b7280">Avisa o atleta quando um pedido fica pendente por mais tempo que o limite.</text>
+      <rect x="20" y="66" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="77" font-size="11" fill="#374151">Enviar por e-mail</text>
+      <rect x="20" y="88" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="99" font-size="11" fill="#374151">Enviar por WhatsApp</text>
+      <text x="220" y="99" font-size="11" fill="#374151">Após</text>
+      <rect x="252" y="88" width="50" height="20" rx="4" fill="#f9fafb" stroke="#d1d5db"/>
+      <text x="262" y="102" font-size="10" fill="#374151">45</text>
+      <text x="308" y="99" font-size="10" fill="#6b7280">minutos pendente</text>
+      <rect x="20" y="114" width="80" height="26" rx="6" fill="#2563eb"/>
+      <text x="60" y="131" font-size="11" fill="#ffffff" text-anchor="middle">Salvar</text>
+    </g>
+
+    <!-- card 3 -->
+    <g transform="translate(0,522)">
+      <rect width="600" height="128" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#111827">Erro de pagamento</text>
+      <text x="20" y="50" font-size="11" fill="#6b7280">Avisa o atleta quando um pagamento é recusado ou expira.</text>
+      <rect x="20" y="66" width="14" height="14" rx="3" fill="#e5e7eb"/>
+      <text x="42" y="77" font-size="11" fill="#374151">Enviar por e-mail</text>
+      <rect x="20" y="88" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="99" font-size="11" fill="#374151">Enviar por WhatsApp</text>
+    </g>
+
+    <!-- card 4 -->
+    <g transform="translate(650,190)">
+      <rect width="510" height="150" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#111827">Divergência de conciliação</text>
+      <text x="20" y="50" font-size="11" fill="#6b7280">Avisa todo admin quando a conciliação encontra pendências antigas.</text>
+      <rect x="20" y="66" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="77" font-size="11" fill="#374151">Enviar por e-mail</text>
+      <rect x="20" y="88" width="14" height="14" rx="3" fill="#e5e7eb"/>
+      <text x="42" y="99" font-size="11" fill="#374151">Enviar por WhatsApp</text>
+      <text x="220" y="99" font-size="11" fill="#374151">Após</text>
+      <rect x="252" y="88" width="50" height="20" rx="4" fill="#f9fafb" stroke="#d1d5db"/>
+      <text x="262" y="102" font-size="10" fill="#374151">120</text>
+      <text x="308" y="99" font-size="10" fill="#6b7280">minutos pendente</text>
+      <rect x="20" y="114" width="80" height="26" rx="6" fill="#2563eb"/>
+      <text x="60" y="131" font-size="11" fill="#ffffff" text-anchor="middle">Salvar</text>
+    </g>
+
+    <!-- card 5 -->
+    <g transform="translate(650,356)">
+      <rect width="510" height="128" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#111827">Solicitação de cancelamento</text>
+      <text x="20" y="50" font-size="11" fill="#6b7280">Avisa admins e organizador quando um atleta pede cancelamento.</text>
+      <rect x="20" y="66" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="77" font-size="11" fill="#374151">Enviar por e-mail</text>
+      <rect x="20" y="88" width="14" height="14" rx="3" fill="#2563eb"/>
+      <text x="42" y="99" font-size="11" fill="#374151">Enviar por WhatsApp</text>
+    </g>
+
+    <!-- templates section -->
+    <g transform="translate(0,674)">
+      <text x="0" y="20" font-size="15" font-weight="700" fill="#111827">Templates de mensagem</text>
+      <rect width="1160" height="180" y="34" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+      <g font-size="11">
+        <text x="20" y="64" font-weight="600" fill="#111827">Confirmação de pagamento</text>
+        <text x="230" y="64" fill="#6b7280">E-mail + WhatsApp</text>
+        <rect x="380" y="50" width="56" height="20" rx="4" fill="#dcfce7"/>
+        <text x="408" y="64" font-size="10" fill="#166534" text-anchor="middle">Ativo</text>
+        <text x="1080" y="64" fill="#2563eb">Editar</text>
+        <line x1="20" y1="82" x2="1140" y2="82" stroke="#f3f4f6"/>
+
+        <text x="20" y="106" font-weight="600" fill="#111827">Lembrete de retirada de kit</text>
+        <text x="230" y="106" fill="#6b7280">WhatsApp</text>
+        <rect x="380" y="92" width="56" height="20" rx="4" fill="#dcfce7"/>
+        <text x="408" y="106" font-size="10" fill="#166534" text-anchor="middle">Ativo</text>
+        <text x="1080" y="106" fill="#2563eb">Editar</text>
+        <line x1="20" y1="124" x2="1140" y2="124" stroke="#f3f4f6"/>
+
+        <text x="20" y="148" font-weight="600" fill="#111827">Pedido a vencer</text>
+        <text x="230" y="148" fill="#6b7280">E-mail + WhatsApp</text>
+        <rect x="380" y="134" width="76" height="20" rx="4" fill="#f3f4f6"/>
+        <text x="418" y="148" font-size="10" fill="#374151" text-anchor="middle">Inativo</text>
+        <text x="1080" y="148" fill="#2563eb">Editar</text>
+      </g>
+    </g>
+  </g>
+</svg>
