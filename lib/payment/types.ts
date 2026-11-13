@@ -8,6 +8,10 @@ export interface CreatePaymentInput {
   buyer: {
     name: string;
     email: string;
+    // Dados extras para o antifraude do gateway (additional_info do Mercado Pago) — todos opcionais.
+    phone?: string | null;
+    registeredAt?: Date;
+    address?: { zipCode?: string | null; street?: string | null; number?: string | null };
   };
   description: string;
   cpf?: string;
@@ -26,6 +30,35 @@ export interface CreatePaymentResult {
   checkoutUrl?: string; // for redirect-based flows (e.g. MP Checkout Pro)
   expiresAt?: Date;
   gatewayFeeAmount?: number; // centavos - preenchido quando o gateway ja aprova e informa a comissao na criacao
+  statusDetail?: string; // motivo da recusa informado pelo gateway (ex: MP `cc_rejected_high_risk`)
+}
+
+/** Mensagem ao comprador conforme o motivo da recusa do cartão (status_detail do Mercado Pago). */
+export function cardDeclineMessage(statusDetail?: string): string {
+  switch (statusDetail) {
+    case "cc_rejected_high_risk":
+    case "cc_rejected_blacklist":
+      return "Pagamento recusado pela análise de segurança do Mercado Pago. Não repita a tentativa com este cartão: pague com PIX ou use outro cartão.";
+    case "cc_rejected_insufficient_amount":
+      return "Cartão sem limite disponível. Use outro cartão ou pague com PIX.";
+    case "cc_rejected_bad_filled_security_code":
+      return "Código de segurança (CVV) incorreto. Confira e tente novamente.";
+    case "cc_rejected_bad_filled_date":
+      return "Data de validade incorreta. Confira e tente novamente.";
+    case "cc_rejected_bad_filled_card_number":
+    case "cc_rejected_bad_filled_other":
+      return "Dados do cartão incorretos. Confira e tente novamente.";
+    case "cc_rejected_call_for_authorize":
+      return "O banco pede que você autorize esta compra. Ligue para o banco do cartão e tente de novo, ou pague com PIX.";
+    case "cc_rejected_card_disabled":
+      return "Cartão desabilitado. Ative-o com o banco ou use outro meio de pagamento.";
+    case "cc_rejected_duplicated_payment":
+      return "Já existe um pagamento igual recente neste cartão. Aguarde alguns minutos ou pague com PIX.";
+    case "cc_rejected_max_attempts":
+      return "Limite de tentativas atingido neste cartão. Use outro cartão ou pague com PIX.";
+    default:
+      return "Pagamento recusado pela operadora do cartão. Verifique os dados, tente outro cartão ou pague com PIX.";
+  }
 }
 
 export interface PaymentWebhookPayload {

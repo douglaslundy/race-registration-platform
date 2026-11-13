@@ -1,5 +1,19 @@
 # Progresso do Projeto
 
+## Última atualização (2026-11-13 — Recusa de cartão `cc_rejected_high_risk` + PDF de inscritos — NÃO commitado/deployado)
+- Diagnóstico: as falhas de 11/11 (3 tentativas de 1 comprador, que depois pagou por PIX) foram recusas do antifraude do MP (`cc_rejected_high_risk`), não bug. O pagamento ia sem `additional_info` e o `status_detail` não era gravado.
+- `lib/payment/mercadopago.ts`: `buildAdditionalInfo` (item `tickets`, nome, telefone, endereço, data de cadastro) enviado no pagamento com cartão; recusa loga e devolve `statusDetail`.
+- `lib/payment/types.ts`: `buyer.phone/registeredAt/address`, `CreatePaymentResult.statusDetail`, `cardDeclineMessage` (mensagem por motivo, sugere PIX em alto risco).
+- `app/api/checkout/route.ts`: passa os dados do comprador, grava `rawPayload.status_detail` e responde com a mensagem específica.
+- Decisão: `issuer_id` não enviado — o MP já o deduz do token (veio preenchido nas respostas). `additional_info` só no checkout de inscrição com cartão (não em PIX, anúncios).
+- PDF de inscritos: botão "Imprimir PDF" (admin e organizador) abre o PDF da API (`buildExportUrl`); `lib/registrations/export-pdf.tsx` sem Lote/Valor pago, com "Percurso / Categoria" após Camiseta.
+- Testes: `payment-mercadopago-create`, `checkout-route`, `checkout-payment-account` verdes; `tsc` limpo.
+
+### PRÓXIMA TAREFA
+Deploy (pedir confirmação) e conferir o próximo pagamento com cartão: log `[mp] cartão recusado ... status_detail=` e `additional_info` aceito pelo MP. Depois: 3DS 2.0 (`three_d_secure_mode: "optional"` + desafio no `MPCardForm`), ainda não feito.
+
+---
+
 ## Última atualização (2026-10-31 — Sistema de rating — DEPLOYADO, commit 1746850)
 - `lib/rating.ts`: pontos únicos por conquista (`RatingEvent @@unique[userId,key]`), nunca diminuem. Atleta: obrigatórios 40, foto 20, emergência 10, gênero/camiseta/médico/equipe 5 cada, +10 inscrição CONFIRMED, +20 resultado (RaceResult por evento+bib). Organizador: foto 20, CNPJ 15, empresa/tel/bio 10, site 5, +30 evento COMPLETED.
 - UI: `ProfileRatingCard` (dashboard, Meus Dados, perfil organizador, upload de avatar via `/api/upload` purpose `avatar`), modal `ProfileCompletionNudge` com pontos, coluna Rating em `/admin/usuarios`. Cron `POST /api/cron/rating-sync` (diário 04:00 na VPS; backfill rodado: 451 usuários).

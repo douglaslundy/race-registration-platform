@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth/rbac";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import RegistrationsExportButtons from "@/components/registrations/RegistrationsExportButtons";
+import RegistrationsExportButtons, { buildExportUrl } from "@/components/registrations/RegistrationsExportButtons";
 import type { Metadata } from "next";
 import AutoPrint from "@/components/ui/AutoPrint";
 import { buildRegistrationOrderBy, buildRegistrationWhere } from "@/lib/organizer/registrations";
@@ -193,7 +193,7 @@ export default async function AdminInscritosPage({
   const activeButtonClass = "text-sm px-3 py-1.5 rounded-lg border border-primary-500 text-primary-600";
   const inactiveButtonClass = "text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700";
   const filteredUrl = buildInscritosUrl(id, { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo, sort: sortConfig.normalizedSort, dir: sortConfig.normalizedDir });
-  const printUrl = `${filteredUrl}${filteredUrl.includes("?") ? "&" : "?"}print=1`;
+  const printUrl = buildExportUrl(id, "pdf", { status, q, categoryId, routeId, ticketBatchId, couponId, paymentMethod, dateFrom, dateTo });
 
   return (
     <div className="space-y-6">

@@ -33,6 +33,26 @@ export function extractGatewayFeeAmount(res: unknown): number | undefined {
   return totalBRL > 0 ? Math.round(totalBRL * 100) : undefined;
 }
 
+/** `additional_info` do pagamento: quanto mais dados do comprador/produto, menos recusa do antifraude
+ * do MP (`cc_rejected_high_risk`). Só entram campos que temos; nada é inventado. */
+export function buildAdditionalInfo(input: CreatePaymentInput, amountBRL: number, firstName: string, lastName: string) {
+  const { phone, registeredAt, address } = input.buyer;
+  const digits = (phone ?? "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  const zip = (address?.zipCode ?? "").replace(/\D/g, "");
+  return {
+    items: [{ id: input.orderId, title: input.description, description: input.description, category_id: "tickets", quantity: 1, unit_price: amountBRL }],
+    payer: {
+      first_name: firstName,
+      last_name: lastName,
+      ...(digits.length >= 10 ? { phone: { area_code: digits.slice(0, 2), number: digits.slice(2) } } : {}),
+      ...(zip.length === 8
+        ? { address: { zip_code: zip, ...(address?.street ? { street_name: address.street } : {}), ...(address?.number ? { street_number: address.number } : {}) } }
+        : {}),
+      ...(registeredAt ? { registration_date: registeredAt.toISOString() } : {}),
+    },
+  };
+}
+
 const SEARCH_PAGE_SIZE = 100;
 const SEARCH_MAX_PAGES = 20;
 
@@ -219,6 +239,7 @@ export class MercadoPagoProvider implements PaymentProvider {
             payer: payerCC,
             external_reference: input.orderId,
             statement_descriptor: "CORRIDAS APP",
+            additional_info: buildAdditionalInfo(input, amountBRL, firstName, lastName),
           },
           requestOptions: { idempotencyKey: i === 0 ? input.idempotencyKey : `${input.idempotencyKey}-m${i}` },
         });
@@ -240,7 +261,8 @@ export class MercadoPagoProvider implements PaymentProvider {
       };
     }
     if (resCC.status === "rejected") {
-      return { providerPaymentId: String(resCC.id), status: "CANCELLED" };
+      console.warn("[mp] cartão recusado id=%s status_detail=%s", resCC.id, resCC.status_detail ?? "-");
+      return { providerPaymentId: String(resCC.id), status: "CANCELLED", statusDetail: resCC.status_detail ?? undefined };
     }
     return {
       providerPaymentId: String(resCC.id),

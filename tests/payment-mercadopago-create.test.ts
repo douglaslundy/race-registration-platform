@@ -83,4 +83,33 @@ describe("MercadoPagoProvider.createPayment (cartão)", () => {
     expect(result.status).toBe("PENDING");
     expect(result.expiresAt).toBeInstanceOf(Date);
   });
+
+  it("recusa devolve o status_detail e o pagamento leva additional_info para o antifraude", async () => {
+    createMock.mockResolvedValueOnce({ id: 300, status: "rejected", status_detail: "cc_rejected_high_risk" });
+    const result = await new MercadoPagoProvider().createPayment({
+      ...baseInput,
+      buyer: {
+        ...baseInput.buyer,
+        phone: "+55 (35) 99999-1234",
+        registeredAt: new Date("2026-01-02T03:04:05.000Z"),
+        address: { zipCode: "37900-000", street: "Rua A", number: "10" },
+      },
+    });
+    expect(result).toMatchObject({ status: "CANCELLED", statusDetail: "cc_rejected_high_risk" });
+    const info = createMock.mock.calls[0][0].body.additional_info;
+    expect(info.items[0]).toMatchObject({ id: "order-1", category_id: "tickets", quantity: 1, unit_price: 100 });
+    expect(info.payer).toEqual({
+      first_name: "Ana",
+      last_name: "Silva",
+      phone: { area_code: "35", number: "999991234" },
+      address: { zip_code: "37900000", street_name: "Rua A", street_number: "10" },
+      registration_date: "2026-01-02T03:04:05.000Z",
+    });
+  });
+
+  it("additional_info omite telefone/endereço ausentes ou inválidos", async () => {
+    createMock.mockResolvedValueOnce({ id: 301, status: "approved" });
+    await new MercadoPagoProvider().createPayment({ ...baseInput, buyer: { ...baseInput.buyer, phone: "123" } });
+    expect(createMock.mock.calls[0][0].body.additional_info.payer).toEqual({ first_name: "Ana", last_name: "Silva" });
+  });
 });

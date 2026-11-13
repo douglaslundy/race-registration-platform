@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { createCheckout } from "@/lib/checkout";
 import { getPaymentProvider } from "@/lib/payment";
 import { applyGatewayStatus } from "@/lib/payment/sync-payment-status";
-import { UserFacingPaymentError, describeGatewayError } from "@/lib/payment/types";
+import { UserFacingPaymentError, describeGatewayError, cardDeclineMessage } from "@/lib/payment/types";
 import { notifyPaymentFailureStaff } from "@/lib/alerts/payment-failure-staff";
 import { resolveEventPaymentAccount, NoPaymentAccountError } from "@/lib/payment/account-resolver";
 import type { ResolvedPaymentAccount } from "@/lib/payment/account-resolver";
@@ -125,11 +125,11 @@ export async function POST(req: NextRequest) {
   const [buyer, athleteProfile] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true },
+      select: { name: true, email: true, phone: true, createdAt: true },
     }),
     db.athleteProfile.findUnique({
       where: { userId: session.user.id },
-      select: { cpf: true },
+      select: { cpf: true, phone: true, postalCode: true, street: true, number: true },
     }),
   ]);
 
@@ -153,7 +153,13 @@ export async function POST(req: NextRequest) {
       amount: checkout.totalAmount,
       method: paymentMethod,
       idempotencyKey,
-      buyer: { name: buyer!.name, email: buyer!.email },
+      buyer: {
+        name: buyer!.name,
+        email: buyer!.email,
+        phone: athleteProfile?.phone ?? buyer!.phone,
+        registeredAt: buyer!.createdAt,
+        address: { zipCode: athleteProfile?.postalCode, street: athleteProfile?.street, number: athleteProfile?.number },
+      },
       description: `Inscrição #${checkout.registrationId}`,
       cpf: effectiveCpf,
       cardToken,
@@ -208,6 +214,7 @@ export async function POST(req: NextRequest) {
           amount: checkout.totalAmount,
           idempotencyKey,
           paymentAccountId: account?.id ?? null,
+          ...(paymentResult.statusDetail ? { rawPayload: { status_detail: paymentResult.statusDetail } } : {}),
         },
       });
       await applyGatewayStatus(
@@ -223,7 +230,7 @@ export async function POST(req: NextRequest) {
     void notifyPaymentFailureStaff({ orderId: checkout.orderId, method: paymentMethod, kind: "DECLINED" });
 
     return NextResponse.json(
-      { error: "Pagamento recusado pela operadora do cartão. Verifique os dados ou tente outro cartão." },
+      { error: cardDeclineMessage(paymentResult.statusDetail) },
       { status: 402 },
     );
   }

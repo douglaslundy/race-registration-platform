@@ -12,9 +12,14 @@ const COLS = [
   { index: 7, label: "Cidade", width: "13%" },
   { index: 5, label: "Equipe", width: "12%" },
   { index: 13, label: "Camiseta", width: "8%" },
-  { index: 11, label: "Lote", width: "10%" },
-  { index: 12, label: "Valor pago", width: "10%" },
+  // Percurso (8) + Categoria (6) numa coluna só
+  { index: [8, 6], label: "Percurso / Categoria", width: "17%" },
 ] as const;
+
+function cellValue(row: string[], index: number | readonly number[]): string {
+  const parts = (typeof index === "number" ? [index] : index).map((i) => row[i]).filter(Boolean);
+  return parts.join(" / ") || "—";
+}
 
 const styles = StyleSheet.create({
   page: { padding: 28, fontSize: 8, fontFamily: "Helvetica" },
@@ -60,7 +65,7 @@ export async function generateRegistrationsPdf(params: {
             <View key={idx} style={styles.row} wrap={false}>
               {COLS.map((c) => (
                 <Text key={c.label} style={[styles.cell, { width: c.width }]}>
-                  {row[c.index] || "—"}
+                  {cellValue(row, c.index)}
                 </Text>
               ))}
             </View>
