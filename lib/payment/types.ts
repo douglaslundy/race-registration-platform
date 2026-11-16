@@ -138,3 +138,9 @@ export function isInvalidPaymentMethodError(err: unknown): boolean {
   const cause = (err as { cause?: unknown } | null)?.cause;
   return Array.isArray(cause) && cause.some((c: { code?: unknown }) => Number(c?.code) === 3028);
 }
+
+/** Erro 10105 do MP ("Bin not found"): o MP não reconhece o cartão (nada foi cobrado). */
+export function isBinNotFoundError(err: unknown): boolean {
+  const cause = (err as { cause?: unknown } | null)?.cause;
+  return Array.isArray(cause) && cause.some((c: { code?: unknown }) => Number(c?.code) === 10105);
+}

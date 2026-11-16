@@ -1,5 +1,17 @@
 # Progresso do Projeto
 
+## Última atualização (2026-11-15 — Causa raiz do cartão: parâmetro `bins` — NÃO commitado/deployado)
+- Falhas de 14/11: `bin_not_found (10105)`, 2 tentativas de 1 comprador (BIN 466669, que o MP não reconhece).
+- Causa raiz achada: `payment_methods/search?bin=` é ignorado pelo MP (devolve os 30 meios, `master` primeiro); o certo é `bins=`. Todo cartão saía como `master` — origem do 3028 em Visa. Verificado na API: `bins=498581` → visa, `bins=558120` → master, `bins=466669` → vazio.
+- `lib/payment/mercadopago.ts`: usa `bins=`; 10105 também tenta a próxima opção (sem `payment_method_id`) e, se persistir, vira `UserFacingPaymentError` ("O Mercado Pago não reconheceu este cartão..."). `isBinNotFoundError` em `lib/payment/types.ts`. Teste novo em `payment-mercadopago-create`. Suíte: 2465 verdes; `tsc` limpo.
+- Commits anteriores já em produção: `abee463` (additional_info/status_detail/PDF) e `72e7442` (fix página de inscritos).
+
+### PRÓXIMA TAREFA
+Deploy desta correção (pedir confirmação) e conferir no log `[mp] card bin=... methodId=` se a bandeira sai correta. Depois: 3DS 2.0.
+
+---
+
+
 ## Última atualização (2026-11-13 — Recusa de cartão `cc_rejected_high_risk` + PDF de inscritos — NÃO commitado/deployado)
 - Diagnóstico: as falhas de 11/11 (3 tentativas de 1 comprador, que depois pagou por PIX) foram recusas do antifraude do MP (`cc_rejected_high_risk`), não bug. O pagamento ia sem `additional_info` e o `status_detail` não era gravado.
 - `lib/payment/mercadopago.ts`: `buildAdditionalInfo` (item `tickets`, nome, telefone, endereço, data de cadastro) enviado no pagamento com cartão; recusa loga e devolve `statusDetail`.

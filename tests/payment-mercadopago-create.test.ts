@@ -112,4 +112,15 @@ describe("MercadoPagoProvider.createPayment (cartão)", () => {
     await new MercadoPagoProvider().createPayment({ ...baseInput, buyer: { ...baseInput.buyer, phone: "123" } });
     expect(createMock.mock.calls[0][0].body.additional_info.payer).toEqual({ first_name: "Ana", last_name: "Silva" });
   });
+
+  it("10105 (Bin not found) tenta sem payment_method_id e, se persistir, devolve erro exibível", async () => {
+    const err10105 = { message: "bin_not_found", status: 400, cause: [{ code: 10105, description: "Bin not found" }] };
+    createMock.mockRejectedValueOnce(err10105).mockResolvedValueOnce({ id: 400, status: "approved" });
+    expect((await new MercadoPagoProvider().createPayment(baseInput)).status).toBe("PAID");
+    expect(createMock.mock.calls[1][0].body).not.toHaveProperty("payment_method_id");
+
+    createMock.mockRejectedValue(err10105);
+    await expect(new MercadoPagoProvider().createPayment(baseInput)).rejects.toThrow(/não reconheceu este cartão/);
+    createMock.mockReset();
+  });
 });

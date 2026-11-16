@@ -13,7 +13,7 @@ import type {
   GatewaySearchResult,
   GatewayPaymentSummary,
 } from "./types";
-import { UserFacingPaymentError, isInvalidPaymentMethodError } from "./types";
+import { UserFacingPaymentError, isInvalidPaymentMethodError, isBinNotFoundError } from "./types";
 
 interface MPFeeDetail {
   type?: string;
@@ -180,11 +180,13 @@ export class MercadoPagoProvider implements PaymentProvider {
         bin_attributes?: { brand?: { code?: string } };
       };
 
+      // Parâmetro é `bins` (plural): com `bin` o MP ignora o filtro e devolve todos os meios, com
+      // "master" primeiro — todo cartão saía como master (3028 em Visa, 10105 em BIN desconhecido).
       // O BIN é a fonte autoritativa: o mesmo "master" do token é inválido (MP 3028) em cartão de
       // débito/pré-pago, então só vale o método de crédito que o MP lista para aquele BIN.
       if (tokenData.first_six_digits) {
         const pmRes = await fetch(
-          `https://api.mercadopago.com/v1/payment_methods/search?bin=${tokenData.first_six_digits}&site_id=MLB`,
+          `https://api.mercadopago.com/v1/payment_methods/search?bins=${tokenData.first_six_digits}&site_id=MLB`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         if (pmRes.ok) {
@@ -245,8 +247,15 @@ export class MercadoPagoProvider implements PaymentProvider {
         });
         break;
       } catch (err) {
-        if (!isInvalidPaymentMethodError(err) || i === attempts.length - 1) throw err;
-        console.warn("[mp] payment_method_id=%s rejeitado (3028), tentando próximo", attempts[i] ?? "(omitido)");
+        const retryable = isInvalidPaymentMethodError(err) || isBinNotFoundError(err);
+        if (retryable && i < attempts.length - 1) {
+          console.warn("[mp] payment_method_id=%s rejeitado (3028/10105), tentando próximo", attempts[i] ?? "(omitido)");
+          continue;
+        }
+        if (isBinNotFoundError(err)) {
+          throw new UserFacingPaymentError("O Mercado Pago não reconheceu este cartão. Use outro cartão ou pague com PIX.");
+        }
+        throw err;
       }
     }
     if (!resCC) throw new Error("Pagamento com cartão não retornou resposta");
