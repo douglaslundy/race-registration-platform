@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/payment/cancel-pending-manually", () => ({ cancelPendingPaymentManually: vi.fn() }));
+vi.mock("@/lib/payment/expire-payments", () => ({ cancelAbandonedOrder: vi.fn().mockResolvedValue(true) }));
 
 import { POST } from "@/app/api/admin/registrations/[id]/cancel-pending/route";
 import { cancelPendingPaymentManually } from "@/lib/payment/cancel-pending-manually";
@@ -79,10 +80,19 @@ describe("POST /api/admin/registrations/[id]/cancel-pending", () => {
     expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 
-  it("retorna 400 quando não há nenhum pagamento associado ao pedido", async () => {
+  it("sem nenhum pagamento (após o prazo) cancela o pedido direto, sem chamar o gateway", async () => {
     dbMock.registration.findFirst.mockResolvedValueOnce(makeRegistration({ payments: [] }));
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
+  });
+
+  it("pagamento recusado/com erro (CANCELLED) libera a vaga na hora, sem chamar o gateway", async () => {
+    dbMock.registration.findFirst.mockResolvedValueOnce(
+      makeRegistration({ createdAt: new Date(Date.now() - 60_000), payments: [{ id: "payment-1", status: "CANCELLED" }] }),
+    );
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "reg-1" }) });
+    expect(res.status).toBe(200);
     expect(cancelPendingPaymentManuallyMock).not.toHaveBeenCalled();
   });
 

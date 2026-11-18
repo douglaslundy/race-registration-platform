@@ -32,11 +32,18 @@ describe("canCancelPendingRegistration", () => {
     expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: exact }, PENDING_PAYMENT)).toBe(true);
   });
 
-  it("retorna false quando a inscrição já seria elegível por status+idade, mas o último Payment não está PENDING (caso 'vaga fantasma', tratado à parte)", () => {
+  it("pagamento já morto (CANCELLED/EXPIRED) libera o cancelamento na hora, sem esperar 4h", () => {
+    const recent = new Date(Date.now() - 60_000);
+    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: recent }, { status: "EXPIRED" })).toBe(true);
+    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: recent }, { status: "CANCELLED" })).toBe(true);
+  });
+
+  it("sem pagamento: só após o prazo; pagamento PAID/REFUNDED nunca", () => {
     const old = new Date(Date.now() - (PENDING_CANCELLATION_THRESHOLD_HOURS * HOUR + 60_000));
-    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, { status: "EXPIRED" })).toBe(false);
-    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, { status: "CANCELLED" })).toBe(false);
-    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, null)).toBe(false);
-    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, undefined)).toBe(false);
+    const recent = new Date(Date.now() - 60_000);
+    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, null)).toBe(true);
+    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: recent }, undefined)).toBe(false);
+    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, { status: "PAID" })).toBe(false);
+    expect(canCancelPendingRegistration({ status: "PENDING_PAYMENT", createdAt: old }, { status: "REFUNDED" })).toBe(false);
   });
 });

@@ -1,5 +1,15 @@
 # Progresso do Projeto
 
+## Última atualização (2026-11-18 — Inscrições pendentes "fantasmas" — NÃO commitado/deployado)
+- Causa: erro/recusa do gateway no cartão gravava `Payment` CANCELLED mas deixava pedido PENDING + inscrição PENDING_PAYMENT + vaga ocupada. Nenhum cron pegava: `expireAbandonedOrders` exigia `payments: none` e `expirePendingPayments` só olha Payment PENDING. 6 inscrições presas em produção (4 de 28/10, 2 de 14/11), todas "Corrida dos Lagos Guapé".
+- `app/api/checkout/route.ts` (catch do gateway): agora cria o Payment e aplica `applyGatewayStatus(... "CANCELLED")` — cancela pedido/inscrição e devolve a vaga.
+- `lib/payment/expire-payments.ts`: `expireAbandonedOrders` também cobre pedidos só com pagamentos CANCELLED/EXPIRED (limpa os legados no próximo cron).
+- Botão "Cancelar inscrição" (admin e organizador): `canCancelPendingRegistration` libera na hora quando o pagamento está CANCELLED/EXPIRED; sem pagamento, após 4h. Rotas `cancel-pending` usam `cancelAbandonedOrder` nesses casos (sem chamar o gateway). Modal sem o texto de "4 horas".
+- Testes ajustados/novos; suíte 2468 verdes, `tsc` limpo.
+
+---
+
+
 ## Última atualização (2026-11-15 — Causa raiz do cartão: parâmetro `bins` — NÃO commitado/deployado)
 - Falhas de 14/11: `bin_not_found (10105)`, 2 tentativas de 1 comprador (BIN 466669, que o MP não reconhece).
 - Causa raiz achada: `payment_methods/search?bin=` é ignorado pelo MP (devolve os 30 meios, `master` primeiro); o certo é `bins=`. Todo cartão saía como `master` — origem do 3028 em Visa. Verificado na API: `bins=498581` → visa, `bins=558120` → master, `bins=466669` → vazio.

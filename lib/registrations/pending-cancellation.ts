@@ -2,10 +2,9 @@ export const PENDING_CANCELLATION_THRESHOLD_HOURS = 4;
 
 /**
  * Regra única de "quando um organizador/admin pode cancelar manualmente uma inscrição pendente de
- * pagamento pra liberar a vaga": status ainda PENDING_PAYMENT, o último Payment do pedido ainda
- * está PENDING (a rota exige isso — se o Payment já está EXPIRED/CANCELLED, é o caso conhecido de
- * "vaga fantasma", tratado à parte, fora do escopo deste botão), e já se passaram mais de
- * PENDING_CANCELLATION_THRESHOLD_HOURS desde a criação da inscrição.
+ * pagamento pra liberar a vaga": status ainda PENDING_PAYMENT e (a) o último Payment já está
+ * CANCELLED/EXPIRED ("vaga fantasma": pode cancelar já), ou (b) está PENDING ou inexistente e já se
+ * passaram mais de PENDING_CANCELLATION_THRESHOLD_HOURS desde a criação da inscrição.
  *
  * Usada tanto pra decidir se o botão aparece na tela de inscritos (organizador/admin) quanto pela
  * própria rota de API que executa o cancelamento (defesa em profundidade — nunca confiar só na UI).
@@ -18,7 +17,10 @@ export function canCancelPendingRegistration(
   payment: { status: string } | null | undefined,
 ): boolean {
   if (registration.status !== "PENDING_PAYMENT") return false;
-  if (payment?.status !== "PENDING") return false;
+  // Pagamento já morto (recusado/erro/expirado): a vaga está presa e nada mais pode ser pago,
+  // então o cancelamento manual vale na hora, sem esperar o prazo.
+  if (payment?.status === "CANCELLED" || payment?.status === "EXPIRED") return true;
+  if (payment && payment.status !== "PENDING") return false;
   const thresholdMs = PENDING_CANCELLATION_THRESHOLD_HOURS * 60 * 60 * 1000;
   return Date.now() - registration.createdAt.getTime() >= thresholdMs;
 }

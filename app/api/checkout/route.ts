@@ -171,18 +171,30 @@ export async function POST(req: NextRequest) {
     // embutidos no objeto de erro. Detalhe só no log do servidor; cliente recebe msg fixa.
     console.error("[checkout] payment gateway error:", payErr);
     // Registra a falha para a lista de inscrições mostrar "Erro no pagamento" (sem providerPaymentId).
-    await db.payment
-      .create({
-        data: {
-          orderId: checkout.orderId,
-          provider: providerKey,
-          method: paymentMethod as PaymentMethod,
-          status: "CANCELLED",
-          amount: checkout.totalAmount,
-          idempotencyKey,
-          paymentAccountId: account?.id ?? null,
-          rawPayload: { gatewayError: describeGatewayError(payErr) },
-        },
+    // Além de registrar a falha, cancela pedido e inscrição e devolve a vaga: sem isso a inscrição
+    // ficava PENDING_PAYMENT para sempre (nenhum cron cobre pedido com pagamento já CANCELLED).
+    await db
+      .$transaction(async (tx) => {
+        const payment = await tx.payment.create({
+          data: {
+            orderId: checkout.orderId,
+            provider: providerKey,
+            method: paymentMethod as PaymentMethod,
+            status: "PENDING",
+            amount: checkout.totalAmount,
+            idempotencyKey,
+            paymentAccountId: account?.id ?? null,
+          },
+        });
+        await applyGatewayStatus(
+          tx,
+          payment,
+          { id: checkout.orderId, status: "PENDING" },
+          [{ id: checkout.registrationId, ticketBatchId: checkoutData.ticketBatchId, status: "PENDING_PAYMENT" }],
+          "CANCELLED",
+          "checkout",
+          { rawPayload: { gatewayError: describeGatewayError(payErr) } },
+        );
       })
       .catch((e) => console.error("[checkout] falha ao registrar erro de pagamento:", e));
     void notifyPaymentFailureStaff({

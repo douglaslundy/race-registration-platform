@@ -108,7 +108,9 @@ export async function expireAbandonedOrders(options?: { organizerUserId?: string
     where: {
       status: "PENDING",
       expiresAt: { not: null, lt: new Date() },
-      payments: { none: {} },
+      // Sem pagamento algum OU só com pagamentos mortos (recusa/erro do gateway deixava o pedido
+      // PENDING para sempre). Pagamento PENDING/PAID tem o seu próprio fluxo.
+      payments: { none: { status: { notIn: ["CANCELLED", "EXPIRED"] } } },
       ...(options?.organizerUserId
         ? { event: { organizer: { userId: options.organizerUserId } } }
         : {}),

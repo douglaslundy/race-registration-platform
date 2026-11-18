@@ -38,9 +38,8 @@ export default function CancelPendingRegistrationButton({ endpoint }: { endpoint
         open={confirming}
         title="Cancelar inscrição pendente de pagamento"
         message={
-          "Esta inscrição está aguardando pagamento há mais de 4 horas. Ao cancelar, a vaga do lote " +
-          "será liberada para novas inscrições e o atleta receberá uma notificação (e-mail/WhatsApp) " +
-          "avisando que a inscrição foi cancelada por falta de pagamento. Esta ação não pode ser desfeita."
+          "Esta inscrição não foi paga (pagamento pendente, recusado ou com erro). Ao cancelar, a vaga do lote " +
+          "será liberada para novas inscrições. Esta ação não pode ser desfeita."
         }
         confirmLabel="Cancelar inscrição"
         cancelLabel="Voltar"

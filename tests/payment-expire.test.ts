@@ -283,7 +283,7 @@ describe("expireAbandonedOrders", () => {
     vi.clearAllMocks();
   });
 
-  it("busca pedidos PENDING sem payment com prazo vencido", async () => {
+  it("busca pedidos PENDING sem pagamento vivo (nenhum ou só CANCELLED/EXPIRED) com prazo vencido", async () => {
     dbMock.order.findMany.mockResolvedValueOnce([]);
 
     await expireAbandonedOrders();
@@ -293,7 +293,7 @@ describe("expireAbandonedOrders", () => {
         where: expect.objectContaining({
           status: "PENDING",
           expiresAt: { not: null, lt: expect.any(Date) },
-          payments: { none: {} },
+          payments: { none: { status: { notIn: ["CANCELLED", "EXPIRED"] } } },
         }),
       }),
     );
